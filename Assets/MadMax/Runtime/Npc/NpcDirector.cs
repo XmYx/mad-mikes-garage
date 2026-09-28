@@ -113,7 +113,7 @@ namespace MadMax.Npc
             if (!d || !d.game || d.game.Menus.IsOpen) return false;
             var at = d.game.Current ? d.game.Current.transform.position : d.game.Player.transform.position;
             foreach (var c in d.convoys)
-                if (c.raiders && c.phase == Convoy.Phase.Confront && c.Boss && c.Boss.Alive && Vector3.Distance(c.Boss.transform.position, at) < 35f)
+                if (c.raiders && c.phase == Convoy.Phase.Confront && c.Boss && c.Boss.Alive && Vector3.Distance(c.Boss.transform.position, at) < 45f)
                 {
                     d.game.Menus.OpenTalk(c.Boss, false);
                     return true;

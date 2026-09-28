@@ -109,7 +109,7 @@ namespace MadMax.World
 
         Site MakeSite(Vector2Int cell)
         {
-            var rnd = new System.Random(cell.x * 48611 ^ cell.y * 96893 ^ seed * 7);
+            var rnd = new System.Random(Mix(cell.x, cell.y, seed));
             var p = new Vector2((cell.x + 0.2f + (float)rnd.NextDouble() * 0.6f) * SiteCell, (cell.y + 0.2f + (float)rnd.NextDouble() * 0.6f) * SiteCell);
             var b = NaturalBiome(p.x, p.y);
             double roll = rnd.NextDouble();
@@ -139,6 +139,19 @@ namespace MadMax.World
                 if (hits.Count > 0) return null;
             }
             return s;
+        }
+
+        /// <summary>Seed from a cell (System.Random takes |seed|, so plain xor products repeat across mirrored cells).</summary>
+        static int Mix(int a, int b, int c)
+        {
+            unchecked
+            {
+                uint h = (uint)a * 0x9E3779B1u;
+                h ^= (uint)b * 0x85EBCA77u + (h << 6) + (h >> 2);
+                h ^= (uint)c * 0xC2B2AE3Du + (h << 6) + (h >> 2);
+                h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15;
+                return (int)(h & 0x7fffffff);
+            }
         }
 
         /// <summary>Bunker layout: a tree of 4 m cells grown from the entrance, some merged into bigger rooms.</summary>

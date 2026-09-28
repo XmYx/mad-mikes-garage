@@ -36,7 +36,8 @@ namespace MadMax.Npc
         CharacterController cc;
         HandTool tool;
         float health, maxHealth, vy, swing = -1f, attackCd, repath, fleeUntil, faceUntil, stuck, lastHurt;
-        Vector3 goal, lastPos;
+        Vector3 goal, lastPos, detour;
+        float detourUntil;
         bool hasGoal;
         Vector3 faceTarget;
 
@@ -106,7 +107,7 @@ namespace MadMax.Npc
             switch (mode)
             {
                 case Mode.Stand:
-                    if ((me - home).sqrMagnitude > 0.25f) { move = Toward(home); speed = 1.2f; }
+                    if ((me - home).sqrMagnitude > 0.25f) { move = Toward(home); speed = (me - home).sqrMagnitude > 16f ? 2.4f : 1.2f; }
                     else if (Time.time > faceUntil) FaceYaw(homeYaw, dt);
                     break;
                 case Mode.Wander:
@@ -129,7 +130,8 @@ namespace MadMax.Npc
             }
             if (mode != Mode.Fight && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
 
-            // movement: CharacterController against buildings and props, gravity, stuck → new goal
+            // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal
+            if (Time.time < detourUntil && move.sqrMagnitude > 0.001f) move = detour;
             if (move.sqrMagnitude > 0.001f && !Blocked(terrain, me, move)) Face(move, dt);
             else if (move.sqrMagnitude > 0.001f) { hasGoal = false; move = Vector3.zero; speed = 0f; }
             if (Time.time < faceUntil && speed < 0.1f) Face(Flat(faceTarget - me), dt);
@@ -143,7 +145,16 @@ namespace MadMax.Npc
             }
             float moved = Flat(transform.position - lastPos).magnitude / Mathf.Max(dt, 1e-4f);
             lastPos = transform.position;
-            if (speed > 0.5f && moved < 0.2f) { if ((stuck += dt) > 1.5f) { stuck = 0f; hasGoal = false; repath = 0f; } } else stuck = 0f;
+            if (speed > 0.5f && moved < 0.2f)
+            {
+                if ((stuck += dt) > 1f)
+                {
+                    stuck = 0f; hasGoal = false; repath = 0f;
+                    var side = Vector3.Cross(Vector3.up, move).normalized * (Random.value < 0.5f ? 1f : -1f);
+                    detour = side + move.normalized * 0.3f; detourUntil = Time.time + 1.4f;
+                }
+            }
+            else stuck = 0f;
 
             if (swing >= 0f)
             {
@@ -252,7 +263,7 @@ namespace MadMax.Npc
             {
                 g.Current.GetComponent<VehicleDamage>()?.ApplyHit(hit.point, aim, 0.5f * power, 0.3f * power, source);
                 MadMax.Audio.Sfx.Play("hit_metal", hit.point, 0.7f);
-                if (Random.value < 0.25f) g.Vitals.Hurt(Random.Range(6f, 14f), "SHOT");  // through the glass
+                if (Random.value < 0.12f) g.Vitals.Hurt(Random.Range(5f, 10f), "SHOT");  // through the glass
             }
             else if (!g.Current && hit.collider.transform.IsChildOf(g.Player.transform))
             {

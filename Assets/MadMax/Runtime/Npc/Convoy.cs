@@ -34,7 +34,7 @@ namespace MadMax.Npc
         public readonly List<AiDriver> cars = new List<AiDriver>();
         public readonly List<Npc> walkers = new List<Npc>();
         public Npc Boss;                                     // the leader on foot (parley, trader at a stop)
-        float timer, truceUntil, farT, fireCd, modeT;
+        float timer, truceUntil, farT, fireCd, modeT, confrontDist, stallT;
         float routeLen;
         float[] cum;
 
@@ -90,6 +90,15 @@ namespace MadMax.Npc
             float t = Mathf.InverseLerp(cum[i - 1], cum[i], s);
             dir = (route[i] - route[i - 1]).normalized * (back ? -1f : 1f);
             return Vector3.Lerp(route[i - 1], route[i], t);
+        }
+
+        /// <summary>Index of the route point nearest to p, and how far p is from the road.</summary>
+        int NearestIndex(Vector3 p, out float off)
+        {
+            int best = 0; off = float.MaxValue;
+            for (int i = 0; i < route.Count; i++) { float d = Flat(route[i] - p).sqrMagnitude; if (d < off) { off = d; best = i; } }
+            off = Mathf.Sqrt(off);
+            return best;
         }
 
         /// <summary>Distance along the route of the point nearest to p (for folding a real convoy back to the road).</summary>
@@ -152,7 +161,8 @@ namespace MadMax.Npc
                     break;
                 case Phase.Confront:
                     ConfrontTick(g, target, dist, dt);
-                    if (dist > 60f || timer > 25f) Attack(g);
+                    confrontDist = Mathf.Min(confrontDist, Mathf.Max(dist, 25f));
+                    if (timer > 30f || (timer > 3f && dist > confrontDist + 25f)) Attack(g);      // waited too long, or the player drove off
                     else if (Mathf.Repeat(timer, 3f) < dt) g.Toast("THE " + Gang + " BLOCK YOUR WAY - WALK UP AND PARLEY [E]");
                     break;
                 case Phase.Parley:
@@ -286,7 +296,7 @@ namespace MadMax.Npc
 
         void Confront(WastelandGame g)
         {
-            phase = Phase.Confront; timer = 0f;
+            phase = Phase.Confront; timer = 0f; confrontDist = float.MaxValue; stallT = 0f;
             var target = g.Current ? g.Current.transform : g.Player.transform;
             for (int i = 0; i < cars.Count; i++)
             {
@@ -302,13 +312,35 @@ namespace MadMax.Npc
         {
             var lead = Leader();
             if (!lead) return;
+            // drive along the road towards the player; leave it only for the last stretch
+            if (lead.goal != AiDriver.Goal.Park)
+            {
+                int pi = NearestIndex(target.position, out float off);
+                int li = NearestIndex(lead.transform.position, out float loff);
+                if (off < 25f && loff < 12f && Mathf.Abs(cum[pi] - cum[li]) > 30f)
+                {
+                    if (lead.goal != AiDriver.Goal.Path) lead.SetPath(route, pi > li ? 1 : -1);
+                    lead.dir = pi > li ? 1 : -1;
+                    lead.cruise = 14f;
+                }
+                else if (lead.goal == AiDriver.Goal.Path) { lead.goal = AiDriver.Goal.Chase; lead.avoidTarget = true; lead.chaseSpeed = 12f; }
+            }
             if (dist < 17f) lead.goal = AiDriver.Goal.Park;
-            if (!Boss && lead.Vehicle && Mathf.Abs(lead.Vehicle.ForwardSpeed) < 1f && dist < 30f && !NpcRegistry.IsDead(crew[0].id))
+            bool slow = lead.Vehicle && Mathf.Abs(lead.Vehicle.ForwardSpeed) < 1f;
+            stallT = slow ? stallT + dt : 0f;
+            // parked close, or stuck on the way (trees, rocks): the boss walks the rest
+            if (!Boss && slow && (dist < 30f || (dist < 90f && stallT > 3f)) && !NpcRegistry.IsDead(crew[0].id))
             {
                 var t = lead.transform;
                 Boss = Walker(g, 0, t.position - t.right * 2.2f, false);
-                Boss.home = Boss.transform.position;
                 MadMax.Audio.Sfx.Play("car_door", t.position, 0.7f);
+            }
+            if (Boss && Boss.Alive)
+            {
+                // the boss strides up to the player to make his demand
+                var away = Boss.transform.position - target.position; away.y = 0f;
+                Boss.home = target.position + away.normalized * 5f;
+                Boss.homeYaw = Quaternion.LookRotation(-away).eulerAngles.y;
             }
         }
 
@@ -362,12 +394,13 @@ namespace MadMax.Npc
                 if (i > 0) c.goal = ((int)(modeT / 6f) + i) % 3 == 0 ? AiDriver.Goal.Circle : AiDriver.Goal.Chase;
             }
             if ((fireCd -= dt) > 0f) return;
-            fireCd = Mathf.Max(0.8f, 3f / Mathf.Max(1, cars.Count));
+            int armed = 0; foreach (var c in cars) if (c && c.enabled) armed++;
+            fireCd = Mathf.Max(1.6f, 7f / Mathf.Max(1, armed));
             var shooter = cars[UnityEngine.Random.Range(0, cars.Count)];
             if (!shooter || !shooter.enabled) return;
             var from = shooter.transform.position + Vector3.up * 1.6f;
             float d = Vector3.Distance(from, target.position);
-            if (d < 26f && UnityEngine.Random.value < 0.3f && d > 7f) ThrowBottle(g, from, target);
+            if (d < 26f && UnityEngine.Random.value < 0.18f && d > 7f) ThrowBottle(g, from, target);
             else if (d < 22f) Npc.Blast(shooter.gameObject, from, target.position + Vector3.up * 0.8f, d, HasTurret(shooter) ? 1.8f : 1f);
         }
 

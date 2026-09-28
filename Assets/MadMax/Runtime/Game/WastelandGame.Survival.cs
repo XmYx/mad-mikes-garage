@@ -237,6 +237,7 @@ namespace MadMax.Game
                 if (!t) continue;
                 foreach (var col in t.GetComponentsInChildren<Collider>())
                 {
+                    if (!col.enabled) continue;                                 // ClosestPoint of a disabled collider is the query point
                     float d = Vector3.Distance(col.ClosestPoint(eye), eye);
                     if (d < best + 0.6f && d < 3f) { best = d; pick = t; break; }
                 }
@@ -265,7 +266,9 @@ namespace MadMax.Game
         {
             if (!m || m.GetComponent<IInteractable>() == null) return;
             var col = m.GetComponent<Collider>();
-            var p = col ? col.ClosestPoint(eye) : m.transform.position;
+            // ClosestPoint only works on primitive and convex colliders (not CharacterControllers: NPCs)
+            bool closest = col && !(col is CharacterController) && (!(col is MeshCollider mc) || mc.convex);
+            var p = closest ? col.ClosestPoint(eye) : m.transform.position + Vector3.up;
             float d = Vector3.Distance(p, eye);
             if (d > best) return;
             var toward = (p - eye); toward.y = 0f;

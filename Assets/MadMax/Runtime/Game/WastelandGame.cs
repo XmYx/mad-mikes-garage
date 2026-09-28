@@ -588,7 +588,7 @@ namespace MadMax.Game
 
             foreach (var c in cars)
             {
-                if (!c || c == Current) continue;
+                if (!c || c == Current || c.aiDriven) continue;                                // NPC drivers steer themselves
                 if (c.TryGetComponent<TowCoupling>(out var towed) && towed.Tower) continue;   // brakes follow the tow vehicle
                 c.steerInput = c.throttleInput = c.brakeInput = 0f;
                 c.handbrake = true;
