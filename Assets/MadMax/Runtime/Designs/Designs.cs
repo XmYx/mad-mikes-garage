@@ -78,6 +78,50 @@ namespace MadMax.Designs
                 sockets.Add(new SocketDesign { name = name + "_L", accepts = c, position = new Vector3Int(-x, y, z), part = part, mirrored = true, maxSizeClass = maxSize });
         }
 
+        /// <summary>Carves wheel arches out of the body (and glass): for every wheel socket, the space its default tyre
+        /// sweeps (radius + 1 voxel, full width, suspension travel upward, steering clearance on steered axles) is cleared,
+        /// and the arch rim is darkened like an inner fender. Keeps any design free of tyres poking through panels.</summary>
+        public void CarveWheelArches(System.Func<string, PartDesign> part)
+        {
+            if (body == null) return;
+            float travelVox = Mathf.Ceil(travel / VoxelMesher.DefaultSize);
+            foreach (var s in sockets)
+            {
+                if (s.accepts != PartCategory.Wheel || string.IsNullOrEmpty(s.part)) continue;
+                var w = part(s.part);
+                if (w == null || w.radius <= 0f) continue;
+                float r = w.radius / VoxelMesher.DefaultSize;
+                int minX = int.MaxValue, maxX = int.MinValue;
+                foreach (var k in w.grid.voxels.Keys) { if (k.x < minX) minX = k.x; if (k.x > maxX) maxX = k.x; }
+                int width = maxX >= minX ? maxX - minX + 1 : 3;
+                int sign = s.mirrored ? -1 : 1;
+                int x0 = s.position.x, x1 = s.position.x + sign * (width + 1);   // inner face to beyond the outer sidewall
+                if (x0 > x1) (x0, x1) = (x1, x0);
+                float zMargin = driveable && maxSteer > 0f && s.position.z > 0 ? 1.5f : 0.5f;   // steered wheels swing forward/back
+                foreach (var g in new[] { body, glass })
+                {
+                    if (g == null) continue;
+                    var clear = new List<Vector3Int>(); var rim = new List<Vector3Int>();
+                    foreach (var p in g.voxels.Keys)
+                    {
+                        if (p.x < x0 || p.x > x1) continue;
+                        float dz = Mathf.Max(0f, Mathf.Abs(p.z - s.position.z) - zMargin);
+                        float dy = p.y - s.position.y;
+                        float ey = dy - Mathf.Clamp(dy, 0f, travelVox);      // capsule: the wheel rises by the suspension travel
+                        float d = Mathf.Sqrt(dz * dz + ey * ey);
+                        if (d <= r + 1f) clear.Add(p); else if (d <= r + 2f && g == body) rim.Add(p);
+                    }
+                    foreach (var p in clear) g.voxels.Remove(p);
+                    foreach (var p in rim)
+                    {
+                        var v = g.voxels[p];
+                        v.color = new Color32((byte)(v.color.r * 0.55f), (byte)(v.color.g * 0.55f), (byte)(v.color.b * 0.55f), v.color.a);
+                        g.voxels[p] = v;
+                    }
+                }
+            }
+        }
+
         /// <summary>Cut a labelled region out of the body grid into its own part.</summary>
         public void Cut(VoxelGrid g, string label, string key, PartCategory c, Vector3Int origin, float mass, int size = 1)
         {

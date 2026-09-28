@@ -174,10 +174,16 @@ namespace MadMax.Game
             else if (!Dedicated) Enter(fleet[0]);
             GameSettings.Current.Apply(this);
             if (Dedicated) StartDedicated();
+            else if (pending == null && !SaveSystem.SkipMenu && LaunchOptions.NoMenu)
+            {
+                // --no-menu: play the freshly generated world right away (--continue: load the save instead)
+                played = true;
+                if (LaunchOptions.Continue && SaveSystem.HasSave) LoadGame();
+            }
             else if (pending == null && !SaveSystem.SkipMenu)
             {
                 // the neon sign + logo + burnout is the menu backdrop: always shown; INTRO off only skips the film/flyover
-                if (!GameSettings.Current.intro) TitleSequence.SkipToFinale = true;
+                if (!GameSettings.Current.intro || LaunchOptions.NoIntro) TitleSequence.SkipToFinale = true;
                 if (cameraRig) TitleSequence.Begin(this); else Menus.Open(MenuSystem.Page.Main);
             }
             else played = true;

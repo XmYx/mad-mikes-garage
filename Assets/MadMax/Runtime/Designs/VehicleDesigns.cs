@@ -326,32 +326,35 @@ namespace MadMax.Designs
             var glass = Pal.Ramp(Pal.Glass, 1, 303);
             var voidM = Pal.Solid(Pal.Void);
 
-            int HoodTop(int z) => z < 8 ? 10 : z <= 11 ? 10 : z <= 15 ? 9 : z <= 19 ? 8 : 7;
+            // P601 lower body: flat hood with a rolled nose, tall flat front, shoulder crease at y 9, short flat boot.
+            var crease = Pal.Weathered(Pal.PaleBlue, 0.1f, 305, 3, 5);
             for (int z = -21; z <= 20; z++)
             for (int x = -9; x <= 9; x++)
             for (int y = 3; y <= 10; y++)
             {
                 int ax = Abs(x);
-                if (y > HoodTop(z)) continue;
-                if (ax == 9 && (y == 3 || y == 10)) continue;
-                if (z == 20 && (ax >= 7 || y == 3)) continue;
-                if (z == 19 && ax >= 9) continue;
-                if (z == -21 && ax >= 8) continue;
-                if (z == -20 && ax == 9) continue;
-                if (z <= -19 && y == 10) continue;
-                g.Set(x, y, z, y <= 6 ? white : blue);
+                if (ax == 9 && (y == 3 || y == 10)) continue;                              // rounded side edges
+                if ((z == 20 || z == -21) && (ax >= 8 || y == 3 || y == 10)) continue;     // inset front and rear faces
+                if ((z == 19 || z == -20) && ax == 9) continue;                             // rounded plan corners
+                if (z == 20 && y == 9 && ax >= 6) continue;                                 // nose rolls into the hood
+                g.Set(x, y, z, y == 9 ? crease : blue);
             }
-            g.Repaint(-9, 7, -21, -9, 7, 19, Pal.Solid(Pal.Chrome[2])); g.Repaint(9, 7, -21, 9, 7, 19, Pal.Solid(Pal.Chrome[2]));
             foreach (int s in new[] { -1, 1 })
             {
-                g.Box(s * 6, 7, 18, s * 8, 9, 19, blue);                                   // headlight pods
-                g.Box(s * 6, 7, 20, s * 8, 9, 20, Pal.Solid(Pal.Chrome[2]));
-                g.Set(s * 7, 8, 20, Pal.Solid(Pal.LightW)); g.Set(s * 7, 8, 21, Pal.Solid(Pal.LightY));
-                g.Box(s * 3, 5, 20, s * 5, 6, 20, p => p.y == 5 ? Pal.Void : Pal.Chrome[1]);   // oval grilles
-                g.Set(s * 7, 5, 19, Pal.Solid(Pal.Amber));
-                g.Box(s * 5, 7, -21, s * 6, 8, -21, Pal.Solid(Pal.TailR));
+                // round headlamps set into the front corners (chrome ring, lens), indicator below
+                for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
+                    if (Abs(dx) + Abs(dy) < 2) g.Set(s * 6 + dx, 7 + dy, 20, Pal.Solid(Pal.Chrome[2]));
+                g.Set(s * 6, 7, 20, Pal.Solid(Pal.LightW)); g.Set(s * 6, 7, 21, Pal.Solid(Pal.LightY));
+                g.Set(s * 6, 5, 20, Pal.Solid(Pal.Amber));
+                // upright tail-light clusters, red over amber
+                g.Box(s * 7, 6, -21, s * 7, 8, -21, Pal.Solid(Pal.TailR));
+                g.Set(s * 7, 5, -21, Pal.Solid(Pal.Amber));
             }
-            g.Box(-2, 7, 20, 2, 7, 20, Pal.Solid(Pal.Chrome[2])); g.Set(0, 7, 21, Pal.Solid(Pal.Chrome[3]));   // emblem
+            g.Box(-4, 7, 20, 4, 8, 20, p => p.y == 8 ? Pal.Chrome[2] : Pal.Chrome[1]);   // full-width grille band between the lamps
+            for (int x = -3; x <= 3; x += 2) g.Set(x, 7, 20, Pal.Solid(Pal.Void));      // grille slots
+            g.Set(0, 9, 20, Pal.Solid(Pal.Chrome[3]));                                   // badge on the nose
+            g.Repaint(-9, 6, -20, -9, 6, 19, Pal.Solid(Pal.Chrome[2])); g.Repaint(9, 6, -20, 9, 6, 19, Pal.Solid(Pal.Chrome[2]));   // side trim
+            g.Box(-3, 5, -21, 3, 6, -21, Pal.Solid(Pal.Black[1]));                      // number-plate recess
             foreach (int zc in new[] { 13, -13 }) CutArch(g, 4, zc, 5.2f, 5);
 
             // engine bay under the front lid

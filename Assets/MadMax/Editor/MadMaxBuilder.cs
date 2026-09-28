@@ -120,7 +120,8 @@ namespace MadMax.EditorTools
             game.terrainMaterial = terrainMat;
             game.propMaterial = propMat;
             game.vehiclePrefabs = new[] { vehicles["Interceptor"], vehicles["Scavenger"], vehicles["Trabant"], vehicles["Hauler"],
-                                          vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"] };
+                                          vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"],
+                                          vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
             game.cameraRig = rig;
@@ -192,14 +193,17 @@ namespace MadMax.EditorTools
             var mat = Material("PixelVoxel", 0);
 
             var parts = new Dictionary<string, GameObject>();
-            foreach (var p in PartLibrary.All()) parts[p.key] = SavePart(p, mat);
+            var partDesigns = new Dictionary<string, PartDesign>();
+            foreach (var p in PartLibrary.All()) { parts[p.key] = SavePart(p, mat); partDesigns[p.key] = p; }
 
             vehicles = new Dictionary<string, GameObject>();
             foreach (var d in new[] { VehicleDesigns.Interceptor(), VehicleDesigns.Scavenger(), VehicleDesigns.Trabant(), VehicleDesigns.Hauler(), VehicleDesigns.Tanker(), VehicleDesigns.TankerSmall(), VehicleDesigns.CargoTrailer(),
                                       VehicleDesigns.Excavator(), VehicleDesigns.Backhoe(), VehicleDesigns.Bulldozer(), VehicleDesigns.DumpTruck(), VehicleDesigns.Paver(), VehicleDesigns.Roller(),
-                                      VehicleDesigns.Wrecker(), VehicleDesigns.CarTrailer(), VehicleDesigns.CarTrailerDouble() })
+                                      VehicleDesigns.Wrecker(), VehicleDesigns.CarTrailer(), VehicleDesigns.CarTrailerDouble(),
+                                      VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck() })
             {
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
+                d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
                 vehicles[d.name] = SaveVehicle(d, parts, mat);
             }
             lastParts = parts;

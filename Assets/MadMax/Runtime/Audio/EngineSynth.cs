@@ -40,6 +40,12 @@ namespace MadMax.Audio
                 p.pulseMs = 0.7f; p.pipeLength = 2.6f; p.mufflerHz = 650f; p.rasp = 0.18f;
                 p.clatter = 0.55f; p.turbo = 0.6f; p.crackle = 0.05f; p.roughness = 0.06f;
             }
+            else if (engineId.Contains("i6"))
+            {
+                // petrol straight-six: smooth, even firing, a little rasp
+                p.firing = Even(6);
+                p.pulseMs = 0.85f; p.pipeLength = 2.4f; p.mufflerHz = 800f; p.rasp = 0.25f; p.crackle = 0.2f; p.roughness = 0.06f;
+            }
             else if (engineId.Contains("2stroke") || engineId.Contains("two"))
             {
                 p.twoStroke = true; p.firing = new[] { 0f, 0.5f };

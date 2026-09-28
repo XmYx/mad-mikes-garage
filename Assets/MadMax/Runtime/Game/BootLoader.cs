@@ -23,7 +23,7 @@ namespace MadMax.Game
             var cam = GetComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Color.black;
             string path = Path.Combine(Application.streamingAssetsPath, "Intro", "intro.webm");
-            if (!Application.isBatchMode && GameSettings.Current.intro && File.Exists(path))   // INTRO off: straight to the neon sign and menu
+            if (!Application.isBatchMode && GameSettings.Current.intro && !LaunchOptions.NoIntro && File.Exists(path))   // INTRO off: straight to the neon sign and menu
             {
                 video = gameObject.AddComponent<VideoPlayer>();
                 video.url = path;

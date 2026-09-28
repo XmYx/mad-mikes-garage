@@ -46,6 +46,8 @@ namespace MadMax.Designs
             yield return PaverScreed();
             yield return WinchBumper();
             yield return CraneArm();
+            yield return PetrolFour();
+            yield return PetrolSix();
         }
 
         static PartDesign Make(string key, PartCategory c, VoxelGrid g, float mass, int size = 1, float radius = 0)
@@ -258,6 +260,34 @@ namespace MadMax.Designs
             g.Box(-3, 10, 8, 3, 10, 8, Pal.Solid(Pal.Chrome[3]));
             var d = Make("engine_v8_blower", PartCategory.Engine, g, 260, 2);
             d.torque = 680f; d.maxRpm = 7200f; d.peakAt = 0.62f;
+            return d;
+        }
+
+        /// <summary>Everyday petrol inline-four (coupes, saloons, wagons).</summary>
+        public static PartDesign PetrolFour()
+        {
+            var g = new VoxelGrid();
+            var block = Pal.Weathered(Pal.Metal, 0.3f, 41, 1, 3);
+            g.Box(-3, 0, 0, 3, 3, 7, block);
+            g.Box(-2, 4, 1, 2, 4, 6, Pal.Solid(Pal.TailR));                                    // red cam cover
+            for (int z = 1; z <= 6; z += 2) g.Set(-4, 2, z, Pal.Ramp(Pal.Rust, 1));           // exhaust ports
+            g.CylY(2, 2, 1.6f, 5, 5, Pal.Ramp(Pal.Black, 1, 42));                             // air cleaner (fits under a low hood)
+            var d = Make("engine_i4", PartCategory.Engine, g, 140, 1);
+            d.torque = 190f; d.maxRpm = 6200f; d.peakAt = 0.62f;
+            return d;
+        }
+
+        /// <summary>Torquey petrol inline-six (pickups, tow trucks).</summary>
+        public static PartDesign PetrolSix()
+        {
+            var g = new VoxelGrid();
+            var block = Pal.Weathered(Pal.RigGreen, 0.35f, 43, 1, 3);
+            g.Box(-3, 0, 0, 3, 5, 10, block);
+            g.Box(-2, 6, 1, 2, 6, 9, Pal.Ramp(Pal.Chrome, 1));                                  // valve cover
+            for (int z = 1; z <= 9; z += 2) g.Set(-4, 3, z, Pal.Ramp(Pal.Rust, 1));
+            g.CylY(2, 3, 2f, 7, 7, Pal.Ramp(Pal.Black, 1, 44));
+            var d = Make("engine_i6", PartCategory.Engine, g, 220, 2);
+            d.torque = 400f; d.maxRpm = 5200f; d.peakAt = 0.5f;
             return d;
         }
 
