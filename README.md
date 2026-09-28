@@ -81,6 +81,27 @@ Everything renders through a low-resolution pixel-art camera with banded lightin
 
 ---
 
+## Download
+
+Ready-to-play builds are on the **[Releases](../../releases)** page:
+
+| Platform | Installer | Portable |
+|---|---|---|
+| Windows 10/11 (x64) | `MadMikesGarage-<version>-windows-x64-setup.exe` | `...-windows-x64.zip` |
+| Linux (x64) | `MadMikesGarage-<version>-linux-x64.deb` | `...-linux-x64.tar.gz` |
+| macOS 11+ (Intel + Apple Silicon) | `MadMikesGarage-<version>-macos-universal.zip` | |
+
+Each release also carries the full source code (zip / tar.gz).
+
+### Making a release (maintainers)
+Releases are built by GitHub Actions (`.github/workflows/release.yml`, [GameCI](https://game.ci)) on Linux runners for all three platforms.
+
+1. One-time: add repository secrets (Settings > Secrets and variables > Actions) for the Unity account that holds the licence: `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_LICENSE` if you have a `.ulf` file (see [GameCI activation](https://game.ci/docs/github/activation)).
+2. Push a version tag: `git tag v0.2.0 && git push origin v0.2.0` — or run **Actions > Release > Run workflow** and enter a version.
+3. The workflow creates the release, builds Windows / Linux / macOS in parallel, uploads the installers and publishes the release when all three succeed.
+
+Locally, `MadMax > Build Linux Player` (or File > Build) produces the same player; every build shows its version bottom-right on the main menu.
+
 ## Getting started
 
 1. Install **Unity 6000.6** with URP.

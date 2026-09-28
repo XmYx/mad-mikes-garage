@@ -1,0 +1,174 @@
+# Builds Windows, Linux and macOS players with GameCI and publishes them as a GitHub release.
+# Trigger: push a tag like v0.2.0, or Actions > Release > Run workflow (enter a version; the tag is created).
+# Required repository secrets (Settings > Secrets and variables > Actions): UNITY_EMAIL, UNITY_PASSWORD
+# (Unity account that holds the Personal licence) and, if you have one, UNITY_LICENSE (.ulf file contents).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GAME: MadMikesGarage
+
+jobs:
+  prepare:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+    steps:
+      - id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then v="${{ inputs.version }}"; else v="${GITHUB_REF_NAME#v}"; fi
+          v="${v#v}"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+      - name: Create (pre)release; the tag is created at this commit if it does not exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > notes.md <<'EOF'
+          ## Downloads
+          | Platform | Installer | Portable |
+          |---|---|---|
+          | Windows 10/11 (x64) | `*-windows-x64-setup.exe` | `*-windows-x64.zip` |
+          | Linux (x64) | `*-linux-x64.deb` (`sudo apt install ./file.deb`) | `*-linux-x64.tar.gz` |
+          | macOS 11+ (Intel + Apple Silicon) | `*-macos-universal.zip` (unzip, drag to Applications) | |
+
+          The macOS app is not notarised: on first launch right-click the app and choose **Open**, or run
+          `xattr -dr com.apple.quarantine "/Applications/Mad Mike's Garage.app"`.
+          Windows SmartScreen may warn about an unknown publisher: **More info > Run anyway**.
+
+          Source code is attached below (zip / tar.gz). Open it in Unity 6000.6.3f1 and use **MadMax > Build Linux Player** or File > Build.
+          EOF
+          if ! gh release view "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            gh release create "${{ steps.ver.outputs.tag }}" --target "${{ github.sha }}" \
+              --title "Mad Mike's Garage ${{ steps.ver.outputs.version }}" --notes-file notes.md --generate-notes --prerelease
+          fi
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            targetPlatform: StandaloneWindows64
+          - platform: linux
+            targetPlatform: StandaloneLinux64
+          - platform: macos
+            targetPlatform: StandaloneOSX
+    steps:
+      - name: Free disk space (Unity image + project + Library need ~25 GB)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-${{ matrix.targetPlatform }}-
+
+      - name: Build player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildName: ${{ env.GAME }}
+          buildMethod: MadMax.EditorTools.CiBuild.Build
+          versioning: Custom
+          version: ${{ needs.prepare.outputs.version }}
+          allowDirtyBuild: true
+
+      - name: Package
+        env:
+          V: ${{ needs.prepare.outputs.version }}
+          T: ${{ matrix.targetPlatform }}
+        run: |
+          set -euo pipefail
+          sudo chown -R "$(id -u):$(id -g)" build
+          # never ship Unity's debug/backup side folders
+          find "build/$T" -maxdepth 1 -type d \( -name '*_DoNotShip' -o -name '*DontShipItWithYourGame' \) -exec rm -rf {} +
+          mkdir -p dist
+          case "${{ matrix.platform }}" in
+            windows)
+              (cd "build/$T" && zip -qr "$GITHUB_WORKSPACE/dist/$GAME-$V-windows-x64.zip" .)
+              sudo apt-get update -qq && sudo apt-get install -y -qq nsis >/dev/null
+              makensis -V2 -DVERSION="$V" -DSRCDIR="$GITHUB_WORKSPACE/build/$T" -DOUTFILE="$GITHUB_WORKSPACE/dist/$GAME-$V-windows-x64-setup.exe" .github/installer/windows.nsi
+              ;;
+            linux)
+              chmod +x "build/$T/$GAME.x86_64"
+              mkdir -p "stage/$GAME-$V-linux-x64"
+              cp -a "build/$T/." "stage/$GAME-$V-linux-x64/"
+              cp .github/installer/mad-mikes-garage.desktop "stage/$GAME-$V-linux-x64/"
+              tar -C stage -czf "dist/$GAME-$V-linux-x64.tar.gz" "$GAME-$V-linux-x64"
+              # .deb: /opt/mad-mikes-garage, launcher in /usr/bin, menu entry
+              D=deb/mad-mikes-garage
+              mkdir -p "$D/DEBIAN" "$D/opt/mad-mikes-garage" "$D/usr/bin" "$D/usr/share/applications"
+              cp -a "build/$T/." "$D/opt/mad-mikes-garage/"
+              printf '#!/bin/sh\nexec /opt/mad-mikes-garage/%s.x86_64 "$@"\n' "$GAME" > "$D/usr/bin/mad-mikes-garage"
+              chmod 755 "$D/usr/bin/mad-mikes-garage"
+              sed 's|^Exec=.*|Exec=/usr/bin/mad-mikes-garage|' .github/installer/mad-mikes-garage.desktop > "$D/usr/share/applications/mad-mikes-garage.desktop"
+              printf '%s\n' "Package: mad-mikes-garage" "Version: $V" "Section: games" "Priority: optional" "Architecture: amd64" \
+                "Maintainer: XmYx <XmYx@users.noreply.github.com>" "Depends: libc6, libvulkan1 | libgl1" \
+                "Description: Mad Mike's Garage" " Voxel vehicular survival in a procedural wasteland: build it, break it, bolt it back together." \
+                > "$D/DEBIAN/control"
+              dpkg-deb --root-owner-group --build "$D" "dist/$GAME-$V-linux-x64.deb"
+              ;;
+            macos)
+              APP=$(find "build/$T" -maxdepth 1 -name '*.app' | head -1)
+              chmod +x "$APP/Contents/MacOS/"* || true
+              mv "$APP" "build/$T/Mad Mike's Garage.app"
+              (cd "build/$T" && zip -qry "$GITHUB_WORKSPACE/dist/$GAME-$V-macos-universal.zip" "Mad Mike's Garage.app")
+              ;;
+          esac
+          ls -la dist
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "${{ needs.prepare.outputs.tag }}" dist/* --clobber
+
+  publish:
+    name: Publish release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "${{ needs.prepare.outputs.tag }}" --prerelease=false --latest
