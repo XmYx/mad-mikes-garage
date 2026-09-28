@@ -151,6 +151,9 @@ namespace MadMax.EditorTools
         [MenuItem("MadMax/Build Linux Player")]
         public static void BuildLinux()
         {
+            // always ship the latest content: regenerate parts, vehicles, game + boot scenes from the design code
+            BuildGameScene();
+            AssetDatabase.SaveAssets();
             // Vulkan first: it picks the discrete GPU on hybrid laptops/desktops (OpenGL would run on the iGPU)
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneLinux64, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneLinux64, new[] { UnityEngine.Rendering.GraphicsDeviceType.Vulkan, UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore });

@@ -174,7 +174,12 @@ namespace MadMax.Game
             else if (!Dedicated) Enter(fleet[0]);
             GameSettings.Current.Apply(this);
             if (Dedicated) StartDedicated();
-            else if (pending == null && !SaveSystem.SkipMenu) { if (GameSettings.Current.intro && cameraRig) TitleSequence.Begin(this); else Menus.Open(MenuSystem.Page.Main); }
+            else if (pending == null && !SaveSystem.SkipMenu)
+            {
+                // the neon sign + logo + burnout is the menu backdrop: always shown; INTRO off only skips the film/flyover
+                if (!GameSettings.Current.intro) TitleSequence.SkipToFinale = true;
+                if (cameraRig) TitleSequence.Begin(this); else Menus.Open(MenuSystem.Page.Main);
+            }
             else played = true;
             if (net && net.Online && !Dedicated) net.AttachGame(this);
             if (SaveSystem.PendingHost) { SaveSystem.PendingHost = false; Host(); }

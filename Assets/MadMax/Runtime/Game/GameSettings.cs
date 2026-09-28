@@ -25,7 +25,9 @@ namespace MadMax.Game
         public bool dither;              // ordered dither between light bands
         public int lightDetail = 2;      // 0 vehicle lights only, 1 low, 2 high
         public bool lineOfSight = true;  // hide objects the character cannot see
-        public bool intro = true;        // cinematic title sequence on start
+        public bool intro = true;        // boot film + flyover; off = straight to the neon sign and menu
+        public int version;              // settings format (see Load migration)
+        const int CurrentVersion = 2;
         public float radioVolume = 0.8f; // master gain for all radios
         public float sfxVolume = 1f;     // sound effects
         public bool blood = true;        // blood bursts and stains on injuries
@@ -43,8 +45,12 @@ namespace MadMax.Game
 
         static GameSettings Load()
         {
-            try { return PlayerPrefs.HasKey(Key) ? JsonUtility.FromJson<GameSettings>(PlayerPrefs.GetString(Key)) : new GameSettings(); }
-            catch { return new GameSettings(); }
+            GameSettings s;
+            try { s = PlayerPrefs.HasKey(Key) ? JsonUtility.FromJson<GameSettings>(PlayerPrefs.GetString(Key)) : new GameSettings { version = CurrentVersion }; }
+            catch { s = new GameSettings { version = CurrentVersion }; }
+            // v2: the intro became a pre-rendered boot film; old "intro off" choices predate it, so they reset once
+            if (s.version < 2) { s.intro = true; s.version = CurrentVersion; s.Save(); }
+            return s;
         }
 
         public void Save()

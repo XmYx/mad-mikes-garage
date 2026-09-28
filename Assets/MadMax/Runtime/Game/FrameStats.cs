@@ -16,7 +16,9 @@ namespace MadMax.Game
         bool autotest, profiling, towtest;
         MadMax.Vehicles.TowCoupling tow;
         float nextTowLog;
-        string profileFile;
+        string profileFile, shotsDir;
+        float nextShot;
+        int shotIndex;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -24,13 +26,15 @@ namespace MadMax.Game
             var args = System.Environment.GetCommandLineArgs();
             if (System.Array.IndexOf(args, "-mute") >= 0) AudioListener.pause = true;
             bool log = System.Array.IndexOf(args, "-fpslog") >= 0, test = System.Array.IndexOf(args, "-autotest") >= 0;
-            if ((!log && !test) || FindAnyObjectByType<FrameStats>()) return;
+            int si = System.Array.IndexOf(args, "-shots");
+            if ((!log && !test && si < 0) || FindAnyObjectByType<FrameStats>()) return;
             var go = new GameObject("FrameStats"); DontDestroyOnLoad(go);
             var fs = go.AddComponent<FrameStats>();
             fs.autotest = test;
             fs.towtest = System.Array.IndexOf(args, "-towtest") >= 0;
             int pi = System.Array.IndexOf(args, "-profile");
             if (pi >= 0 && pi + 1 < args.Length) fs.profileFile = args[pi + 1];
+            if (si >= 0 && si + 1 < args.Length) { fs.shotsDir = args[si + 1]; System.IO.Directory.CreateDirectory(fs.shotsDir); }
         }
 
         void Update()
@@ -41,6 +45,12 @@ namespace MadMax.Game
             if (dtu > 1f / 30f) spikes++;
             float t = Time.realtimeSinceStartup;
             if (autotest) Drive(t);
+            // -shots <dir>: a frame every 0.5 s for the first 45 s (boot film, handover, title)
+            if (shotsDir != null && t < 45f && t >= nextShot)
+            {
+                nextShot = t + 0.5f;
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(shotsDir, $"shot_{shotIndex++:000}_{t:00.0}.png"));
+            }
             if (t - t0 < 5f) return;
             var gc = WastelandGame.Instance ? WastelandGame.Instance.Current : null;
             Debug.Log($"[fps] t={t:0} avg {frames / (t - t0):0.0} fps, worst {worst * 1000f:0} ms, frames >33ms {spikes}, audio paused {AudioListener.pause}, gc {System.GC.CollectionCount(0)}" + (gc ? $", car {gc.SpeedKmh:0} km/h rpm {gc.Rpm:0} at {gc.transform.position}" : ""));

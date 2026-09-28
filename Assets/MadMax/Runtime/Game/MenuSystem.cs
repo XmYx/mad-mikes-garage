@@ -166,7 +166,7 @@ namespace MadMax.Game
                     Opt("RENDER STYLE", () => s.vector ? "VECTOR (FULL RES)" : "PIXEL ART", d => s.vector = !s.vector);
                     Opt("DITHER", () => s.dither ? "ON" : "OFF", d => s.dither = !s.dither);
                     Opt("LINE OF SIGHT", () => s.lineOfSight ? "ON" : "OFF", d => s.lineOfSight = !s.lineOfSight);
-                    Opt("INTRO", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
+                    Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
                     Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
                     Opt("SFX VOLUME", () => Mathf.RoundToInt(s.sfxVolume * 100) + "%", d => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + d * 0.1f) * 10f) / 10f));
                     Opt("RADIO VOLUME", () => Mathf.RoundToInt(s.radioVolume * 100) + "%", d => s.radioVolume = Mathf.Clamp01(Mathf.Round((s.radioVolume + d * 0.1f) * 10f) / 10f));
@@ -584,6 +584,7 @@ namespace MadMax.Game
                 for (int x = 0; x < c.w * 2 / 5; x++) c.Rect(x, bandY - 6, 1, c.h - bandY + 6, new Color32(8, 4, 3, (byte)(170 * (1f - x / (c.w * 0.4f)))));
                 DrawItems(c, 16, bandY, 100, 2);
                 c.Text(4, c.h - 8, "W/S SELECT  ENTER CONFIRM", Dim);
+                DrawVersion(c);
                 return;
             }
             c.Rect(0, 0, c.w, c.h, new Color32(20, 10, 6, 150));
@@ -594,6 +595,14 @@ namespace MadMax.Game
             c.Text((c.w - PixelCanvas.TextWidth(sub, 2)) / 2, c.h / 5 + 28, sub, Text, 2);
             DrawItems(c, (c.w - 100) / 2, c.h / 2, 100, 2);
             c.Text(4, c.h - 8, "W/S SELECT  ENTER CONFIRM  MOUSE OK", Dim);
+            DrawVersion(c);
+        }
+
+        /// <summary>Build stamp (set at build time by the editor, see BuildStamp) so a player can tell which build is running.</summary>
+        static void DrawVersion(PixelCanvas c)
+        {
+            string v = "V" + Application.version + (Debug.isDebugBuild ? " DEV" : "");
+            c.Text(c.w - PixelCanvas.TextWidth(v) - 4, c.h - 8, v, new Color32(150, 110, 80, 255));
         }
 
         void DrawList(PixelCanvas c, string title, int width)
