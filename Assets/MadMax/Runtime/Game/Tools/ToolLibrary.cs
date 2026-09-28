@@ -9,7 +9,7 @@ namespace MadMax.Game
     public static class ToolLibrary
     {
         // index = network tool id: append only
-        public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe" };
+        public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -68,6 +68,20 @@ namespace MadMax.Game
                     g.Box(0, -14, -5, 0, -13, 5, Pal.Ramp(Pal.Metal, 2, 713));
                     g.Set(0, -12, -6, Pal.Solid(Pal.Chrome[3])); g.Set(0, -12, 6, Pal.Solid(Pal.Chrome[3]));
                     break;
+                case "tool_torch":
+                    g.Box(0, -9, 0, 0, 0, 0, Pal.Ramp(Pal.Wood, 1, 714));
+                    g.Box(-1, -12, -1, 1, -10, 1, Pal.Ramp(Pal.Cream, 1, 715));                    // oil-soaked rag
+                    g.Set(0, -13, 0, Pal.Solid(Pal.Amber)); g.Set(0, -14, 0, Pal.Solid(Pal.LightY)); // flame
+                    break;
+                case "tool_gas_torch":
+                    g.CylY(0, 0, 1.4f, -6, 0, Pal.Ramp(Pal.Rust, 2, 716));                           // gas bottle
+                    g.Box(0, -9, 0, 0, -7, 0, Pal.Ramp(Pal.Chrome, 2));                              // valve + nozzle
+                    g.Set(0, -10, 0, Pal.Solid(Pal.PaleBlue[4]));                                    // blue jet
+                    break;
+                case "tool_lantern":
+                    g.Box(0, -2, 0, 0, 0, 0, Pal.Ramp(Pal.Metal, 1, 717));                           // bail handle
+                    g.Box(-1, -6, -1, 1, -3, 1, p => (p.y == -3 || p.y == -6) ? Pal.Metal[2] : Pal.LightY);   // glass chimney
+                    break;
                 default: // sledgehammer
                     g.Box(0, -12, 0, 0, 0, 0, Pal.Ramp(Pal.Wood, 2, 401));
                     g.Box(-1, -15, -3, 1, -13, 2, Pal.Weathered(Pal.Metal, 0.35f, 402, 2, -20));
@@ -92,6 +106,17 @@ namespace MadMax.Game
                 r.muzzle = tip; tip.localPosition = new Vector3(0, -15f * S, 0);
                 r.swingDuration = 0.9f; r.strikeAt = 0.03f; r.style = ToolStyle.Gun;
                 tool = r;
+            }
+            else if (id == "tool_torch" || id == "tool_gas_torch" || id == "tool_lantern")
+            {
+                var l = go.AddComponent<LightTool>();
+                l.tip = tip;
+                l.kind = id == "tool_torch" ? LightTool.Kind.Torch : id == "tool_gas_torch" ? LightTool.Kind.GasTorch : LightTool.Kind.Lantern;
+                tip.localPosition = new Vector3(0, (id == "tool_torch" ? -13f : id == "tool_gas_torch" ? -10f : -5f) * S, 0);
+                l.power = id == "tool_gas_torch" ? 0.45f : 0.2f; l.carveRadius = 0.08f; l.swingDuration = 0.6f;
+                l.style = id == "tool_gas_torch" ? ToolStyle.Grind : ToolStyle.Slash; l.strikeAt = 0.5f;
+                l.salvage = id == "tool_gas_torch";                                     // cuts metal like the salvage cutter
+                tool = l;
             }
             else
             {

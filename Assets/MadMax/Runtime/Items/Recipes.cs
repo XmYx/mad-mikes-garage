@@ -172,6 +172,9 @@ namespace MadMax.Items
             // tools & survival
             yield return Itm("canteen", "CANTEEN", RecipeCategory.Tools, "workbench", ItemIds.Canteen, 1, "DRINK CARRIED WATER", null, (S, 2), (C, 1));
             yield return Itm("sponge", "SPONGE", RecipeCategory.Tools, "workbench", ItemIds.Sponge, 1, "SCRUB AWAY BLOOD STAINS (USE FROM THE HOTBAR)", null, (C, 2));
+            yield return Itm("torch", "TORCH", RecipeCategory.Tools, null, "tool_torch", 1, "FLICKERING LIGHT; SETS DRY THINGS ALIGHT", null, (W, 1), (C, 1));
+            yield return Itm("gas_torch", "GAS TORCH", RecipeCategory.Tools, "workbench", "tool_gas_torch", 1, "BLUE FLAME: LIGHT, CUTS METAL, BURNS FUEL", null, (Fe, 2), (Cu, 1));
+            yield return Itm("lantern", "LANTERN", RecipeCategory.Tools, "workbench", "tool_lantern", 1, "STEADY HAND LIGHT", null, (S, 1), (G, 1));
             yield return Itm("shovel", "SHOVEL", RecipeCategory.Tools, "workbench", "tool_shovel", 1, "DIG SOIL, TILL PLOTS", null, (Fe, 2), (W, 2));
             yield return Itm("axe", "AXE", RecipeCategory.Tools, "workbench", "tool_axe", 1, "FELL TREES FAST", null, (Fe, 2), (W, 2));
             yield return Itm("pickaxe", "PICKAXE", RecipeCategory.Tools, "workbench", "tool_pickaxe", 1, "MINE ROCK AND ORE", null, (Fe, 3), (W, 2));
