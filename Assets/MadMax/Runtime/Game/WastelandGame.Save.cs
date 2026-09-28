@@ -64,9 +64,13 @@ namespace MadMax.Game
             d.hotbar = (string[])Hotbar.Clone();
             foreach (var kv in GasPump.Used) { d.pumpKeys.Add(kv.Key); d.pumpUsed.Add(kv.Value); }
             d.terrain = terrain.SaveEdits();
+            d.npcs = MadMax.Npc.NpcRegistry.SaveAll();
+            d.reputation = MadMax.Npc.NpcRegistry.Reputation;
+            if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
-            foreach (var v in vehicles)
+            var saved = vehicles.FindAll(v => !v.aiDriven);            // NPC-driven vehicles come back with their convoy
+            foreach (var v in saved)
             {
                 var vs = new VehicleSave
                 {
@@ -80,7 +84,7 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; }
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
                 var tc = v.GetComponent<TowCoupling>();
-                if (tc && tc.Tower) vs.towedBy = vehicles.IndexOf(tc.Tower);
+                if (tc && tc.Tower) vs.towedBy = saved.IndexOf(tc.Tower);
                 d.vehicles.Add(vs);
             }
             foreach (var part in VehiclePart.Registry)
@@ -89,8 +93,8 @@ namespace MadMax.Game
             foreach (var p in FindObjectsByType<Placeable>(FindObjectsSortMode.None))
             {
                 var chassis = p.GetComponentInParent<VehicleChassis>();
-                int vi = chassis ? vehicles.IndexOf(chassis.GetComponent<VehicleDriver>()) : -1;
-                var parent = vi >= 0 ? vehicles[vi].transform : Build.Structures;
+                int vi = chassis ? saved.IndexOf(chassis.GetComponent<VehicleDriver>()) : -1;
+                var parent = vi >= 0 ? saved[vi].transform : Build.Structures;
                 var wp = p.transform.position; var wr = p.transform.rotation;
                 if (p.TryGetComponent<Door>(out var door)) door.ClosedWorld(out wp, out wr);
                 d.placed.Add(new PlacedSave
@@ -111,8 +115,8 @@ namespace MadMax.Game
             }
 
             var ps = d.player;
-            ps.vehicle = Current ? vehicles.IndexOf(Current) : -1;
-            ps.interior = Player.Interior ? vehicles.IndexOf(Player.Interior.GetComponent<VehicleDriver>()) : -1;
+            ps.vehicle = Current ? saved.IndexOf(Current) : -1;
+            ps.interior = Player.Interior ? saved.IndexOf(Player.Interior.GetComponent<VehicleDriver>()) : -1;
             ps.position = Player.transform.position;
             ps.localPosition = Player.transform.localPosition;
             ps.yaw = Player.transform.eulerAngles.y;
@@ -220,6 +224,8 @@ namespace MadMax.Game
             Weather.Restore(d.raining, d.wetness, d.snow, d.temperature, d.lakeRise);
             if (d.hours >= 0f) DayNight.SetHours(d.hours);
             DayNight.SetDay(d.day);
+            MadMax.Npc.NpcRegistry.Load(d.npcs, d.reputation);
+            if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;
             if (d.pumpKeys != null) for (int i = 0; i < d.pumpKeys.Count && i < d.pumpUsed.Count; i++) GasPump.Used[d.pumpKeys[i]] = d.pumpUsed[i];

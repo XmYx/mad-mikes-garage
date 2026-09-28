@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -57,6 +57,28 @@ namespace MadMax.Game
         }
 
         public void OpenCrafting(CraftingStation s) { station = s; category = 0; Open(Page.Crafting); }
+
+        // ---- conversations and trade with NPCs
+        MadMax.Npc.Dialogue talk;
+        MadMax.Npc.Npc talkNpc;
+        /// <summary>The NPC in an open conversation or trade (they face the player).</summary>
+        public MadMax.Npc.Npc TalkingTo => Current == Page.Talk || Current == Page.Trade ? talkNpc : null;
+
+        public void OpenTalk(MadMax.Npc.Npc n, bool trade)
+        {
+            talkNpc = n;
+            talk = new MadMax.Npc.Dialogue(game, n);
+            Open(trade && n.Profile.Vendor ? Page.Trade : Page.Talk);
+        }
+
+        void Choose(MadMax.Npc.Dialogue.Choice c)
+        {
+            c.act?.Invoke();
+            if (talk.WantsTrade) { talk.WantsTrade = false; Open(Page.Trade); return; }
+            if (talk.Ended) { Close(); return; }
+            Rebuild();
+            cursor = 0;
+        }
 
         string StationType => station ? station.type : "workbench";
 
@@ -123,6 +145,7 @@ namespace MadMax.Game
                 case Page.NewGame: Open(Page.Main); break;
                 case Page.Creation: Open(Page.NewGame); break;
                 case Page.Research: Open(Page.Crafting); break;
+                case Page.Trade: if (talk != null && !talk.Ended) Open(Page.Talk); else Close(); break;
                 default: Close(); break;
             }
         }
@@ -358,6 +381,60 @@ namespace MadMax.Game
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
                     break;
                 }
+                case Page.Talk:
+                    if (talk == null || !talkNpc) { Close(); break; }
+                    foreach (var ch in talk.choices) { var c = ch; items.Add(new Item { label = c.label, hint = c.hint, confirm = () => Choose(c) }); }
+                    break;
+                case Page.Trade:
+                {
+                    if (!talkNpc) { Close(); break; }
+                    var npc = talkNpc; var p = npc.Profile; var inv = game.Inventory;
+                    float bargain = MadMax.Npc.Trade.Bargain(game, npc.State);
+                    items.Add(new Item { label = "- " + MadMax.Npc.NpcLore.TradeTitle(p.kind) + " SELLS -", enabled = () => false });
+                    foreach (var o in MadMax.Npc.Trade.Stock(p, npc.State, bargain))
+                    {
+                        var offer = o;
+                        bool fluid = o.id.StartsWith("res:") && ResourceInfo.IsFluid((ResourceType)int.Parse(o.id.Substring(4)));
+                        items.Add(new Item
+                        {
+                            label = MadMax.Npc.Trade.Name(o.id), value = () => "X" + offer.count + (fluid ? "L" : "") + "  " + offer.price + " SCRAP",
+                            confirm = () => { MadMax.Npc.Trade.Buy(game, npc, offer, 1); Rebuild(); },
+                            adjust = d => { MadMax.Npc.Trade.Buy(game, npc, offer, d > 0 ? 10 : 5); Rebuild(); },
+                            enabled = () => inv.Get(ResourceType.Scrap) >= offer.price, hint = "ENTER BUY 1   A BUY 5   D BUY 10"
+                        });
+                    }
+                    items.Add(new Item { label = "- YOU SELL -", enabled = () => false });
+                    for (int t = 2; t < ResourceInfo.Count; t++)
+                    {
+                        var rt = (ResourceType)t; string id = "res:" + t;
+                        if (inv.Get(rt) <= 0 || !MadMax.Npc.Trade.Buys(p.kind, id)) continue;
+                        int price = MadMax.Npc.Trade.SellPrice(id, bargain);
+                        if (price <= 0) continue;
+                        items.Add(new Item
+                        {
+                            label = ResourceInfo.Name(rt), value = () => inv.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L" : "") + "  " + price + " EACH",
+                            confirm = () => { MadMax.Npc.Trade.Sell(game, npc, id, 1, bargain); Rebuild(); },
+                            adjust = d => { MadMax.Npc.Trade.Sell(game, npc, id, d > 0 ? inv.Get(rt) : 10, bargain); Rebuild(); },
+                            hint = "ENTER SELL 1   A SELL 10   D SELL ALL"
+                        });
+                    }
+                    foreach (var kv in new List<KeyValuePair<string, int>>(inv.Items))
+                    {
+                        var id = kv.Key;
+                        if (kv.Value <= 0 || !MadMax.Npc.Trade.Buys(p.kind, id)) continue;
+                        int price = MadMax.Npc.Trade.SellPrice(id, bargain);
+                        if (price <= 0) continue;
+                        items.Add(new Item
+                        {
+                            label = ItemCatalog.Name(id), value = () => "X" + inv.GetItem(id) + "  " + price + " EACH",
+                            confirm = () => { MadMax.Npc.Trade.Sell(game, npc, id, 1, bargain); Rebuild(); },
+                            adjust = d => { MadMax.Npc.Trade.Sell(game, npc, id, d > 0 ? inv.GetItem(id) : 1, bargain); Rebuild(); },
+                            hint = "ENTER SELL 1   D SELL ALL"
+                        });
+                    }
+                    Add("BACK", () => { if (talk != null && !talk.Ended) Open(Page.Talk); else Close(); });
+                    break;
+                }
                 case Page.Research:
                     foreach (var r in MadMax.RPG.MediaLibrary.Research)
                     {
@@ -481,6 +558,7 @@ namespace MadMax.Game
                 return;
             }
             if (esc || (pad != null && pad.buttonEast.wasPressedThisFrame)) { if (Current == Page.Join) Open(Page.Main); else Back(); return; }
+            if ((Current == Page.Talk || Current == Page.Trade) && (!talkNpc || !talkNpc.Alive || Vector3.Distance(talkNpc.transform.position, game.Current ? game.Current.transform.position : game.Player.transform.position) > (game.Current ? 40f : 6f))) { Close(); return; }
             if (items.Count > 0 && items[cursor].text != null)
             {
                 var field = items[cursor];
@@ -562,6 +640,11 @@ namespace MadMax.Game
                 case Page.Skills: DrawList(c, "SURVIVOR", 230); DrawHint(c); break;
                 case Page.Research: DrawList(c, "RESEARCH", 280); DrawHint(c); break;
                 case Page.Health: DrawHealth(c); break;
+                case Page.Talk: DrawTalk(c); break;
+                case Page.Trade:
+                    if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
+                    DrawHint(c);
+                    break;
                 case Page.Container:
                     if (container) DrawList(c, container.title + "  " + container.Weight.ToString("0") + "/" + container.capacity.ToString("0") + " KG" + (container.fridge ? (container.Cooling ? "  COLD" : "  NO POWER") : ""), 240);
                     DrawHint(c);
@@ -690,6 +773,45 @@ namespace MadMax.Game
             DrawItems(c, x + 100, y + 22, w - 106, 1);
             c.Text(x + 100, y + h - 10, "ENTER TREAT   O / ESC CLOSE", Dim);
             DrawHint(c);
+        }
+
+        /// <summary>Conversation box at the bottom: who, how they feel about you, what they say, your replies.</summary>
+        void DrawTalk(PixelCanvas c)
+        {
+            if (talk == null || !talkNpc) return;
+            int w = Mathf.Min(c.w - 16, 340);
+            var lines = Wrap(talk.line, w - 12);
+            int rows = Mathf.Min(items.Count, 8);
+            int h = 22 + lines.Count * 8 + 6 + rows * 10;
+            int x = (c.w - w) / 2, y = c.h - h - 14;
+            c.Panel(x, y, w, h);
+            var p = talkNpc.Profile;
+            int disp = talkNpc.State.disposition;
+            string mood = talkNpc.Hostile ? "HOSTILE" : disp < -40 ? "HATES YOU" : disp < -10 ? "WARY" : disp < 20 ? "NEUTRAL" : disp < 50 ? "FRIENDLY" : "TRUSTS YOU";
+            var moodCol = disp < -10 || talkNpc.Hostile ? Red : disp >= 20 ? Green : Dim;
+            c.Text(x + 6, y + 5, p.Name + "  " + p.Title, Amber);
+            c.Text(x + w - 6 - PixelCanvas.TextWidth(mood), y + 5, mood, moodCol);
+            int ly = y + 16;
+            foreach (var l in lines) { c.Text(x + 6, ly, l, Text); ly += 8; }
+            listFirst = Mathf.Clamp(listFirst, Mathf.Max(0, cursor - rows + 1), Mathf.Min(cursor, items.Count - rows));
+            DrawItems(c, x + 6, ly + 6, w - 12, 1, listFirst, rows);
+            c.Text(x + 6, y + h + 2, "CHA " + game.Stats.Attribute(MadMax.RPG.Attr.Charisma) + "  SPEECH " + game.Stats.Level(MadMax.RPG.Skill.Speech), Dim);
+            DrawHint(c);
+        }
+
+        static List<string> Wrap(string s, int width)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(s)) return result;
+            string cur = "";
+            foreach (var word in s.Split(' '))
+            {
+                string next = cur.Length == 0 ? word : cur + " " + word;
+                if (PixelCanvas.TextWidth(next) > width && cur.Length > 0) { result.Add(cur); cur = word; }
+                else cur = next;
+            }
+            if (cur.Length > 0) result.Add(cur);
+            return result;
         }
 
         void DrawHint(PixelCanvas c)

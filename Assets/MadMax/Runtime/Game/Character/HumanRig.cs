@@ -16,6 +16,24 @@ namespace MadMax.Game
         readonly List<Renderer> bodyRenderers = new List<Renderer>();
         readonly List<Object> owned = new List<Object>();
         HairStrands strands;
+        /// <summary>NPCs: take part meshes from a shared cache (same looks + garment = same mesh) instead of owning them.</summary>
+        public bool shareMeshes;
+        /// <summary>No physics hair strands (distant or numerous characters).</summary>
+        public bool noStrands;
+        static readonly Dictionary<string, Mesh> shared = new Dictionary<string, Mesh>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => shared.Clear();
+
+        string LookKey => $"{appearance.skinTone},{(int)appearance.hair},{appearance.hairColor},{appearance.beard},{appearance.height:0.00},{appearance.build:0.00}";
+
+        Mesh Cached(string key, System.Func<Mesh> make)
+        {
+            if (!shareMeshes) return make();
+            key = LookKey + "|" + key;
+            if (shared.TryGetValue(key, out var m) && m) return m;
+            m = make();
+            shared[key] = m;
+            return m;
+        }
 
         public Transform Eye { get; private set; }
         public Transform RightHand => bones.TryGetValue(BodyPart.HandR, out var t) ? t : transform;
@@ -36,7 +54,8 @@ namespace MadMax.Game
                 t.localPosition = b.offset;
                 if (saved.TryGetValue(b.part, out var r)) t.localRotation = r;
                 bones[b.part] = t;
-                AddMesh(t, HumanDesign.BodyMesh(b.part, appearance), b.part == BodyPart.Head);
+                var part = b.part;
+                AddMesh(t, Cached("body" + part, () => HumanDesign.BodyMesh(part, appearance)), b.part == BodyPart.Head);
             }
             // garments, ordered by layer so outer shells win
             var defs = new List<ClothingDef>();
@@ -44,8 +63,11 @@ namespace MadMax.Game
             defs.Sort((x, y) => x.inflate.CompareTo(y.inflate));
             foreach (var d in defs)
                 foreach (var part in d.coverage.Keys)
-                    AddMesh(bones[part], HumanDesign.GarmentMesh(d, part, appearance), part == BodyPart.Head);
-            AddMesh(bones[BodyPart.Head], HumanDesign.HairCap(appearance), true);
+                {
+                    var dd = d; var pp = part;
+                    AddMesh(bones[part], Cached(d.id + part, () => HumanDesign.GarmentMesh(dd, pp, appearance)), part == BodyPart.Head);
+                }
+            AddMesh(bones[BodyPart.Head], Cached("hair", () => HumanDesign.HairCap(appearance)), true);
 
             Eye = new GameObject("DriverEye").transform;
             Eye.SetParent(bones[BodyPart.Head], false);
@@ -53,6 +75,7 @@ namespace MadMax.Game
             owned.Add(Eye.gameObject);
 
             if (strands) Destroy(strands);
+            if (noStrands) return;
             strands = gameObject.AddComponent<HairStrands>();
             strands.Init(this);
             owned.Add(strands);
@@ -67,7 +90,8 @@ namespace MadMax.Game
             var r = go.GetComponent<MeshRenderer>();
             r.sharedMaterial = material;
             (head ? headRenderers : bodyRenderers).Add(r);
-            owned.Add(go); owned.Add(mesh);
+            owned.Add(go);
+            if (!shareMeshes) owned.Add(mesh);
         }
 
         /// <summary>First person hides only the head (hair, face, headwear) so arms, body and legs stay visible.</summary>

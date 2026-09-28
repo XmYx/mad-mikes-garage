@@ -140,6 +140,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.Audio.AmbientAudio>();
             gameObject.AddComponent<MadMax.World.Atmosphere>();
             gameObject.AddComponent<MadMax.World.WindDust>();
+            gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             Menus.Init(this);
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);
 
@@ -500,7 +501,7 @@ namespace MadMax.Game
             foreach (var c in cars)
             {
                 if (!c) continue;
-                c.SetManual(settings.manualTransmission);
+                c.SetManual(settings.manualTransmission && !c.aiDriven);
                 c.gripMultiplier = c == Current ? Stats.DrivingGrip : 1f;
                 if (c.TryGetComponent<VehicleSystems>(out var vs)) vs.fuelMultiplier = Rules.fuelUse * (c == Current ? Stats.FuelEfficiency : 1f);
             }
@@ -557,7 +558,7 @@ namespace MadMax.Game
             UpdateInteraction(kb, pad);
             UpdateServerFoci();
             UpdateSleepers();
-            if (Current && (Pressed(Key.T) || (pad != null && pad.selectButton.wasPressedThisFrame))) Current.Recover();
+            if (Current && (Pressed(Key.T) || (pad != null && pad.selectButton.wasPressedThisFrame)) && !MadMax.Npc.NpcDirector.TryParley()) Current.Recover();
             if (Current && Pressed(Key.Backspace)) DropRandomPart(Current);
             if (Current && Pressed(Key.G) && Current.TryGetComponent<VehicleDamage>(out var dmg)) dmg.Repair();
 

@@ -50,6 +50,8 @@ namespace MadMax.RPG
             B("vhs_survival", "VHS: DESERT SURVIVAL", Skill.Survival, 200, 30),
             B("vhs_karate", "VHS: STREET KARATE", Skill.Melee, 200, 30),
             B("vhs_demolition", "VHS: DEMOLITION DERBY", Skill.Demolition, 180, 30, "k_weapon_mounts"),
+            B("book_charm", "HOW TO MAKE FRIENDS AFTER THE END", Skill.Speech, 150, 25),
+            B("vhs_salesman", "VHS: SUPER SALESMAN SEMINAR", Skill.Speech, 180, 30),
         };
 
         static ResearchDef R(string id, string name, string grants, string desc, int minLevel, params (MadMax.Items.ResourceType, int)[] cost) =>

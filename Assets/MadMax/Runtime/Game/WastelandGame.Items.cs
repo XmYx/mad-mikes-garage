@@ -147,6 +147,17 @@ namespace MadMax.Game
             fire.transform.SetParent(go.transform, false); fire.type = LightType.Point; fire.range = 3f; fire.intensity = 1.5f; fire.color = new Color(1f, 0.6f, 0.2f);
         }
 
+        /// <summary>A vehicle for an NPC driver (traders, raiders). Registered like any other; not saved while AI-driven.</summary>
+        public VehicleDriver SpawnAiVehicle(string design, Vector3 p, Quaternion r)
+        {
+            var prefab = PrefabFor(design);
+            if (!prefab) return null;
+            var v = Instantiate(prefab, p, r).GetComponent<VehicleDriver>();
+            v.aiDriven = true;
+            Register(v, null);
+            return v;
+        }
+
         /// <summary>A vehicle crafted on another peer.</summary>
         public void SpawnVehicleRemote(string design, ushort netId, Vector3 p, Quaternion r)
         {

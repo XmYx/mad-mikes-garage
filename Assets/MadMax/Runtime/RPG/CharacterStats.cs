@@ -4,15 +4,15 @@ using UnityEngine;
 
 namespace MadMax.RPG
 {
-    public enum Attr { Strength, Endurance, Agility, Intelligence, Perception }
-    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming }
+    public enum Attr { Strength, Endurance, Agility, Intelligence, Perception, Charisma }
+    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming, Speech }
 
     /// <summary>A base trait picked at character creation. Positive traits cost points, negative ones refund them.</summary>
     public class TraitDef
     {
         public string id, name, description;
         public int cost;                                            // creation points (negative = gives points)
-        public int[] attr = new int[5];                             // attribute deltas
+        public int[] attr = new int[CharacterStats.AttrCount];      // attribute deltas
         public Dictionary<Skill, float> learn = new Dictionary<Skill, float>();   // skill XP multipliers
         public Dictionary<Skill, int> startLevel = new Dictionary<Skill, int>();
     }
@@ -42,6 +42,9 @@ namespace MadMax.RPG
             t = T("slowreader", "SLOW READER", -1, "INTELLIGENCE -1"); t.attr[(int)Attr.Intelligence] = -1; l.Add(t);
             t = T("smoker", "SMOKER", -2, "ENDURANCE -2"); t.attr[(int)Attr.Endurance] = -2; l.Add(t);
             t = T("nearsighted", "NEARSIGHTED", -1, "PERCEPTION -2"); t.attr[(int)Attr.Perception] = -2; l.Add(t);
+            t = T("silvertongue", "SILVER TONGUE", 3, "CHARISMA +2, SPEECH STARTS AT 1"); t.attr[(int)Attr.Charisma] = 2; t.startLevel[Skill.Speech] = 1; t.learn[Skill.Speech] = 1.3f; l.Add(t);
+            t = T("haggler", "HAGGLER", 2, "SPEECH STARTS AT 2: BETTER PRICES"); t.startLevel[Skill.Speech] = 2; l.Add(t);
+            t = T("abrasive", "ABRASIVE", -2, "CHARISMA -2"); t.attr[(int)Attr.Charisma] = -2; l.Add(t);
             return l;
         }
     }
@@ -52,9 +55,9 @@ namespace MadMax.RPG
     public class CharacterStats
     {
         public string name = "WANDERER";
-        public int[] attributes = { 5, 5, 5, 5, 5 };
-        public float[] attributeXp = new float[5];
-        public float[] skillXp = new float[10];
+        public int[] attributes = { 5, 5, 5, 5, 5, 5 };
+        public float[] attributeXp = new float[AttrCount];
+        public float[] skillXp = new float[SkillCount];
         public List<string> traits = new List<string>();
         public List<string> knowledge = new List<string>();
         public List<string> consumed = new List<string>();         // media already studied (repeat = little XP)
@@ -68,6 +71,8 @@ namespace MadMax.RPG
         public void EnsureArrays()
         {
             if (skillXp == null || skillXp.Length < SkillCount) { var n = new float[SkillCount]; if (skillXp != null) Array.Copy(skillXp, n, skillXp.Length); skillXp = n; }
+            if (attributes == null || attributes.Length < AttrCount) { var n = new int[AttrCount]; for (int i = 0; i < n.Length; i++) n[i] = attributes != null && i < attributes.Length ? attributes[i] : 5; attributes = n; }
+            if (attributeXp == null || attributeXp.Length < AttrCount) { var n = new float[AttrCount]; if (attributeXp != null) Array.Copy(attributeXp, n, attributeXp.Length); attributeXp = n; }
             if (consumed == null) consumed = new List<string>();
             if (injuries == null) injuries = new List<Injury>();
             if (bodyTemp < 20f) bodyTemp = 37f;
@@ -76,11 +81,11 @@ namespace MadMax.RPG
         [NonSerialized] public float learningSpeed = 1f;            // game rule
         public static event Action<string> Notice;                   // "MECHANICS 3", "STRENGTH 6"
 
-        public const int SkillCount = 10, AttrCount = 5, MaxLevel = 10;
-        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING" };
-        public static readonly string[] AttrNames = { "STRENGTH", "ENDURANCE", "AGILITY", "INTELLIGENCE", "PERCEPTION" };
+        public const int SkillCount = 11, AttrCount = 6, MaxLevel = 10;
+        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING", "SPEECH" };
+        public static readonly string[] AttrNames = { "STRENGTH", "ENDURANCE", "AGILITY", "INTELLIGENCE", "PERCEPTION", "CHARISMA" };
         // which attribute grows alongside each skill
-        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance };
+        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance, Attr.Charisma };
 
         public static float XpForLevel(int level) => 40f * level * level;
         public int Level(Skill s) => Mathf.Min(MaxLevel, Mathf.FloorToInt(Mathf.Sqrt(skillXp[(int)s] / 40f)));
@@ -148,6 +153,8 @@ namespace MadMax.RPG
         public float DrivingGrip => 1f + Level(Skill.Driving) * 0.012f;
         public float Spread => Mathf.Max(0.35f, 1f - Level(Skill.Firearms) * 0.065f);
         public float CarryCapacity => 40f + Attribute(Attr.Strength) * 6f;
+        /// <summary>0..~0.35 price advantage when trading (charisma, speech).</summary>
+        public float Bargain => Attribute(Attr.Charisma) * 0.018f + Level(Skill.Speech) * 0.015f;
         public float ReadingSpeed => 0.6f + Attribute(Attr.Intelligence) * 0.08f + (traits.Contains("bookworm") ? 0.3f : 0f);
 
         public static int Cost(int baseCost, float mult) => Mathf.Max(1, Mathf.CeilToInt(baseCost * mult));

@@ -25,6 +25,8 @@ namespace MadMax.Vehicles
         [System.NonSerialized] public float gripMultiplier = 1f;
         /// <summary>Cranes and winches keep both ends simulated (no resting sleep) until this time.</summary>
         [System.NonSerialized] public float KeepAwakeUntil;
+        /// <summary>Driven by an NPC (<see cref="MadMax.Npc.AiDriver"/>): never frozen far away, not saved, automatic gearbox.</summary>
+        [System.NonSerialized] public bool aiDriven;
         [Tooltip("Extra ground clearance (m) on top of the suspension geometry.")] public float rideHeight = 0.07f;   // driver skill (set by the game for the player's vehicle)
         [Tooltip("False for trailers: cannot be entered or driven.")]
         public bool driveable = true;

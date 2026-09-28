@@ -103,7 +103,7 @@ namespace MadMax.Game
             var p = Player.transform.position + Vector3.up;
             foreach (var c in cars)
             {
-                if ((c.transform.position - p).sqrMagnitude > 400f) continue;
+                if (!c || c.aiDriven || (c.transform.position - p).sqrMagnitude > 400f) continue;
                 foreach (var col in c.GetComponentsInChildren<Collider>())
                 {
                     if (!col.enabled || col is MeshCollider) continue;

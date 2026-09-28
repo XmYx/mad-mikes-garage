@@ -115,6 +115,7 @@ namespace MadMax.Game
             {
                 if (v == Current) continue;
                 if (net && net.Online && !net.Simulates(v)) continue;          // interpolated replica
+                if (v.aiDriven) { if (v.Body.isKinematic) Wake(v.Body); continue; }   // NPC drivers roam beyond the frozen zone
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) { v.Body.isKinematic = false; continue; }
                 float d = Dist(v.transform.position);

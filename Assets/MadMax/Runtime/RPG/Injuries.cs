@@ -90,6 +90,22 @@ namespace MadMax.RPG
                     list.Add(new Injury { zone = z, type = amount > 22f ? Wound.Fracture : amount > 10f ? Wound.Laceration : Wound.Bruise });
                     break;
                 }
+                case "MELEE":
+                {
+                    var z = Upper[rnd.Next(Upper.Length)];
+                    list.Add(new Injury { zone = z, type = amount > 12f ? Wound.Laceration : rnd.NextDouble() < 0.5 ? Wound.Bruise : Wound.Scratch });
+                    break;
+                }
+                case "SHOT":
+                {
+                    int n = amount > 15f ? 2 : 1;
+                    for (int i = 0; i < n; i++)
+                    {
+                        var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));
+                        list.Add(new Injury { zone = all[rnd.Next(all.Length)], type = amount > 18f ? Wound.DeepWound : Wound.Laceration });
+                    }
+                    break;
+                }
                 case "BURNED":
                 {
                     var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));

@@ -482,6 +482,13 @@ namespace MadMax.World
             return list;
         }
 
+        /// <summary>Buildings placed in a settlement (template id, position, yaw) — NPCs use it to find shop counters.</summary>
+        public static void Buildings(WorldGen world, Settlement st, List<(string id, Vector2 pos, float yaw)> into)
+        {
+            into.Clear();
+            foreach (var pl in Layout(world, st)) if (pl.id != "Loot" && pl.id != "Light") into.Add((pl.id, pl.pos, pl.yaw));
+        }
+
         public delegate (VoxelGrid grid, Mesh mesh, float size)? Lookup(string id);
 
         /// <summary>Spawn biome vegetation and any settlement pieces that fall inside this chunk.</summary>
