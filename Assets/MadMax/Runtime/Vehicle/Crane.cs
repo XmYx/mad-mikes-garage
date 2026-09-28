@@ -3,9 +3,9 @@ using UnityEngine;
 namespace MadMax.Vehicles
 {
     /// <summary>Hydraulic crane (part "cargo_crane" on a cargo socket; the Wrecker carries one). While driving:
-    /// 7 grab / release whatever hangs under the hook (vehicle, wreck, part), hold 8 hoist up, hold 9 lower, hold 0 slew
-    /// (Shift+0 the other way; eased, the rope anchor follows the boom tip).
-    /// The load hangs on a rope joint from the boom tip.</summary>
+    /// 7 grab / release whatever hangs under the hook (vehicle, wreck, part), hold 8 hoist up, hold 9 lower,
+    /// Shift+8 / Shift+9 luff the boom up / down, hold 0 slew (Shift+0 the other way; eased). The turret and the boom are
+    /// separate hinged segments of the part; the load hangs on a rope joint from the boom tip.</summary>
     public class Crane : MonoBehaviour
     {
         public const string PartId = "cargo_crane";
@@ -14,7 +14,7 @@ namespace MadMax.Vehicles
         Rigidbody rb;
         Rigidbody load;
         ConfigurableJoint joint;
-        float rope = 2.5f, slew, slewSpeed;
+        float rope = 2.5f, slew, slewSpeed, luff;
         LineRenderer line;
         public string Status { get; private set; }
 
@@ -29,29 +29,50 @@ namespace MadMax.Vehicles
             }
         }
 
-        Vector3 Tip { get { var p = CranePart; return p ? p.transform.TransformPoint(new Vector3(BoomTipX, BoomTipY, BoomTipZ)) : transform.position; } }
+        Vector3 Tip
+        {
+            get
+            {
+                var p = CranePart;
+                if (!p) return transform.position;
+                var boom = p.transform.Find("turret/boom");
+                return boom ? boom.TransformPoint(new Vector3(0f, 21f, -40f) * 0.08f) : p.transform.TransformPoint(new Vector3(BoomTipX, BoomTipY, BoomTipZ));
+            }
+        }
         Vector3 Hook => load ? load.worldCenterOfMass + Vector3.up * 0.8f : Tip + Vector3.down * rope;
 
         /// <param name="slewDir">-1, 0 or +1</param>
-        public void Control(bool press7, bool hold8, bool hold9, float slewDir)
+        public void Control(bool press7, bool hold8, bool hold9, float slewDir, bool shift = false)
         {
             var part = CranePart;
             if (!part) { Status = null; if (load) Drop(); return; }
             float dt = Time.deltaTime;
+            var turret = part.transform.Find("turret");
+            var boom = turret ? turret.Find("boom") : null;
             slewSpeed = Mathf.MoveTowards(slewSpeed, slewDir * 35f, 70f * dt);          // hydraulic slew: ease in and out
             if (Mathf.Abs(slewSpeed) > 0.01f)
             {
                 slew = Mathf.Repeat(slew + slewSpeed * dt, 360f);
-                part.transform.localRotation = Quaternion.Euler(0, slew, 0);
+                (turret ? turret : part.transform).localRotation = Quaternion.Euler(0, slew, 0);
                 if (joint) joint.anchor = transform.InverseTransformPoint(Tip);             // the load swings round with the boom
                 if (load) load.WakeUp();
             }
-            if (hold8) rope = Mathf.Max(0.8f, rope - 1f * dt);
-            if (hold9) rope = Mathf.Min(8f, rope + 1f * dt);
+            if (shift && boom)
+            {
+                // luff: the boom pitches about its foot pin (+ = down)
+                luff = Mathf.Clamp(luff + ((hold9 ? 1f : 0f) - (hold8 ? 1f : 0f)) * 12f * dt, -20f, 25f);
+                boom.localRotation = Quaternion.Euler(luff, 0f, 0f);
+                if (load) load.WakeUp();
+            }
+            else
+            {
+                if (hold8) rope = Mathf.Max(0.8f, rope - 1f * dt);
+                if (hold9) rope = Mathf.Min(8f, rope + 1f * dt);
+            }
             if (joint) joint.linearLimit = new SoftJointLimit { limit = rope };
             if (press7) { if (load) Drop(); else Grab(); }
-            Status = load ? "CRANE: " + load.name.Replace("(Clone)", "").ToUpperInvariant() + " " + Mathf.RoundToInt(load.mass) + " KG  [7] RELEASE  [8] UP  [9] DOWN  [0]/[SHIFT+0] SLEW"
-                          : "CRANE  [7] GRAB UNDER HOOK  [8] UP  [9] DOWN  [0]/[SHIFT+0] SLEW";
+            Status = load ? "CRANE: " + load.name.Replace("(Clone)", "").ToUpperInvariant() + " " + Mathf.RoundToInt(load.mass) + " KG  [7] RELEASE  [8/9] HOIST  [SHIFT+8/9] BOOM  [0]/[SHIFT+0] SLEW"
+                          : "CRANE  [7] GRAB UNDER HOOK  [8/9] HOIST  [SHIFT+8/9] BOOM  [0]/[SHIFT+0] SLEW";
         }
 
         void Grab()

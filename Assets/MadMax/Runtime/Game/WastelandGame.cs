@@ -231,15 +231,34 @@ namespace MadMax.Game
         /// <summary>Death: respawn at the fleet with half health, or back to the menu with permadeath.</summary>
         public void PlayerDied(string cause)
         {
+            if (dying) return;
+            dying = true;
             Toast("YOU DIED: " + cause);
             if (Current) Exit();
             if (Player.Carried) Player.DropCarried();
+            // go limp where you fell; the camera stays on the body for a moment
+            var cc = Player.GetComponent<CharacterController>();
+            if (cc) cc.enabled = false;
+            var push = (-Player.transform.forward * (cause == "CRASH" ? 160f : 70f) + Vector3.up * 30f);
+            Ragdoll.For(Player.Rig).Go(push, Player.transform.position + Vector3.up * 1.2f, Player.Velocity);
             if (Rules.permadeath)
             {
                 if (SaveSystem.HasSave) System.IO.File.Delete(SaveSystem.Path);
                 Invoke(nameof(ReturnToMainMenu), 4f);
                 return;
             }
+            Invoke(nameof(Respawn), 4f);
+        }
+
+        bool dying;
+
+        void Respawn()
+        {
+            dying = false;
+            var rd = Player.GetComponent<Ragdoll>();
+            if (rd) rd.Restore();
+            var cc = Player.GetComponent<CharacterController>();
+            if (cc) cc.enabled = true;
             var home = fleet.Count > 0 && fleet[0] ? fleet[0] : null;
             var at = spawnPoint ?? (home ? ExitPoint(home) : WorldSpawn);
             Stats.hunger = Mathf.Max(Stats.hunger, 50f); Stats.thirst = Mathf.Max(Stats.thirst, 50f); Stats.sick = 0f;
@@ -534,10 +553,15 @@ namespace MadMax.Game
                 if (Pressed(Key.Q) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
                 if (Pressed(Key.N)) { var vl = Current.GetComponent<VehicleLights>(); if (vl) { vl.mode = (vl.mode + 1) % 3; Toast(VehicleLights.ModeNames[vl.mode]); } }
                 if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
-                if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f);
+                if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f, kb.leftShiftKey.isPressed);
                 if (Pressed(Key.K) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
                 if (Current.TryGetComponent<Machine>(out var machine) && kb != null)
-                    machine.Control(kb.digit1Key.isPressed, kb.digit2Key.isPressed, Pressed(Key.Digit1), Pressed(Key.Digit2), Pressed(Key.Digit3), kb.leftShiftKey.isPressed);
+                    machine.Control(new MachineKeys
+                    {
+                        h1 = kb.digit1Key.isPressed, h2 = kb.digit2Key.isPressed, h3 = kb.digit3Key.isPressed, h4 = kb.digit4Key.isPressed, h5 = kb.digit5Key.isPressed, h6 = kb.digit6Key.isPressed,
+                        p1 = Pressed(Key.Digit1), p2 = Pressed(Key.Digit2), p3 = Pressed(Key.Digit3), p4 = Pressed(Key.Digit4), p5 = Pressed(Key.Digit5), p6 = Pressed(Key.Digit6),
+                        shift = kb.leftShiftKey.isPressed
+                    });
             }
             {
                 // radio: the driven vehicle's head unit, or a radio set the player is looking at

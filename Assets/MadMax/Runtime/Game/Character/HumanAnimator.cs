@@ -12,6 +12,7 @@ namespace MadMax.Game
         {
             public float speed, verticalSpeed, lookPitch, steer, turnRate;
             public bool grounded, sitting, carrying, twoHanded, aiming;
+            public float limpL, limpR, armHurtL, armHurtR;   // 0..1 injuries: a limping leg swings less, a hurt arm is held in
             public ToolPose? tool;           // pose of an action in progress / held stance (null = none)
         }
 
@@ -49,6 +50,11 @@ namespace MadMax.Game
 
             float thL = -A * sp, thR = A * sp;
             float knL = Kn * Mathf.Max(0f, cp) + 4f, knR = Kn * Mathf.Max(0f, -cp) + 4f;
+            // limp: the hurt leg barely swings or bends; the pelvis drops and the body leans away when it takes the weight
+            thL *= 1f - 0.6f * s.limpL; knL *= 1f - 0.55f * s.limpL;
+            thR *= 1f - 0.6f * s.limpR; knR *= 1f - 0.55f * s.limpR;
+            float hitch = (s.limpL * Mathf.Max(0f, sp) + s.limpR * Mathf.Max(0f, -sp)) * 0.045f * move;
+            float limpRoll = (s.limpL - s.limpR) * 7f * move;
             if (!s.grounded)
             {
                 thL = -38f; thR = -12f; knL = 70f; knR = 35f;
@@ -66,8 +72,8 @@ namespace MadMax.Game
 
             var pelvis = rig.Bone(BodyPart.Pelvis);
             float bob = (1f - Mathf.Abs(cp)) * Mathf.Lerp(0.025f, 0.05f, run) * move + landing * 0.08f;
-            pelvis.localPosition = new Vector3(0, pelvisBase - bob, 0);
-            Set(BodyPart.Pelvis, 0, sp * 6f * move, cp * 3f * move, k);
+            pelvis.localPosition = new Vector3(0, pelvisBase - bob - hitch, 0);
+            Set(BodyPart.Pelvis, 0, sp * 6f * move, cp * 3f * move + limpRoll, k);
 
             float breathe = Mathf.Sin(time * 1.7f) * 1.4f * (1f - move);
             float bank = Mathf.Clamp(s.turnRate * 0.05f, -8f, 8f) * move;
@@ -79,6 +85,9 @@ namespace MadMax.Game
             if (!s.grounded) { armL = -50f; armR = -40f; foreL = foreR = -30f; rollL = -25f; rollR = 25f; }
             if (s.carrying) { armL = armR = -62f; foreL = foreR = -28f; rollL = -10f; rollR = 10f; }
             if (s.aiming) { armR = -80f; armL = -75f; foreR = -10f; foreL = -35f; rollL = 20f; rollR = -4f; }
+            // a badly hurt arm is held against the chest, a sore one swings less
+            if (s.armHurtL > 0.6f) { armL = -22f; foreL = -100f; rollL = -18f; } else armL *= 1f - 0.5f * s.armHurtL;
+            if (s.armHurtR > 0.6f) { armR = -22f; foreR = -100f; rollR = 18f; } else armR *= 1f - 0.5f * s.armHurtR;
             bool acting = s.tool.HasValue;
             float armLy = 0f, armRy = 0f, handR = 0f;
             if (acting)

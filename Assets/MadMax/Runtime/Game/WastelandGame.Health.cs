@@ -90,6 +90,33 @@ namespace MadMax.Game
             if (loss > 0f) { s.health -= loss; if (s.health <= 0f) { s.health = 0f; PlayerDied("BLED OUT"); } }
         }
 
+        /// <summary>How much an injury hampers its limb, 0..1 (fractures most; splints and healing help).</summary>
+        static float Hamper(Injury i) => (i.type switch
+        {
+            Wound.Fracture => i.splinted ? 0.55f : 0.95f, Wound.DeepWound => 0.55f, Wound.Laceration => 0.3f, Wound.Burn => 0.25f, Wound.Bruise => 0.12f, _ => 0.08f
+        }) * Mathf.Clamp01(i.type == Wound.Fracture ? 0.5f + i.severity * 0.5f : i.severity);
+
+        float Worst(params BodyZone[] zones)
+        {
+            float m = 0f;
+            foreach (var i in Stats.injuries) if (System.Array.IndexOf(zones, i.zone) >= 0) m = Mathf.Max(m, Hamper(i));
+            return m;
+        }
+
+        /// <summary>Per-side limp (legs, feet) and arm impairment (arms, hands), 0..1: drive the gait and the actions.</summary>
+        public float LimpL => Worst(BodyZone.LegL, BodyZone.FootL);
+        public float LimpR => Worst(BodyZone.LegR, BodyZone.FootR);
+        public float ArmHurtL => Worst(BodyZone.ArmL, BodyZone.HandL);
+        public float ArmHurtR => Worst(BodyZone.ArmR, BodyZone.HandR);
+        public float HeadDaze => Worst(BodyZone.Head);
+        /// <summary>No running on a badly hurt leg, no jumping on a broken one.</summary>
+        public bool CanRunInjured => Mathf.Max(LimpL, LimpR) < 0.5f;
+        public bool CanJumpInjured => Mathf.Max(LimpL, LimpR) < 0.35f;
+        /// <summary>Two-handed tools and weapons need two working arms.</summary>
+        public bool ArmBroken => Mathf.Max(ArmHurtL, ArmHurtR) >= 0.85f;
+        /// <summary>Aim spread multiplier: shaky arms, a dazed head.</summary>
+        public float AimPenalty => 1f + Mathf.Max(ArmHurtL, ArmHurtR) * 1.4f + HeadDaze * 0.8f;
+
         /// <summary>Movement / tool penalties from leg and arm injuries and hypothermia.</summary>
         public float InjurySpeed
         {

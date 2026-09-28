@@ -48,6 +48,11 @@ namespace MadMax.Designs
             yield return CraneArm();
             yield return PetrolFour();
             yield return PetrolSix();
+            yield return MudWheel();
+            yield return RainWheel();
+            yield return SportWheel();
+            yield return TrackWheel();
+            yield return HoeArm();
         }
 
         static PartDesign Make(string key, PartCategory c, VoxelGrid g, float mass, int size = 1, float radius = 0)
@@ -99,7 +104,74 @@ namespace MadMax.Designs
                 g.Set(2, Mathf.RoundToInt(Mathf.Sin(a) * 1.4f), Mathf.RoundToInt(Mathf.Cos(a) * 1.4f), Pal.Solid(Pal.Chrome[2]));
             }
             var part = Make("wheel_street", PartCategory.Wheel, g, 22, 1, R * VoxelMesher.DefaultSize);
-            part.grip = 1.15f; part.mudGrip = 0.42f; part.width = 0.32f;
+            part.grip = 1.15f; part.mudGrip = 0.42f; part.width = 0.32f; part.wetGrip = 0.78f;
+            return part;
+        }
+
+        /// <summary>Generic tyre builder: rim radius, tyre radius, width in voxels; tread(x, angleSeg, depth) returns
+        /// false to cut a groove. Rim painted by <paramref name="rimPaint"/>(x, d).</summary>
+        static VoxelGrid Tyre(float R, float rim, int wx, System.Func<int, float, float, bool> tread, System.Func<int, float, Vector3Int, Color32> rimPaint, Color32 side)
+        {
+            var g = new VoxelGrid();
+            int n = Mathf.CeilToInt(R);
+            for (int x = 0; x <= wx; x++)
+            for (int y = -n; y <= n; y++)
+            for (int z = -n; z <= n; z++)
+            {
+                float d = Mathf.Sqrt(y * y + z * z);
+                if (d > R) continue;
+                var p = new Vector3Int(x, y, z);
+                if (d > rim)
+                {
+                    if (d > R - 1.1f && !tread(x, Angle01(y, z), d)) continue;
+                    g.Set(p, Pal.Solid(x == wx ? side : d > R - 1.1f ? Pal.Tire[2] : Pal.Tire[x == 0 ? 1 : 0]));
+                }
+                else
+                {
+                    if (x == wx) continue;                                               // recessed rim face
+                    g.Set(p, Pal.Solid(x < wx - 1 ? Pal.Metal[0] : rimPaint(x, d, p)));
+                }
+            }
+            return g;
+        }
+
+        /// <summary>Mud-terrain tyre: tall paddle lugs, wide. Digs through slop, hums and wanders on tarmac.</summary>
+        public static PartDesign MudWheel()
+        {
+            var g = Tyre(6.8f, 3.7f, 5, (x, a, d) => ((int)(a * 14) + (x > 2 ? 1 : 0)) % 2 == 0 || d < 6.2f,
+                (x, d, p) => d < 1f ? Pal.Chrome[2] : d > 2.9f ? Pal.Metal[2] : Pal.Pick(Pal.Olive, p, 150, 1), Pal.Tire[1]);
+            var part = Make("wheel_mud", PartCategory.Wheel, g, 38, 2, 6.8f * VoxelMesher.DefaultSize);
+            part.grip = 0.92f; part.mudGrip = 1.0f; part.width = 0.44f; part.wetGrip = 0.72f; part.rolling = 1.35f; part.wearRate = 1.2f;
+            return part;
+        }
+
+        /// <summary>Rain tyre: siped tread with deep circumferential grooves; keeps its grip on wet tarmac.</summary>
+        public static PartDesign RainWheel()
+        {
+            var g = Tyre(5.4f, 3.4f, 3, (x, a, d) => x != 1 && ((int)(a * 40) % 5 != 0 || x == 3),
+                (x, d, p) => d < 0.8f ? Pal.Chrome[3] : d < 2.6f ? ((int)(Angle01(p.y, p.z) * 12) % 2 == 0 ? Pal.Chrome[1] : Pal.Metal[1]) : Pal.Chrome[2], Pal.PaleBlue[0]);
+            var part = Make("wheel_rain", PartCategory.Wheel, g, 22, 1, 5.4f * VoxelMesher.DefaultSize);
+            part.grip = 1.1f; part.mudGrip = 0.5f; part.width = 0.3f; part.wetGrip = 1.0f;
+            return part;
+        }
+
+        /// <summary>Sport tyre: low profile on a big spoked rim, nearly slick. Sticks on dry tarmac, useless in mud, wears fast.</summary>
+        public static PartDesign SportWheel()
+        {
+            var g = Tyre(5.6f, 4.3f, 4, (x, a, d) => !(x == 2 && (int)(a * 60) % 6 == 0),
+                (x, d, p) => d < 0.9f ? Pal.Chrome[3] : d > 3.6f ? Pal.Chrome[2] : ((int)(Angle01(p.y, p.z) * 10) % 2 == 0 ? Pal.Hex("b02818") : Pal.Metal[0]), Pal.Tire[1]);
+            var part = Make("wheel_sport", PartCategory.Wheel, g, 20, 1, 5.6f * VoxelMesher.DefaultSize);
+            part.grip = 1.38f; part.mudGrip = 0.3f; part.width = 0.36f; part.wetGrip = 0.6f; part.rolling = 0.9f; part.wearRate = 1.9f;
+            return part;
+        }
+
+        /// <summary>Crawler track roller: hidden inside a machine's track. Wide and long footprint: barely sinks, grips in mud.</summary>
+        public static PartDesign TrackWheel()
+        {
+            var g = new VoxelGrid();
+            g.CylX(0, 0, 4.3f, 0, 5, p => (p.y + p.z) % 3 == 0 ? Pal.Metal[2] : Pal.Metal[0]);
+            var part = Make("wheel_track", PartCategory.Wheel, g, 180, 3, 4.3f * VoxelMesher.DefaultSize);
+            part.grip = 1.1f; part.mudGrip = 1.05f; part.width = 0.48f; part.wetGrip = 0.95f; part.rolling = 1.7f; part.wearRate = 0.2f; part.footprint = 7f;
             return part;
         }
 
@@ -136,7 +208,7 @@ namespace MadMax.Designs
                 g.Set(4, Mathf.RoundToInt(Mathf.Sin(a) * 3.2f), Mathf.RoundToInt(Mathf.Cos(a) * 3.2f), Pal.Solid(Pal.Chrome[1]));
             }
             var part = Make("wheel_offroad", PartCategory.Wheel, g, 34, 2, R * VoxelMesher.DefaultSize);
-            part.grip = 1.0f; part.mudGrip = 0.85f; part.width = 0.4f;
+            part.grip = 1.0f; part.mudGrip = 0.85f; part.width = 0.4f; part.wetGrip = 0.82f; part.rolling = 1.12f;
             return part;
         }
 
@@ -163,7 +235,7 @@ namespace MadMax.Designs
                 g.Set(x, y, z, Pal.Solid(c));
             }
             var part = Make("wheel_small", PartCategory.Wheel, g, 12, 1, R * VoxelMesher.DefaultSize);
-            part.grip = 1.0f; part.mudGrip = 0.35f; part.width = 0.2f;
+            part.grip = 1.0f; part.mudGrip = 0.35f; part.width = 0.2f; part.wetGrip = 0.8f;
             return part;
         }
 
@@ -541,13 +613,18 @@ namespace MadMax.Designs
         {
             var g = new VoxelGrid();
             var paint = Pal.Weathered(Cat, 0.25f, 1131, 2, 0);
+            g.Use("turret");
             g.CylY(0, 0, 4f, 0, 3, Pal.Ramp(Pal.Metal, 0));                          // slew ring
             g.Box(-3, 4, -3, 3, 10, 3, paint);                                        // turret
-            g.Tube(new Vector3(0, 9, 0), new Vector3(0, 30, -38), 1.6f, paint);        // boom
-            g.Tube(new Vector3(0, 6, 2), new Vector3(0, 20, -20), 0.7f, Pal.Ramp(Pal.Chrome, 2));   // lift ram
-            g.Box(-2, 28, -41, 2, 31, -37, Pal.Ramp(Pal.Metal, 2));                   // sheave head
             g.Box(-1, 4, 4, 1, 8, 5, Pal.Solid(Pal.Amber));                           // beacon
-            return Make("cargo_crane", PartCategory.Cargo, g, 450, 3);
+            g.Tube(new Vector3(0, 6, 2), new Vector3(0, 9, -2), 0.7f, Pal.Ramp(Pal.Chrome, 2));   // ram foot
+            g.Use("boom");
+            g.Tube(new Vector3(0, 9, 0), new Vector3(0, 30, -38), 1.6f, paint);        // boom
+            g.Tube(new Vector3(0, 10, -3), new Vector3(0, 20, -20), 0.7f, Pal.Ramp(Pal.Chrome, 2));   // lift ram
+            g.Box(-2, 28, -41, 2, 31, -37, Pal.Ramp(Pal.Metal, 2));                   // sheave head
+            g.Use("body");
+            var p = Make("cargo_crane", PartCategory.Cargo, g, 450, 3);
+            return p.Segment("turret", new Vector3Int(0, 0, 0)).Segment("boom", new Vector3Int(0, 9, 0), "turret");
         }
 
         // ---------------------------------------------------------------- machine tools
@@ -571,26 +648,39 @@ namespace MadMax.Designs
         {
             var g = new VoxelGrid();
             var paint = CatPaint(1111);
+            g.Use("boom");
+            g.CylX(0, 0, 2.2f, -2, 2, Pal.Ramp(Pal.Metal, 1, 1109));                     // foot pin
             g.Tube(new Vector3(0, 0, 0), new Vector3(0, 16, 24), 1.6f, paint);            // boom
+            g.Tube(new Vector3(0, 4, 6), new Vector3(0, 14, 20), 0.6f, Pal.Ramp(Pal.Chrome, 2));   // boom ram
+            g.Use("stick");
+            g.CylX(16, 24, 1.8f, -2, 2, Pal.Ramp(Pal.Metal, 1, 1108));                   // knuckle pin
             g.Tube(new Vector3(0, 16, 24), new Vector3(0, -6, 42), 1.3f, paint);          // stick
-            g.Tube(new Vector3(0, 4, 6), new Vector3(0, 14, 20), 0.6f, Pal.Ramp(Pal.Chrome, 2));   // ram cylinder
+            g.Tube(new Vector3(0, 19, 27), new Vector3(0, 6, 38), 0.5f, Pal.Ramp(Pal.Chrome, 2));   // bucket ram
+            g.Use("bucket");
             Bucket(g, new Vector3Int(0, -14, 38), 5, 7);
-            return Make("tool_excavator_arm", PartCategory.Tool, g, 900, 4);
+            g.Use("body");
+            var p = Make("tool_excavator_arm", PartCategory.Tool, g, 900, 4);
+            return p.Segment("boom", new Vector3Int(0, 0, 0)).Segment("stick", new Vector3Int(0, 16, 24), "boom").Segment("bucket", new Vector3Int(0, -6, 42), "stick");
         }
 
         public static PartDesign LoaderBucket()
         {
             var g = new VoxelGrid();
             var paint = CatPaint(1112);
+            g.Use("arms");
             foreach (int x in new[] { -11, 11 }) g.Tube(new Vector3(x, 0, 0), new Vector3(x, -4, 14), 1f, paint);
             g.Tube(new Vector3(-11, -2, 7), new Vector3(11, -2, 7), 0.7f, paint);
+            g.Use("bucket");
             Bucket(g, new Vector3Int(0, -10, 12), 12, 6);
-            return Make("tool_backhoe_loader", PartCategory.Tool, g, 350, 3);
+            g.Use("body");
+            var p = Make("tool_backhoe_loader", PartCategory.Tool, g, 350, 3);
+            return p.Segment("arms", new Vector3Int(0, 0, 0)).Segment("bucket", new Vector3Int(0, -4, 14), "arms");
         }
 
         public static PartDesign DozerBlade()
         {
             var g = new VoxelGrid();
+            g.Use("blade");
             for (int x = -19; x <= 19; x++)
             for (int y = 0; y <= 12; y++)
             {
@@ -598,8 +688,12 @@ namespace MadMax.Designs
                 g.Set(x, y, z, y == 0 ? Pal.Solid(Pal.Chrome[2]) : Pal.Solid(Pal.Pick(Cat, new Vector3Int(x, y, z), 1113, 2)));
                 g.Set(x, y, z - 1, Pal.Ramp(Pal.Metal, 0, 1114));
             }
-            foreach (int x in new[] { -12, 12 }) g.Tube(new Vector3(x, 4, 0), new Vector3(x, 4, -14), 1f, CatPaint(1115));
-            return Make("tool_dozer_blade", PartCategory.Tool, g, 600, 4);
+            g.Use("lift");
+            foreach (int x in new[] { -12, 12 }) g.Tube(new Vector3(x, 4, -1), new Vector3(x, 4, -14), 1f, CatPaint(1115));   // push arms
+            foreach (int x in new[] { -6, 6 }) g.Tube(new Vector3(x, 10, -2), new Vector3(x, 12, -12), 0.6f, Pal.Ramp(Pal.Chrome, 2)); // lift rams
+            g.Use("body");
+            var p = Make("tool_dozer_blade", PartCategory.Tool, g, 600, 4);
+            return p.Segment("lift", new Vector3Int(0, 4, -14)).Segment("blade", new Vector3Int(0, 4, 0), "lift");
         }
 
         /// <summary>Tipper bed, hinged at its rear edge (origin); extends forward.</summary>
@@ -614,6 +708,28 @@ namespace MadMax.Designs
             g.Box(-14, 2, 0, 14, 9, 0, Pal.Ramp(Pal.Rust, 2, 1118));                      // tailgate
             for (int z = 4; z <= 44; z += 8) { g.Box(-15, 3, z, -15, 10, z, Pal.Ramp(Pal.Metal, 0)); g.Box(15, 3, z, 15, 10, z, Pal.Ramp(Pal.Metal, 0)); }
             return Make("tool_dump_bed", PartCategory.Tool, g, 700, 4);
+        }
+
+        /// <summary>Rear backhoe for the backhoe loader: swing post, boom, dipper stick and a bucket that curls towards the machine.</summary>
+        public static PartDesign HoeArm()
+        {
+            var g = new VoxelGrid();
+            var paint = CatPaint(1121);
+            g.Use("swing");
+            g.CylY(0, 0, 2.6f, -3, 2, Pal.Ramp(Pal.Metal, 1, 1122));
+            g.Box(-2, -2, -3, 2, 3, 0, paint);
+            g.Use("boom");
+            g.Tube(new Vector3(0, 1, -2), new Vector3(0, 13, -18), 1.3f, paint);
+            g.Tube(new Vector3(0, -1, -4), new Vector3(0, 9, -14), 0.5f, Pal.Ramp(Pal.Chrome, 2));
+            g.Use("stick");
+            g.Tube(new Vector3(0, 13, -18), new Vector3(0, -3, -28), 1.1f, paint);
+            g.Use("bucket");
+            var b = new VoxelGrid();
+            Bucket(b, new Vector3Int(0, -9, -3), 4, 5);                                   // teeth towards +z: mirrored to face the machine
+            foreach (var kv in b.voxels) { g.voxels[new Vector3Int(kv.Key.x, kv.Key.y, -kv.Key.z - 28)] = new Vox { color = kv.Value.color, label = g.label, mat = g.material }; }
+            g.Use("body");
+            var p = Make("tool_hoe_arm", PartCategory.Tool, g, 420, 3);
+            return p.Segment("swing", new Vector3Int(0, 0, 0)).Segment("boom", new Vector3Int(0, 1, -2), "swing").Segment("stick", new Vector3Int(0, 13, -18), "boom").Segment("bucket", new Vector3Int(0, -3, -28), "stick");
         }
 
         public static PartDesign PaverScreed()

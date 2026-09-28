@@ -286,7 +286,14 @@ namespace MadMax.Vehicles
                 Vector3 v = rb.GetPointVelocity(w.contact);
                 w.vf = Vector3.Dot(v, w.fwd); w.vs = Vector3.Dot(v, w.side);
 
-                float grip = w.stats ? Mathf.Lerp(w.stats.grip, w.stats.mudGrip, w.surf.mud) * w.stats.GripFactor : 0.8f;
+                // dry → wet firm ground (a film of rain on tarmac or hardpan) → mud; each tyre type has its own numbers
+                float grip = 0.8f;
+                if (w.stats)
+                {
+                    float wetHard = w.surf.wet * (1f - w.surf.mud);
+                    float firm = Mathf.Lerp(w.stats.grip, w.stats.grip * w.stats.wetGrip, wetHard);
+                    grip = Mathf.Lerp(firm, w.stats.mudGrip, w.surf.mud) * w.stats.GripFactor;
+                }
                 grip *= w.surf.ice > 0f ? Mathf.Lerp(1f, 0.25f, w.surf.ice) : 1f;
                 if (handbrake && occupied && !w.front) grip *= handbrakeGrip;      // parked vehicles keep full grip
                 w.maxF = grip * gripMultiplier * w.spring * (w.broken ? 0.72f : 1f);
@@ -332,7 +339,8 @@ namespace MadMax.Vehicles
                 float brake = (lineLock ? 0f : brakeCmd * brakeForce / wheels.Count) + (handbrake ? (!occupied ? brakeForce : !w.front ? brakeForce * 0.5f : 0f) : 0f);   // parked: every wheel locked
                 brake += Mathf.Clamp01(w.part.damage) * 0.35f * w.spring;       // damaged wheel drags
                 lng -= Mathf.Clamp(w.vf * massPerWheel / dt, -brake, brake);
-                float crr = 0.015f + 0.04f * w.surf.softness + w.surf.rut * 0.3f;   // mud and ruts drag
+                float press = Pressure(w);
+                float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f);   // mud and ruts drag
                 lng -= Mathf.Clamp(w.vf * 4f, -1f, 1f) * crr * w.spring;
 
                 float mag = Mathf.Sqrt(lng * lng + lat * lat), slip = 0f;
@@ -342,7 +350,7 @@ namespace MadMax.Vehicles
 
                 float spinSlip = isDriven ? Mathf.Max((w.broken ? Mathf.Clamp01(slip * 5f) : slip) * driveCmd, w.diffSpin * driveCmd) : 0f;   // broken-loose tyres spin up
                 if (Mathf.Abs(w.vf) > 0.3f || spinSlip > 0.05f)
-                    terrain.Deform(w.contact, w.fwd, w.side, w.width, w.spring, spinSlip, dt);
+                    terrain.Deform(w.contact, w.fwd, w.side, w.width, w.spring * press, spinSlip * Mathf.Min(1f, press), dt);
 
                 w.spin += (w.vf / w.radius + spinSlip * 30f * (Reversing ? -1f : 1f)) * dt * Mathf.Rad2Deg;
                 slipSum += Mathf.Max(spinSlip, Mathf.Clamp01(Mathf.Abs(w.vs) / 8f));
@@ -380,6 +388,9 @@ namespace MadMax.Vehicles
             TyreSqueal = Mathf.Clamp01(squealSum * gi * 1.5f); TyreLoose = looseSum * gi; TyreMud = mudTyreSum * gi; TyreRoll = rollSum * gi;
         }
 
+        /// <summary>Ground pressure relative to a 0.32 m car tyre: wide tyres and long crawler tracks sink less.</summary>
+        static float Pressure(Wheel w) => Mathf.Clamp(0.32f / Mathf.Max(0.12f, w.width), 0.45f, 1.8f) / (w.stats ? Mathf.Max(1f, w.stats.footprint) : 1f);
+
         /// <summary>Tread wear, heat build-up, blowouts, skidmarks and burnout smoke.</summary>
         void TyreWear(Wheel w, float spinSlip, float slip, float brake, float dt)
         {
@@ -391,7 +402,7 @@ namespace MadMax.Vehicles
             if (st)
             {
                 float abrasion = Mathf.Lerp(0.35f, 1f, hard) * (1f - w.surf.wet * 0.5f);
-                if (!st.Popped) st.wear = Mathf.Min(0.97f, st.wear + scrub * abrasion * dt * 0.0012f + Mathf.Abs(w.vf) * dt * 0.0000015f);
+                if (!st.Popped) st.wear = Mathf.Min(0.97f, st.wear + (scrub * abrasion * dt * 0.0012f + Mathf.Abs(w.vf) * dt * 0.0000015f) * st.wearRate);
                 st.heat = Mathf.Max(0f, st.heat + (scrub * hard * 0.06f - 0.03f) * dt);
                 if (!st.Popped && st.heat > 1f && st.wear > 0.55f) st.Pop();
                 if (!st.Popped && w.part.damage > 0.85f) st.Pop();

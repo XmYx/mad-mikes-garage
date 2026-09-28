@@ -29,7 +29,7 @@ namespace MadMax.Game
                 aim = Physics.Raycast(cam.position, cam.forward, out var ch, range, ~0, QueryTriggerInteraction.Ignore) ? (ch.point - origin).normalized : cam.forward;
             }
             var stats = game ? game.Stats : null;
-            float sp = spread * (stats != null ? stats.Spread : 1f);
+            float sp = spread * (stats != null ? stats.Spread : 1f) * (game ? game.AimPenalty : 1f);
             bool anyHit = false;
             for (int i = 0; i < pellets; i++)
             {

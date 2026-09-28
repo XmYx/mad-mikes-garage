@@ -227,8 +227,10 @@ namespace MadMax.World
         {
             float road = ch.road[k], d = ch.d[k];
             bool paved = ch.paved[k];
-            float w = Weather.Wetness;
+            // rain soaks the ground less than standing water: rain-only mud stays drivable, basins stay nasty
+            float w = Weather.Wetness * 0.75f;
             float wet = Mathf.Clamp01(ch.wet[k] + w * (1f - road * 0.75f) + (d < -0.02f ? w * 0.4f : 0f));
+            float soak = Mathf.Lerp(0.7f, 1f, Mathf.Clamp01(ch.wet[k] * 1.6f));
             float hard = road * (paved ? 0.97f : 0.6f);
             if (ch.pave[k] > 0)
             {
@@ -238,8 +240,8 @@ namespace MadMax.World
             return new Surface
             {
                 wet = wet, road = road, rut = Mathf.Max(0f, -d),
-                softness = (0.1f + 0.9f * wet) * (1f - hard) + Weather.Snow * 0.25f,
-                mud = wet * (1f - road * (paved ? 1f : 0.5f)) * (Weather.Temperature < 0f ? 0.3f : 1f),
+                softness = (0.1f + 0.9f * wet * soak) * (1f - hard) + Weather.Snow * 0.25f,
+                mud = wet * soak * (1f - road * (paved ? 1f : 0.5f)) * (Weather.Temperature < 0f ? 0.3f : 1f),
                 ice = Mathf.Clamp01(Weather.Ice * (0.6f + hard * 0.5f) + Mathf.Clamp01(-d * 8f) * Weather.Snow * 0.3f * (Weather.Temperature < 0f ? 1f : 0f))
             };
         }
@@ -399,6 +401,7 @@ namespace MadMax.World
             ch.go.transform.SetParent(transform, false);
             ch.go.transform.position = new Vector3(ch.c.x * ChunkWorld, 0, ch.c.y * ChunkWorld);
             ch.go.isStatic = true;
+            ch.go.layer = Layers.Terrain;
             ch.mesh = new Mesh { name = ch.go.name };
             ch.mesh.MarkDynamic();
             FillMesh(ch);

@@ -141,7 +141,19 @@ namespace MadMax.RPG
 
         // ---- derived values used by gameplay
         public float MaxHealth => 70f + Attribute(Attr.Endurance) * 6f;
-        public float MaxStamina => 60f + Attribute(Attr.Endurance) * 8f;
+        public float MaxStamina => (60f + Attribute(Attr.Endurance) * 8f) * (1f - 0.35f * TorsoPain);
+        /// <summary>0..1 from torso wounds (cracked ribs, deep cuts): less breath for running and swinging.</summary>
+        public float TorsoPain
+        {
+            get
+            {
+                float m = 0f;
+                if (injuries != null)
+                    foreach (var i in injuries)
+                        if (i.zone == BodyZone.Torso) m = Mathf.Max(m, (i.type == Wound.Fracture || i.type == Wound.DeepWound ? 0.8f : i.type == Wound.Laceration ? 0.4f : 0.15f) * i.severity);
+                return m;
+            }
+        }
         public float MoveSpeed => 0.9f + Attribute(Attr.Agility) * 0.02f;
         public float ToolSpeed => 0.85f + (Attribute(Attr.Strength) + Attribute(Attr.Agility)) * 0.012f + (traits.Contains("clumsy") ? -0.1f : 0f);
         public float MeleePower => 0.8f + Attribute(Attr.Strength) * 0.04f + Level(Skill.Melee) * 0.04f;

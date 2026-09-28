@@ -10,8 +10,8 @@ namespace MadMax.Game
     [RequireComponent(typeof(CharacterController))]
     public class PlayerCharacter : MonoBehaviour
     {
-        public float walkSpeed = 2.3f;
-        public float runSpeed = 5.8f;
+        public float walkSpeed = 1.7f;                 // brisk walk (real 1.4 m/s)
+        public float runSpeed = 5.2f;                  // run (real jog 3–4, sprint 6–8 m/s)
         public float jumpSpeed = 4.8f;
         public float gravity = -22f;
 
@@ -114,7 +114,9 @@ namespace MadMax.Game
         /// <summary>Swing / fire the equipped tool (faces the view direction first in first/third person).</summary>
         public void Attack(bool faceViewYaw)
         {
-            if (!Tool || swingT >= 0f || Carried || SeatedIn) return;
+            if (!Tool || swingT >= 0f || Carried || SeatedIn || Ragdolled) return;
+            var g = WastelandGame.Instance;
+            if (g && Tool.TwoHanded && g.ArmBroken) { g.Toast("BROKEN ARM: CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
             swingT = 0f;
             struck = false;
@@ -219,6 +221,7 @@ namespace MadMax.Game
         {
             float dt = Time.deltaTime;
             if (dt <= 0f || anim == null) return;          // anim is rebuilt with the body (lost on a domain reload)
+            if (Ragdolled) return;
             if (SeatedIn) { UpdateSeated(dt); return; }
             if (Interior) { UpdateInterior(dt); return; }
 
@@ -228,7 +231,7 @@ namespace MadMax.Game
             var game = WastelandGame.Instance;
             var stats = game ? game.Stats : null;
             var vitals = game ? game.Vitals : null;
-            bool canRun = run && (!vitals || !vitals.Exhausted) && !Encumbered;
+            bool canRun = run && (!vitals || !vitals.Exhausted) && !Encumbered && (!game || game.CanRunInjured);
             float speed = (canRun ? runSpeed : walkSpeed) * (stats != null ? stats.MoveSpeed : 1f);
             if (Encumbered) speed *= 0.7f;
             if (game) speed *= game.InjurySpeed;
@@ -261,7 +264,7 @@ namespace MadMax.Game
                 if (airborne && fallSpeed < -9f) vitals?.Hurt((-fallSpeed - 9f) * 8f, "FALL");    // hard landing
                 airborne = false; fallSpeed = 0f;
                 vy = -1f;
-                if (jump && !Carried && (!vitals || !vitals.Exhausted)) { vy = jumpSpeed; vitals?.Spend(8f); }
+                if (jump && !Carried && (!vitals || !vitals.Exhausted) && (!game || game.CanJumpInjured)) { vy = jumpSpeed; vitals?.Spend(8f); }
             }
             else { airborne = true; fallSpeed = Mathf.Min(fallSpeed, vy); }
             jump = false;
@@ -310,8 +313,12 @@ namespace MadMax.Game
             anim.Tick(dt, new HumanAnimator.State { sitting = true, steer = SeatedIn.steerInput, lookPitch = lookPitch, grounded = true });
         }
 
+        /// <summary>Dead and limp (physics ragdoll): no control, no animation.</summary>
+        public bool Ragdolled { get { var r = GetComponent<Ragdoll>(); return r && r.Active; } }
+
         void Animate(float dt, float hs, bool grounded, float vertical)
         {
+            var gm = WastelandGame.Instance;
             float yaw = transform.eulerAngles.y;
             float turn = Mathf.DeltaAngle(lastYaw, yaw) / dt;
             lastYaw = yaw;
@@ -329,7 +336,8 @@ namespace MadMax.Game
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = hs, grounded = grounded, verticalSpeed = vertical, turnRate = turn, lookPitch = lookPitch,
-                carrying = Carried, tool = Carried ? null : toolPose, twoHanded = Tool && Tool.TwoHanded
+                carrying = Carried, tool = Carried ? null : toolPose, twoHanded = Tool && Tool.TwoHanded,
+                limpL = gm ? gm.LimpL : 0f, limpR = gm ? gm.LimpR : 0f, armHurtL = gm ? gm.ArmHurtL : 0f, armHurtR = gm ? gm.ArmHurtR : 0f
             });
         }
 

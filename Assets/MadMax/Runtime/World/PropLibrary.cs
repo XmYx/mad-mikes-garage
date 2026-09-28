@@ -74,7 +74,7 @@ namespace MadMax.World
         static VoxelGrid Shack(int seed)
         {
             var g = new VoxelGrid();
-            int w = 16 + seed * 3, l = 18 + seed * 2, h = 26;
+            int w = 16 + seed * 3, l = 18 + seed * 2, h = 34;        // 2.7 m walls, 2.1 m door
             var sheet = Pal.Stripe(Pal.Weathered(Pal.Metal, 0.55f, seed + 40, 2, 0), Pal.Ramp(Pal.Rust, 2, seed), seed % 2 == 0 ? 0 : 2, 3);
             var wood = Pal.Ramp(Pal.Wood, 2, seed + 60);
             for (int x = -w; x <= w; x++)
@@ -83,10 +83,10 @@ namespace MadMax.World
             {
                 bool edge = Mathf.Abs(x) == w || Mathf.Abs(z) == l;
                 if (!edge) continue;
-                bool door = z == -l && Mathf.Abs(x) <= 4 && y <= 18;
-                bool window = Mathf.Abs(x) == w && Mathf.Abs(z) <= 4 && y >= 12 && y <= 16;
-                bool post = (Mathf.Abs(x) == w && Mathf.Abs(z) == l) || (z == -l && Mathf.Abs(x) == 5 && y <= 19) || (z == -l && y == 19 && Mathf.Abs(x) <= 5);
-                bool frame = Mathf.Abs(x) == w && Mathf.Abs(z) <= 5 && (y == 11 || y == 17 || Mathf.Abs(z) == 5) && y >= 11 && y <= 17;
+                bool door = z == -l && Mathf.Abs(x) <= 5 && y <= 26;
+                bool window = Mathf.Abs(x) == w && Mathf.Abs(z) <= 4 && y >= 14 && y <= 22;
+                bool post = (Mathf.Abs(x) == w && Mathf.Abs(z) == l) || (z == -l && Mathf.Abs(x) == 6 && y <= 27) || (z == -l && y == 27 && Mathf.Abs(x) <= 6);
+                bool frame = Mathf.Abs(x) == w && Mathf.Abs(z) <= 5 && (y == 13 || y == 23 || Mathf.Abs(z) == 5) && y >= 13 && y <= 23;
                 if (door) continue;
                 if (window) { g.Mat(Glass); g.Set(x, y, z, Pal.Ramp(Pal.Glass, 2, seed)); continue; }
                 if (post || frame || y == 0) { g.Mat(Wood); g.Set(x, y, z, wood); continue; }

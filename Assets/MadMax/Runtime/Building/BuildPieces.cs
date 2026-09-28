@@ -46,7 +46,7 @@ namespace MadMax.Building
             for (int y = 0; y <= 29; y++)
             {
                 bool window = hole == 1 && Mathf.Abs(x) <= 5 && y >= 12 && y <= 22;
-                bool door = hole == 2 && Mathf.Abs(x) <= 5 && y <= 25;
+                bool door = hole == 2 && Mathf.Abs(x) <= 6 && y <= 27;          // 1.04 × 2.24 m: roomy for a third-person camera
                 if (door) continue;
                 if (window)
                 {
@@ -55,7 +55,7 @@ namespace MadMax.Building
                 }
                 g.Set(x, y, 0, paint); g.Set(x, y, 1, paint);
             }
-            if (hole == 2) { g.Mat(Wood); g.Box(-6, 0, 2, -6, 26, 2, Pal.Ramp(Pal.Wood, 1)); g.Box(6, 0, 2, 6, 26, 2, Pal.Ramp(Pal.Wood, 1)); g.Box(-6, 26, 2, 6, 26, 2, Pal.Ramp(Pal.Wood, 1)); }
+            if (hole == 2) { g.Mat(Wood); g.Box(-7, 0, 2, -7, 28, 2, Pal.Ramp(Pal.Wood, 1)); g.Box(7, 0, 2, 7, 28, 2, Pal.Ramp(Pal.Wood, 1)); g.Box(-7, 28, 2, 7, 28, 2, Pal.Ramp(Pal.Wood, 1)); }
             return g;
         }
 
@@ -63,11 +63,11 @@ namespace MadMax.Building
         {
             var g = new VoxelGrid().Mat(metal ? Iron : Wood);
             var m = metal ? Pal.Weathered(Pal.Metal, 0.35f, 811, 2, 0) : Planks(812);
-            g.Box(-5, 0, 0, 5, 25, 1, m);
+            g.Box(-6, 0, 0, 6, 27, 1, m);
             g.Mat(Scrap);
-            g.Box(3, 12, 2, 4, 12, 2, Pal.Solid(Pal.Chrome[2]));                        // handle
-            if (metal) { g.Box(-5, 6, 2, 5, 6, 2, Pal.Ramp(Pal.Rust, 2)); g.Box(-5, 19, 2, 5, 19, 2, Pal.Ramp(Pal.Rust, 2)); }
-            else { g.Box(-5, 4, 2, 5, 4, 2, Pal.Ramp(Pal.Wood, 0)); g.Box(-5, 21, 2, 5, 21, 2, Pal.Ramp(Pal.Wood, 0)); }
+            g.Box(4, 12, 2, 5, 12, 2, Pal.Solid(Pal.Chrome[2]));                        // handle at 1 m
+            if (metal) { g.Box(-6, 6, 2, 6, 6, 2, Pal.Ramp(Pal.Rust, 2)); g.Box(-6, 21, 2, 6, 21, 2, Pal.Ramp(Pal.Rust, 2)); }
+            else { g.Box(-6, 4, 2, 6, 4, 2, Pal.Ramp(Pal.Wood, 0)); g.Box(-6, 23, 2, 6, 23, 2, Pal.Ramp(Pal.Wood, 0)); }
             return g;
         }
 

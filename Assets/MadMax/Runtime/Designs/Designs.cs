@@ -15,8 +15,18 @@ namespace MadMax.Designs
         public float radius;
         // engine
         public float torque, maxRpm, peakAt = 0.6f;
-        // wheel
-        public float grip, mudGrip, width;
+        // wheel (0 = defaults: wetGrip 0.8, rolling 1, wearRate 1, footprint 1)
+        public float grip, mudGrip, width, wetGrip, rolling, wearRate, footprint;
+        /// <summary>Hinged pieces (machine booms, sticks, buckets, blades, crane booms): voxels labelled with the
+        /// segment name become a child object pivoting at <c>pivot</c> (part voxel coords) under its parent segment.</summary>
+        public readonly List<SegmentDesign> segments = new List<SegmentDesign>();
+        public PartDesign Segment(string name, Vector3Int pivot, string parent = null) { segments.Add(new SegmentDesign { name = name, pivot = pivot, parent = parent }); return this; }
+    }
+
+    public class SegmentDesign
+    {
+        public string name, parent;
+        public Vector3Int pivot;
     }
 
     public class SocketDesign
@@ -58,6 +68,7 @@ namespace MadMax.Designs
         public readonly List<BoundsInt> colliders = new List<BoundsInt>();   // voxel-space boxes; empty = one box around the body
         public InteriorDesign interior;
         public string machine;                 // construction machine behaviour (MadMax.Vehicles.Machine.Kind name)
+        public bool crawler;                   // tracked: wheels hide inside the tracks (no arch carving)
         public Vector3Int eye;       // driver eye, voxel coordinates
         public VoxelGrid body;
         public VoxelGrid glass;
@@ -83,7 +94,7 @@ namespace MadMax.Designs
         /// and the arch rim is darkened like an inner fender. Keeps any design free of tyres poking through panels.</summary>
         public void CarveWheelArches(System.Func<string, PartDesign> part)
         {
-            if (body == null) return;
+            if (body == null || crawler) return;
             float travelVox = Mathf.Ceil(travel / VoxelMesher.DefaultSize);
             foreach (var s in sockets)
             {

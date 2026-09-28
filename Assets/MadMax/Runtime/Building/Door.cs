@@ -17,7 +17,7 @@ namespace MadMax.Building
             Toggle();
         }
 
-        public float hingeX = -0.44f;       // local hinge offset (m)
+        public float hingeX = -0.52f;       // local hinge offset (m): door leaf 1.04 m wide
         public bool open, locked;
         Vector3 closedPos; Quaternion closedRot; bool init;
         float t;

@@ -15,6 +15,9 @@ namespace MadMax.Game
         public float radius = 1.2f;
         /// <summary>Top-down views only (CameraRig): perspective views look around inside instead.</summary>
         public bool worldCut = true;
+        /// <summary>0 = no cutaway (first person), 1 = only what blocks the camera's line of sight (third person),
+        /// 2 = full doll's-house cutaway (isometric / tilt-shift).</summary>
+        public int cutMode = 2;
         public float undergroundRadius = 26f;
         public static bool Underground { get; private set; }
         static readonly int WorldCutId = Shader.PropertyToID("_MadMaxCut");
@@ -33,21 +36,24 @@ namespace MadMax.Game
             mpb ??= new MaterialPropertyBlock();
             float cutY = 0f;
             bool under = false;
-            if (target && cam && target.gameObject.activeInHierarchy)
+            if (target && cam && target.gameObject.activeInHierarchy && cutMode > 0)
             {
                 Vector3 feet = target.position, head = feet + Vector3.up * 1f;
                 cutY = feet.y + 2.3f;
                 var dir = head - cam.transform.position;
                 float len = dir.magnitude;
-                int n = Physics.SphereCastNonAlloc(cam.transform.position, radius, dir / len, hits, len - 1.2f, ~0, QueryTriggerInteraction.Ignore);
+                int n = Physics.SphereCastNonAlloc(cam.transform.position, cutMode == 1 ? radius * 0.5f : radius, dir / len, hits, len - 1.2f, ~0, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < n; i++) Consider(hits[i].collider, head);
-                // standing inside a building: open it up even when its walls are not in the line of sight
-                int m = Physics.OverlapSphereNonAlloc(head, 0.6f, around, ~0, QueryTriggerInteraction.Ignore);
-                for (int i = 0; i < m; i++) Consider(around[i], head);
-                if (Physics.Raycast(head, Vector3.up, out var roof, 40f, ~0, QueryTriggerInteraction.Ignore))
+                if (cutMode == 2)
                 {
-                    Consider(roof.collider, head);
-                    under = worldCut && roof.collider.GetComponentInParent<MadMax.World.Subterranean>();
+                    // standing inside a building: open it up even when its walls are not in the line of sight
+                    int m = Physics.OverlapSphereNonAlloc(head, 0.6f, around, ~0, QueryTriggerInteraction.Ignore);
+                    for (int i = 0; i < m; i++) Consider(around[i], head);
+                    if (Physics.Raycast(head, Vector3.up, out var roof, 40f, ~0, QueryTriggerInteraction.Ignore))
+                    {
+                        Consider(roof.collider, head);
+                        under = worldCut && roof.collider.GetComponentInParent<MadMax.World.Subterranean>();
+                    }
                 }
                 if (under) Shader.SetGlobalVector(WorldCutId, new Vector4(feet.x, feet.z, undergroundRadius, cutY));
             }

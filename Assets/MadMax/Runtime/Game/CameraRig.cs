@@ -29,7 +29,7 @@ namespace MadMax.Game
         public float tiltDistance = 60f;
 
         [Header("Third person")]
-        public float thirdFov = 60f;
+        public float thirdFov = 55f;
         public Vector2 thirdDistanceRange = new Vector2(2.5f, 18f);
         public float thirdDistance = 7.5f;
         public float thirdHeight = 1.6f;
@@ -37,7 +37,7 @@ namespace MadMax.Game
 
         [Header("First person")]
         public Vector2 fpsFovRange = new Vector2(35f, 95f);
-        public float fpsFov = 72f;
+        public float fpsFov = 60f;                       // vertical: ≈ 90° horizontal at 16:9 (real-feeling scale)
 
         [Header("Fog (perspective views)")]
         public Color fogColor = new Color(0.86f, 0.5f, 0.28f);
@@ -195,7 +195,11 @@ namespace MadMax.Game
             }
             MadMax.World.Atmosphere.SkyVisible = perspectiveFog;
             cam.backgroundColor = OccluderFade.Underground ? new Color(0.045f, 0.032f, 0.026f) : sky;   // earth around an underground cutaway
-            if (fade) fade.worldCut = mode == ViewMode.Isometric || mode == ViewMode.TiltShift;
+            if (fade)
+            {
+                fade.worldCut = mode == ViewMode.Isometric || mode == ViewMode.TiltShift;
+                fade.cutMode = mode == ViewMode.FirstPerson ? 0 : mode == ViewMode.ThirdPerson ? 1 : 2;
+            }
             pixel.postMaterial = mode == ViewMode.TiltShift ? tiltShiftMaterial : null;
             bool fps = mode == ViewMode.FirstPerson;
             if (glass) glass.enabled = !fps;
@@ -239,11 +243,15 @@ namespace MadMax.Game
                     cam.fieldOfView = thirdFov;
                     cam.nearClipPlane = 0.1f; cam.farClipPlane = Mathf.Max(fogEnd + 10f, 120f);   // sky clouds sit up to ~100 m out
                     float heading = player ? 0f : Quaternion.LookRotation(Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized + Vector3.forward * 1e-4f).eulerAngles.y;
-                    float dist = player ? Mathf.Min(thirdDistance, interior ? 4f : 5f) : thirdDistance * targetScale;
-                    float height = player ? 1.7f : thirdHeight * Mathf.Sqrt(targetScale);
+                    // on foot: over-the-shoulder at ~3.5 m, like most third-person games; vehicles: chase cam
+                    float dist = player ? Mathf.Min(thirdDistance, interior ? 3f : 3.6f) : thirdDistance * targetScale;
+                    float height = player ? 1.6f : thirdHeight * Mathf.Sqrt(targetScale);
                     var r = Quaternion.Euler(interior ? Mathf.Max(orbitPitch, 40f) : orbitPitch, heading + orbitYaw, 0f);
-                    var pivot = filteredTarget + Vector3.up * height;
+                    var pivot = filteredTarget + Vector3.up * height + (player ? r * Vector3.right * 0.45f : Vector3.zero);
                     var desired = pivot - r * Vector3.forward * dist;
+                    // pull in when a wall or rock is between the pivot and the camera (no cutaway needed)
+                    if (Physics.SphereCast(pivot, 0.25f, desired - pivot, out var block, dist, ~0, QueryTriggerInteraction.Ignore) && !block.collider.transform.IsChildOf(target))
+                        desired = pivot + (desired - pivot).normalized * Mathf.Max(0.6f, block.distance - 0.05f);
                     var pos = snapNext ? desired : Vector3.Lerp(rawCamPos, desired, 1f - Mathf.Exp(-10f * dt));
                     pos = ClampAboveGround(pos);
                     rawCamPos = pos;

@@ -214,11 +214,33 @@ namespace MadMax.EditorTools
         static GameObject SavePart(PartDesign p, Material mat)
         {
             var go = new GameObject(p.key, typeof(MeshFilter), typeof(MeshRenderer));
-            var mesh = SaveMesh(VoxelMesher.Build(p.grid, p.key), "Part_" + p.key);
+            var baseGrid = p.segments.Count > 0 ? p.grid.Extract("body", Vector3Int.zero) : p.grid;
+            var mesh = SaveMesh(VoxelMesher.Build(baseGrid, p.key), "Part_" + p.key);
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            var col = go.AddComponent<BoxCollider>();
-            col.center = mesh.bounds.center; col.size = mesh.bounds.size;
+            if (mesh.vertexCount > 0)
+            {
+                var col = go.AddComponent<BoxCollider>();
+                col.center = mesh.bounds.center; col.size = mesh.bounds.size;
+            }
+            // hinged segments: a child per labelled voxel group, pivoting at its joint, nested by parent
+            var made = new Dictionary<string, Transform>();
+            foreach (var sd in p.segments)
+            {
+                var seg = new GameObject(sd.name, typeof(MeshFilter), typeof(MeshRenderer));
+                var parentT = sd.parent != null && made.TryGetValue(sd.parent, out var pt) ? pt : go.transform;
+                var parentPivot = sd.parent != null ? p.segments.Find(x => x.name == sd.parent).pivot : Vector3Int.zero;
+                seg.transform.SetParent(parentT, false);
+                seg.transform.localPosition = (Vector3)(sd.pivot - parentPivot) * VoxelMesher.DefaultSize;
+                var sm = SaveMesh(VoxelMesher.Build(p.grid.Extract(sd.name, sd.pivot), p.key + "_" + sd.name), "Part_" + p.key + "_" + sd.name);
+                seg.GetComponent<MeshFilter>().sharedMesh = sm;
+                seg.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                if (sm.vertexCount > 0) { var sc = seg.AddComponent<BoxCollider>(); sc.center = sm.bounds.center; sc.size = sm.bounds.size; }
+                made[sd.name] = seg.transform;
+            }
+            // machine tools dig into the ground: they must not collide with the terrain (MadMax.World.Layers)
+            if (p.category == PartCategory.Tool)
+                foreach (var t in go.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = MadMax.World.Layers.MachineTool;
             var part = go.AddComponent<VehiclePart>();
             part.partId = p.key; part.category = p.category; part.sizeClass = p.sizeClass; part.mass = p.mass; part.radius = p.radius;
             if (p.category == PartCategory.Engine)
@@ -230,6 +252,10 @@ namespace MadMax.EditorTools
             {
                 var w = go.AddComponent<WheelStats>();
                 w.grip = p.grip; w.mudGrip = p.mudGrip; w.width = p.width;
+                if (p.wetGrip > 0f) w.wetGrip = p.wetGrip;
+                if (p.rolling > 0f) w.rolling = p.rolling;
+                if (p.wearRate > 0f) w.wearRate = p.wearRate;
+                if (p.footprint > 0f) w.footprint = p.footprint;
             }
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PartDir}/{p.key}.prefab");
             Object.DestroyImmediate(go);

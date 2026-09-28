@@ -67,7 +67,7 @@ namespace MadMax.Designs
         // ================================================================== EXCAVATOR (crawler, 360° house, long arm)
         public static VehicleDesign Excavator()
         {
-            var d = new VehicleDesign { name = "Excavator", machine = "Excavator", mass = 9000, drive = VehicleDriver.Drive.All, travel = 0.12f, frequency = 2.4f, finalDrive = 14f, brakeForce = 90000f, maxSteer = 34f, gears = new[] { 3.2f, 1.8f }, eye = new Vector3Int(4, 21, 11), fuelL = 180f, oilL = 20f, coolantL = 30f };
+            var d = new VehicleDesign { name = "Excavator", machine = "Excavator", crawler = true, mass = 9000, drive = VehicleDriver.Drive.All, travel = 0.12f, frequency = 2.4f, finalDrive = 14f, brakeForce = 90000f, maxSteer = 34f, gears = new[] { 3.2f, 1.8f }, eye = new Vector3Int(4, 21, 11), fuelL = 180f, oilL = 20f, coolantL = 30f };
             var g = new VoxelGrid();
             var paint = Yellow(1201);
             Track(g, 9, 5, -24, 24, 9);
@@ -86,8 +86,8 @@ namespace MadMax.Designs
             Cab(g, 9, 5, 22, 10, 27, paint, 1205);
             Lamps(g, 8, 24, 23, -27);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_small", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_small", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_track", true);
+            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_track", true);
             d.Socket("engine", PartCategory.Engine, 0, 12, -12, "engine_truck_diesel");
             d.Socket("radiator", PartCategory.Radiator, 0, 12, -22, "radiator_truck");
             d.Socket("tool", PartCategory.Tool, 11, 17, 18, "tool_excavator_arm");
@@ -118,13 +118,14 @@ namespace MadMax.Designs
             d.Socket("engine", PartCategory.Engine, 0, 9, 10, "engine_diesel_i6");
             d.Socket("radiator", PartCategory.Radiator, 0, 9, 22, "radiator_car");
             d.Socket("tool", PartCategory.Tool, 0, 16, 18, "tool_backhoe_loader");
+            d.Socket("tool_rear", PartCategory.Tool, 0, 13, -28, "tool_hoe_arm");
             return d;
         }
 
         // ================================================================== BULLDOZER (crawler, front blade)
         public static VehicleDesign Bulldozer()
         {
-            var d = new VehicleDesign { name = "Bulldozer", machine = "Dozer", mass = 11000, drive = VehicleDriver.Drive.All, travel = 0.1f, frequency = 2.4f, finalDrive = 16f, brakeForce = 110000f, maxSteer = 34f, gears = new[] { 3.4f, 2.0f }, eye = new Vector3Int(4, 23, -10), fuelL = 200f, oilL = 24f, coolantL = 34f };
+            var d = new VehicleDesign { name = "Bulldozer", machine = "Dozer", crawler = true, mass = 11000, drive = VehicleDriver.Drive.All, travel = 0.1f, frequency = 2.4f, finalDrive = 16f, brakeForce = 110000f, maxSteer = 34f, gears = new[] { 3.4f, 2.0f }, eye = new Vector3Int(4, 23, -10), fuelL = 200f, oilL = 24f, coolantL = 34f };
             var g = new VoxelGrid();
             var paint = Yellow(1220);
             Track(g, 9, 6, -24, 24, 10);
@@ -139,8 +140,8 @@ namespace MadMax.Designs
             g.CylY(4, 10, 1f, 17, 24, Pal.Ramp(Pal.Black, 1));
             Lamps(g, 7, 14, 23, -23);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_small", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_small", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_track", true);
+            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_track", true);
             d.Socket("engine", PartCategory.Engine, 0, 7, 8, "engine_truck_diesel");
             d.Socket("radiator", PartCategory.Radiator, 0, 7, 20, "radiator_truck");
             d.Socket("tool", PartCategory.Tool, 0, 0, 30, "tool_dozer_blade");
@@ -177,7 +178,7 @@ namespace MadMax.Designs
         // ================================================================== PAVER (asphalt / concrete)
         public static VehicleDesign Paver()
         {
-            var d = new VehicleDesign { name = "Paver", machine = "Paver", mass = 7000, drive = VehicleDriver.Drive.All, travel = 0.12f, frequency = 2.2f, finalDrive = 16f, brakeForce = 70000f, maxSteer = 26f, gears = new[] { 3.6f, 2.4f }, eye = new Vector3Int(4, 25, -4), fuelL = 150f, oilL = 16f, coolantL = 24f };
+            var d = new VehicleDesign { name = "Paver", machine = "Paver", crawler = true, mass = 7000, drive = VehicleDriver.Drive.All, travel = 0.12f, frequency = 2.2f, finalDrive = 16f, brakeForce = 70000f, maxSteer = 26f, gears = new[] { 3.6f, 2.4f }, eye = new Vector3Int(4, 25, -4), fuelL = 150f, oilL = 16f, coolantL = 24f };
             var g = new VoxelGrid();
             var paint = Yellow(1240);
             Track(g, 8, 5, -18, 18, 9);
@@ -192,8 +193,8 @@ namespace MadMax.Designs
             g.Box(-3, 16, 3, 3, 20, 5, Pal.Ramp(Pal.Black, 1));
             Lamps(g, 8, 12, 19, -21);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 9, 4, 11, "wheel_small", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 9, 4, -11, "wheel_small", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 9, 4, 11, "wheel_track", true);
+            d.Socket("wheel_rear", PartCategory.Wheel, 9, 4, -11, "wheel_track", true);
             d.Socket("engine", PartCategory.Engine, 0, 7, 6, "engine_diesel_i6");
             d.Socket("radiator", PartCategory.Radiator, 0, 7, 16, "radiator_car");
             d.Socket("tool", PartCategory.Tool, 0, 1, -21, "tool_paver_screed");

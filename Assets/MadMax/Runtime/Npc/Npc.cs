@@ -36,7 +36,7 @@ namespace MadMax.Npc
         CharacterController cc;
         HandTool tool;
         float health, maxHealth, vy, swing = -1f, attackCd, repath, fleeUntil, faceUntil, stuck, lastHurt;
-        Vector3 goal, lastPos, detour;
+        Vector3 goal, lastPos, detour, lastBlow, lastVelocity;
         float detourUntil;
         bool hasGoal;
         Vector3 faceTarget;
@@ -143,6 +143,7 @@ namespace MadMax.Npc
                 float h = terrain.Height(p.x, p.z);
                 if (p.y < h - 0.3f) { p.y = h + 0.05f; transform.position = p; }
             }
+            lastVelocity = (transform.position - lastPos) / Mathf.Max(dt, 1e-4f);
             float moved = Flat(transform.position - lastPos).magnitude / Mathf.Max(dt, 1e-4f);
             lastPos = transform.position;
             if (speed > 0.5f && moved < 0.2f)
@@ -298,6 +299,7 @@ namespace MadMax.Npc
             if (mode == Mode.Dead) return;
             float dmg = power * 28f;
             health -= dmg;
+            lastBlow = direction.normalized * Mathf.Clamp(power * 90f, 30f, 400f);
             lastHurt = Time.time;
             BloodStains.Splash(transform.position, Mathf.Clamp01(dmg / 40f));
             MadMax.Audio.Sfx.Play("punch", point, 0.7f, Random.Range(0.8f, 1.1f));
@@ -335,15 +337,12 @@ namespace MadMax.Npc
             if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile)) NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 15);
             if (byPlayer && Profile.Raider) NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
             cc.enabled = false;
-            if (tool) { tool.transform.SetParent(null, true); Destroy(tool.gameObject, 60f); }
-            // lie down: tip over backwards, settle on the ground
-            var p = transform.position;
-            var terrain = DeformableTerrain.Instance;
-            if (terrain) p.y = terrain.Height(p.x, p.z) + 0.12f;
-            transform.SetPositionAndRotation(p, transform.rotation * Quaternion.Euler(-90f, 0f, 0f));
-            var box = gameObject.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 0f, 0.85f); box.size = new Vector3(0.6f, 0.4f, 1.8f); box.isTrigger = true;
-            var loot = gameObject.AddComponent<Lootable>();
+            if (tool) { tool.transform.SetParent(null, true); var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f; Destroy(tool.gameObject, 60f); }
+            // go limp: a physics ragdoll takes the blow and falls where it may; the body is searchable at the pelvis
+            var push = lastBlow.sqrMagnitude > 0.01f ? lastBlow : -transform.forward * 60f;
+            Ragdoll.For(rig).Go(push, transform.position + Vector3.up * 1.1f, lastVelocity);
+            var pelvis = rig.bones[BodyPart.Pelvis].gameObject;
+            var loot = pelvis.AddComponent<Lootable>();
             loot.key = "N" + Profile.id; loot.table = Profile.Raider ? "raider" : Profile.Vendor ? "shop" : "house";
             loot.title = Profile.Name + "'S BODY";
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);
