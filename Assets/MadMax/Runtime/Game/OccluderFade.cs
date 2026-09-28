@@ -1,0 +1,66 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace MadMax.Game
+{
+    /// <summary>Cutaway for props standing between the camera and the followed target (buildings, trees): everything
+    /// above the target's head is clipped (shader _CutY), so the player stays visible and building interiors open up
+    /// like a doll's house. Their shadows stay whole.</summary>
+    public class OccluderFade : MonoBehaviour
+    {
+        public Transform target;
+        public Camera cam;
+        public float radius = 1.2f;
+        readonly HashSet<Renderer> cut = new HashSet<Renderer>(), now = new HashSet<Renderer>();
+        readonly RaycastHit[] hits = new RaycastHit[32];
+        readonly Collider[] around = new Collider[32];
+        readonly List<Renderer> restore = new List<Renderer>();
+        MaterialPropertyBlock mpb;
+        static readonly int CutId = Shader.PropertyToID("_CutY");
+
+        void LateUpdate()
+        {
+            now.Clear();
+            mpb ??= new MaterialPropertyBlock();
+            float cutY = 0f;
+            if (target && cam && target.gameObject.activeInHierarchy)
+            {
+                Vector3 feet = target.position, head = feet + Vector3.up * 1f;
+                cutY = feet.y + 2.3f;
+                var dir = head - cam.transform.position;
+                float len = dir.magnitude;
+                int n = Physics.SphereCastNonAlloc(cam.transform.position, radius, dir / len, hits, len - 1.2f, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < n; i++) Consider(hits[i].collider, head);
+                // standing inside a building: open it up even when its walls are not in the line of sight
+                int m = Physics.OverlapSphereNonAlloc(head, 0.6f, around, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < m; i++) Consider(around[i], head);
+                if (Physics.Raycast(head, Vector3.up, out var roof, 40f, ~0, QueryTriggerInteraction.Ignore)) Consider(roof.collider, head);
+            }
+            foreach (var r in now)
+            {
+                if (!r) continue;
+                cut.Add(r);
+                r.GetPropertyBlock(mpb);
+                mpb.SetFloat(CutId, cutY);
+                r.SetPropertyBlock(mpb);
+            }
+            restore.Clear();
+            foreach (var r in cut) if (!now.Contains(r)) restore.Add(r);
+            foreach (var r in restore) { cut.Remove(r); if (r) { r.GetPropertyBlock(mpb); mpb.SetFloat(CutId, 100000f); r.SetPropertyBlock(mpb); } }
+        }
+
+        void Consider(Collider c, Vector3 head)
+        {
+            if (!c || (c.attachedRigidbody && !c.attachedRigidbody.isKinematic)) return;   // loose things stay visible
+            var d = c.GetComponentInParent<MadMax.World.DestructibleVoxels>();
+            Renderer r = d ? d.GetComponent<Renderer>() : null;
+            if (!r)
+            {
+                var p = c.GetComponentInParent<MadMax.Building.Placeable>();       // player-built walls and roofs
+                if (p) r = p.GetComponent<Renderer>();
+            }
+            if (!r || r.bounds.max.y < head.y + 1.2f) return;                        // low props don't block
+            now.Add(r);
+        }
+    }
+}

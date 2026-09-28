@@ -1,0 +1,227 @@
+using System;
+using MadMax.Items;
+using MadMax.World;
+using UnityEngine;
+
+namespace MadMax.Vehicles
+{
+    [Flags]
+    public enum Fault
+    {
+        None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
+        CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192
+    }
+
+    /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
+    /// Damage causes leaks; running low produces faults with consequences: sputter/stall (fuel), wear → seizure (oil),
+    /// power loss → head damage (heat). Two-strokes mix oil into fuel; air-cooled engines have no coolant.</summary>
+    [RequireComponent(typeof(VehicleDriver))]
+    public class VehicleSystems : MonoBehaviour
+    {
+        public float fuelCapacity = 60f, oilCapacity = 5f, coolantCapacity = 8f;
+        public float fuel = 40f, oil = 5f, coolant = 8f;
+        public bool usesCoolant = true;
+        [Tooltip("Two-stroke: oil is mixed into the fuel, no separate oil system.")]
+        public bool oilInFuel;
+        [Tooltip("Fuel burn multiplier (1 = realistic, 3 = game pace: a tank lasts ~1 h of driving).")]
+        public float consumption = 3f;
+        [System.NonSerialized] public float fuelMultiplier = 1f;   // game rules x driver's Survival skill (set each frame)
+
+        public float Temperature { get; private set; } = 25f;
+        public float PowerFactor { get; private set; } = 1f;
+        public Fault Faults { get; private set; }
+        public bool HasEngine => driver && driver.Engine;
+
+        VehicleDriver driver;
+        VehicleDamage damage;
+        VehicleChassis chassis;
+        bool hasRadiatorSocket;
+        MountSocket radiatorSocket;
+        float fxTimer;
+
+        const float Ambient = 25f, HotLimit = 110f, CriticalLimit = 125f;
+
+        void Awake()
+        {
+            driver = GetComponent<VehicleDriver>();
+            damage = GetComponent<VehicleDamage>();
+            chassis = GetComponent<VehicleChassis>();
+            foreach (var s in chassis.Sockets) if (s.accepts == PartCategory.Radiator) radiatorSocket = s;
+            hasRadiatorSocket = radiatorSocket;
+        }
+
+        public float FuelFraction => fuelCapacity > 0 ? fuel / fuelCapacity : 0f;
+        public float OilFraction => oilInFuel || oilCapacity <= 0 ? 1f : oil / oilCapacity;
+        public float CoolantFraction => !usesCoolant || coolantCapacity <= 0 ? 1f : coolant / coolantCapacity;
+
+        void FixedUpdate()
+        {
+            float dt = Time.fixedDeltaTime;
+            var engine = driver.Engine;
+            var f = Fault.None;
+            var ep = engine ? engine.GetComponent<VehiclePart>() : null;
+            float engineDamage = ep ? ep.damage : 0f;
+            float speed = Mathf.Abs(driver.ForwardSpeed);
+
+            // leaks happen whether or not the engine runs
+            if (ep && !oilInFuel && engineDamage > 0.4f) { oil = Mathf.Max(0f, oil - (engineDamage - 0.4f) * 0.01f * dt); f |= Fault.OilLeak; }
+            // the radiator holds the coolant: missing = it pours out, damaged = it leaks and cools worse
+            VehiclePart radiator = null;
+            if (usesCoolant)
+            {
+                radiator = radiatorSocket ? radiatorSocket.Current : null;
+                if (hasRadiatorSocket && !radiator) { coolant = Mathf.Max(0f, coolant - 0.6f * dt); f |= Fault.CoolantLeak | Fault.NoRadiator; }
+                else if (radiator && radiator.damage > 0.2f) { coolant = Mathf.Max(0f, coolant - (radiator.damage - 0.2f) * 0.05f * dt); f |= Fault.CoolantLeak; }
+            }
+            if (damage && damage.FrameDamage > 0.5f && fuel > 0f) { fuel = Mathf.Max(0f, fuel - (damage.FrameDamage - 0.5f) * 0.02f * dt); f |= Fault.FuelLeak; }
+
+            if (!engine) { Faults = f | Fault.NoEngine; PowerFactor = 0f; Cool(dt, speed); return; }
+            bool seized = engineDamage >= 1f;
+            if (seized) f |= Fault.Seized;
+            if (fuel <= 0f) f |= Fault.NoFuel; else if (FuelFraction < 0.1f) f |= Fault.LowFuel;
+            if (!oilInFuel) { if (oil <= 0f) f |= Fault.NoOil; else if (OilFraction < 0.25f) f |= Fault.LowOil; }
+            if (usesCoolant && CoolantFraction < 0.3f) f |= Fault.LowCoolant;
+
+            // intake under water: the engine drowns (and hydrolocks if it keeps turning)
+            var terrain = MadMax.World.DeformableTerrain.Instance;
+            var ePos = engine.transform.position;
+            float lvl = terrain ? terrain.WaterLevel(ePos.x, ePos.z) : float.NaN;
+            bool flooded = !float.IsNaN(lvl) && ePos.y + 0.2f < lvl;
+            if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
+            UpdateFire(dt, ePos, ref f);
+            bool running = driver.Occupied && fuel > 0f && !seized && !flooded;
+            float power = running ? 1f : 0f;
+            if (running)
+            {
+                float load = driver.DriveCommand;
+                float rpmFrac = driver.Rpm / engine.maxRpm;
+                fuel = Mathf.Max(0f, fuel - consumption * fuelMultiplier * (0.12f + 0.88f * load) * (0.3f + rpmFrac) * engine.maxTorque / 500f * 0.004f * dt);
+                if (!oilInFuel) oil = Mathf.Max(0f, oil - 0.00008f * load * dt);
+
+                // heat in, heat out
+                float heat = (0.25f + load * rpmFrac) * 4.4f;
+                float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? 1f - 0.6f * Mathf.Clamp01(radiator.damage) : 0f;
+                float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.6f + 0.4f * Mathf.Clamp01(speed / 20f)) : 0.55f + Mathf.Clamp01(speed / 25f) * 0.45f;
+                Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * dt;   // ~12 s time constant
+
+                if (FuelFraction < 0.03f && Mathf.PerlinNoise(Time.time * 3f, 0.5f) < 0.4f) power = 0f;          // sputtering
+                if (Temperature > HotLimit) { f |= Fault.Overheat; power *= Mathf.Lerp(1f, 0.4f, (Temperature - HotLimit) / 20f); }
+                if (Temperature > CriticalLimit) ep.damage += 0.02f * dt;                                          // head gasket
+                if (!oilInFuel && oil <= 0f) ep.damage += 0.05f * dt;                                                // seizing
+                else if (!oilInFuel && OilFraction < 0.25f) ep.damage += 0.002f * load * dt;                        // wear
+                power *= 1f - 0.5f * Mathf.Clamp01(engineDamage - 0.5f) * 2f * (0.5f + 0.5f * Mathf.PerlinNoise(Time.time * 6f, 1.7f)); // misfires
+            }
+            else Cool(dt, speed);
+            PowerFactor = power;
+            Faults = f;
+            Effects(engine, running, engineDamage);
+        }
+
+        void Cool(float dt, float speed) => Temperature = Mathf.MoveTowards(Temperature, Ambient, (0.3f + speed * 0.05f) * dt);
+
+        void Effects(EngineStats engine, bool running, float engineDamage)
+        {
+            var fx = DebrisSystem.Instance;
+            if (!fx || (fxTimer -= Time.fixedDeltaTime) > 0f) return;
+            fxTimer = 0.08f;
+            var at = engine.transform.position + transform.up * 0.5f;
+            if (Temperature > HotLimit)
+                fx.EmitPuff(at + UnityEngine.Random.insideUnitSphere * 0.3f, new Color32(235, 230, 220, 255), 0.12f, Vector3.up * 1.8f + UnityEngine.Random.insideUnitSphere * 0.4f, 1.1f);
+            if (running && engineDamage > 0.5f)
+                fx.EmitPuff(at + UnityEngine.Random.insideUnitSphere * 0.2f, new Color32(30, 26, 24, 255), 0.14f, Vector3.up * 1.2f + UnityEngine.Random.insideUnitSphere * 0.3f, 1.6f);
+            if ((Faults & (Fault.OilLeak | Fault.CoolantLeak | Fault.FuelLeak)) != 0 && UnityEngine.Random.value < 0.25f)
+            {
+                var col = (Faults & Fault.CoolantLeak) != 0 ? new Color32(80, 200, 150, 255) : (Faults & Fault.FuelLeak) != 0 ? new Color32(200, 170, 60, 255) : new Color32(40, 28, 16, 255);
+                fx.EmitPuff(at - transform.up * 0.4f, col, 0.05f, Vector3.down * 2f, 0.4f);
+            }
+        }
+
+        /// <summary>Top up fuel/oil/coolant from the inventory. Returns litres moved.</summary>
+        public int Service(Inventory inv)
+        {
+            int moved = 0;
+            moved += Fill(inv, ResourceType.Fuel, ref fuel, fuelCapacity);
+            if (!oilInFuel) moved += Fill(inv, ResourceType.Oil, ref oil, oilCapacity);
+            if (usesCoolant) moved += Fill(inv, ResourceType.Coolant, ref coolant, coolantCapacity);
+            return moved;
+        }
+
+        /// <summary>Drain fluids into the inventory (up to <paramref name="maxLitres"/> each). Returns litres moved.</summary>
+        public int Siphon(Inventory inv, int maxLitres = 200)
+        {
+            int moved = 0;
+            moved += Drain(inv, ResourceType.Fuel, ref fuel, maxLitres);
+            moved += Drain(inv, ResourceType.Oil, ref oil, maxLitres);
+            moved += Drain(inv, ResourceType.Coolant, ref coolant, maxLitres);
+            return moved;
+        }
+
+        public bool NeedsService(Inventory inv) =>
+            (fuel < fuelCapacity - 1f && inv.Get(ResourceType.Fuel) > 0) ||
+            (!oilInFuel && oil < oilCapacity - 0.5f && inv.Get(ResourceType.Oil) > 0) ||
+            (usesCoolant && coolant < coolantCapacity - 0.5f && inv.Get(ResourceType.Coolant) > 0);
+
+        public float TotalFluids => fuel + oil + coolant;
+
+        static int Fill(Inventory inv, ResourceType t, ref float level, float cap)
+        {
+            int n = Mathf.Min(inv.Get(t), Mathf.FloorToInt(cap - level));
+            if (n <= 0) return 0;
+            inv.TrySpend(t, n);
+            level += n;
+            return n;
+        }
+
+        static int Drain(Inventory inv, ResourceType t, ref float level, int max)
+        {
+            int n = Mathf.Min(max, Mathf.FloorToInt(level));
+            if (n <= 0) return 0;
+            level -= n;
+            inv.Add(t, n);
+            return n;
+        }
+
+        MadMax.World.Fire fire;
+        float heatSoak;
+
+        /// <summary>External heat (a fire next to or under the vehicle).</summary>
+        public void Heat(float amount) { heatSoak += amount; }
+
+        public bool Burning => fire;
+
+        void UpdateFire(float dt, Vector3 enginePos, ref Fault f)
+        {
+            var damage = GetComponent<VehicleDamage>();
+            float frame = damage ? damage.FrameDamage : 0f;
+            heatSoak = Mathf.Max(0f, heatSoak - dt * 0.2f);
+            // ignition: cooked engine, ruptured fuel system on a wreck, or outside heat
+            if (!fire && (Temperature > CriticalLimit + 15f || (frame > 0.85f && fuel > 1f && UnityEngine.Random.value < dt * 0.05f) || heatSoak > 2f))
+                fire = MadMax.World.Fire.Ignite(enginePos + Vector3.up * 0.3f, transform, 25f + fuel * 0.5f, 0.7f);
+            if (!fire) return;
+            f |= Fault.OnFire;
+            if (fuel > 0f) { fuel = Mathf.Max(0f, fuel - 0.4f * dt); fire.fuel = Mathf.Max(fire.fuel, 5f); }
+            foreach (var p in GetComponentsInChildren<VehiclePart>()) p.damage = Mathf.Min(1f, p.damage + 0.004f * dt);
+            Temperature += 3f * dt;
+        }
+
+        public string FaultText()
+        {
+            var f = Faults;
+            if ((f & Fault.OnFire) != 0) return "ON FIRE!";
+            if ((f & Fault.Flooded) != 0) return "ENGINE FLOODED";
+            if ((f & Fault.NoEngine) != 0) return "NO ENGINE";
+            if ((f & Fault.Seized) != 0) return "ENGINE SEIZED";
+            if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";
+            if ((f & Fault.NoOil) != 0) return "NO OIL - ENGINE DAMAGE";
+            if ((f & Fault.Overheat) != 0) return "OVERHEATING";
+            if ((f & Fault.NoRadiator) != 0) return "NO RADIATOR";
+            if ((f & Fault.CoolantLeak) != 0) return "RADIATOR LEAK";
+            if ((f & Fault.OilLeak) != 0) return "OIL LEAK";
+            if ((f & Fault.FuelLeak) != 0) return "FUEL LEAK";
+            if ((f & Fault.LowFuel) != 0) return "LOW FUEL";
+            if ((f & Fault.LowOil) != 0) return "LOW OIL";
+            if ((f & Fault.LowCoolant) != 0) return "LOW COOLANT";
+            return null;
+        }
+    }
+}

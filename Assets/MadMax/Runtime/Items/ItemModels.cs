@@ -1,0 +1,66 @@
+using System.Collections.Generic;
+using MadMax.Voxel;
+using UnityEngine;
+
+namespace MadMax.Items
+{
+    /// <summary>Small voxel models for inventory items that have no world mesh of their own (food, seeds, media,
+    /// clothes, supplies). Used for hotbar icons.</summary>
+    public static class ItemModels
+    {
+        static readonly Dictionary<string, Mesh> cache = new Dictionary<string, Mesh>();
+
+        public static Mesh Get(string id)
+        {
+            if (cache.TryGetValue(id, out var m) && m) return m;
+            var g = new VoxelGrid();
+            var c = ItemCatalog.Color(id);
+            var dark = new Color32((byte)(c.r * 0.6f), (byte)(c.g * 0.6f), (byte)(c.b * 0.6f), 255);
+            switch (ItemCatalog.Category(id))
+            {
+                case ItemCategory.Food:
+                    if (id.StartsWith("drink_") || id == "food_jam") { g.CylY(0, 0, 2f, 0, 6, Pal.Solid(c)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); }
+                    else if (id == "food_can" || id == "food_ration" || id == "food_stew" || id == "food_soup") { g.CylY(0, 0, 2.6f, 0, 5, p => p.y == 0 || p.y == 5 ? Pal.Chrome[2] : c); g.Box(-2, 2, 2, 2, 3, 2, Pal.Solid(Pal.Cream[3])); }
+                    else if (id == "food_corn" || id == "food_corn_roast" || id == "food_carrot") { g.Box(0, 0, 0, 0, 6, 0, Pal.Solid(c)); g.Box(-1, 1, 0, 1, 5, 0, Pal.Solid(c)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Hex("5a8a2a"))); }
+                    else
+                    {
+                        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++) for (int z = -2; z <= 2; z++)
+                            if (new Vector3(x, y - 2, z).sqrMagnitude <= 5f) g.Set(x, y, z, Pal.Solid(y >= 3 ? c : x + z > 0 ? dark : c));
+                        g.Set(0, 5, 0, Pal.Solid(Pal.Hex("4a6a20")));
+                    }
+                    break;
+                case ItemCategory.Seed:
+                    if (id.StartsWith("sapling_")) { g.Box(-1, 0, -1, 1, 1, 1, Pal.Ramp(Pal.Rust, 1)); g.Box(0, 2, 0, 0, 5, 0, Pal.Ramp(Pal.Wood, 1)); g.Box(-1, 5, 0, 1, 6, 0, Pal.Solid(Pal.Hex("46862c"))); }
+                    else { g.Box(-2, 0, -1, 2, 5, 1, Pal.Ramp(Pal.Cream, 1)); g.Box(-1, 2, 2, 1, 3, 2, Pal.Solid(c)); g.Box(-2, 6, 0, 2, 6, 0, Pal.Solid(Pal.Cream[0])); }
+                    break;
+                case ItemCategory.Media:
+                    if (id.StartsWith("vhs_")) { g.Box(-4, 0, -1, 4, 5, 1, Pal.Ramp(Pal.Black, 2)); g.Box(-3, 2, 2, 3, 3, 2, Pal.Solid(c)); }
+                    else { g.Box(-3, 0, -1, 3, 7, 1, p => p.x == -3 ? Pal.Cream[2] : c); g.Box(-2, 5, 2, 2, 5, 2, Pal.Solid(Pal.Cream[3])); }
+                    break;
+                case ItemCategory.Clothing:
+                    g.Box(-3, 0, 0, 3, 6, 0, Pal.Solid(c)); g.Box(-5, 4, 0, 5, 6, 0, Pal.Solid(c)); g.Box(-1, 6, 0, 1, 6, 0, Pal.Solid(dark));
+                    break;
+                case ItemCategory.Throwable:
+                    g.CylY(0, 0, 1.6f, 0, 5, Pal.Ramp(Pal.Glass, 2)); g.Box(0, 6, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); g.Set(0, 9, 0, Pal.Solid(Pal.Amber));
+                    break;
+                case ItemCategory.Ammo:
+                    for (int i = -2; i <= 2; i += 2) { g.Box(i, 0, 0, i, 3, 0, Pal.Solid(Pal.Hex("b02818"))); g.Set(i, 4, 0, Pal.Solid(Pal.Bronze[2])); }
+                    break;
+                case ItemCategory.Crop:
+                    for (int x = -2; x <= 2; x++) for (int y = 0; y <= 3; y++) if (Mathf.Abs(x) + Mathf.Abs(y - 2) <= 3) g.Set(x, y, 0, Pal.Solid(c));
+                    break;
+                default:
+                    if (id == ItemIds.Canteen) { g.CylZ(0, 3, 3f, 0, 1, Pal.Ramp(Pal.Olive, 2)); g.Box(0, 6, 0, 0, 7, 0, Pal.Solid(Pal.Black[1])); }
+                    else if (id == ItemIds.Sponge) { g.Box(-3, 0, -2, 3, 3, 2, Pal.Solid(Pal.Hex("e8c848"))); g.Box(-3, 3, -2, 3, 3, 2, Pal.Solid(Pal.Hex("5aa050"))); g.Set(-1, 1, 2, Pal.Solid(Pal.Hex("b89830"))); g.Set(2, 2, 2, Pal.Solid(Pal.Hex("b89830"))); }
+                    else if (id == ItemIds.Pills) { g.CylY(0, 0, 1.6f, 0, 4, Pal.Solid(Pal.Cream[3])); g.Box(-1, 5, -1, 1, 5, 1, Pal.Solid(Pal.TailR)); }
+                    else if (id == ItemIds.Fertilizer) { g.Box(-3, 0, -2, 3, 5, 2, Pal.Ramp(Pal.Sand, 1)); g.Box(-1, 3, 3, 1, 4, 3, Pal.Solid(Pal.Hex("46862c"))); }
+                    else { g.Box(-3, 0, -2, 3, 1, 2, Pal.Ramp(Pal.Cream, 3)); }
+                    break;
+            }
+            g.Bevel();
+            m = VoxelMesher.Build(g, "Item_" + id);
+            cache[id] = m;
+            return m;
+        }
+    }
+}
