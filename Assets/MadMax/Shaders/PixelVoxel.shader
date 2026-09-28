@@ -12,6 +12,9 @@ Shader "MadMax/PixelVoxel"
         _SnowMask ("Snow Mask", Range(0,1)) = 1
         _CutY ("Cutaway Height", Float) = 100000
         _NoFog ("Ignore Fog (sky)", Range(0,1)) = 0
+        _Sway ("Wind Sway by Height (trees)", Float) = 0
+        _SwayTip ("Wind Sway by Vertex Alpha (grass)", Float) = 0
+        _WorldCut ("Underground Cutaway", Range(0,1)) = 0
     }
     SubShader
     {
@@ -30,6 +33,9 @@ Shader "MadMax/PixelVoxel"
             half _SnowMask;
             float _CutY;
             half _NoFog;
+            half _Sway;
+            half _SwayTip;
+            half _WorldCut;
         CBUFFER_END
         // global settings (0 = default look)
         float _MadMaxOutlineDelta;
@@ -55,6 +61,30 @@ Shader "MadMax/PixelVoxel"
             return saturate((n - (1.0 - _MadMaxClouds.x)) * 5.0) * _MadMaxClouds.y;
         }
         float _MadMaxDither;     // ordered dither between light bands
+        float4 _MadMaxWind;      // xz wind (m/s), y gust 0..1, w time
+        float4 _MadMaxCut;       // underground cutaway: xy centre (world xz), z radius (0 = off), w height
+
+        // wind bend: trees by height above their origin (_Sway), grass and vines by vertex alpha (_SwayTip, 255 = rooted)
+        float3 WindSway(float3 ws, float3 os, half a)
+        {
+            float h = max(os.y, 0.0);
+            float w = _Sway * h * h + _SwayTip * (1.0 - a);
+            if (w <= 0.0) return ws;
+            float2 wind = _MadMaxWind.xz;
+            float2 origin = float2(UNITY_MATRIX_M._m03, UNITY_MATRIX_M._m23);
+            float ph = _MadMaxWind.w * 1.9 + dot(ws.xz, float2(0.31, 0.23)) + dot(origin, float2(0.73, 1.37));
+            float wave = 0.55 + 0.35 * sin(ph) + 0.2 * sin(ph * 2.7 + 1.3);
+            float2 off = wind * (w * wave * (0.35 + _MadMaxWind.y));
+            return ws + float3(off.x, -dot(off, off) * 0.6, off.y);
+        }
+
+        // > 0 keeps the fragment: per-renderer building cutaway (_CutY) and the radial underground cutaway
+        float CutMask(float3 ws)
+        {
+            float c = _CutY - ws.y;
+            if (_WorldCut > 0.5 && _MadMaxCut.z > 0.0 && distance(ws.xz, _MadMaxCut.xy) < _MadMaxCut.z) c = min(c, _MadMaxCut.w - ws.y);
+            return c;
+        }
 
         half Bayer4(float2 px)
         {
@@ -83,7 +113,7 @@ Shader "MadMax/PixelVoxel"
             Varyings vert (Attributes i)
             {
                 Varyings o;
-                o.positionWS = TransformObjectToWorld(i.positionOS.xyz);
+                o.positionWS = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS = TransformObjectToWorldNormal(i.normalOS);
                 o.color = i.color;
@@ -93,7 +123,7 @@ Shader "MadMax/PixelVoxel"
 
             half4 frag (Varyings i) : SV_Target
             {
-                clip(_CutY - i.positionWS.y);                              // building cutaway above the player
+                clip(CutMask(i.positionWS));                               // building / underground cutaway above the player
                 Light light = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 half ndl = saturate(dot(normalize(i.normalWS), light.direction));
                 half lit = ndl * light.shadowAttenuation * (1.0h - CloudShadow(i.positionWS));   // drifting cloud shadows
@@ -146,14 +176,14 @@ Shader "MadMax/PixelVoxel"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_fog
-            struct Attributes { float4 positionOS : POSITION; float3 smoothNormal : TEXCOORD3; };
-            struct Varyings { float4 positionCS : SV_POSITION; float wy : TEXCOORD0; half fog : TEXCOORD1; };
+            struct Attributes { float4 positionOS : POSITION; float3 smoothNormal : TEXCOORD3; half4 color : COLOR; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 ws : TEXCOORD0; half fog : TEXCOORD1; };
 
             Varyings vert (Attributes i)
             {
                 Varyings o;
-                o.wy = TransformObjectToWorld(i.positionOS.xyz).y;
-                float4 cs = TransformObjectToHClip(i.positionOS.xyz);
+                o.ws = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
+                float4 cs = TransformWorldToHClip(o.ws);
                 float3 nWS = TransformObjectToWorldNormal(i.smoothNormal);
                 float2 nCS = mul((float3x3)UNITY_MATRIX_VP, nWS).xy;
                 if (dot(nCS, nCS) > 1e-6)
@@ -162,7 +192,7 @@ Shader "MadMax/PixelVoxel"
                 o.fog = ComputeFogFactor(cs.z);
                 return o;
             }
-            half4 frag (Varyings i) : SV_Target { clip(_CutY - i.wy); return half4(lerp(MixFog(_OutlineColor.rgb, i.fog), _OutlineColor.rgb, _NoFog), 1); }   // outlines fade into fog too
+            half4 frag (Varyings i) : SV_Target { clip(CutMask(i.ws)); return half4(lerp(MixFog(_OutlineColor.rgb, i.fog), _OutlineColor.rgb, _NoFog), 1); }   // outlines fade into fog too
             ENDHLSL
         }
 
@@ -176,12 +206,12 @@ Shader "MadMax/PixelVoxel"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             float3 _LightDirection;
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; };
             struct Varyings { float4 positionCS : SV_POSITION; };
             Varyings vert (Attributes i)
             {
                 Varyings o;
-                float3 ws = TransformObjectToWorld(i.positionOS.xyz);
+                float3 ws = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
                 float3 n = TransformObjectToWorldNormal(i.normalOS);
                 float4 cs = TransformWorldToHClip(ApplyShadowBias(ws, n, _LightDirection));
                 #if UNITY_REVERSED_Z
@@ -204,9 +234,10 @@ Shader "MadMax/PixelVoxel"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            struct V { float4 positionCS : SV_POSITION; float wy : TEXCOORD0; };
-            V vert (float4 p : POSITION) { V o; o.positionCS = TransformObjectToHClip(p.xyz); o.wy = TransformObjectToWorld(p.xyz).y; return o; }
-            half frag (V i) : SV_Target { clip(_CutY - i.wy); return 0; }
+            struct A { float4 p : POSITION; half4 color : COLOR; };
+            struct V { float4 positionCS : SV_POSITION; float3 ws : TEXCOORD0; };
+            V vert (A i) { V o; o.ws = WindSway(TransformObjectToWorld(i.p.xyz), i.p.xyz, i.color.a); o.positionCS = TransformWorldToHClip(o.ws); return o; }
+            half frag (V i) : SV_Target { clip(CutMask(i.ws)); return 0; }
             ENDHLSL
         }
 
@@ -218,10 +249,10 @@ Shader "MadMax/PixelVoxel"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float wy : TEXCOORD1; };
-            Varyings vert (Attributes i) { Varyings o; o.positionCS = TransformObjectToHClip(i.positionOS.xyz); o.normalWS = TransformObjectToWorldNormal(i.normalOS); o.wy = TransformObjectToWorld(i.positionOS.xyz).y; return o; }
-            half4 frag (Varyings i) : SV_Target { clip(_CutY - i.wy); return half4(normalize(i.normalWS), 0); }
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 ws : TEXCOORD1; };
+            Varyings vert (Attributes i) { Varyings o; o.ws = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a); o.positionCS = TransformWorldToHClip(o.ws); o.normalWS = TransformObjectToWorldNormal(i.normalOS); return o; }
+            half4 frag (Varyings i) : SV_Target { clip(CutMask(i.ws)); return half4(normalize(i.normalWS), 0); }
             ENDHLSL
         }
     }

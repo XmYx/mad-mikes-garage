@@ -165,7 +165,7 @@ namespace MadMax.World
                 var shape = rain.shape;
                 shape.scale = new Vector3(span, 0.1f, span);
                 float area = span * span / 1600f;
-                em.rateOverTime = Raining ? (snowing ? 900f : 2500f) * area : 0f;
+                em.rateOverTime = Raining && !MadMax.Game.OccluderFade.Underground ? (snowing ? 900f : 2500f) * area : 0f;
                 var main = rain.main;
                 main.maxParticles = Mathf.Clamp(Mathf.RoundToInt(6000 * area), 6000, 40000);
                 rain.transform.position = new Vector3(centre.x, centre.y + 14f, centre.z);

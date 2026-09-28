@@ -55,6 +55,7 @@ namespace MadMax.Game
         public List<ItemSave> items = new List<ItemSave>();
         public bool raining;
         public float wetness, snow, temperature = float.NaN, lakeRise, hours = -1f;
+        public int day;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

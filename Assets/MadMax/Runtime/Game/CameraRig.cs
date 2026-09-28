@@ -194,7 +194,8 @@ namespace MadMax.Game
                 RenderSettings.fogEndDistance = focusDepth - 12f + 12f / Mathf.Max(0.02f, mistAmount * 0.5f);
             }
             MadMax.World.Atmosphere.SkyVisible = perspectiveFog;
-            cam.backgroundColor = sky;
+            cam.backgroundColor = OccluderFade.Underground ? new Color(0.045f, 0.032f, 0.026f) : sky;   // earth around an underground cutaway
+            if (fade) fade.worldCut = mode == ViewMode.Isometric || mode == ViewMode.TiltShift;
             pixel.postMaterial = mode == ViewMode.TiltShift ? tiltShiftMaterial : null;
             bool fps = mode == ViewMode.FirstPerson;
             if (glass) glass.enabled = !fps;

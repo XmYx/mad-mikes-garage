@@ -58,7 +58,7 @@ namespace MadMax.Game
         /// <summary>Snapshot of the world (also the join payload for network clients).</summary>
         public SaveData CaptureSave(bool forNetwork = false)
         {
-            var d = new SaveData { seed = seed, raining = Weather.Raining, wetness = Weather.Wetness, snow = Weather.Snow, temperature = Weather.Temperature, lakeRise = Weather.LakeRise, hours = DayNight.Hours, searched = new List<string>(Lootable.Searched), hasSpawn = spawnPoint.HasValue, spawn = spawnPoint ?? Vector3.zero, resources = Inventory.ResourceArray, rules = Rules, stats = Stats };
+            var d = new SaveData { seed = seed, raining = Weather.Raining, wetness = Weather.Wetness, snow = Weather.Snow, temperature = Weather.Temperature, lakeRise = Weather.LakeRise, hours = DayNight.Hours, day = DayNight.Day, searched = new List<string>(Lootable.Searched), hasSpawn = spawnPoint.HasValue, spawn = spawnPoint ?? Vector3.zero, resources = Inventory.ResourceArray, rules = Rules, stats = Stats };
             if (cameraRig) d.cameraMode = (int)cameraRig.mode;
             foreach (var kv in Inventory.Items) if (kv.Value > 0) d.items.Add(new ItemSave { id = kv.Key, count = kv.Value });
             d.hotbar = (string[])Hotbar.Clone();
@@ -219,6 +219,7 @@ namespace MadMax.Game
             terrain.LoadEdits(d.terrain);
             Weather.Restore(d.raining, d.wetness, d.snow, d.temperature, d.lakeRise);
             if (d.hours >= 0f) DayNight.SetHours(d.hours);
+            DayNight.SetDay(d.day);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;
             if (d.pumpKeys != null) for (int i = 0; i < d.pumpKeys.Count && i < d.pumpUsed.Count; i++) GasPump.Used[d.pumpKeys[i]] = d.pumpUsed[i];

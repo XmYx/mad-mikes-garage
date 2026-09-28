@@ -10,6 +10,7 @@ namespace MadMax.World
         public Biome biome;
         public float water;          // lake surface height (NaN = none)
         public float shore;          // 0..1, 1 = at the waterline
+        public byte feature;         // Site ground: 0 none, 1 rock (mesa slopes), 2 concrete floor (bunker), 3 gravel (tunnel floor)
     }
 
     public enum Biome { Desert, Forest, Tropical, Nuclear, Village, Town, City }
@@ -31,7 +32,7 @@ namespace MadMax.World
     }
 
     /// <summary>Deterministic wasteland: rolling dunes, ridges, low mud basins and a graded road network.</summary>
-    public class WorldGen
+    public partial class WorldGen
     {
         public readonly int seed;
         public readonly float halfSize;
@@ -228,6 +229,8 @@ namespace MadMax.World
                     wet = Mathf.Max(wet, Mathf.Clamp01(1.3f - t) * 0.9f);
                 }
                 if (s.biome == Biome.Tropical) wet = Mathf.Clamp01(wet + 0.15f);
+                var site = SiteAt(x, z);
+                if (site != null) h = ShapeSite(site, x, z, h, ref s, ref wet);
             }
             var hits = threadHits ??= new List<RoadHit>();
             roads.QueryAll(x, z, hits);

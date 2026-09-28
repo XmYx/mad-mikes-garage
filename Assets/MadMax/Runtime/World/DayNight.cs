@@ -8,11 +8,14 @@ namespace MadMax.World
     {
         public static float Hours { get; private set; } = 10f;          // 0..24
         public static float Darkness { get; private set; }               // 0 day .. 1 night
+        public static int Day { get; private set; }                      // whole days since the world began
+        /// <summary>World age in game days (growth clocks: vegetation, overgrowth).</summary>
+        public static float TotalDays => Day + Hours / 24f;
         public static float DayMinutes = 24f;                            // real minutes per game day (0 = frozen at noon-ish)
         static readonly int NightId = Shader.PropertyToID("_MadMaxNight");
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Hours = 10f; Darkness = 0f; DayMinutes = 24f; Shader.SetGlobalFloat(NightId, 0f); }
+        static void ResetStatics() { Hours = 10f; Darkness = 0f; Day = 0; DayMinutes = 24f; Shader.SetGlobalFloat(NightId, 0f); }
 
         public Light sun;
         float sunBase;
@@ -25,13 +28,19 @@ namespace MadMax.World
         }
 
         public static void SetHours(float h) { Hours = Mathf.Repeat(h, 24f); }
+        public static void SetDay(int d) { Day = Mathf.Max(0, d); }
 
         /// <summary>Sky / fog colour at the current time.</summary>
         public static Color Tint(Color day) => Color.Lerp(day, new Color(0.05f, 0.06f, 0.12f), Darkness * 0.92f);
 
         void Update()
         {
-            if (DayMinutes > 0f) Hours = Mathf.Repeat(Hours + Time.deltaTime * 24f / (DayMinutes * 60f), 24f);
+            if (DayMinutes > 0f)
+            {
+                float h = Hours + Time.deltaTime * 24f / (DayMinutes * 60f);
+                if (h >= 24f) Day++;
+                Hours = Mathf.Repeat(h, 24f);
+            }
             // sun elevation: -1 at midnight, 1 at noon; darkness ramps through dusk/dawn
             float elev = Mathf.Sin((Hours - 6f) / 24f * Mathf.PI * 2f);
             Darkness = Mathf.Clamp01((0.18f - elev) / 0.36f);

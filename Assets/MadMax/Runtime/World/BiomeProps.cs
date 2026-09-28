@@ -503,7 +503,7 @@ namespace MadMax.World
                 int variant = rnd.Next(4), yawSteps = rnd.Next(4);
                 string key = $"v{c.x},{c.y},{i}";
                 var s = world.Sample(x, z);
-                if (s.roadDist < 7f || !float.IsNaN(s.water) || s.shore > 0.3f) continue;
+                if (s.roadDist < 7f || !float.IsNaN(s.water) || s.shore > 0.3f || s.feature != 0) continue;
                 if (world.SettlementAt(x, z) != null && biome != Biome.Village) continue;
                 string id; string name; bool dyn = false;
                 switch (biome)
@@ -593,6 +593,9 @@ namespace MadMax.World
             loot.title = pl.visual == "fridge" ? "FRIDGE" : pl.visual == "crate" ? "BOX" : pl.visual == "workbench" ? "WORKBENCH" : pl.visual == "locker" ? "LOCKER" : "SHELF";
         }
 
+        static bool IsBuilding(string id) => id.StartsWith("Farmhouse") || id.StartsWith("BrickHouse") || id.StartsWith("Tower") || id.StartsWith("Shop")
+                                             || id.StartsWith("Shack") || id.StartsWith("Haystack") || id.StartsWith("GasPump") || id.StartsWith("Fence");
+
         static DestructibleVoxels SpawnById(DeformableTerrain terrain, string id, string name, Transform parent, Material mat, Vector3 pos, float yaw, bool dyn, Dictionary<string, VoxelGrid> store, string key, Lookup legacy)
         {
             VoxelGrid grid; Mesh mesh; float size;
@@ -603,8 +606,16 @@ namespace MadMax.World
                 if (l == null) return null;
                 (grid, mesh, size) = l.Value;
             }
+            bool plant = name == "Tree" || name == "Bush";
+            if (plant && terrain.vegetationMaterial) mat = terrain.vegetationMaterial;
             var d = DestructibleVoxels.Spawn(name, grid, mesh, mat, parent, pos, yaw, dyn, store, key, size, id);
-            if (d && id == "Barrel0") d.gameObject.AddComponent<Hazard>().radiation = 0.6f;
+            if (!d) return null;
+            if (id == "Barrel0") d.gameObject.AddComponent<Hazard>().radiation = 0.6f;
+            if (!dyn && IsBuilding(id))
+            {
+                FloraBlocker.Add(d.gameObject);
+                Overgrowth.Attach(d, grid, size, key, terrain.World.BiomeAt(pos.x, pos.z));
+            }
             return d;
         }
     }

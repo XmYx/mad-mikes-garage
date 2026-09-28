@@ -426,6 +426,13 @@ namespace MadMax.Building
             p.id = id;
             p.hits = def.hits;
             def.setup?.Invoke(go);
+            // pieces standing on the ground keep the grass out from under them
+            var t = MadMax.World.DeformableTerrain.Instance;
+            if (!dynamicParent && t && t.World != null)
+            {
+                var b = go.GetComponent<Renderer>().bounds;
+                if (b.min.y < t.Height(b.center.x, b.center.z) + 0.3f) MadMax.World.FloraBlocker.Add(go, 0.02f);
+            }
             return p;
         }
     }

@@ -5,12 +5,21 @@ namespace MadMax.Game
 {
     /// <summary>Cutaway for props standing between the camera and the followed target (buildings, trees): everything
     /// above the target's head is clipped (shader _CutY), so the player stays visible and building interiors open up
-    /// like a doll's house. Their shadows stay whole.</summary>
+    /// like a doll's house. Their shadows stay whole. Under a bunker or tunnel roof (<see cref="MadMax.World.Subterranean"/>)
+    /// the whole surface around the target is cut at the same height (shader global <c>_MadMaxCut</c>, materials with
+    /// <c>_WorldCut</c>: terrain, flora, world props), leaving a dark earth backdrop.</summary>
     public class OccluderFade : MonoBehaviour
     {
         public Transform target;
         public Camera cam;
         public float radius = 1.2f;
+        /// <summary>Top-down views only (CameraRig): perspective views look around inside instead.</summary>
+        public bool worldCut = true;
+        public float undergroundRadius = 26f;
+        public static bool Underground { get; private set; }
+        static readonly int WorldCutId = Shader.PropertyToID("_MadMaxCut");
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { Underground = false; Shader.SetGlobalVector(WorldCutId, Vector4.zero); }
         readonly HashSet<Renderer> cut = new HashSet<Renderer>(), now = new HashSet<Renderer>();
         readonly RaycastHit[] hits = new RaycastHit[32];
         readonly Collider[] around = new Collider[32];
@@ -23,6 +32,7 @@ namespace MadMax.Game
             now.Clear();
             mpb ??= new MaterialPropertyBlock();
             float cutY = 0f;
+            bool under = false;
             if (target && cam && target.gameObject.activeInHierarchy)
             {
                 Vector3 feet = target.position, head = feet + Vector3.up * 1f;
@@ -34,7 +44,17 @@ namespace MadMax.Game
                 // standing inside a building: open it up even when its walls are not in the line of sight
                 int m = Physics.OverlapSphereNonAlloc(head, 0.6f, around, ~0, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < m; i++) Consider(around[i], head);
-                if (Physics.Raycast(head, Vector3.up, out var roof, 40f, ~0, QueryTriggerInteraction.Ignore)) Consider(roof.collider, head);
+                if (Physics.Raycast(head, Vector3.up, out var roof, 40f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    Consider(roof.collider, head);
+                    under = worldCut && roof.collider.GetComponentInParent<MadMax.World.Subterranean>();
+                }
+                if (under) Shader.SetGlobalVector(WorldCutId, new Vector4(feet.x, feet.z, undergroundRadius, cutY));
+            }
+            if (under != Underground)
+            {
+                Underground = under;
+                if (!under) Shader.SetGlobalVector(WorldCutId, Vector4.zero);
             }
             foreach (var r in now)
             {

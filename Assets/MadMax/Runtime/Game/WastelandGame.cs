@@ -139,6 +139,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.Audio.RadioNetwork>();
             gameObject.AddComponent<MadMax.Audio.AmbientAudio>();
             gameObject.AddComponent<MadMax.World.Atmosphere>();
+            gameObject.AddComponent<MadMax.World.WindDust>();
             Menus.Init(this);
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);
 

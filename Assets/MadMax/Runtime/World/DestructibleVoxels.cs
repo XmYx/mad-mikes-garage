@@ -39,6 +39,12 @@ namespace MadMax.World
         static readonly Color32 CrackColor = new Color32(12, 8, 6, 255);
 
         public int VoxelCount => grid != null ? grid.Count : 0;
+        /// <summary>Current voxels (the shared template until the first hit). Read-only for other systems.</summary>
+        public VoxelGrid Grid => grid;
+        public string TemplateId => templateId;
+        public string StateKey => stateKey;
+        /// <summary>Raised after voxels were carved away (overlays such as <see cref="Overgrowth"/> refresh).</summary>
+        public event System.Action Carved;
 
         static readonly Dictionary<string, DestructibleVoxels> byKey = new Dictionary<string, DestructibleVoxels>();
         static readonly Dictionary<string, List<(Vector3 p, Vector3 d, float r, float power)>> pendingCarves = new Dictionary<string, List<(Vector3, Vector3, float, float)>>();
@@ -215,6 +221,7 @@ namespace MadMax.World
             ownMesh = VoxelMesher.Build(grid, name, voxelSize);
             SetMesh(ownMesh);
             if (old) Destroy(old);
+            if (removedVox.Count > 0) Carved?.Invoke();
             return removedVox.Count;
         }
 

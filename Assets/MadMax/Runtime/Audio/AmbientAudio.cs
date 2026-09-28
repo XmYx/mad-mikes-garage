@@ -15,7 +15,7 @@ namespace MadMax.Audio
             bool raining = MadMax.World.Weather.Raining && !MadMax.World.Weather.Snowing;
             rain = Mathf.MoveTowards(rain, raining ? 1f : 0f, Time.deltaTime * 0.3f);
             Sfx.Loop(this, "rain", rain * (sheltered ? 0.35f : 0.6f), 1f, 30f, true);
-            Sfx.Loop(this, "wind", MadMax.World.Weather.Raining ? 0.3f : 0.15f, 0.9f, 30f, true);
+            Sfx.Loop(this, "wind", Mathf.Clamp(0.05f + MadMax.World.WindDust.Strength * 0.04f + MadMax.World.WindDust.Gust * 0.08f, 0.05f, 0.45f), 0.8f + MadMax.World.WindDust.Gust * 0.25f, 30f, true);
             if (raining && Time.time > nextThunder)
             {
                 nextThunder = Time.time + Random.Range(25f, 70f);

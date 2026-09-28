@@ -17,7 +17,7 @@ namespace MadMax.World
     /// <summary>Chunk-streamed heightfield with a persistent deformation layer. Wheels press ruts, spinning wheels dig,
     /// displaced soil builds berms. Wet ground deforms far more; roads barely at all.</summary>
     [DefaultExecutionOrder(-50)]
-    public class DeformableTerrain : MonoBehaviour
+    public partial class DeformableTerrain : MonoBehaviour
     {
         public const int N = 32;              // cells per chunk side
         public const float Cell = 0.25f;      // metres per cell
@@ -34,6 +34,8 @@ namespace MadMax.World
 
         public Material material;
         public Material propMaterial;
+        /// <summary>Instances for world-spawned props (underground cutaway) and swaying vegetation.</summary>
+        public Material worldPropMaterial, vegetationMaterial;
         public Transform focus;
         /// <summary>Additional streaming centres (server: every connected player).</summary>
         public readonly System.Collections.Generic.List<Transform> extraFoci = new System.Collections.Generic.List<Transform>();
@@ -56,7 +58,13 @@ namespace MadMax.World
             public float lastUse;          // Time.time of the last query (queried data is kept, see cleanup)
             public float[] h, d, wet, road, dist, along, water, shore;
             public bool[] paved;
-            public byte[] biome;
+            public byte[] biome, feature;
+            public float[] trampled;          // game day the ground cover was flattened (ruts, tyres, digging)
+            public GameObject floraGo;
+            public Mesh floraMesh;
+            public bool floraDirty;
+            public float floraNext;
+            public int floraKey = -1;
             public GameObject waterGo;
             public byte[] pave, compact;      // 0 none, 1 asphalt, 2 concrete; compacted by a roller
             public float[] cure;              // 0 wet .. 1 set
@@ -78,8 +86,17 @@ namespace MadMax.World
 
         public void Init(WorldGen world, Material terrainMat, Material propMat)
         {
-            World = world; material = terrainMat; propMaterial = propMat; Instance = this;
-            if (terrainMat) terrainMat.SetFloat("_SnowMask", 0f);        // terrain paints its own snow
+            World = world; propMaterial = propMat; Instance = this;
+            material = terrainMat ? new Material(terrainMat) : null;
+            if (material) { material.SetFloat("_SnowMask", 0f); material.SetFloat("_WorldCut", 1f); }   // terrain paints its own snow
+            if (propMat)
+            {
+                worldPropMaterial = new Material(propMat) { name = "WorldProps" };
+                worldPropMaterial.SetFloat("_WorldCut", 1f);
+                vegetationMaterial = new Material(worldPropMaterial) { name = "Vegetation" };
+                vegetationMaterial.SetFloat("_Sway", 0.0016f);
+                InitFlora(propMat);
+            }
             SetViewRadius(viewRadius);
             if (vb == null)
             {
@@ -117,7 +134,7 @@ namespace MadMax.World
             {
                 c = c, h = new float[V * V], d = new float[V * V], wet = new float[V * V], road = new float[V * V],
                 dist = new float[V * V], along = new float[V * V], paved = new bool[V * V],
-                water = new float[V * V], shore = new float[V * V], biome = new byte[V * V],
+                water = new float[V * V], shore = new float[V * V], biome = new byte[V * V], feature = new byte[V * V],
                 pave = new byte[V * V], compact = new byte[V * V], cure = new float[V * V]
             };
             for (int j = 0; j < V; j++)
@@ -127,7 +144,7 @@ namespace MadMax.World
                 var s = world.Sample((c.x * N + i) * Cell, (c.y * N + j) * Cell);
                 ch.h[k] = s.height; ch.wet[k] = s.baseWet; ch.road[k] = s.road;
                 ch.dist[k] = s.roadDist; ch.along[k] = s.along; ch.paved[k] = s.paved;
-                ch.water[k] = s.water; ch.shore[k] = s.shore; ch.biome[k] = (byte)s.biome;
+                ch.water[k] = s.water; ch.shore[k] = s.shore; ch.biome[k] = (byte)s.biome; ch.feature[k] = s.feature;
             }
             return ch;
         }
@@ -245,6 +262,7 @@ namespace MadMax.World
             var ch = Data(new Vector2Int(cx, cz));
             ch.d[lj * V + li] = v;
             ch.meshDirty = ch.colDirty = ch.deformed = true;
+            MarkTrampled(ch, lj * V + li);
             if (terraforming) ch.terraformed = true;
         }
         bool terraforming;
@@ -252,6 +270,7 @@ namespace MadMax.World
         /// <summary>Press a tyre footprint into the ground. <paramref name="dig"/> (0..1) is wheel-spin that excavates.</summary>
         public void Deform(Vector3 contact, Vector3 fwd, Vector3 side, float width, float load, float dig, float dt)
         {
+            Trample(contact, width * 0.5f);
             var s = SurfaceAt(contact.x, contact.z);
             float sink = Mathf.Min(maxSink, s.softness * load * sinkPerNewton);
             float extra = dig * s.softness * digRate * dt;
@@ -334,10 +353,13 @@ namespace MadMax.World
                 if (near) continue;
                 Destroy(ch.go); Destroy(ch.mesh);
                 ch.go = null; ch.mesh = null; ch.col = null;
+                DropFlora(ch);
                 active.RemoveAt(i);
             }
 
             UpdateCuring(Time.deltaTime);
+            UpdateFlora();
+            SiteBuilder.Prewarm(World, focus.position, viewRadius + 60f);
             int rebuilt = 0;
             foreach (var ch in active)
             {
@@ -391,7 +413,8 @@ namespace MadMax.World
             ch.colDirty = false;
             active.Add(ch);
             BuildWater(ch);
-            PropLibrary.Populate(this, ch.c, ch.go.transform, propMaterial);
+            PropLibrary.Populate(this, ch.c, ch.go.transform, worldPropMaterial ? worldPropMaterial : propMaterial);
+            SiteBuilder.Populate(this, ch.c, ch.go.transform, worldPropMaterial ? worldPropMaterial : propMaterial);
         }
 
         // ------------------------------------------------------------------ terraforming (excavators, pavers, rollers)
@@ -673,6 +696,30 @@ namespace MadMax.World
         static readonly Color32[] Concrete = { C(0x4a4846), C(0x565452), C(0x625f5c), C(0x6e6b66), C(0x7a7670) };
         static readonly Color32 Litter = C(0x5a3a1e), Glow = C(0x9cff3a), Soil = C(0x4a2e1a), Crop = C(0x7a8a2a), Joint = C(0x34322f), LakeBed = C(0x2e2a22);
         static Color32 C(int hex) => new Color32((byte)(hex >> 16), (byte)(hex >> 8), (byte)hex, 255);
+        static readonly Color32[] Sandstone = { C(0x6a3e24), C(0x7e4c2c), C(0x925a34), C(0xa66a3e), C(0xb87c4a) };
+        static readonly Color32[] RockGrey = { C(0x34302c), C(0x403b36), C(0x4c4640), C(0x5a534b), C(0x686056) };
+
+        /// <summary>Site ground: mesa rock (strata by height), bunker concrete, tunnel gravel.</summary>
+        Color32 FeatureColor(Chunk ch, int k, byte feat, float hs, float gx, float gz)
+        {
+            float y = ch.h[k] + ch.d[k];
+            switch (feat)
+            {
+                case 1:
+                {
+                    bool sand = (Biome)ch.biome[k] == Biome.Desert;
+                    var ramp = sand ? Sandstone : RockGrey;
+                    int band = Mathf.FloorToInt(y * 1.6f + Mathf.PerlinNoise(gx * 0.2f, gz * 0.2f) * 0.8f);
+                    int b = Mathf.Clamp(1 + (band % 3 + 3) % 3 + (hs > 0.85f ? 1 : hs < 0.1f ? -1 : 0), 0, 4);
+                    return ramp[b];
+                }
+                case 2:
+                    if (Mathf.Repeat(gx, 2f) < Cell * 0.99f || Mathf.Repeat(gz, 2f) < Cell * 0.99f) return Joint;
+                    return Concrete[hs < 0.1f ? 0 : hs < 0.75f ? 1 : 2];
+                default:
+                    return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
+            }
+        }
 
         static float Hash(int x, int z)
         {
@@ -696,7 +743,13 @@ namespace MadMax.World
             float gx = gi * Cell, gz = gj * Cell;
 
             Color32 col;
-            if (road > hs * 0.6f + 0.3f)
+            byte feat = ch.feature[k];
+            if (feat != 0)
+            {
+                col = FeatureColor(ch, k, feat, hs, gx, gz);
+                if (feat >= 2) return col;                        // under a roof: no puddles or snow
+            }
+            else if (road > hs * 0.6f + 0.3f)
             {
                 if (paved)
                 {

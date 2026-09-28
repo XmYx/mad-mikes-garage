@@ -39,7 +39,7 @@ namespace MadMax.World
             foreach (var t in shacks) if (t.id == id) return t.grid;
             if (crate.id == id) return crate.grid;
             if (table.id == id) return table.grid;
-            return BiomeProps.TemplateGrid(id);
+            return BiomeProps.TemplateGrid(id) ?? SiteBuilder.TemplateGrid(id);
         }
 
         static void Ensure()
