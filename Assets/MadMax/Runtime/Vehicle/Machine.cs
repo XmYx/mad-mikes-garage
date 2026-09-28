@@ -25,6 +25,7 @@ namespace MadMax.Vehicles
         Container store;
         Quaternion toolRest; bool haveRest;
         float pose, tick, travel;
+        float boom = -18f, slew;                // excavator/backhoe arm: degrees (+ = down), turret swing
         Vector3 lastPos;
 
         public string Status { get; private set; }
@@ -56,8 +57,9 @@ namespace MadMax.Vehicles
             return moved;
         }
 
-        /// <summary>Operator input (called by the game each frame while this machine is driven).</summary>
-        public void Control(bool hold1, bool press1, bool press2, bool press3)
+        /// <summary>Operator input (called by the game each frame while this machine is driven).
+        /// Excavator/backhoe: hold 1 lower (digs on ground contact), hold 2 raise, 3 dump, Shift+1/2 swing the arm (excavator).</summary>
+        public void Control(bool hold1, bool hold2, bool press1, bool press2, bool press3, bool shift)
         {
             var terrain = DeformableTerrain.Instance;
             if (!terrain) return;
@@ -67,11 +69,13 @@ namespace MadMax.Vehicles
                 case Kind.Excavator:
                 case Kind.Backhoe:
                 {
+                    bool ex = kind == Kind.Excavator;
+                    if (shift && ex) slew = Mathf.Clamp(slew + ((hold2 ? 1f : 0f) - (hold1 ? 1f : 0f)) * 35f * dt, -150f, 150f);
+                    else boom = Mathf.Clamp(boom + ((hold1 ? 1f : 0f) - (hold2 ? 1f : 0f)) * 30f * dt, ex ? -45f : -35f, ex ? 35f : 25f);
                     var tip = BucketPoint();
                     float ground = terrain.Height(tip.x, tip.z);
-                    bool reach = Mathf.Abs(tip.y - ground) < (kind == Kind.Excavator ? 3.5f : 1.5f);
-                    pose = Mathf.MoveTowards(pose, hold1 ? 1f : press2 ? -1f : 0f, dt * 2f);
-                    if (hold1 && load < Capacity && reach && (tick -= dt) <= 0f)
+                    bool reach = tip.y - ground < 0.45f;                  // bucket touching (or in) the ground
+                    if (hold1 && !shift && load < Capacity && reach && (tick -= dt) <= 0f)
                     {
                         tick = 0.25f;
                         var at = new Vector3(tip.x, ground, tip.z);
@@ -85,9 +89,9 @@ namespace MadMax.Vehicles
                             Fx.Smoke(at + Vector3.up * 0.3f, Vector3.up * 0.8f + Random.insideUnitSphere * 0.5f, 0.6f, DustColor(loadType), 1.5f);
                         }
                     }
-                    if (press2 && load > 0.01f) Dump(tip);
-                    Status = (kind == Kind.Excavator ? "EXCAVATOR" : "LOADER") + "  BUCKET " + Mathf.RoundToInt(load / Capacity * 100) + "% " + ResourceInfo.Name(loadType) +
-                             (reach ? "  [1] DIG  [2] DUMP" : "  BUCKET CAN'T REACH THE GROUND");
+                    if (press3 && load > 0.01f) Dump(tip);
+                    Status = (ex ? "EXCAVATOR" : "LOADER") + "  BUCKET " + Mathf.RoundToInt(load / Capacity * 100) + "% " + ResourceInfo.Name(loadType) +
+                             "  [1] LOWER/DIG  [2] RAISE  [3] DUMP" + (ex ? "  [SHIFT+1/2] SWING" : "") + (reach ? "  (ON GROUND)" : "");
                     break;
                 }
                 case Kind.Dozer:
@@ -228,10 +232,13 @@ namespace MadMax.Vehicles
             var tool = Tool;
             if (!tool) return;
             if (!haveRest) { toolRest = tool.localRotation; haveRest = true; }
+            if (kind == Kind.Excavator || kind == Kind.Backhoe)
+            {
+                tool.localRotation = Quaternion.Euler(0f, slew, 0f) * toolRest * Quaternion.Euler(boom, 0f, 0f);
+                return;
+            }
             float angle = kind switch
             {
-                Kind.Excavator => pose * 14f,
-                Kind.Backhoe => pose * 12f,
                 Kind.Dozer => pose * 3f,
                 Kind.DumpTruck => -pose * 48f,
                 _ => 0f

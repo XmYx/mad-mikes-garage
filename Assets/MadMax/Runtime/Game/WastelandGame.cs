@@ -535,7 +535,7 @@ namespace MadMax.Game
                 if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f);
                 if (Pressed(Key.K) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
                 if (Current.TryGetComponent<Machine>(out var machine) && kb != null)
-                    machine.Control(kb.digit1Key.isPressed, Pressed(Key.Digit1), Pressed(Key.Digit2), Pressed(Key.Digit3));
+                    machine.Control(kb.digit1Key.isPressed, kb.digit2Key.isPressed, Pressed(Key.Digit1), Pressed(Key.Digit2), Pressed(Key.Digit3), kb.leftShiftKey.isPressed);
             }
             {
                 // radio: the driven vehicle's head unit, or a radio set the player is looking at
