@@ -1,7 +1,6 @@
 # Builds Windows, Linux and macOS players with GameCI and publishes them as a GitHub release.
 # Trigger: push a tag like v0.2.0, or Actions > Release > Run workflow (enter a version; the tag is created).
-# Required repository secrets (Settings > Secrets and variables > Actions): UNITY_EMAIL, UNITY_PASSWORD
-# (Unity account that holds the Personal licence) and, if you have one, UNITY_LICENSE (.ulf file contents).
+# Required repository secret: UNITY_LICENSE (.ulf file contents). The workflow never logs into the Unity account.
 name: Release
 
 on:
@@ -102,9 +101,8 @@ jobs:
       - name: Build player
         uses: game-ci/unity-builder@v4
         env:
+          # licence file only: no Unity account login from CI (repeated failed logins lock the Unity ID)
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: ${{ matrix.targetPlatform }}
           buildName: ${{ env.GAME }}
