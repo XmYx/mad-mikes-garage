@@ -597,6 +597,7 @@ namespace MadMax.World
             var box = lg.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
             var loot = lg.AddComponent<Lootable>();
             loot.key = "L" + st.index + "," + i; loot.table = pl.table;
+            loot.locked = Lootable.RollLocked(loot.key, pl.visual);
             loot.title = pl.visual == "fridge" ? "FRIDGE" : pl.visual == "crate" ? "BOX" : pl.visual == "workbench" ? "WORKBENCH" : pl.visual == "locker" ? "LOCKER" : "SHELF";
         }
 

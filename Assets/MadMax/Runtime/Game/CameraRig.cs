@@ -217,7 +217,7 @@ namespace MadMax.Game
                 case ViewMode.Isometric:
                 {
                     cam.orthographic = true;
-                    cam.orthographicSize = isoSize;
+                    cam.orthographicSize = isoSize * (BinocularsTool.Looking ? 1.8f : 1f);     // binoculars: see further
                     cam.nearClipPlane = 0.3f; cam.farClipPlane = 300f;
                     var r = Quaternion.Euler(player && player.Interior ? 68f : isoPitch, yaw, 0f);   // look down into interiors
                     ct.rotation = r;
@@ -240,7 +240,7 @@ namespace MadMax.Game
                 case ViewMode.ThirdPerson:
                 {
                     cam.orthographic = false;
-                    cam.fieldOfView = thirdFov;
+                    cam.fieldOfView = BinocularsTool.Looking ? 14f : thirdFov;
                     cam.nearClipPlane = 0.1f; cam.farClipPlane = Mathf.Max(fogEnd + 10f, 120f);   // sky clouds sit up to ~100 m out
                     float heading = player ? 0f : Quaternion.LookRotation(Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized + Vector3.forward * 1e-4f).eulerAngles.y;
                     // on foot: over-the-shoulder at ~3.5 m, like most third-person games; vehicles: chase cam
@@ -263,7 +263,7 @@ namespace MadMax.Game
                 case ViewMode.FirstPerson:
                 {
                     cam.orthographic = false;
-                    cam.fieldOfView = fpsFov;
+                    cam.fieldOfView = BinocularsTool.Looking ? 12f : fpsFov;
                     cam.nearClipPlane = 0.03f; cam.farClipPlane = Mathf.Max(fogEnd + 10f, 120f);   // sky clouds sit up to ~100 m out
                     var e = eye ? eye : target;
                     var rot = player ? Quaternion.Euler(lookPitch, lookYaw, 0f) : e.rotation * Quaternion.Euler(lookPitch, lookYaw, 0f);

@@ -12,14 +12,35 @@ namespace MadMax.World
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => Searched.Clear();
 
         public string key, table = "house", title = "CUPBOARD";
+        /// <summary>Padlocked: needs a crowbar (pried open noisily) before it can be searched.</summary>
+        public bool locked;
         void OnEnable() => MadMax.Game.WastelandGame.LootSpots.Add(this);
         void OnDisable() => MadMax.Game.WastelandGame.LootSpots.Remove(this);
 
-        public string Prompt(MadMax.Game.WastelandGame g) => Searched.Contains(key) ? title + " (EMPTY)" : "[E] SEARCH " + title;
+        /// <summary>Lockers and crates in towns and bunkers are sometimes padlocked (deterministic per key).</summary>
+        public static bool RollLocked(string key, string visual) => (visual == "locker" || visual == "crate") && ((key.GetHashCode() & 0x7fffffff) % 100) < 40;
+
+        public string Prompt(MadMax.Game.WastelandGame g) => Searched.Contains(key) ? title + " (EMPTY)" : locked ? "[E] PRY OPEN " + title + (g.Inventory.GetItem("tool_crowbar") > 0 ? "" : " (NEED A CROWBAR)") : "[E] SEARCH " + title;
+
+        /// <summary>Force the lock (crowbar in the pack): noise, a Strength roll, a little wear on the bar.</summary>
+        public bool Pry(MadMax.Game.WastelandGame g)
+        {
+            if (!locked) return false;
+            if (g.Inventory.GetItem("tool_crowbar") <= 0) { g.Toast("LOCKED - NEED A CROWBAR"); MadMax.Audio.Sfx.Play("lock", transform.position, 0.6f); return false; }
+            MadMax.Audio.Sfx.Play("hit_metal", transform.position, 0.9f, 0.8f, 40f);
+            g.WearTool("tool_crowbar", 0.02f);
+            if (Random.value > 0.35f + g.Stats.Attribute(MadMax.RPG.Attr.Strength) * 0.08f) { g.Toast("THE LOCK HOLDS... TRY AGAIN"); return false; }
+            locked = false;
+            g.Toast("PRIED OPEN");
+            g.Stats.Practice(MadMax.RPG.Skill.Salvaging, 2f);
+            MadMax.Npc.NpcDirector.Instance?.Noise(transform.position, 25f);
+            return true;
+        }
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
             if (secondary || Searched.Contains(key)) return;
+            if (locked && !Pry(g)) return;
             Searched.Add(key);
             MadMax.Net.NetSession.Instance?.SendSearched(key);
             var rnd = new System.Random(key.GetHashCode() ^ g.seed);

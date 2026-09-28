@@ -66,6 +66,7 @@ namespace MadMax.Game
             d.terrain = terrain.SaveEdits();
             d.npcs = MadMax.Npc.NpcRegistry.SaveAll();
             d.reputation = MadMax.Npc.NpcRegistry.Reputation;
+            SaveTools(d);
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
@@ -225,6 +226,7 @@ namespace MadMax.Game
             if (d.hours >= 0f) DayNight.SetHours(d.hours);
             DayNight.SetDay(d.day);
             MadMax.Npc.NpcRegistry.Load(d.npcs, d.reputation);
+            RestoreTools(d);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;

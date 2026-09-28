@@ -17,6 +17,9 @@ namespace MadMax.Game
         public Transform tip;
         public bool digs;                 // shovel: digs soil where it hits bare ground
         public float woodMult = 1f, stoneMult = 1f;   // axe / pickaxe
+        public bool pries;                // crowbar: forces locked doors, lockers and containers
+        /// <summary>Fraction of the tool's life one blow costs (hits cost more than misses).</summary>
+        public float wearPerHit = 0.004f;
 
         readonly HashSet<object> done = new HashSet<object>();
 
@@ -69,6 +72,10 @@ namespace MadMax.Game
                 }
                 if (rb && !rb.isKinematic) rb.AddForceAtPosition(dir * Mathf.Min(250f * power, rb.mass * 4f), point, ForceMode.Impulse);
             }
+            var game = WastelandGame.Instance;
+            bool isPlayer = game && user == game.Player;
+            if (pries && isPlayer && game.PryNearest(end)) hitSomething = true;
+            if (isPlayer) game.WearTool(id, hitSomething ? wearPerHit : wearPerHit * 0.25f);
             var terrain = DeformableTerrain.Instance;
             if (!hitSomething && digs && terrain && end.y - terrain.Height(end.x, end.z) < 0.45f && WastelandGame.Instance && user == WastelandGame.Instance.Player)
             {

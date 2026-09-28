@@ -181,6 +181,7 @@ namespace MadMax.World
                     var box = lg.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
                     var loot = lg.AddComponent<Lootable>();
                     loot.key = "S" + p.site.Key + "," + n++; loot.table = e.table;
+                    loot.locked = Lootable.RollLocked(loot.key, e.visual);
                     loot.title = e.visual == "locker" ? "LOCKER" : e.visual == "crate" ? "CRATE" : "SHELF";
                 }
             }

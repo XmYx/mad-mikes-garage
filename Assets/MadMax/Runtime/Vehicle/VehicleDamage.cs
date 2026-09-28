@@ -249,6 +249,13 @@ namespace MadMax.Vehicles
             driver.steerPull = FrameDamage * maxSteerPull * pullSign;
         }
 
+        /// <summary>Welder: take some bend out of the frame (less steering pull).</summary>
+        public void StraightenFrame(float amount)
+        {
+            FrameDamage = Mathf.Max(0f, FrameDamage - amount);
+            driver.steerPull = FrameDamage * maxSteerPull * pullSign;
+        }
+
         /// <summary>Undo dents and damage on everything still mounted.</summary>
         [ContextMenu("Repair")]
         public void Repair()

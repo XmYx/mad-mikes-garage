@@ -32,15 +32,15 @@ Systems are listed in implementation order (by complexity: T1 data-driven additi
 *Exists:* sledgehammer, claw hammer, axe, pickaxe, shovel, wrench, salvage cutter, machete, pipes, torch, gas torch,
 lantern, pipe shotgun, molotov.
 
-- [ ] **Durability**: every tool wears with use (hits, cuts, digs) and breaks at 0; condition shown on the hotbar;
+- [x] **Durability**: every tool wears with use (hits, cuts, digs) and breaks at 0; condition shown on the hotbar;
       repair at a workbench with the tool's material
-- [ ] **Crowbar**: pries locked lockers / doors / crates open (noise, Strength check); decent melee
-- [ ] **Welder** (`tool_welder`): fixes vehicle dents, frame damage and part damage for scrap + fuel
-- [ ] **Jack**: lift a vehicle to swap wheels (wheels of size ≥ 3 need it) and right a flipped car on foot
-- [ ] **Binoculars**: zoom; reveals NPC names / hostility and landmarks far away
-- [ ] **Geiger counter**: clicks with dose, points at hot loot and uranium ore
-- [ ] **Flashlight**: battery spot beam (vs the lantern's all-round glow)
-- [ ] **Repair kit** (`use_repair_kit`): field repair of one vehicle part (+30 % condition)
+- [x] **Crowbar**: pries locked lockers / doors / crates open (noise, Strength check); decent melee
+- [x] **Welder** (`tool_welder`): fixes vehicle dents, frame damage and part damage for scrap + fuel
+- [x] **Jack**: lift a vehicle to swap wheels (wheels of size ≥ 3 need it) and right a flipped car on foot
+- [x] **Binoculars**: zoom; reveals NPC names / hostility and landmarks far away
+- [x] **Geiger counter**: clicks with dose, points at hot loot and uranium ore
+- [x] **Flashlight**: battery spot beam (vs the lantern's all-round glow)
+- [x] **Repair kit** (`use_repair_kit`): field repair of one vehicle part (+30 % condition)
 - [ ] **Grappling hook**: climb walls / ledges (ties parkour), pull loose parts to you
 - [ ] **Fishing rod, hoe, watering can** (see Fishing, Gardening)
 

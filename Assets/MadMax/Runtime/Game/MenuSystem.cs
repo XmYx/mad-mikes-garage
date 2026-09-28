@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -145,6 +145,7 @@ namespace MadMax.Game
                 case Page.NewGame: Open(Page.Main); break;
                 case Page.Creation: Open(Page.NewGame); break;
                 case Page.Research: Open(Page.Crafting); break;
+                case Page.Repair: Open(Page.Crafting); break;
                 case Page.Trade: if (talk != null && !talk.Ended) Open(Page.Talk); else Close(); break;
                 default: Close(); break;
             }
@@ -381,6 +382,27 @@ namespace MadMax.Game
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
                     break;
                 }
+                case Page.Repair:
+                {
+                    bool any = false;
+                    foreach (var kv in game.Inventory.Items)
+                    {
+                        if (kv.Value <= 0 || !ToolLibrary.Has(kv.Key)) continue;
+                        var tid = kv.Key;
+                        any = true;
+                        items.Add(new Item
+                        {
+                            label = ItemCatalog.Name(tid),
+                            value = () => { var (t, n) = game.RepairCost(tid); return Mathf.RoundToInt(game.Condition(tid) * 100f) + "%" + (game.Condition(tid) < 0.999f ? "  " + n + " " + ResourceInfo.Name(t) : ""); },
+                            enabled = () => game.Condition(tid) < 0.999f,
+                            confirm = () => { game.RepairTool(tid); Rebuild(); },
+                            hint = "ENTER REPAIR WITH THE MATERIAL SHOWN"
+                        });
+                    }
+                    if (!any) items.Add(new Item { label = "NO TOOLS TO REPAIR", enabled = () => false });
+                    Add("BACK", () => Open(Page.Crafting));
+                    break;
+                }
                 case Page.Talk:
                     if (talk == null || !talkNpc) { Close(); break; }
                     foreach (var ch in talk.choices) { var c = ch; items.Add(new Item { label = c.label, hint = c.hint, confirm = () => Choose(c) }); }
@@ -569,6 +591,7 @@ namespace MadMax.Game
             typed = "";
             if (Current == Page.Crafting && ((kb != null && kb.eKey.wasPressedThisFrame) || (kb != null && kb.tabKey.wasPressedThisFrame))) { Close(); return; }
             if (Current == Page.Crafting && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
+            if (Current == Page.Crafting && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
             if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
                 for (int i = 0; i < WastelandGame.HotbarSize; i++) if (kb[Key.Digit1 + i].wasPressedThisFrame) game.AssignHotbar(i, items[cursor].id);
@@ -641,6 +664,7 @@ namespace MadMax.Game
                 case Page.Research: DrawList(c, "RESEARCH", 280); DrawHint(c); break;
                 case Page.Health: DrawHealth(c); break;
                 case Page.Talk: DrawTalk(c); break;
+                case Page.Repair: DrawList(c, "REPAIR TOOLS", 250); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);
@@ -821,7 +845,7 @@ namespace MadMax.Game
 
         void DrawCrafting(PixelCanvas c)
         {
-            c.Text(6, c.h - 10, "R RESEARCH", Dim);
+            c.Text(6, c.h - 10, "R RESEARCH   T REPAIR TOOLS", Dim);
             int w = Mathf.Min(c.w - 12, 300), h = Mathf.Min(c.h - 20, 170);
             int x = (c.w - w) / 2, y = (c.h - h) / 2;
             c.Panel(x, y, w, h);

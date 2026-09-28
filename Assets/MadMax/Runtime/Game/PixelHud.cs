@@ -199,9 +199,59 @@ namespace MadMax.Game
                 canvas.Text(x + 1, y + 15, name, sel ? Amber : Text, 1, false);
                 int count = game.Inventory.GetItem(id);
                 if (count > 1) canvas.Text(x + slot - PixelCanvas.TextWidth(count.ToString()) - 1, y + 1, count.ToString(), Text, 1, false);
+                if (ToolLibrary.Has(id))
+                {
+                    // condition of the tool in hand: green → amber → red
+                    float cond = game.Condition(id);
+                    if (cond < 0.999f)
+                    {
+                        var cc = cond > 0.5f ? Green : cond > 0.2f ? Amber : new Color32(220, 60, 40, 255);
+                        canvas.Rect(x + 2, y + slot - 2, slot - 4, 1, new Color32(10, 6, 4, 220));
+                        canvas.Rect(x + 2, y + slot - 2, Mathf.Max(1, Mathf.RoundToInt((slot - 4) * cond)), 1, cc);
+                    }
+                }
             }
             if (game.Player.Tool is RangedTool rt) canvas.Text(x0 + n * (slot + 2) + 4, y + 8, "SHELLS " + game.Inventory.GetItem(rt.ammo), Text);
+            if (GeigerTool.Reading >= 0f)
+            {
+                float r = GeigerTool.Reading;
+                string s = "RAD " + (r * 10f).ToString("0.0");
+                canvas.Text(x0 + n * (slot + 2) + 4, y + 1, s, r > 0.5f ? new Color32(220, 60, 40, 255) : r > 0.15f ? Amber : Green);
+            }
+            if (BinocularsTool.Looking) DrawSpotting();
         }
+
+        /// <summary>Binoculars: name what is in view out to 350 m (people, vehicles, landmarks) at its screen position.</summary>
+        void DrawSpotting()
+        {
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam) return;
+            var eye = cam.transform.position;
+            void Tag(Vector3 world, string text, Color32 col)
+            {
+                var sp = cam.WorldToViewportPoint(world);
+                if (sp.z <= 0f || sp.x < 0f || sp.x > 1f || sp.y < 0f || sp.y > 1f) return;
+                int px = Mathf.RoundToInt(sp.x * canvas.w), py = Mathf.RoundToInt((1f - sp.y) * canvas.h);
+                string d = Mathf.RoundToInt(Vector3.Distance(world, game.Player.transform.position)) + "M";
+                canvas.Text(px - PixelCanvas.TextWidth(text) / 2, py - 10, text, col);
+                canvas.Text(px - PixelCanvas.TextWidth(d) / 2, py - 3, d, Dim);
+            }
+            foreach (var npc in MadMax.Npc.Npc.All)
+                if (npc && npc.Alive && (npc.transform.position - eye).sqrMagnitude < 350f * 350f)
+                    Tag(npc.transform.position + Vector3.up * 2f, npc.Profile.Name, npc.Hostile ? new Color32(220, 60, 40, 255) : npc.Profile.Vendor ? Green : Text);
+            foreach (var v in game.AllVehicles)
+                if (v && v != game.Current && (v.transform.position - eye).sqrMagnitude < 350f * 350f && v.aiDriven)
+                    Tag(v.transform.position + Vector3.up * 2.5f, v.name.Replace("(Clone)", "").ToUpperInvariant(), Amber);
+            var near = new System.Collections.Generic.List<MadMax.World.Site>();
+            game.World.SitesNear(game.Player.transform.position, 400f, near);
+            foreach (var s in near)
+            {
+                var p = new Vector3(s.pos.x, DeformableTerrainHeight(s.pos) + 4f, s.pos.y);
+                Tag(p, s.kind == MadMax.World.SiteKind.Bunker ? "BUNKER" : "ROCK TUNNEL", new Color32(160, 200, 255, 255));
+            }
+        }
+
+        static float DeformableTerrainHeight(Vector2 p) { var t = MadMax.World.DeformableTerrain.Instance; return t ? t.Height(p.x, p.y) : 0f; }
 
         /// <summary>Hotbar icon: the item's own voxel mesh (tool, kit furniture) or a small item model.</summary>
         static Color32[] Icon(string id)

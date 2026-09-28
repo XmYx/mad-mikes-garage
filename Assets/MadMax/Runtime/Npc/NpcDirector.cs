@@ -106,6 +106,24 @@ namespace MadMax.Npc
             return best;
         }
 
+        /// <summary>A loud noise (lock forced, gunshot, explosion): people within earshot look; locals dislike
+        /// break-ins in their town, the nervous run. <paramref name="suspicious"/> = the player did something shady.</summary>
+        public void Noise(Vector3 at, float radius, bool suspicious = true)
+        {
+            var town = game ? game.World.SettlementAt(at.x, at.z) : null;
+            foreach (var n in Npc.All)
+            {
+                if (!n || !n.Alive || (n.transform.position - at).sqrMagnitude > radius * radius) continue;
+                n.Attend(at);
+                if (n.Profile.Raider) { n.convoy?.Provoked(); continue; }
+                if (suspicious && town != null && game.World.SettlementAt(n.transform.position.x, n.transform.position.z) == town)
+                {
+                    n.State.disposition = Mathf.Max(-100, n.State.disposition - 8);
+                    if (n.Profile.temper == Temper.Nervous) n.Scare(6f);
+                }
+            }
+        }
+
         /// <summary>T while driving near a raider boss who stepped out to demand a toll: open the parley.</summary>
         public static bool TryParley()
         {

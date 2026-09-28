@@ -183,6 +183,11 @@ namespace MadMax.Game
                 else Toast("CANTEEN EMPTY: FILL AT A SINK, BARREL OR LAKE");
                 return;
             }
+            if (id == "use_repair_kit")
+            {
+                if (UseRepairKit()) Inventory.TakeItem(id);
+                return;
+            }
             if (id == ItemIds.Sponge)
             {
                 int n = MadMax.World.BloodStains.Clean(Player.transform.position, 3f);

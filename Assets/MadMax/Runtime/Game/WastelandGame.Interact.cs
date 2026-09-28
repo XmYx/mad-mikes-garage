@@ -270,6 +270,7 @@ namespace MadMax.Game
                 if (best)
                 {
                     if (!Holding(ItemIds.Wrench)) return Inventory.GetItem(ItemIds.Wrench) > 0 ? "EQUIP THE WRENCH TO MOUNT   [Q] DROP" : "CRAFT A WRENCH TO MOUNT   [Q] DROP";
+                    if (NeedsJack(carried)) return "HEAVY WHEEL: NEED A JACK IN THE PACK   [Q] DROP";
                     if (E)
                     {
                         var part = Player.TakeCarried();
@@ -296,6 +297,8 @@ namespace MadMax.Game
             }
             if (!target) return null;
             if (target.Socket && !Holding(ItemIds.Wrench)) return $"{target.partId.ToUpperInvariant()}: " + (Inventory.GetItem(ItemIds.Wrench) > 0 ? "EQUIP THE WRENCH" : "CRAFT A WRENCH");
+            if (target.Socket && NeedsJack(target)) return $"{target.partId.ToUpperInvariant()}: NEED A JACK TO LIFT IT";
+            if (target.Socket && E) WearTool(ItemIds.Wrench, 0.01f);
             if (E)
             {
                 var net = MadMax.Net.NetSession.Instance;

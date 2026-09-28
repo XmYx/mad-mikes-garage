@@ -9,7 +9,8 @@ namespace MadMax.Game
     public static class ToolLibrary
     {
         // index = network tool id: append only
-        public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern" };
+        public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern",
+            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -82,6 +83,39 @@ namespace MadMax.Game
                     g.Box(0, -2, 0, 0, 0, 0, Pal.Ramp(Pal.Metal, 1, 717));                           // bail handle
                     g.Box(-1, -6, -1, 1, -3, 1, p => (p.y == -3 || p.y == -6) ? Pal.Metal[2] : Pal.LightY);   // glass chimney
                     break;
+                case "tool_crowbar":
+                    g.Box(0, -13, 0, 0, 0, 0, Pal.Ramp(Pal.Rust, 2, 718));
+                    g.Set(0, 1, 1, Pal.Solid(Pal.Rust[1])); g.Set(0, 1, 2, Pal.Solid(Pal.Rust[2]));          // hook
+                    g.Set(0, -14, 1, Pal.Solid(Pal.Chrome[2]));                                               // flat end
+                    break;
+                case "tool_welder":
+                    g.Box(0, -4, 0, 0, 0, 0, Pal.Ramp(Pal.Black, 1, 719));                                    // insulated grip
+                    g.Box(-1, -3, -1, 1, -2, 1, Pal.Ramp(Pal.Metal, 1));
+                    g.Box(0, -9, 0, 0, -5, 0, Pal.Ramp(Pal.Chrome, 2));                                       // lance
+                    g.Set(0, -10, 0, Pal.Solid(Pal.PaleBlue[4]));                                             // arc
+                    g.Box(1, 0, 0, 2, 1, 0, Pal.Solid(Pal.Hex("b02818")));                                   // hose
+                    break;
+                case "tool_jack":
+                    g.Box(-1, -4, -1, 1, 0, 1, p => p.y == 0 ? Pal.Metal[3] : Pal.Hex("b02818"));             // bottle jack
+                    g.Box(0, -8, 0, 0, -5, 0, Pal.Ramp(Pal.Chrome, 2));                                       // ram
+                    g.Box(-1, -9, -1, 1, -9, 1, Pal.Ramp(Pal.Metal, 1));                                      // saddle
+                    g.Box(2, -2, 0, 5, -2, 0, Pal.Ramp(Pal.Metal, 2));                                        // pump handle
+                    break;
+                case "tool_binoculars":
+                    g.Box(-2, -3, -1, -1, 0, 1, Pal.Ramp(Pal.Black, 1, 720)); g.Box(1, -3, -1, 2, 0, 1, Pal.Ramp(Pal.Black, 1, 721));
+                    g.Box(-1, -2, 0, 1, -1, 0, Pal.Ramp(Pal.Metal, 1));
+                    g.Set(-2, -4, 0, Pal.Solid(Pal.Glass[3])); g.Set(2, -4, 0, Pal.Solid(Pal.Glass[3]));
+                    break;
+                case "tool_geiger":
+                    g.Box(-1, -4, -1, 1, 0, 1, Pal.Solid(Pal.Hex("d4b020")));                                 // yellow case
+                    g.Box(0, -3, 2, 0, -1, 2, Pal.Solid(Pal.Glass[3]));                                       // dial
+                    g.Box(0, -8, 0, 0, -5, 0, Pal.Ramp(Pal.Metal, 2));                                        // probe
+                    break;
+                case "tool_flashlight":
+                    g.CylY(0, 0, 1.2f, -6, 0, Pal.Ramp(Pal.Metal, 1, 722));
+                    g.CylY(0, 0, 1.7f, -8, -7, Pal.Ramp(Pal.Chrome, 2));
+                    g.Set(0, -9, 0, Pal.Solid(Pal.LightW));
+                    break;
                 default: // sledgehammer
                     g.Box(0, -12, 0, 0, 0, 0, Pal.Ramp(Pal.Wood, 2, 401));
                     g.Box(-1, -15, -3, 1, -13, 2, Pal.Weathered(Pal.Metal, 0.35f, 402, 2, -20));
@@ -107,12 +141,37 @@ namespace MadMax.Game
                 r.swingDuration = 0.9f; r.strikeAt = 0.03f; r.style = ToolStyle.Gun;
                 tool = r;
             }
-            else if (id == "tool_torch" || id == "tool_gas_torch" || id == "tool_lantern")
+            else if (id == "tool_welder")
+            {
+                var w = go.AddComponent<WelderTool>();
+                w.tip = tip; tip.localPosition = new Vector3(0, -10f * S, 0);
+                w.swingDuration = 0.7f; w.strikeAt = 0.5f; w.style = ToolStyle.Grind;
+                tool = w;
+            }
+            else if (id == "tool_jack")
+            {
+                var j = go.AddComponent<JackTool>();
+                j.swingDuration = 1.1f; j.strikeAt = 0.6f; j.style = ToolStyle.Twist;
+                tool = j;
+            }
+            else if (id == "tool_binoculars")
+            {
+                var b = go.AddComponent<BinocularsTool>();
+                b.swingDuration = 0.4f; b.strikeAt = 0.1f; b.style = ToolStyle.Twist;
+                tool = b;
+            }
+            else if (id == "tool_geiger")
+            {
+                var gc = go.AddComponent<GeigerTool>();
+                gc.swingDuration = 0.4f; gc.strikeAt = 0.1f; gc.style = ToolStyle.Twist;
+                tool = gc;
+            }
+            else if (id == "tool_torch" || id == "tool_gas_torch" || id == "tool_lantern" || id == "tool_flashlight")
             {
                 var l = go.AddComponent<LightTool>();
                 l.tip = tip;
-                l.kind = id == "tool_torch" ? LightTool.Kind.Torch : id == "tool_gas_torch" ? LightTool.Kind.GasTorch : LightTool.Kind.Lantern;
-                tip.localPosition = new Vector3(0, (id == "tool_torch" ? -13f : id == "tool_gas_torch" ? -10f : -5f) * S, 0);
+                l.kind = id == "tool_torch" ? LightTool.Kind.Torch : id == "tool_gas_torch" ? LightTool.Kind.GasTorch : id == "tool_flashlight" ? LightTool.Kind.Flashlight : LightTool.Kind.Lantern;
+                tip.localPosition = new Vector3(0, (id == "tool_torch" ? -13f : id == "tool_gas_torch" ? -10f : id == "tool_flashlight" ? -9f : -5f) * S, 0);
                 l.power = id == "tool_gas_torch" ? 0.45f : 0.2f; l.carveRadius = 0.08f; l.swingDuration = 0.6f;
                 l.style = id == "tool_gas_torch" ? ToolStyle.Grind : ToolStyle.Slash; l.strikeAt = 0.5f;
                 l.salvage = id == "tool_gas_torch";                                     // cuts metal like the salvage cutter
@@ -132,6 +191,7 @@ namespace MadMax.Game
                     case "tool_axe": tip.localPosition = new Vector3(0, -13f * S, 0.2f); m.power = 0.5f; m.carveRadius = 0.14f; m.swingDuration = 0.7f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; m.woodMult = 3f; break;
                     case "tool_pickaxe": tip.localPosition = new Vector3(0, -13f * S, 0.45f); m.power = 0.6f; m.carveRadius = 0.14f; m.swingDuration = 0.85f; m.style = ToolStyle.Overhead; m.strikeAt = 0.6f; m.stoneMult = 3f; break;
                     case ItemIds.Machete: tip.localPosition = new Vector3(0, -12f * S, 0.1f); m.power = 0.5f; m.carveRadius = 0.1f; m.swingDuration = 0.42f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; break;
+                    case "tool_crowbar": tip.localPosition = new Vector3(0, -14f * S, 0.08f); m.power = 0.55f; m.carveRadius = 0.1f; m.swingDuration = 0.55f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; m.pries = true; break;
                     default: tip.localPosition = new Vector3(0, -14f * S, 0.1f); m.power = 1f; m.carveRadius = 0.2f; m.swingDuration = 1.0f; m.style = ToolStyle.Overhead; m.strikeAt = 0.62f; break;
                 }
                 tool = m;

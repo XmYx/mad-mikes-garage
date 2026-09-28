@@ -69,6 +69,22 @@ namespace MadMax.Vehicles
             return true;
         }
 
+        /// <summary>Beat out part of the dents (welder): each vertex moves a fraction back to its original place.</summary>
+        public void RepairPartial(float fraction)
+        {
+            if (!mesh || !IsDamaged) return;
+            bool any = false;
+            for (int i = 0; i < displaced.Length; i++)
+            {
+                displaced[i] = Vector3.MoveTowards(displaced[i], pristine[i], Mathf.Max(snapStep, (displaced[i] - pristine[i]).magnitude * fraction));
+                if ((displaced[i] - pristine[i]).sqrMagnitude > 1e-6f) any = true;
+            }
+            mesh.SetVertices(displaced);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            IsDamaged = any;
+        }
+
         public void Repair()
         {
             if (!mesh) return;

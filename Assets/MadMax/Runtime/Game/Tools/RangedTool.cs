@@ -44,6 +44,7 @@ namespace MadMax.Game
                 for (int i = 0; i < 5; i++)
                     fx.EmitPuff(origin + aim * 0.1f, i < 2 ? new Color32(255, 240, 180, 255) : new Color32(255, 170, 60, 255), 0.07f, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
             if (anyHit) stats?.Practice(MadMax.RPG.Skill.Firearms, 3f);
+            if (game && user == game.Player) game.WearTool(id, 0.008f);                // crude guns wear out
             if (rig) rig.Shake(1.5f);
         }
     }

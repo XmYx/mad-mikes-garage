@@ -53,7 +53,7 @@ namespace MadMax.Items
         public static bool IsTool(string id) => id.StartsWith("tool_");
     }
 
-    public static class RecipeLibrary
+    public static partial class RecipeLibrary
     {
         static List<Recipe> all;
 
@@ -157,6 +157,7 @@ namespace MadMax.Items
                 new Recipe { id = "coolant", name = "COOLANT 5L", category = RecipeCategory.Supplies, kind = OutputKind.Resource, outputResource = ResourceType.Coolant, amount = 5, description = "MIX FROM SCAVENGED BOTTLES", resources = new[] { (G, 1), (C, 1) } },
             };
             list.AddRange(Extra());
+            list.AddRange(Roadmap());
             return list;
         }
 
