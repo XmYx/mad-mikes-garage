@@ -12,7 +12,7 @@ namespace MadMax.Npc
     [DefaultExecutionOrder(-20)]
     public class AiDriver : MonoBehaviour
     {
-        public enum Goal { Park, Path, Chase, Follow, Circle }
+        public enum Goal { Park, Path, Chase, Follow, Circle, Escort }
         public Goal goal = Goal.Park;
         public List<Vector3> path;
         public int index, dir = 1;
@@ -118,6 +118,19 @@ namespace MadMax.Npc
                     float err = Vector3.Dot(aim - pos, transform.forward);
                     desired = Mathf.Max(0f, leader.Vehicle.ForwardSpeed + Mathf.Clamp(err * 0.6f, -6f, 8f));
                     if (Flat(aim - pos).magnitude < 3f) desired = Mathf.Min(desired, leader.Vehicle.ForwardSpeed);
+                    break;
+                }
+                case Goal.Escort:
+                {
+                    // a companion driving behind the player: ~11 m back along their heading, matching their pace
+                    if (!target) break;
+                    var tb = target.GetComponentInParent<Rigidbody>();
+                    var tv = tb && !tb.isKinematic ? tb.linearVelocity : Vector3.zero;
+                    var back = tv.sqrMagnitude > 4f ? tv.normalized : (pos - target.position).normalized;
+                    aim = target.position - back * 11f;
+                    float gap = Flat(aim - pos).magnitude;
+                    desired = Mathf.Clamp(tv.magnitude + (gap - 2f) * 0.5f, 0f, chaseSpeed);
+                    if (Flat(target.position - pos).magnitude < 9f) desired = Mathf.Min(desired, 1.5f);
                     break;
                 }
                 case Goal.Circle:

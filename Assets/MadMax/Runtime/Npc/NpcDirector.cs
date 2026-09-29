@@ -17,11 +17,16 @@ namespace MadMax.Npc
     {
         public static NpcDirector Instance { get; private set; }
 
-        struct Spot { public string id; public NpcRole role; public string kind; public Vector3 pos; public float yaw, radius; public int stall; }
+        struct Spot { public string id; public NpcRole role; public string kind; public Vector3 pos; public float yaw, radius; public int stall, town; }
 
         WastelandGame game;
         readonly List<Convoy> convoys = new List<Convoy>();
         readonly List<(Vector3 pos, float yaw, string kind)> roadStalls = new List<(Vector3, float, string)>();
+        readonly List<Vector3> packers = new List<Vector3>();                                  // pack traders' beats along the roads (roadmap 20)
+        readonly Dictionary<int, Campfire> townFires = new Dictionary<int, Campfire>();
+        readonly Dictionary<string, Campfire> campFires = new Dictionary<string, Campfire>();
+        readonly Dictionary<int, (Vector3 pos, float yaw)> bossSpots = new Dictionary<int, (Vector3, float)>();
+        readonly HashSet<string> retired = new HashSet<string>();                             // left to live their own lives this session
         readonly Dictionary<string, Npc> live = new Dictionary<string, Npc>();
         readonly Dictionary<string, GameObject> stalls = new Dictionary<string, GameObject>();
         readonly List<Spot> wanted = new List<Spot>();
@@ -56,6 +61,21 @@ namespace MadMax.Npc
                     if (mid.magnitude > far) { far = mid.magnitude; best = ri; }
                 }
                 AddConvoy("raiders" + i, true, null, roads[best].points, r.Next());
+            }
+            // pack traders walking a beat every ~900 m on about a third of the stretches
+            foreach (var road in roads)
+            {
+                float acc = 300f;
+                for (int i = 1; i < road.points.Count; i++)
+                {
+                    acc += Vector3.Distance(road.points[i - 1], road.points[i]);
+                    if (acc < 900f) continue;
+                    acc = 0f;
+                    if (r.NextDouble() > 0.35) continue;
+                    var p = road.points[i];
+                    if (world.SettlementAt(p.x, p.z) != null) continue;
+                    packers.Add(p);
+                }
             }
             // roadside stalls every ~400 m on about half the stretches
             foreach (var road in roads)
@@ -248,13 +268,15 @@ namespace MadMax.Npc
             foreach (var c in convoys) c.Tick(game, focus, dt);
             if (game.Menus.IsOpen && game.Menus.TalkingTo) game.Menus.TalkingTo.Attend(game.Player.transform.position);
 
-            if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); UpdateBoards(focus); Contracts.Tick(); }
+            if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); UpdateBoards(focus); UpdateFires(focus); Contracts.Tick(); }
+            Companions.Tick(game);
+            TownQuests.Tick(game);
             // spawn at most one person per frame (body meshes are built on first use)
             for (int i = 0; i < wanted.Count; i++)
             {
                 var s = wanted[i];
                 if (live.ContainsKey(s.id)) continue;
-                if (NpcRegistry.IsDead(s.id)) { live[s.id] = null; continue; }
+                if (NpcRegistry.IsDead(s.id) || retired.Contains(s.id) || Companions.Has(s.id)) { live[s.id] = null; continue; }
                 SpawnSpot(s);
                 break;
             }
@@ -290,6 +312,9 @@ namespace MadMax.Npc
                     var p = st.pos + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * rr;
                     Want(new Spot { id = "r" + st.index + "," + i, role = NpcRole.Resident, pos = Ground(p), radius = 12f }, focus);
                 }
+                // the town boss at their post (roadmap 20 quest chains)
+                if (bossSpots.TryGetValue(st.index, out var boss))
+                    Want(new Spot { id = "L" + st.index, role = NpcRole.Leader, pos = boss.pos, yaw = boss.yaw, town = st.index }, focus);
                 if (st.kind != Biome.City)
                 {
                     // market stall near the middle, off the road
@@ -311,6 +336,13 @@ namespace MadMax.Npc
                 var (p, yaw, kind) = roadStalls[i];
                 if ((p - focus).sqrMagnitude > SpawnRange * SpawnRange * 1.5f) continue;
                 Want(new Spot { id = "s" + i, role = NpcRole.Stallkeeper, kind = kind, pos = Ground(new Vector2(p.x, p.z)), yaw = yaw, stall = 1 }, focus);
+            }
+            // pack traders on their beats
+            for (int i = 0; i < packers.Count; i++)
+            {
+                var p = packers[i];
+                if ((p - focus).sqrMagnitude > SpawnRange * SpawnRange * 1.5f) continue;
+                Want(new Spot { id = "p" + i, role = NpcRole.Packer, kind = "pack", pos = Ground(new Vector2(p.x, p.z)), radius = 45f }, focus);
             }
             // wanderers of the nearby cells
             var fc = new Vector2Int(Mathf.FloorToInt(focus.x / WanderCell), Mathf.FloorToInt(focus.z / WanderCell));
@@ -363,13 +395,72 @@ namespace MadMax.Npc
                 if (!stalls.ContainsKey(s.id)) stalls[s.id] = SpawnStall(s.kind, pos, s.yaw, s.id);
                 pos = pos + q * new Vector3(0f, 0f, -0.9f);                       // behind the table, facing the customer
             }
+            p.town = s.role == NpcRole.Leader ? s.town : -1;
             var n = Npc.Spawn(p, pos, s.yaw, null, game.propMaterial);
-            n.mode = s.role == NpcRole.Shopkeeper || s.role == NpcRole.Stallkeeper ? Npc.Mode.Stand : Npc.Mode.Wander;
+            n.mode = s.role == NpcRole.Shopkeeper || s.role == NpcRole.Stallkeeper || s.role == NpcRole.Leader ? Npc.Mode.Stand : Npc.Mode.Wander;
+            if (s.role == NpcRole.Packer) PackAnimal.Attach(n, game.propMaterial);
             n.homeRadius = s.radius > 0f ? s.radius : 8f;
             live[s.id] = n;
         }
 
         static int Stable(string s) { unchecked { int h = 17; foreach (char c in s) h = h * 31 + c; return h; } }
+
+        /// <summary>A recruited person: the director lets go of their spot (and never spawns a copy).</summary>
+        public void Release(Npc n)
+        {
+            string key = null;
+            foreach (var kv in live) if (kv.Value == n) { key = kv.Key; break; }
+            if (key != null) live[key] = null;
+            retired.Add(n.Profile.id);
+        }
+
+        /// <summary>Somewhere near a settlement's middle that is off the road and clear of buildings.</summary>
+        Vector3? ClearSpot(Settlement st, int salt, float min, float max, float room)
+        {
+            var world = game.World;
+            var rnd = new System.Random(world.seed ^ st.index * 4099 + salt);
+            for (int k = 0; k < 14; k++)
+            {
+                float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
+                var p = st.pos + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Mathf.Lerp(min, max, (float)rnd.NextDouble());
+                var s = world.Sample(p.x, p.y);
+                if (s.roadDist < 2.5f || !float.IsNaN(s.water)) continue;
+                var g = Ground(p);
+                if (Physics.CheckSphere(g + Vector3.up * (room + 0.2f), room, ~0, QueryTriggerInteraction.Ignore)) continue;
+                return g;
+            }
+            return null;
+        }
+
+        /// <summary>Each settlement near the player gets its boss post and an evening campfire; wanderers light their own
+        /// at dusk (roadmap 20).</summary>
+        void UpdateFires(Vector3 focus)
+        {
+            var world = game.World;
+            foreach (var st in world.settlements)
+            {
+                float d = Vector2.Distance(st.pos, new Vector2(focus.x, focus.z)) - st.radius;
+                townFires.TryGetValue(st.index, out var fire);
+                if (d < 60f)
+                {
+                    if (!fire) { var at = ClearSpot(st, 11, 7f, 16f, 2.2f); if (at.HasValue) townFires[st.index] = Campfire.Spawn(at.Value, 7, game.propMaterial); }
+                    if (!bossSpots.ContainsKey(st.index)) { var at = ClearSpot(st, 23, 3f, 9f, 0.8f); if (at.HasValue) bossSpots[st.index] = (at.Value, Mathf.Atan2(st.pos.x - at.Value.x, st.pos.y - at.Value.z) * Mathf.Rad2Deg); }
+                }
+                else if (fire && d > KeepRange) { Destroy(fire.gameObject); townFires.Remove(st.index); }
+            }
+            bool dusk = DayNight.Hours >= 18f || DayNight.Hours < 6.5f;
+            foreach (var kv in live)
+            {
+                var n = kv.Value;
+                if (!n || n.Profile.role != NpcRole.Wanderer || campFires.ContainsKey(kv.Key) || !dusk) continue;
+                var r = new System.Random(Stable(kv.Key));
+                var at = n.home + new Vector3((float)r.NextDouble() * 4f - 2f, 0f, (float)r.NextDouble() * 4f - 2f);
+                campFires[kv.Key] = Campfire.Spawn(Ground(new Vector2(at.x, at.z)), 3, game.propMaterial);
+            }
+            drop.Clear();
+            foreach (var kv in campFires) if (!kv.Value || !dusk || !live.TryGetValue(kv.Key, out var owner) || !owner) drop.Add(kv.Key);
+            foreach (var id in drop) { if (campFires[id]) Destroy(campFires[id].gameObject); campFires.Remove(id); }
+        }
 
         // ------------------------------------------------------------------ stalls
 

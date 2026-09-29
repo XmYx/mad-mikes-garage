@@ -36,6 +36,8 @@ namespace MadMax.Npc
         public Dialogue(WastelandGame g, Npc npc)
         {
             this.g = g; this.npc = npc;
+            if (npc.companion) { CompanionHub(); return; }
+            if (npc.Surrendered) { SurrenderTalk(); return; }
             if (P.Raider) { Parley(); return; }
             if (npc.Hostile) { Hostile(); return; }
             line = NpcLore.Greeting(P.temper, S.Has(NpcSave.Met), S.disposition);
@@ -158,7 +160,23 @@ namespace MadMax.Npc
             choices.Clear();
             Add("WHO ARE YOU?", About);
             Add("WHAT'S HAPPENING AROUND HERE?", Rumours);
-            if (P.Vendor) Add("SHOW ME WHAT YOU'VE GOT.", () => { if (S.disposition <= -40) { line = "I DON'T SELL TO YOUR KIND."; return; } WantsTrade = true; });
+            if (P.Vendor) Add("SHOW ME WHAT YOU'VE GOT.", () => { if (S.disposition <= -40) { line = "I DON'T SELL TO YOUR KIND."; return; } if (npc.Closed) { line = "WE'RE SHUT. COME BACK AFTER SUNRISE."; return; } WantsTrade = true; });
+            if (P.role == NpcRole.Leader) Add("ANY WORK FOR THE TOWN?", BossJob, TownQuests.Stage(P.town) < TownQuests.Stages ? TownQuests.Title(TownQuests.Stage(P.town)) : null);
+            if (P.role == NpcRole.Leader && TownQuests.ParcelFor(g, P.town, out var parcelFrom))
+                Add("I'M HERE FOR THE PARCEL FOR " + parcelFrom + ".", () => { g.Inventory.AddItem(TownQuests.Parcel); line = "MEDICINE. THEY NEED IT MORE THAN WE DO. GO CAREFUL."; Hub(false); });
+            if (Companions.CanAsk(npc) && !Companions.Full(g) && S.disposition >= 10)
+            {
+                if (Cha >= 6) Add("[CHA 6] WALK WITH ME. I COULD USE SOMEONE LIKE YOU.", () =>
+                {
+                    if (S.disposition >= 40 || Check(7f - S.disposition / 20f)) { Companions.Recruit(g, npc); End("...ALRIGHT. LEAD THE WAY."); }
+                    else { Change(-2); line = "I DON'T KNOW YOU WELL ENOUGH FOR THAT."; Hub(false); }
+                }, "A COMPANION FOLLOWS, FIGHTS, CARRIES AND GUARDS");
+                Add("(" + Companions.HireScrap + " SCRAP) I'M HIRING. INTERESTED?", () =>
+                {
+                    if (g.Inventory.TrySpend(ResourceType.Scrap, Companions.HireScrap)) { Companions.Recruit(g, npc); End("SCRAP UP FRONT? YOU'VE GOT YOURSELF A HAND."); }
+                    else { line = "COME BACK WHEN YOU CAN PAY."; Hub(false); }
+                }, "A COMPANION FOLLOWS, FIGHTS, CARRIES AND GUARDS");
+            }
             if (P.Vendor && S.haggleDay != Day && Cha >= 4) Add("[CHA " + Cha + "] COME ON, A LITTLE DISCOUNT FOR A FRIEND?", Haggle, "BETTER PRICES TODAY IF IT WORKS");
             if (S.jobState == 0 && S.disposition >= -5) Add("NEED A HAND WITH ANYTHING?", OfferJob);
             else if (S.jobState == 1) Add("ABOUT THAT ERRAND...", TurnIn);
@@ -166,6 +184,87 @@ namespace MadMax.Npc
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);
             Add("GOODBYE.", () => { if (!asked) Change(-1); End(NpcLore.Farewell[((P.seed & 0xffff) + Day) % NpcLore.Farewell.Length]); });
+        }
+
+        // ------------------------------------------------------------------ roadmap 20: bosses, companions, the beaten
+
+        void BossJob()
+        {
+            asked = true;
+            int t = P.town;
+            if (t < 0) { line = "THIS TOWN RUNS ITSELF."; Hub(false); return; }
+            int stage = TownQuests.Stage(t);
+            line = TownQuests.Describe(g, t);
+            choices.Clear();
+            if (stage < TownQuests.Stages)
+            {
+                if (!TownQuests.Accepted(t)) Add("I'LL DO IT.", () => { TownQuests.Accept(g, t); Change(3); line = "GOOD. DON'T LET US DOWN."; Hub(false); });
+                else Add("IT'S DONE.", () =>
+                {
+                    var reply = TownQuests.TurnIn(g, t, npc.transform.position + npc.transform.forward * 1.5f);
+                    if (reply != null) { Change(8); S.Set(NpcSave.Helped); }
+                    line = reply ?? "NOT YET IT ISN'T. " + TownQuests.Describe(g, t);
+                    Hub(false);
+                });
+            }
+            Add("LATER.", () => Hub());
+        }
+
+        void CompanionHub()
+        {
+            line = npc.order == 1 ? "WAITING, LIKE YOU SAID." : npc.order == 2 ? "KEEPING WATCH." : "RIGHT BEHIND YOU, BOSS.";
+            choices.Clear();
+            if (npc.order != 0) Add("FOLLOW ME.", () => { npc.order = 0; End("ON YOUR SIX."); });
+            if (npc.order != 1) Add("WAIT HERE.", () => { npc.order = 1; npc.home = npc.transform.position; npc.homeYaw = npc.transform.eulerAngles.y; End("I'LL BE HERE."); });
+            var claim = MadMax.Building.ClaimFlag.Near(npc.transform.position);
+            if (claim && npc.order != 2) Add("GUARD THE BASE.", () => { npc.order = 2; npc.home = claim.transform.position; npc.homeRadius = 10f; End("NOBODY GETS PAST ME."); });
+            var car = SpareCar();
+            if (car) Add("TAKE THE " + WastelandGame.Name(car) + " AND FOLLOW ME.", () => { npc.order = 0; npc.TakeWheel(car); End("I'LL STAY ON YOUR TAIL."); }, "THEY DRIVE IT BEHIND YOU; GET IN IT YOURSELF TO TAKE IT BACK");
+            Add("(T OPENS THEIR PACK)  WE'RE DONE. GO YOUR OWN WAY.", () => { Companions.Dismiss(g, npc); End("...FINE. TAKE CARE OUT THERE."); }, "THEY LEAVE, DROPPING WHAT THEY CARRY FOR YOU");
+            Add("(LEAVE)", () => Ended = true);
+        }
+
+        /// <summary>A fleet vehicle near the companion nobody is driving.</summary>
+        MadMax.Vehicles.VehicleDriver SpareCar()
+        {
+            MadMax.Vehicles.VehicleDriver best = null; float bd = 25f * 25f;
+            foreach (var v in g.Fleet)
+            {
+                if (!v || v == g.Current || v.aiDriven || !v.driveable || !v.Engine) continue;
+                float d = (v.transform.position - npc.transform.position).sqrMagnitude;
+                if (d < bd) { bd = d; best = v; }
+            }
+            return best;
+        }
+
+        void SurrenderTalk()
+        {
+            line = P.temper == Temper.Proud ? "...GO ON THEN. FINISH IT." : "DON'T SHOOT! I'M DONE, I'M DONE!";
+            choices.Clear();
+            Add("GET OUT OF HERE. DON'T LET ME SEE YOU AGAIN.", () =>
+            {
+                npc.LetGo();
+                NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 2);
+                End("THANK YOU... I WON'T FORGET THIS.");
+            }, "MERCY: +REPUTATION");
+            Add("EMPTY YOUR POCKETS.", () =>
+            {
+                var loot = LootTables.Roll(P.Raider ? "raider" : "house", new System.Random(P.seed ^ Day), 1, g.Stats.Attribute(Attr.Perception));
+                foreach (var (id, n) in loot)
+                {
+                    if (id.StartsWith("res:") && int.TryParse(id.Substring(4), out int ri)) g.Inventory.Add((ResourceType)ri, n);
+                    else g.Inventory.AddItem(id, n);
+                }
+                npc.LetGo();
+                End(loot.Count > 0 ? "TAKE IT, TAKE IT ALL!" : "I'VE GOT NOTHING! LOOK!");
+            });
+            if (Companions.CanAsk(npc) && !Companions.Full(g) && Cha >= 7)
+                Add("[CHA 7] YOUR CREW LEFT YOU TO DIE. RIDE WITH ME INSTEAD.", () =>
+                {
+                    if (Check(6f)) { Companions.Recruit(g, npc); End("...YEAH. BETTER THAN BEING DEAD."); }
+                    else End("...I'D RATHER TAKE MY CHANCES OUT THERE.");
+                });
+            Add("(LEAVE THEM)", () => Ended = true);
         }
 
         void About()

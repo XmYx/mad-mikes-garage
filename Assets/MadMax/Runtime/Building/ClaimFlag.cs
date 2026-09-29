@@ -35,7 +35,7 @@ namespace MadMax.Building
         /// <summary>Rough strength of the defences: armed turrets, spike walls, wire, bells, stone and concrete walls.</summary>
         public int Defence()
         {
-            float s = 0f;
+            float s = MadMax.Npc.Companions.GuardsAt(transform.position, 40f) * 3f;              // companions on guard (roadmap 20)
             foreach (var p in Placeable.All)
             {
                 if (!p || !Inside(p.transform.position)) continue;

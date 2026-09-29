@@ -13,6 +13,8 @@ namespace MadMax.Npc
         public string id, first, nick, kind, gang, tool;
         public NpcRole role;
         public Temper temper;
+        /// <summary>Settlement a town boss runs (-1 = none).</summary>
+        public int town = -1;
         public int seed, origin, drive, secret, job;
         public Appearance look;
         public List<string> outfit = new List<string>();
@@ -20,7 +22,8 @@ namespace MadMax.Npc
         public string Name => role == NpcRole.Raider || role == NpcRole.RaiderBoss ? nick : first + " '" + nick + "'";
         public string Title => role switch
         {
-            NpcRole.Shopkeeper or NpcRole.Stallkeeper or NpcRole.Trader => NpcLore.TradeName(kind),
+            NpcRole.Shopkeeper or NpcRole.Stallkeeper or NpcRole.Trader or NpcRole.Packer => NpcLore.TradeName(kind),
+            NpcRole.Leader => "TOWN BOSS",
             NpcRole.Raider => gang, NpcRole.RaiderBoss => gang + " BOSS", NpcRole.Resident => "LOCAL", _ => "WANDERER"
         };
         public bool Vendor => kind != null;
@@ -64,6 +67,15 @@ namespace MadMax.Npc
                 if (r.NextDouble() < 0.35) p.outfit.Add("arm_guards");
                 if (r.NextDouble() < 0.3) p.outfit.Add("shin_guards");
             }
+            else if (role == NpcRole.Leader)
+            {
+                p.outfit.Add(Pick("coat", "duster")); p.outfit.Add("jeans"); p.outfit.Add("boots"); p.outfit.Add(Pick("cowboy", "sunhat", "beanie"));
+                p.tool = r.NextDouble() < 0.6 ? "tool_revolver" : null;
+            }
+            else if (role == NpcRole.Packer)
+            {
+                p.outfit.Add(Pick("poncho", "duster")); p.outfit.Add("pants"); p.outfit.Add("boots"); p.outfit.Add("sunhat"); p.outfit.Add(Pick("hikingpack", "framepack"));
+            }
             else
             {
                 p.outfit.Add(Pick("tshirt", "tank", "hoodie", "tshirt")); p.outfit.Add(Pick("pants", "jeans", "shorts", "jeans"));
@@ -98,7 +110,7 @@ namespace MadMax.Npc
         public List<int> boughtN = new List<int>();
         public bool dead;
 
-        public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16;
+        public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16, Companion = 32, Surrendered = 64;
         public bool Has(int f) => (flags & f) != 0;
         public void Set(int f, bool on = true) { if (on) flags |= f; else flags &= ~f; }
 

@@ -12,6 +12,8 @@ namespace MadMax.Vehicles
         public const int Fare = 10;
         public VehicleDriver Vehicle { get; private set; }
         public Seat Seat { get; private set; }
+        /// <summary>A person sitting here (a companion riding along).</summary>
+        public MadMax.Npc.Npc Occupant;
 
         /// <summary>Give a drivable vehicle its passenger seat (once).</summary>
         public static PassengerSeat For(VehicleDriver v)
@@ -65,7 +67,7 @@ namespace MadMax.Vehicles
 
         public string Prompt(WastelandGame g)
         {
-            if (!g.Player || g.Current || Taken) return null;
+            if (!g.Player || g.Current || Taken || Occupant) return null;
             int who = Driver(g);
             return who == 1 ? "[E] RIDE ALONG (" + Fare + " SCRAP)" : who == 3 ? "[E] RIDE AS PASSENGER" : null;
         }

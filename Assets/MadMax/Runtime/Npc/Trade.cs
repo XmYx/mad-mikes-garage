@@ -80,8 +80,8 @@ namespace MadMax.Npc
         /// <summary>Fuel Guild chits count for this much scrap at fuel vendors.</summary>
         public const int ChitValue = 6;
 
-        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain)));
-        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f)));
+        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f)));
+        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f)));
 
         // ------------------------------------------------------------------ stock
 
@@ -93,6 +93,8 @@ namespace MadMax.Npc
                                ("part:armor_spikes", 0, 1), ("part:bumper_ram", 0, 1), ("part:cargo_jerry_rack", 0, 1), ("tool_wrench", 0, 1),
                                ("use_oil_filter", 0, 3), ("use_air_filter", 0, 3), ("use_spark_plugs", 0, 2), ("part:lights_emergency", 0, 1), ("part:wheel_monster", 0, 1) } },
             { "scrap", new[] { ("res:1", 20, 80), ("res:20", 2, 10), ("res:21", 1, 8), ("res:4", 4, 16), ("res:5", 4, 16), ("res:6", 4, 12), ("kit_wall_scrap", 0, 2), ("kit_barricade", 0, 2), ("tool_cutter", 0, 1) } },
+            { "pack", new[] { ("food_can", 1, 4), ("drink_water", 2, 6), ("med_bandage", 1, 4), ("med_pills", 0, 2), ("ammo_shells", 0, 8), ("ammo_cartridge", 0, 6),
+                              ("use_oil_filter", 0, 2), ("use_air_filter", 0, 1), ("dye_red", 0, 2), ("dye_blue", 0, 2), ("seed_tomato", 0, 3), ("res:6", 2, 8), ("res:32", 0, 4) } },
             { "food", new[] { ("food_can", 2, 8), ("food_ration", 1, 5), ("drink_water", 3, 10), ("drink_soda", 1, 6), ("food_potato", 2, 8), ("food_corn", 2, 8), ("food_stew", 0, 3),
                               ("seed_corn", 0, 4), ("seed_tomato", 0, 4), ("seed_potato", 0, 4), ("res:28", 10, 40) } },
             { "salvage", new[] { ("med_bandage", 1, 5), ("med_pills", 0, 3), ("med_splint", 0, 2), ("med_disinfectant", 0, 2), ("ammo_shells", 5, 20), ("throw_molotov", 0, 3),
@@ -108,6 +110,7 @@ namespace MadMax.Npc
             { "parts", new[] { "res:20", "res:21", "res:23", "res:5", "tool_" } },
             { "scrap", new[] { "res:4", "res:5", "res:6", "res:15", "res:16", "res:17", "res:18", "res:20", "res:21", "res:22", "res:23", "kit_" } },
             { "food", new[] { "food_", "drink_", "seed_", "res:28" } },
+            { "pack", new[] { "food_", "crop_", "med_", "cloth_", "misc_", "res:6", "res:31", "res:32" } },
             { "salvage", new[] { "book_", "vhs_", "med_", "tool_", "ammo_", "cloth_", "misc_", "throw_" } },
             { "build", new[] { "res:2", "res:3", "res:10", "res:11", "res:12", "res:13", "res:24", "res:26", "res:27" } },
         };

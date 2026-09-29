@@ -9,16 +9,21 @@ using UnityEngine;
 namespace MadMax.Npc
 {
     /// <summary>A person on foot: HumanRig body (shared meshes), HumanAnimator gait, CharacterController movement.
-    /// Stands at a post (shopkeepers, stallkeepers), wanders around home (residents, wanderers), flees when scared, or
-    /// fights (raiders, anyone pushed too far): melee within reach or shotgun blasts at range, at the player on foot or
-    /// at the player's vehicle. Talk with [E], trade with [T]. Takes hits through <see cref="IDamageable"/>, gets run
-    /// over by fast vehicles, dies into a searchable body; killing peaceful folk costs reputation.</summary>
+    /// Stands at a post (shopkeepers, stallkeepers, town bosses), wanders around home (residents, wanderers, pack
+    /// traders), keeps a daily routine (roadmap 20: residents gather at the campfire in the evening and sleep indoors
+    /// at night, wanderers sit up by their own fire, shops close after dark), flees when scared, or fights (raiders,
+    /// anyone pushed too far): melee within reach or shotgun blasts at range, at the player, the player's vehicle or
+    /// another person. Gunmen take cover, knife-men fan out, the badly hurt break off, the beaten surrender.
+    /// Companions (<see cref="Companions"/>) follow the player, ride along or drive a second vehicle, wait, guard a
+    /// base and fight whatever threatens the player. Talk with [E], trade with [T]. Takes hits through
+    /// <see cref="IDamageable"/>, gets run over by fast vehicles, dies into a searchable body; killing peaceful folk
+    /// (or someone who surrendered) costs reputation.</summary>
     public class Npc : MonoBehaviour, IInteractable, IDamageable
     {
         public static readonly List<Npc> All = new List<Npc>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
 
-        public enum Mode { Stand, Wander, Flee, Fight, Dead }
+        public enum Mode { Stand, Wander, Flee, Fight, Dead, Follow, Sleep, Gather, Surrender }
         public NpcProfile Profile { get; private set; }
         public NpcSave State { get; private set; }
         public Mode mode = Mode.Wander;
@@ -33,8 +38,23 @@ namespace MadMax.Npc
         public Vector3 raidAt;
         Placeable siegeTarget;
         float siegeRepick;
-        public bool Hostile => mode != Mode.Dead && (State.Has(NpcSave.Hostile) || (Profile.Raider && aggro));
+        /// <summary>Walks with the player (roadmap 20): <see cref="order"/> 0 follow, 1 wait here, 2 guard (home = post).</summary>
+        public bool companion;
+        public int order;
+        /// <summary>Let go (dismissed, spared): walks off and is folded away once out of sight.</summary>
+        public bool leaving;
+        /// <summary>A companion's pack (25 kg).</summary>
+        public Container pack;
+        public bool Hostile => mode != Mode.Dead && !Surrendered && (State.Has(NpcSave.Hostile) || (Profile.Raider && aggro));
         public bool Alive => mode != Mode.Dead;
+        public bool Surrendered => State.Has(NpcSave.Surrendered);
+        /// <summary>Here to be talked to: not asleep indoors, not riding or driving.</summary>
+        public bool Available => Alive && !asleep && !Riding && !Driving;
+        public bool Riding => rideSeat;
+        public bool Driving => drivenCar;
+        public VehicleDriver DrivenCar => drivenCar;
+        /// <summary>Shops and stalls keep hours (7:00–20:00).</summary>
+        public bool Closed => (Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper) && (DayNight.Hours < 7f || DayNight.Hours >= 20f);
         public float Health => health;
 
         HumanRig rig;
@@ -50,6 +70,16 @@ namespace MadMax.Npc
         float detourUntil;
         bool hasGoal;
         Vector3 faceTarget;
+        // combat AI and routine
+        Npc foe, hurtBy;
+        float thinkT, hurtByUntil, coverT, flank;
+        Vector3 cover;
+        bool hasCover, retreated, asleep, seated;
+        Campfire fire;
+        int fireSpot = -1;
+        PassengerSeat rideSeat;
+        VehicleDriver drivenCar;
+        static readonly ToolPose HandsUp = new ToolPose { armRX = -165f, armRZ = 14f, foreR = -55f, armLX = -165f, armLZ = -14f, foreL = -55f };
 
         public static Npc Spawn(NpcProfile p, Vector3 pos, float yaw, Transform parent, Material mat)
         {
@@ -68,8 +98,10 @@ namespace MadMax.Npc
             n.rig.outfit.AddRange(p.outfit);
             n.rig.Rebuild();
             n.anim = new HumanAnimator(n.rig);
-            n.maxHealth = n.health = p.role == NpcRole.RaiderBoss ? 160f : p.Raider ? 90f : 70f;
-            n.SetTool(p.tool, mat);
+            n.maxHealth = n.health = p.role == NpcRole.RaiderBoss ? 160f : p.Raider ? 90f : p.role == NpcRole.Leader ? 110f : 70f;
+            n.flank = (Mathf.Abs(p.seed >> 4) % 3 - 1) * 55f;
+            if (n.State.Has(NpcSave.Surrendered)) n.leaving = true;                          // spared before: keeps out of the way
+            if (!n.State.Has(NpcSave.Surrendered)) n.SetTool(p.tool, mat);
             n.lastPos = pos;
             return n;
         }
@@ -88,6 +120,12 @@ namespace MadMax.Npc
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
+        void OnDestroy()
+        {
+            if (rideSeat) rideSeat.Occupant = null;
+            if (fire && fireSpot >= 0) fire.Free(fireSpot);
+        }
+
         bool Ranged => tool is RangedTool;
 
         // ------------------------------------------------------------------ brain
@@ -104,23 +142,31 @@ namespace MadMax.Npc
                 if (Random.value < dt * 3f) BloodStains.Splash(transform.position, 0.15f);
                 if (health <= 0f) { Die(lastByPlayer); return; }
             }
+            if (Riding) { RideTick(g, dt); return; }
+            if (Driving) { DriveTick(g); return; }
             var terrain = DeformableTerrain.Instance;
             // wanderers light a torch after dark
-            if (Profile.role == NpcRole.Wanderer && Profile.tool == null && (DayNight.Darkness > 0.45f) != (tool is LightTool))
+            if (Profile.role == NpcRole.Wanderer && Profile.tool == null && !companion && !Surrendered && (DayNight.Darkness > 0.45f) != (tool is LightTool))
                 SetTool(DayNight.Darkness > 0.45f ? "tool_torch" : null, rig.material);
 
             Vector3 me = transform.position;
             var playerPos = g.Current ? g.Current.transform.position : g.Player.transform.position;
             float dPlayer = Vector3.Distance(me, playerPos);
+            if (leaving && dPlayer > 170f) { Destroy(gameObject); return; }
             RunOver(g);
 
             Vector3 move = Vector3.zero;
             float speed = 0f;
-            if (Hostile && dPlayer < 60f && !g.Vitals.Dead) mode = Mode.Fight;
-            else if (mode == Mode.Fight) mode = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper ? Mode.Stand : Mode.Wander;
-            if (mode == Mode.Flee && Time.time > fleeUntil) mode = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper ? Mode.Stand : Mode.Wander;
+            // who to fight: companions pick the nearest threat, anyone hits back at a person who hurt them
+            if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; foe = PickFoe(g); }
+            if (Surrendered) mode = Mode.Surrender;
+            else if (foe) mode = Mode.Fight;
+            else if (Hostile && dPlayer < 60f && !g.Vitals.Dead) mode = Mode.Fight;
+            else if (mode != Mode.Flee || Time.time > fleeUntil) mode = Routine();
+            if (mode != Mode.Gather) LeaveFire();
+            if (mode != Mode.Sleep && asleep) SetAsleep(false);
 
-            bool sieging = raiding && (dPlayer > 22f || g.Vitals.Dead);
+            bool sieging = raiding && !foe && (dPlayer > 22f || g.Vitals.Dead);
             if (sieging) Siege(dt, ref move, ref speed);
             else switch (mode)
             {
@@ -134,47 +180,67 @@ namespace MadMax.Npc
                         if (hasGoal && Flat(goal - me).magnitude < 0.6f && Random.value < 0.6f) { hasGoal = false; repath = Time.time + Random.Range(3f, 9f); break; }  // linger
                         if (Time.time > repath) PickGoal(terrain);
                     }
-                    if (hasGoal) { move = Toward(goal); speed = 1.25f; }
+                    if (hasGoal) { move = Toward(goal); speed = Profile.role == NpcRole.Packer ? 1.05f : 1.25f; }
                     break;
                 case Mode.Flee:
                 {
-                    var away = Flat(me - playerPos).normalized;
-                    move = away; speed = 3.6f;
+                    var from = foe ? foe.transform.position : playerPos;
+                    move = Flat(me - from).normalized; speed = 3.6f;
                     break;
                 }
                 case Mode.Fight:
-                    Fight(g, playerPos, dPlayer, dt, ref move, ref speed);
+                    if (foe) Fight(g, foe.transform.position, Vector3.Distance(me, foe.transform.position), false, dt, ref move, ref speed);
+                    else Fight(g, playerPos, dPlayer, g.Current, dt, ref move, ref speed);
+                    break;
+                case Mode.Follow:
+                    Follow(g, playerPos, dPlayer, ref move, ref speed);
+                    if (Riding) return;
+                    break;
+                case Mode.Sleep:
+                    if (!asleep) { if (Flat(home - me).sqrMagnitude > 1f) { move = Toward(home); speed = 1.4f; } else SetAsleep(true); }
+                    break;
+                case Mode.Gather:
+                    Gather(me, ref move, ref speed);
+                    break;
+                case Mode.Surrender:
+                    faceTarget = playerPos; faceUntil = Time.time + 0.5f;
                     break;
             }
-            if (mode != Mode.Fight && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
+            if (asleep) return;                                                               // indoors till morning
+            if (mode != Mode.Fight && mode != Mode.Surrender && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
             if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
 
-            // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal
-            if (Time.time < detourUntil && move.sqrMagnitude > 0.001f) move = detour;
-            if (move.sqrMagnitude > 0.001f && !Blocked(terrain, me, move)) Face(move, dt);
-            else if (move.sqrMagnitude > 0.001f) { hasGoal = false; move = Vector3.zero; speed = 0f; }
-            if (Time.time < faceUntil && speed < 0.1f) Face(Flat(faceTarget - me), dt);
-            vy = cc.isGrounded ? -1f : vy + Physics.gravity.y * dt;
-            if (cc.enabled) cc.Move((move.normalized * speed + Vector3.up * vy) * dt);
-            if (terrain)
+            float moved = 0f;
+            if (seated) SitAtFire();
+            else
             {
-                var p = transform.position;
-                float h = terrain.Height(p.x, p.z);
-                if (p.y < h - 0.3f) { p.y = h + 0.05f; transform.position = p; }
-            }
-            lastVelocity = (transform.position - lastPos) / Mathf.Max(dt, 1e-4f);
-            float moved = Flat(transform.position - lastPos).magnitude / Mathf.Max(dt, 1e-4f);
-            lastPos = transform.position;
-            if (speed > 0.5f && moved < 0.2f)
-            {
-                if ((stuck += dt) > 1f)
+                // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal
+                if (Time.time < detourUntil && move.sqrMagnitude > 0.001f) move = detour;
+                if (move.sqrMagnitude > 0.001f && !Blocked(terrain, me, move)) Face(move, dt);
+                else if (move.sqrMagnitude > 0.001f) { hasGoal = false; move = Vector3.zero; speed = 0f; }
+                if (Time.time < faceUntil && speed < 0.1f) Face(Flat(faceTarget - me), dt);
+                vy = cc.isGrounded ? -1f : vy + Physics.gravity.y * dt;
+                if (cc.enabled) cc.Move((move.normalized * speed + Vector3.up * vy) * dt);
+                if (terrain)
                 {
-                    stuck = 0f; hasGoal = false; repath = 0f;
-                    var side = Vector3.Cross(Vector3.up, move).normalized * (Random.value < 0.5f ? 1f : -1f);
-                    detour = side + move.normalized * 0.3f; detourUntil = Time.time + 1.4f;
+                    var p = transform.position;
+                    float h = terrain.Height(p.x, p.z);
+                    if (p.y < h - 0.3f) { p.y = h + 0.05f; transform.position = p; }
                 }
+                lastVelocity = (transform.position - lastPos) / Mathf.Max(dt, 1e-4f);
+                moved = Flat(transform.position - lastPos).magnitude / Mathf.Max(dt, 1e-4f);
+                if (speed > 0.5f && moved < 0.2f)
+                {
+                    if ((stuck += dt) > 1f)
+                    {
+                        stuck = 0f; hasGoal = false; repath = 0f;
+                        var side = Vector3.Cross(Vector3.up, move).normalized * (Random.value < 0.5f ? 1f : -1f);
+                        detour = side + move.normalized * 0.3f; detourUntil = Time.time + 1.4f;
+                    }
+                }
+                else stuck = 0f;
             }
-            else stuck = 0f;
+            lastPos = transform.position;
 
             if (swing >= 0f)
             {
@@ -183,8 +249,9 @@ namespace MadMax.Npc
             }
             anim.Tick(dt, new HumanAnimator.State
             {
-                speed = moved, grounded = cc.isGrounded, verticalSpeed = vy,
-                tool = tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null, twoHanded = tool && tool.TwoHanded
+                speed = moved, grounded = seated || cc.isGrounded, verticalSpeed = seated ? 0f : vy, sitting = seated, lounging = seated,
+                tool = mode == Mode.Surrender ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null,
+                twoHanded = tool && tool.TwoHanded
             });
         }
 
@@ -221,20 +288,263 @@ namespace MadMax.Npc
             return terrain.Height(ahead.x, ahead.z) - me.y > 1.2f;
         }
 
+        // ------------------------------------------------------------------ routine (roadmap 20 schedules)
+
+        /// <summary>What to do when nothing is happening: companions by their order; townsfolk by the clock —
+        /// residents gather at the campfire in the evening and sleep indoors at night, stallkeepers and town bosses
+        /// sleep at night, wanderers sit up by their own fire, shopkeepers mind the shop.</summary>
+        Mode Routine()
+        {
+            if (companion) return order == 1 ? Mode.Stand : order == 2 ? Mode.Wander : Mode.Follow;
+            bool keeper = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper || Profile.role == NpcRole.Leader;
+            if (leaving || Hostile || Profile.Raider || convoy != null || raiding) return keeper ? Mode.Stand : Mode.Wander;
+            float h = DayNight.Hours;
+            bool night = h >= 22f || h < 6f, evening = h >= 18.5f && h < 22f;
+            switch (Profile.role)
+            {
+                case NpcRole.Resident:
+                    if (night) return Mode.Sleep;
+                    return evening && Campfire.Nearest(home, 60f) ? Mode.Gather : Mode.Wander;
+                case NpcRole.Stallkeeper: case NpcRole.Leader:
+                    return night ? Mode.Sleep : Mode.Stand;
+                case NpcRole.Wanderer:
+                    return (night || evening) && Campfire.Nearest(home, 30f) ? Mode.Gather : Mode.Wander;
+                case NpcRole.Shopkeeper:
+                    return Mode.Stand;
+                default:
+                    return Mode.Wander;
+            }
+        }
+
+        /// <summary>Indoors for the night: hidden, not in anyone's way.</summary>
+        void SetAsleep(bool on)
+        {
+            if (asleep == on) return;
+            asleep = on;
+            SetVisible(!on);
+            cc.enabled = !on;
+        }
+
+        void SetVisible(bool on) { foreach (var r in GetComponentsInChildren<Renderer>(true)) r.enabled = on; }
+
+        void Gather(Vector3 me, ref Vector3 move, ref float speed)
+        {
+            if (!fire || fireSpot < 0)
+            {
+                fire = Campfire.Nearest(home, 60f);
+                fireSpot = fire ? fire.Claim() : -1;
+                if (fireSpot < 0) { fire = null; mode = Mode.Wander; return; }
+            }
+            if (seated) return;
+            var spot = fire.Seat(fireSpot);
+            if (Flat(spot - me).magnitude > 0.45f) { move = Toward(spot); speed = 1.3f; }
+            else { seated = true; cc.enabled = false; }
+        }
+
+        void LeaveFire()
+        {
+            if (fire && fireSpot >= 0) fire.Free(fireSpot);
+            fire = null; fireSpot = -1;
+            if (!seated) return;
+            seated = false;
+            var p = transform.position;
+            var t = DeformableTerrain.Instance;
+            if (t) p.y = t.Height(p.x, p.z) + 0.05f;
+            transform.position = p;
+            cc.enabled = !asleep;
+        }
+
+        /// <summary>On a log by the fire, facing the flames (hips on the log: the sitting pose keeps them at standing height).</summary>
+        void SitAtFire()
+        {
+            if (!fire) { LeaveFire(); return; }
+            var spot = fire.Seat(fireSpot);
+            var face = Flat(fire.transform.position - spot);
+            transform.SetPositionAndRotation(spot + Vector3.up * (Campfire.BenchHeight - 0.94f * Profile.look.height),
+                Quaternion.LookRotation(face.sqrMagnitude > 0.01f ? face : transform.forward));
+        }
+
+        // ------------------------------------------------------------------ companions (roadmap 20)
+
+        public void EnsurePack()
+        {
+            if (pack) return;
+            pack = gameObject.AddComponent<Container>();
+            pack.title = Profile.Name + "'S PACK"; pack.capacity = 25f;
+        }
+
+        void Follow(WastelandGame g, Vector3 playerPos, float dPlayer, ref Vector3 move, ref float speed)
+        {
+            var car = g.Current;
+            if (car)
+            {
+                // ride along: to the passenger door and in
+                var seat = car.GetComponentInChildren<PassengerSeat>();
+                if (seat && !seat.Taken && !seat.Occupant)
+                {
+                    var door = seat.transform.position;
+                    if (Flat(door - transform.position).magnitude < 1.8f) { Board(seat); return; }
+                    if (dPlayer < 60f) { move = Toward(door); speed = 3.8f; return; }
+                }
+            }
+            if (dPlayer > 80f) { CatchUp(g); return; }
+            float want = car ? 8f : 3f;
+            if (dPlayer > want) { move = Toward(playerPos); speed = dPlayer > 10f ? 4.2f : dPlayer > 6f ? 3f : 1.6f; }
+        }
+
+        /// <summary>Left far behind: turn up next to the player (or in their passenger seat).</summary>
+        void CatchUp(WastelandGame g)
+        {
+            var car = g.Current;
+            var seat = car ? car.GetComponentInChildren<PassengerSeat>() : null;
+            if (seat && !seat.Taken && !seat.Occupant) { Board(seat); return; }
+            var pt = g.Player.transform;
+            var p = car ? car.transform.position - car.transform.forward * 9f : pt.position - pt.forward * 4f;
+            var t = DeformableTerrain.Instance;
+            if (t) p.y = t.Height(p.x, p.z) + 0.1f;
+            cc.enabled = false; transform.position = p; cc.enabled = true;
+        }
+
+        /// <summary>Sit in a vehicle's passenger seat and ride with it.</summary>
+        public void Board(PassengerSeat seat)
+        {
+            if (!seat || seat.Occupant || Riding) return;
+            LeaveFire();
+            rideSeat = seat; seat.Occupant = this;
+            cc.enabled = false;
+            MadMax.Audio.Sfx.Play("car_door", seat.transform.position, 0.5f);
+        }
+
+        public void Unboard()
+        {
+            if (!rideSeat) return;
+            var exit = rideSeat.transform.position;                                          // the passenger door
+            var t = DeformableTerrain.Instance;
+            if (t) exit.y = t.Height(exit.x, exit.z) + 0.05f;
+            rideSeat.Occupant = null; rideSeat = null;
+            transform.SetPositionAndRotation(exit, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+            cc.enabled = true;
+        }
+
+        void RideTick(WastelandGame g, float dt)
+        {
+            var seat = rideSeat;
+            if (!seat || !seat.Seat || !seat.Vehicle) { rideSeat = null; cc.enabled = true; return; }
+            bool stay = seat.Vehicle.aiDriven ? !companion : companion && order == 0 && g.Current == seat.Vehicle;
+            if (!stay && Mathf.Abs(seat.Vehicle.ForwardSpeed) < 2f) { Unboard(); return; }
+            var st = seat.Seat.transform;
+            transform.SetPositionAndRotation(st.position + Vector3.down * (0.94f * Profile.look.height), st.rotation);
+            lastPos = transform.position;
+            anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, grounded = true });
+        }
+
+        /// <summary>Take the wheel of a vehicle and drive it behind the player.</summary>
+        public void TakeWheel(VehicleDriver v)
+        {
+            if (!v || Driving) return;
+            LeaveFire(); Unboard();
+            if (!v.TryGetComponent<AiDriver>(out var ai)) ai = v.gameObject.AddComponent<AiDriver>();
+            ai.enabled = true;
+            v.aiDriven = true; v.bakedDriver = true; v.Occupied = true; v.handbrake = false;
+            if (v.Body && v.Body.isKinematic) v.Body.isKinematic = false;
+            ai.goal = AiDriver.Goal.Escort;
+            drivenCar = v;
+            SetVisible(false); cc.enabled = false;
+            MadMax.Audio.Sfx.Play("car_door", v.transform.position, 0.6f);
+        }
+
+        public void LeaveWheel()
+        {
+            if (!drivenCar) return;
+            var v = drivenCar; drivenCar = null;
+            if (v.TryGetComponent<AiDriver>(out var ai) && ai.enabled) ai.Release();
+            var p = v.transform.position - v.transform.right * 2.2f;
+            var t = DeformableTerrain.Instance;
+            if (t) p.y = t.Height(p.x, p.z) + 0.05f;
+            transform.position = p;
+            SetVisible(true); cc.enabled = true;
+        }
+
+        void DriveTick(WastelandGame g)
+        {
+            var v = drivenCar;
+            if (!v || !v.TryGetComponent<AiDriver>(out var ai) || !ai.enabled || g.Current == v) { if (v) { drivenCar = v; LeaveWheel(); } else { drivenCar = null; SetVisible(true); cc.enabled = true; } return; }
+            ai.target = g.Current ? g.Current.transform : g.Player.transform;
+            transform.position = v.transform.position;                                       // stays with the car
+        }
+
+        /// <summary>The nearest threat for a companion (a hostile person near them or the player), or whoever just
+        /// hurt this person.</summary>
+        Npc PickFoe(WastelandGame g)
+        {
+            if (Surrendered) return null;
+            if (hurtBy && hurtBy.Alive && !hurtBy.Surrendered && Time.time < hurtByUntil && !(companion && hurtBy.companion)) return hurtBy;
+            if (!companion) return null;
+            var me = transform.position; var pp = g.Player.transform.position;
+            float reach = order == 2 ? 30f : 26f;
+            Npc best = null; float bd = reach * reach;
+            foreach (var n in All)
+            {
+                if (!n || n == this || !n.Alive || n.companion || !n.Hostile || !n.Available) continue;
+                float d = Mathf.Min((n.transform.position - me).sqrMagnitude, (n.transform.position - pp).sqrMagnitude);
+                if (d < bd) { bd = d; best = n; }
+            }
+            return best;
+        }
+
         // ------------------------------------------------------------------ combat
 
-        void Fight(WastelandGame g, Vector3 target, float dist, float dt, ref Vector3 move, ref float speed)
+        void Fight(WastelandGame g, Vector3 target, float dist, bool vehicleTarget, float dt, ref Vector3 move, ref float speed)
         {
-            bool inVehicle = g.Current;
-            float want = Ranged ? 9f : inVehicle ? 2.2f : 1.25f;
-            var to = Toward(target);
-            if (dist > want) { move = to; speed = dist > 12f ? 3.4f : 2.6f; }
-            else if (Ranged && dist < 5f) { move = -to; speed = 2f; }        // keep the gun's distance
+            // hurt badly: break off once and come back (not bosses, not companions)
+            if (!companion && !retreated && Profile.role != NpcRole.RaiderBoss && health < maxHealth * 0.35f)
+            {
+                retreated = true; mode = Mode.Flee; fleeUntil = Time.time + Random.Range(4f, 7f);
+                return;
+            }
+            float want = Ranged ? 9f : vehicleTarget ? 2.2f : 1.25f;
+            bool covering = false;
+            if (Ranged && !vehicleTarget && dist < 30f)
+            {
+                // gunmen shoot from behind something solid
+                if ((coverT -= dt) <= 0f) { coverT = Random.Range(2.5f, 4f); hasCover = FindCover(target, out cover); }
+                if (hasCover && Flat(cover - transform.position).magnitude > 0.6f) { move = Toward(cover); speed = 3.4f; covering = true; }
+            }
+            if (!covering)
+            {
+                var to = Toward(target);
+                if (!Ranged && dist > 4f) to = Quaternion.Euler(0f, flank * Mathf.Clamp01((dist - 4f) / 8f), 0f) * to;   // fan out, come in from the sides
+                if (dist > want) { move = to; speed = dist > 12f ? 3.4f : 2.6f; }
+                else if (Ranged && dist < 5f) { move = -Toward(target); speed = 2f; }        // keep the gun's distance
+            }
             faceTarget = target; faceUntil = Time.time + 0.5f;
-            if (speed < 0.1f) Face(to, dt);
+            if (speed < 0.1f) Face(Toward(target), dt);
             if ((attackCd -= dt) > 0f || swing >= 0f) return;
-            if (Ranged && dist < 18f) { Shoot(g, target, dist); attackCd = Random.Range(1.8f, 2.8f); }
+            if (Ranged && dist < 18f && speed < 3f) { Shoot(g, target, dist); attackCd = Random.Range(1.8f, 2.8f); }
             else if (!Ranged && dist < want + 0.5f) { swing = 0f; attackCd = 1.3f; Invoke(nameof(MeleeHit), (tool ? tool.swingDuration * tool.strikeAt : 0.3f)); }
+        }
+
+        /// <summary>A spot 2.5–6 m away with something solid (a wall, a car, a rock, the lie of the land) between it
+        /// and the threat.</summary>
+        bool FindCover(Vector3 threat, out Vector3 best)
+        {
+            best = default; float bd = float.MaxValue;
+            var me = transform.position;
+            var t = DeformableTerrain.Instance;
+            var g = WastelandGame.Instance;
+            for (int i = 0; i < 10; i++)
+            {
+                var p = me + Quaternion.Euler(0f, i * 36f + (Profile.seed & 31), 0f) * Vector3.forward * (2.5f + (i % 3) * 1.6f);
+                if (t) { if (t.WaterDepth(p.x, p.z) > 0.3f) continue; p.y = t.Height(p.x, p.z); }
+                if (Flat(p - threat).magnitude < 6f) continue;
+                if (!Physics.Linecast(threat + Vector3.up * 1.3f, p + Vector3.up * 1.1f, out var hit, ~0, QueryTriggerInteraction.Ignore)) continue;
+                if (hit.collider.GetComponentInParent<Npc>() || hit.collider.GetComponentInParent<PlayerCharacter>()) continue;
+                if (g && g.Current && hit.collider.transform.IsChildOf(g.Current.transform)) continue;
+                if ((hit.point - p).sqrMagnitude > 16f) continue;                           // the cover must be right there
+                float d = (p - me).sqrMagnitude;
+                if (d < bd) { bd = d; best = p; }
+            }
+            return bd < float.MaxValue;
         }
 
         /// <summary>Raid: walk to the nearest built piece of the claim and smash it.</summary>
@@ -268,6 +578,16 @@ namespace MadMax.Npc
             if (!g || mode == Mode.Dead) return;
             var hitAt = transform.position + transform.forward * 0.9f + Vector3.up * 1.1f;
             float power = Profile.role == NpcRole.RaiderBoss ? 1.3f : 1f;
+            if (foe)
+            {
+                if (Vector3.Distance(foe.transform.position, transform.position) < 2.2f)
+                {
+                    foe.ApplyHit(hitAt, transform.forward, power * 0.85f, 0.3f, gameObject);
+                    MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", hitAt, 0.8f);
+                }
+                else MadMax.Audio.Sfx.Play("punch", hitAt, 0.3f, 0.7f);
+                return;
+            }
             if (g.Current)
             {
                 if (Vector3.Distance(g.Current.transform.position, transform.position) < 4f)
@@ -284,7 +604,25 @@ namespace MadMax.Npc
             MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", pp + Vector3.up, 0.8f);
         }
 
-        void Shoot(WastelandGame g, Vector3 target, float dist) => Blast(gameObject, transform.position + Vector3.up * 1.35f + transform.forward * 0.5f, target + Vector3.up, dist, 1f);
+        void Shoot(WastelandGame g, Vector3 target, float dist)
+        {
+            if (foe) { ShootAt(foe, dist); return; }
+            Blast(gameObject, transform.position + Vector3.up * 1.35f + transform.forward * 0.5f, target + Vector3.up, dist, 1f);
+        }
+
+        /// <summary>A shot at another person; holds fire when the player (or their vehicle) is in the line.</summary>
+        void ShootAt(Npc f, float dist)
+        {
+            var g = WastelandGame.Instance;
+            var muzzle = transform.position + Vector3.up * 1.35f + transform.forward * 0.5f;
+            var aim = (f.transform.position + Vector3.up * 1.1f - muzzle).normalized;
+            if (g && Physics.Raycast(muzzle, aim, out var hit, dist + 2f, ~0, QueryTriggerInteraction.Ignore)
+                && (hit.collider.transform.IsChildOf(g.Player.transform) || (g.Current && hit.collider.transform.IsChildOf(g.Current.transform)))) return;
+            MadMax.Audio.Sfx.Play("shotgun", muzzle, 0.9f, Random.Range(0.95f, 1.1f), 110f);
+            var fx = DebrisSystem.Instance;
+            if (fx) for (int i = 0; i < 3; i++) fx.EmitPuff(muzzle + aim * 0.6f, new Color32(255, 200, 90, 255), 0.06f, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
+            if (Random.value < Mathf.Clamp01(1.05f - dist / 22f)) f.ApplyHit(f.transform.position + Vector3.up, aim, 0.45f, 0.1f, gameObject);
+        }
 
         /// <summary>A shotgun blast (or turret round, power > 1) from <paramref name="muzzle"/> at the player or their
         /// vehicle. Misses more at range and against a moving target; hits dent the vehicle and can wound the driver.</summary>
@@ -356,10 +694,26 @@ namespace MadMax.Npc
             BloodStains.Splash(transform.position, Mathf.Clamp01(dmg / 40f));
             MadMax.Audio.Sfx.Play("punch", point, 0.7f, Random.Range(0.8f, 1.1f));
             var g = WastelandGame.Instance;
-            bool byPlayer = g && source && (source.transform.IsChildOf(g.Player.transform) || (g.Current && source.transform.IsChildOf(g.Current.transform)));
+            var byNpc = source ? source.GetComponentInParent<Npc>() : null;
+            if (byNpc && byNpc != this) { hurtBy = byNpc; hurtByUntil = Time.time + 8f; }
+            bool byPlayer = g && source && (source.transform.IsChildOf(g.Player.transform) || (g.Current && source.transform.IsChildOf(g.Current.transform))
+                            || (byNpc && byNpc.companion) || OwnedPiece(g, source));
             lastByPlayer = byPlayer;
             if (health <= 0f) { Die(byPlayer); return; }
+            // beaten: throw the weapon down (less likely with the boss still up and friends around)
+            if (!companion && Hostile && health < maxHealth * 0.22f && Profile.role != NpcRole.RaiderBoss)
+            {
+                float chance = 0.3f + (convoy != null && (!convoy.Boss || !convoy.Boss.Alive) ? 0.3f : 0f) + (AlliesNear() == 0 ? 0.25f : 0f);
+                if (Random.value < chance) { Surrender(g); return; }
+            }
             if (!byPlayer) return;
+            if (companion)
+            {
+                if (byNpc && byNpc.companion) return;
+                State.disposition = Mathf.Max(-100, State.disposition - 5);                    // friendly fire
+                g.Toast(Profile.Name + ": HEY! WATCH IT!");
+                return;
+            }
             State.disposition = Mathf.Max(-100, State.disposition - 30);
             convoy?.Provoked();
             // armed or proud folk fight back, the rest run
@@ -368,27 +722,72 @@ namespace MadMax.Npc
             Alarm(g);
         }
 
+        /// <summary>Hits from the player's own turret count as theirs (bounties, reputation).</summary>
+        static bool OwnedPiece(WastelandGame g, GameObject source)
+        {
+            if (!g || !source) return false;
+            var p = source.GetComponentInParent<Placeable>();
+            return p && g.OwnsPiece(p) && !string.IsNullOrEmpty(p.owner);
+        }
+
+        int AlliesNear()
+        {
+            int k = 0;
+            foreach (var n in All) if (n && n != this && n.Alive && n.Hostile && (n.transform.position - transform.position).sqrMagnitude < 15f * 15f) k++;
+            return k;
+        }
+
+        /// <summary>Drop the weapon, hands up: out of the fight. [E] decides what happens to them.</summary>
+        void Surrender(WastelandGame g)
+        {
+            State.Set(NpcSave.Surrendered);
+            aggro = false; raiding = false; foe = null; mode = Mode.Surrender;
+            if (tool && !(tool is LightTool))
+            {
+                tool.transform.SetParent(null, true);
+                var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f;
+                Destroy(tool.gameObject, 60f);
+                tool = null;
+            }
+            if (g) g.Toast(Profile.Name + " THROWS DOWN THEIR WEAPON AND SURRENDERS  [E]");
+        }
+
+        /// <summary>Let a surrendered or dismissed person go: they walk off and are gone once out of sight.</summary>
+        public void LetGo()
+        {
+            leaving = true;
+            home = transform.position + Random.insideUnitSphere.normalized * 40f;
+            homeRadius = 20f; hasGoal = false;
+        }
+
         /// <summary>Peaceful folk around see the attack: they turn on the player or run.</summary>
         void Alarm(WastelandGame g)
         {
             if (Profile.Raider) return;
             foreach (var n in All)
             {
-                if (n == this || !n.Alive || n.Profile.Raider || (n.transform.position - transform.position).sqrMagnitude > 25f * 25f) continue;
+                if (n == this || !n.Alive || n.Profile.Raider || n.companion || (n.transform.position - transform.position).sqrMagnitude > 25f * 25f) continue;
                 n.State.disposition = Mathf.Max(-100, n.State.disposition - 15);
                 if (n.tool && !(n.tool is LightTool) && n.Profile.temper != Temper.Nervous) n.State.Set(NpcSave.Hostile);
                 else { n.mode = Mode.Flee; n.fleeUntil = Time.time + 8f; }
             }
         }
 
-        public void Scare(float seconds) { if (mode == Mode.Dead || Hostile) return; mode = Mode.Flee; fleeUntil = Time.time + seconds; }
+        public void Scare(float seconds) { if (mode == Mode.Dead || Hostile || companion) return; mode = Mode.Flee; fleeUntil = Time.time + seconds; }
 
         void Die(bool byPlayer)
         {
+            bool spared = Surrendered;
             mode = Mode.Dead;
             State.dead = true;
-            if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile)) NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 15);
-            if (byPlayer && Profile.Raider) NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
+            LeaveFire();
+            if (rideSeat) { rideSeat.Occupant = null; rideSeat = null; }
+            if (drivenCar) LeaveWheel();
+            if (asleep) SetAsleep(false);
+            if (companion) Companions.Lost(this);
+            if (byPlayer && spared) { NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 10); WastelandGame.Instance?.Toast("YOU KILLED SOMEONE WHO HAD GIVEN UP"); }
+            else if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile) && !companion) NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 15);
+            if (byPlayer && Profile.Raider && !spared) NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
             if (byPlayer) Contracts.ReportKill(this);                                        // bounties
             cc.enabled = false;
             if (tool) { tool.transform.SetParent(null, true); var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f; Destroy(tool.gameObject, 60f); }
@@ -404,6 +803,7 @@ namespace MadMax.Npc
                 var cd = ClothingLibrary.Get(o);
                 if (cd?.armor != null && Random.value < 0.7f) loot.extra.Add(ClothingLibrary.ItemId(cd));
             }
+            if (pack) foreach (var kv in new List<KeyValuePair<string, int>>(pack.inventory.Items)) for (int i = 0; i < kv.Value; i++) loot.extra.Add(kv.Key);   // what they carried for you
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);
             convoy?.MemberDied(this);
         }
@@ -412,17 +812,24 @@ namespace MadMax.Npc
 
         public string Prompt(WastelandGame g)
         {
-            if (mode == Mode.Dead) return null;
+            if (mode == Mode.Dead || !Available) return null;
+            if (Surrendered) return "[E] " + Profile.Name + " (SURRENDERED)";
             if (Hostile && !Profile.Raider) return Profile.Name + " WANTS YOU DEAD";
-            string s = "[E] " + (Profile.Raider ? "PARLEY WITH " : "TALK TO ") + Profile.Name;
-            if (Profile.Vendor && !Hostile && State.disposition > -40) s += "  [T] TRADE";
+            string s = "[E] " + (Profile.Raider ? "PARLEY WITH " : companion ? "ORDERS FOR " : "TALK TO ") + Profile.Name;
+            if (companion) s += "  [T] THEIR PACK";
+            else if (Profile.Vendor && !Hostile && State.disposition > -40) s += Closed ? "  (CLOSED TILL 7:00)" : "  [T] TRADE";
             return s;
         }
 
         public void Use(WastelandGame g, bool secondary)
         {
             if (mode == Mode.Dead) return;
-            if (secondary) { if (Profile.Vendor && !Hostile) g.Menus.OpenTalk(this, true); return; }
+            if (secondary)
+            {
+                if (companion) { EnsurePack(); g.Menus.OpenContainer(pack); return; }
+                if (Profile.Vendor && !Hostile) { if (Closed) g.Toast("CLOSED - COME BACK AFTER SUNRISE"); else g.Menus.OpenTalk(this, true); }
+                return;
+            }
             g.Menus.OpenTalk(this, false);
         }
 

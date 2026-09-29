@@ -74,6 +74,8 @@ namespace MadMax.Game
             d.raidNext = MadMax.Npc.BaseRaid.NextDay; d.raidReport = MadMax.Npc.BaseRaid.Report;
             d.plans = StructurePlans.Save();
             MadMax.Npc.Contracts.Save(d);
+            MadMax.Npc.Companions.Save(this, d);
+            MadMax.Npc.TownQuests.Save(d);
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
@@ -251,6 +253,8 @@ namespace MadMax.Game
             MadMax.Npc.BaseRaid.NextDay = d.raidNext; MadMax.Npc.BaseRaid.Report = d.raidReport;
             StructurePlans.Load(d.plans);
             MadMax.Npc.Contracts.Load(d);
+            MadMax.Npc.Companions.Load(d);
+            MadMax.Npc.TownQuests.Load(d);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;

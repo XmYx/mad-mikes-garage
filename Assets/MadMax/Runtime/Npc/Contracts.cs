@@ -137,6 +137,7 @@ namespace MadMax.Npc
         public static void Pay(WastelandGame g, Contract c)
         {
             if (!c.completed) return;
+            if (c.id.StartsWith("Q")) { g.Toast("TELL THE TOWN BOSS IT'S DONE"); return; }        // a town boss's job (TownQuests)
             g.Inventory.Add(MadMax.Items.ResourceType.Scrap, c.reward);
             if (c.chits > 0) g.Inventory.AddItem(Chit, c.chits);
             NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + c.rep);

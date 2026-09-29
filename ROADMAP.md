@@ -414,11 +414,27 @@ decorative turret.
 *Exists:* shopkeepers, residents, stalls, wanderers, traders, raider hordes, dialogue with tones, backstories,
 rumours, errands, haggling, parley, combat, ragdolls.
 
-- [ ] **Companions**: recruit (charisma / pay) → follow, fight, carry, guard the base, drive a second vehicle
-- [ ] **Schedules**: sleep at night, shops open by day, campfires in the evening
-- [ ] **Town leaders** with quest chains
-- [ ] **Combat AI**: cover, flanking, retreat, surrender
-- [ ] **Pack traders** walking with animals
+- [x] **Companions**: recruit (charisma / pay) → follow, fight, carry, guard the base, drive a second vehicle
+- [x] **Schedules**: sleep at night, shops open by day, campfires in the evening
+- [x] **Town leaders** with quest chains
+- [x] **Combat AI**: cover, flanking, retreat, surrender
+- [x] **Pack traders** walking with animals
+      *Done:* `Npc/Companions` — ask a wanderer or resident ([CHA 6] check, or 80 scrap; one companion, two at CHA 7,
+      three at CHA 9, also a spared raider at CHA 7). They follow (and board your passenger seat; left behind they catch
+      up), wait, guard a claim (+3 defence each in `ClaimFlag.Defence`), drive a spare fleet vehicle behind you
+      (`AiDriver.Goal.Escort`), fight any hostile near you or them, and carry a 25 kg pack ([T]); dismissed they drop
+      it and walk off; saved (`SaveData.companions`). Schedules (`Npc.Routine`): shops trade 7:00–20:00, stallkeepers
+      and bosses sleep at night, residents gather round the town campfire in the evening (`World/Campfire`: stone
+      ring, sitting logs, flames and light at dusk) and go indoors at night, wanderers light their own fire and sit
+      up by it. Town bosses (`NpcRole.Leader`, one per settlement) run a 4-stage chain (`Npc/TownQuests`): supply run,
+      cull the local gang (a bounty contract), courier to the nearest town's boss and back, hold the town against a
+      dusk raid — each pays scrap, chits and reputation (last: a blower V8 and friends' prices, 10 % off, in that
+      town); saved. Combat AI: gunmen move to cover (a spot with something solid between them and the target), melee
+      fighters fan out and come in from the sides, the badly hurt break off once, beaten non-bosses may surrender
+      (more likely with their boss dead or alone) — spare them (+rep), take their pockets, or recruit them; killing
+      a surrendered one costs 10 reputation. Fighters hit back at whoever hurt them, so raiders and companions fight
+      each other. Pack traders (`NpcRole.Packer`) walk beats along the roads with a voxel pack mule (`PackAnimal`)
+      selling food, medicine, ammo, filters and dyes.
 
 *Ties:* factions, economy, animals, base building.
 

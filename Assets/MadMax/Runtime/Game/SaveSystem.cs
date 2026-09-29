@@ -74,6 +74,8 @@ namespace MadMax.Game
         public List<string> contractsTaken = new List<string>();
         public float raidNext = -1f; public string raidReport;
         public string plans;
+        public List<MadMax.Npc.CompanionSave> companions = new List<MadMax.Npc.CompanionSave>();
+        public List<string> townQuests = new List<string>();
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

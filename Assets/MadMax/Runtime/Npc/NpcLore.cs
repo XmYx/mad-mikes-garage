@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace MadMax.Npc
 {
-    public enum NpcRole { Wanderer, Resident, Shopkeeper, Stallkeeper, Trader, Raider, RaiderBoss }
+    public enum NpcRole { Wanderer, Resident, Shopkeeper, Stallkeeper, Trader, Raider, RaiderBoss, Leader, Packer }
     public enum Temper { Friendly, Gruff, Nervous, Greedy, Pious, Joker, Proud }
     public enum Tone { Polite, Blunt, Joke, Flatter, Threat }
 
@@ -32,7 +32,8 @@ namespace MadMax.Npc
         public static readonly (string id, string title, string trade)[] Trades =
         {
             ("fuel", "GUZZOLINE", "FUEL TRADER"), ("parts", "GEARMONGER", "PARTS DEALER"), ("scrap", "JUNK BARON", "SCRAP DEALER"),
-            ("food", "CHOW WAGON", "COOK"), ("salvage", "SALVAGE BROKER", "SALVAGER"), ("build", "BUILDER'S YARD", "YARD BOSS")
+            ("food", "CHOW WAGON", "COOK"), ("salvage", "SALVAGE BROKER", "SALVAGER"), ("build", "BUILDER'S YARD", "YARD BOSS"),
+            ("pack", "PACK MULE GOODS", "PACK TRADER")
         };
 
         public static string TradeTitle(string kind) { foreach (var t in Trades) if (t.id == kind) return t.title; return "TRADER"; }
