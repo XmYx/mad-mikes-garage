@@ -284,6 +284,9 @@ namespace MadMax.Game
             if (Player.Interior) Player.ExitInterior(at); else Player.Teleport(at, 0f);
             Stats.health = Stats.MaxHealth * 0.5f;
             Stats.stamina = Stats.MaxStamina;
+            // you come to patched up: open wounds are bandaged (they still heal, hurt and can get infected), so a bad
+            // crash can't bleed you out again and again
+            foreach (var inj in Stats.injuries) if (inj.Bleeding) { inj.bandaged = true; inj.bandageAge = 0f; }
         }
 
         void OnDestroy()

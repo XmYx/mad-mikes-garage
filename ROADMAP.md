@@ -521,27 +521,163 @@ rumours, errands, haggling, parley, combat, ragdolls.
 
 ## Gaps & suggestions
 
-*(written after the full review at the end of the roadmap work)*
+*Written after the whole game was reviewed at the end of the roadmap work (2026-09-29). Every roadmap system was
+play-tested in the editor, and performance was measured in a development player (road benchmark, seed 7). Fixed
+during that pass: bicycle pedals dragging on the ground, bike drift and parked-bike balance, sidecar pull, flight
+handling, the HUD overlap for aircraft, cabin climate on open vehicles, the stray roof prompt, an NPC death
+exception, a bleed-out loop after respawn, aircraft among roadside wrecks, and the streaming hitches (from 24 frames
+over 33 ms on a town approach to 4). The items below are what is left: suggestions, not bugs in progress.*
 
-Found while testing base building (Roadmap 18):
-- [ ] **Burning wrecks near the start**: a wreck spawned on fire ~17 m from the starting fleet; the fleet caught
-      (Interceptor, Excavator: OnFire + Seized). Keep ignition-prone wrecks away from the spawn, or spawn them cold.
-- [ ] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle (1st gear at
-      ~1500 rpm gives ~430 N per wheel); add launch torque / clutch slip so ramps and hills don't need a run-up.
-- [ ] **Stall overheating**: a car pinned against an obstacle at full throttle cooks its engine and catches fire in
-      well under a minute; slow the heat build-up or cut the throttle with a rev limiter warning.
-
-Ties that would pull the loop together:
-- [ ] **Raids by territory**: the raiding gang is the one whose road stretch is nearest (`Convoy` gangs); recruited
-      or bribed gangs skip the base, wiping a gang's raid party dents its next convoy generation.
+### Gameplay
+- [ ] **No world map or waypoints.** The minimap shows wrecks, trailers and fleet vehicles only. Hauls, escorts
+      and town-boss couriers go to towns kilometres away, and bounty gangs, claims, caves, bunkers, airfields and
+      aerially scouted sites (roadmap 25, only a toast) have no marker. Suggest: a full-screen map page (towns by
+      name, roads, discovered sites, claims, faction territory), pins for active jobs, a route line along the roads
+      on the minimap, and a compass strip in first person.
+- [ ] **Death has little weight.** Respawn keeps the whole pack and only halves health. Open wounds are now
+      bandaged on respawn, which fixed a loop where a bad crash bled the player out again after every respawn. A
+      crash can still bleed you out in about a minute with no warning. Suggest: drop part of the pack as a
+      searchable stash where you fell (scaled by difficulty), and a bleed-out warning with a bandage prompt.
+- [ ] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
+      Suggest a short starter chain on the town board (patch the car, fuel it, first haul, first workbench and
+      wall, first tame), each step unlocking the next and teaching one system.
+- [ ] **No long-term goal or ending.** Skills, research, factions and bases grow, but nothing pulls the late game
+      together. Suggest a myth to chase (the "Last Engine": a legendary V12 in parts across bunkers, airfields and
+      faction vaults), faction endgames (the Guild's pipeline, the Church's pilgrimage), or a convoy run to the
+      map edge.
+- [ ] **No racing or arena activity in a driving game.** Suggest: point-to-point races between towns against
+      rival drivers (entry fee and purse, tuning matters), bike trials on the mesas, air races between airfields,
+      a scrap-metal arena with bets, and jump ramps with a hang-time score.
+- [ ] **Raids by territory** (from base building): the raiding gang should be the one whose road stretch is
+      nearest; recruited or bribed gangs skip the base; wiping a raid party dents its next convoy generation.
 - [ ] **Radio warns of raids**: WasteTalk FM names settlements (and your claim) on a gang's warpath an hour ahead.
-- [ ] **Motion-sensor floodlights**: [T] on lights: SENSOR (on when someone moves within 15 m); raiders avoid lit
-      approaches.
 - [ ] **Base upkeep**: pieces weather slowly (rain on wood, sand on everything) unless roofed or repaired; a claim
       shows what needs the hammer.
-- [ ] **Garage as the fleet's home**: vehicles parked on a claim's decks repair slowly with a garage piece, refuel
-      from its tanks, and are what Tab (fleet) cycles first; raiders go for parked vehicles.
-- [ ] **Map markers**: claims, raided pieces, plans' outlines on the minimap; a claim is a fast respawn (done) and a
-      waypoint.
-- [ ] **Companions guard the base** (Roadmap 20): recruited NPCs posted at a claim man turrets and sound the bell.
+- [ ] **Garage as the fleet's home**: vehicles parked on a claim repair slowly with a garage piece, refuel from its
+      tanks, and come first in the Tab cycle; raiders go for parked vehicles.
+- [ ] **Companions man the base**: companions posted at a claim use turrets and ring the bell; motion-sensor
+      floodlights ([T] SENSOR) that raiders avoid.
+- [ ] **Animals × gardens**: livestock gives milk, eggs and hides, but no manure. Pens could yield dung for the
+      composter, and grazing animals could trample or eat crops without a fence.
 
+### Driving, riding, flying
+- [ ] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle; add launch
+      torque so ramps and hills don't need a run-up.
+- [ ] **Stall overheating**: a car pinned against an obstacle at full throttle cooks its engine and catches fire
+      in well under a minute; slow the heat build-up, or add a rev-limiter warning.
+- [ ] **Bikes and small vegetation**: a biker is thrown off by a bush at 30 km/h (bushes are solid destructible
+      props). Let small shrubs and fences break under a bike, with a wobble instead of a crash.
+- [ ] **Sidecar outfits are assisted**: steering is grip-limited, holds the heading when the bars are released,
+      and most of the pull towards the chair is trimmed out. A "vintage" setting could bring the pull and the
+      chair-lift back for players who want the real thing.
+- [ ] **Flight is arcade-assisted**: the trike flies on rate commands with auto-level, a bank limit and an AoA
+      limiter; the gyro has rate-commanded disc tilt. Suggest a SIM FLIGHT setting (raw weight shift, stalls and
+      spins, crosswind landings), plus instruments for it (slip ball, stall horn).
+- [ ] **No runway lights or night flying aids**: airfields are unlit, and a night landing means aiming at the dark.
+- [ ] **Start line-up**: the starting fleet parks on the road through the start town, and wrecks can spawn on road
+      surfaces (a parked ambulance across the lane). Park the fleet on a yard beside the road; keep wrecks on the
+      verge.
+- [ ] **Burning wrecks near the start**: a wreck spawned on fire about 17 m from the starting fleet set the
+      Interceptor and Excavator alight. Keep ignition-prone wrecks away from the spawn, or spawn them cold.
+
+### World
+- [ ] **Thin variety for driving.** There are no rivers, fords or bridges, scrapyards, military checkpoints,
+      refineries or radio masts (the radio has stations but no towers). Scrapyards would give parts hunting, fords
+      would make snorkels matter, and checkpoints would carry faction tolls; each feeds an existing system.
+- [ ] **The start town is cramped**: sheds, the fleet and props leave little room to turn a truck. The autotest
+      pilot got stuck there repeatedly and now starts outside town.
+- [ ] **Caves and bunkers read as black voids**: under the underground cutaway everything outside lamp radii is
+      pure black. Suggest a faint ambient fill under `Subterranean` roofs, glowing fungus, or light spilling in at
+      the portals.
+- [ ] **Regional weather** (deferred on purpose): tropical regions get no extra rain, and weather is still
+      global.
+
+### NPCs & animals
+- [ ] **NPCs cannot path.** They walk straight at a goal and sidestep when stuck (`Npc.Blocked` checks only water
+      and cliffs), so fences, walls and buildings trap them, including companions and raid parties. They need a
+      path grid (terrain plus structure occupancy, doors as portals) or a NavMesh.
+- [ ] **Road life is one-sided**: raider convoys hunt the player and town raids happen, but raiders never
+      ambush trader convoys or pack traders on the road unless you are there. Off-screen skirmishes, and the wrecks
+      they leave, would make the roads feel alive.
+- [ ] **Vulture flocks outlive the scene**: a flock keeps circling a far carcass after the player leaves (flocks
+      are only culled by count). Fold them away with their carcass.
+
+### Saves
+- [ ] **No autosave, one slot.** The game only saves from the pause menu, not on quit or sleep, and permadeath
+      deletes the only file. Suggest: autosave on sleep and every N minutes (a setting), save on quit, three slots
+      plus a rolling backup.
+- [ ] Not saved: ruts, dents, crate positions (known), storm state and lightning fires in flight.
+
+### Multiplayer
+- [ ] **NPCs and animals are host-only.** `NpcDirector` and `AnimalDirector` run on the authority, and `Net/` has
+      no NPC or animal messages. Clients see no shopkeepers, traders, convoys, raiders, herds or livestock, and
+      cannot trade, tame, ride or hunt.
+- [ ] **Storms and lightning are per machine.** Clients never roll storms, so `Storms.Dust/Rad` stay 0 there;
+      every peer rolls its own lightning, and `Fire.Ignite` broadcasts fires from any peer. Fix: host-only strikes
+      replicated by position, and Dust/Rad added to `SendWeather`.
+- [ ] Armour plates, tuning, grime, gun rounds, fish records, market state, faction standing and aircraft found at
+      airfields reach other players only through the join snapshot.
+
+### Controls
+- [ ] **Keys are overloaded by context and cannot be rebound**: G service/repair, X 4WD/dismantle, E/Q gear
+      shift/take/drop part, R reload/research/weather debug, T recover/second action/parley, Shift run/wheelie/
+      sprint/gallop, Space handbrake/jump/pull up. Suggest a controls page with rebinding, and moving the debug keys
+      (R rain cycle, Backspace drop part, G instant repair, T recover) behind a dev flag.
+- [ ] **Gamepad is partial**: driving and some menus are mapped; building, fishing, aiming, radial menus, flying
+      trim and the (future) map are not.
+- [ ] **The help strip is a wall of text**: eight dense lines cover the top third of the screen for 12 s after
+      every load. Replace it with context hints ("F — ride the horse", "Space — vault") and keep H for the full
+      sheet.
+
+### Settings
+- [ ] Missing:
+  - mouse sensitivity and invert-Y
+  - FOV for first and third person
+  - camera shake toggle
+  - HUD scale independent of the pixel height
+  - colour-blind-safe HUD colours (the red/green bars)
+  - separate ambient, UI and radio volumes
+  - autosave interval
+  - units (km/h / mph, °C / °F)
+  - radio captions (DJ talk and weather reports are voice only)
+  - SIM FLIGHT and vintage sidecar assists (see above)
+
+### Audio
+- [ ] **No footsteps**: the `footsteps` clip is never played, so the player, NPCs and animals are silent on foot.
+      Suggest per-surface steps (sand, mud, snow, wood and metal floors, water) from `HumanAnimator.Footstep`, and
+      hooves for the horse.
+- [ ] **Weapons share sounds**: the pistol, rifle and roof MG reuse `shotgun` at other pitches, and the bow reuses
+      `pop`/`scratch`. There are no night insects, no creak or collapse sounds for structures, and no rotor chop
+      for the gyro beyond the engine synth.
+
+### Visuals
+- [ ] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
+      around the aircraft, so at 60 m+ the ground ends in fog close by. A far-terrain impostor ring (heights and
+      biome colours only, no props) would sell altitude and help navigation.
+- [ ] The TowTruck showed its lights on while parked (seen during roadmap 14).
+
+### UI / HUD
+- [ ] **The HUD and font scale with the pixel height**: at 480–540 px the 3×5 font becomes tiny on big screens.
+      Draw the HUD canvas at its own (settable) resolution.
+- [ ] **No journal**: contracts, errands, town-boss chains, research and known recipes each live on their own
+      page. A journal (jobs with destinations and deadlines, rumours heard, sites found or scouted) would tie them
+      together.
+
+### Performance
+- [ ] **New-game load is a ~4 s single frame** behind the fader: terrain around the spawn (0.7 s after
+      parallelising), 36 wrecks (0.9 s), template baking and the scene switch. The spinner freezes during
+      it. Suggest a loading coroutine with a progress bar, and wrecks spawned lazily as their chunks stream in.
+- [ ] **GC near towns**: the allocation rate triples entering a settlement (chunk arrays, prop spawns, carve
+      snapshots), and an incremental GC slice sometimes takes 30+ ms. Pool chunk arrays and debris lists, and try
+      IL2CPP for release builds.
+- [ ] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
+      spread `SiteBuilder.Populate` over frames.
+- [ ] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
+      before the async remesh. Dent mesh updates could batch per frame.
+- [ ] **Big bases**: every built piece is its own GameObject and collider (mesh colliders for walls and floors).
+      Merge static pieces per structure cell into combined meshes, rebuilt when a piece changes.
+
+### Balance / tech notes
+- [ ] `Fire.Burn` heats vehicles once per overlapping collider (`VehicleSystems.Heat`), so vehicles with many part
+      colliders cook faster than simple ones. The player-damage half of this bug was fixed in roadmap 17.
+- [ ] The tuning card's top speed is an estimate (drag and gearing only).
