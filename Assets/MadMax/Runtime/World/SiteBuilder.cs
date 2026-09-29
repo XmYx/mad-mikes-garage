@@ -47,7 +47,10 @@ namespace MadMax.World
             worldSeed = world.seed;
         }
 
-        static int PieceCount(Site s) => s.kind == SiteKind.Bunker ? 1 : Mathf.CeilToInt((s.halfLen * 2f + 4f) / SegmentLen);
+        static int PieceCount(Site s) => s.kind == SiteKind.Bunker || s.kind == SiteKind.Airfield ? 1 : Mathf.CeilToInt((s.halfLen * 2f + 4f) / SegmentLen);
+
+        static VoxelGrid Build(WorldGen world, Site s, int index, Vector3 pos, List<Extra> extras) =>
+            s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : s.kind == SiteKind.Airfield ? Airfield(s, extras) : Tunnel(world, s, index, pos, extras);
 
         static Piece Get(WorldGen world, Site s, int index)
         {
@@ -58,6 +61,12 @@ namespace MadMax.World
             {
                 var w = s.pos;
                 p.pos = new Vector3(w.x, s.floor - BunkerVoxel * 0.5f, w.y);
+                p.size = BunkerVoxel;
+            }
+            else if (s.kind == SiteKind.Airfield)
+            {
+                var w = s.ToWorld(Site.ApronX, 0f);
+                p.pos = new Vector3(w.x, s.top + BunkerVoxel * 0.5f, w.y);
                 p.size = BunkerVoxel;
             }
             else
@@ -79,9 +88,9 @@ namespace MadMax.World
             p.job = Task.Run(() =>
             {
                 var extras = new List<Extra>();
-                var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, index, pos, extras);
+                var g = Build(world, s, index, pos, extras);
                 g.Bevel();
-                return (g, VoxelMesher.BuildData(g, s.kind == SiteKind.Bunker ? BunkerVoxel : TunnelVoxel), extras);
+                return (g, VoxelMesher.BuildData(g, s.kind == SiteKind.Outcrop ? TunnelVoxel : BunkerVoxel), extras);
             });
         }
 
@@ -152,10 +161,10 @@ namespace MadMax.World
         static void Spawn(DeformableTerrain terrain, Piece p, Transform parent, Material mat)
         {
             if (p.grid == null || p.grid.Count == 0) return;
-            var d = DestructibleVoxels.Spawn(p.site.kind == SiteKind.Bunker ? "Bunker" : "RockTunnel", p.grid, p.mesh, mat, parent, p.pos, p.yaw, false,
+            var d = DestructibleVoxels.Spawn(p.site.kind == SiteKind.Bunker ? "Bunker" : p.site.kind == SiteKind.Airfield ? "Hangar" : "RockTunnel", p.grid, p.mesh, mat, parent, p.pos, p.yaw, false,
                 terrain.DestructionState, p.id, p.size, p.id);
             if (!d) return;
-            d.gameObject.AddComponent<Subterranean>();
+            if (p.site.kind != SiteKind.Airfield) d.gameObject.AddComponent<Subterranean>();
             if (p.extras == null) return;
             var q = Quaternion.Euler(0f, p.yaw, 0f);
             int n = 0;
@@ -179,6 +188,12 @@ namespace MadMax.World
                     var glow = new GameObject("Light"); glow.transform.SetParent(go.transform, false); glow.transform.localPosition = new Vector3(0f, 0.4f, 0f);
                     var l = glow.AddComponent<BunkerLamp>();
                     l.dying = e.dying; l.hum = false; l.color = new Color(1f, 0.72f, 0.4f); l.range = 6f; l.brightness = 2.6f;
+                }
+                else if (e.kind == "aircraft")
+                {
+                    // the one flying machine left in the hangar (once per airfield; after that it is a saved vehicle)
+                    var g = MadMax.Game.WastelandGame.Instance;
+                    if (g && g.FoundAircraft.Add(p.site.Key)) g.SpawnFound(e.visual, at + Vector3.up * 0.4f, q * Quaternion.Euler(0f, e.yaw, 0f));
                 }
                 else if (e.kind == "lamp")
                 {
@@ -220,10 +235,79 @@ namespace MadMax.World
             if (p.grid != null) return p.grid;
             if (p.job != null) { p.job.Wait(); Ready(p); return p.grid; }
             var extras = new List<Extra>();
-            var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, p.index, p.pos, extras);
+            var g = Build(world, s, p.index, p.pos, extras);
             g.Bevel();
             p.grid = g; p.extras = extras;
             p.mesh = VoxelMesher.Build(g, p.id, p.size);
+            return g;
+        }
+
+        // ------------------------------------------------------------------ airfield (worker thread)
+
+        /// <summary>Hangar complex beside an old airstrip (0.2 m voxels, local +x away from the runway): a rusty
+        /// corrugated Quonset hangar open towards the strip with a flying machine inside, a concrete radio hut with a
+        /// locker, a windsock and fuel drums.</summary>
+        static VoxelGrid Airfield(Site s, List<Extra> extras)
+        {
+            var g = new VoxelGrid().Mat((byte)ResourceType.Scrap);
+            var rnd = new System.Random(s.seed);
+            const int R = 35, L = 45;
+            var tin = Pal.Weathered(Pal.Metal, 0.45f, s.seed, 2, -100);
+            var tinDark = Pal.Weathered(Pal.Metal, 0.6f, s.seed + 1, 1, -100);
+            var rib = Pal.Ramp(Pal.Black, 1, 2601);
+            for (int x = -L; x <= L; x++)
+            for (int z = -R - 1; z <= R + 1; z++)
+            for (int y = 0; y <= R + 1; y++)
+            {
+                float d = Mathf.Sqrt(z * z + y * y);
+                bool isRib = (x + L) % 15 == 0 || x == -L;
+                if (Mathf.Abs(d - R) > (isRib ? 1.1f : 0.6f)) continue;
+                if (!isRib && Pal.Hash(x, y, z, s.seed) < 0.035f) continue;                      // rusted through
+                int arc = Mathf.FloorToInt(Mathf.Atan2(y, z) * R);
+                g.Set(x, y, z, isRib ? rib : (arc & 2) == 0 ? tin : tinDark);
+            }
+            for (int z = -R; z <= R; z++)                                                         // back wall with a man door
+            for (int y = 0; y <= R; y++)
+                if (z * z + y * y <= R * R && !(Mathf.Abs(z) < 4 && y < 11)) g.Set(L, y, z, (z & 3) == 0 ? tinDark : tin);
+            // radio hut off the hangar's corner
+            g.Mat((byte)ResourceType.Concrete);
+            var conc = Pal.Weathered(Pal.Cream, 0.3f, s.seed + 2, 0, -100);
+            int hx0 = -L + 6, hx1 = -L + 18, hz0 = R + 6, hz1 = R + 18;
+            for (int x = hx0; x <= hx1; x++)
+            for (int z = hz0; z <= hz1; z++)
+            for (int y = 0; y <= 13; y++)
+            {
+                bool wall = x == hx0 || x == hx1 || z == hz0 || z == hz1;
+                bool roof = y == 13;
+                if (!wall && !roof) continue;
+                if (x == hx0 && z > hz0 + 4 && z < hz0 + 9 && y < 10) continue;                   // door towards the strip
+                if (z == hz0 && x > hx0 + 3 && x < hx1 - 3 && y > 5 && y < 10) { g.Set(x, y, z, Pal.Ramp(Pal.Glass, 2, 2602)); continue; }
+                g.Set(x, y, z, conc);
+            }
+            g.Mat((byte)ResourceType.Iron);
+            g.Box(hx1 - 2, 14, hz1 - 2, hx1 - 2, 30, hz1 - 2, Pal.Ramp(Pal.Metal, 2, 2603));             // radio mast
+            g.Box(hx1 - 4, 28, hz1 - 2, hx1, 28, hz1 - 2, Pal.Ramp(Pal.Metal, 2, 2603));
+            // windsock by the strip
+            int wx = -L - 12, wz = -R - 10;
+            g.Box(wx, 0, wz, wx, 26, wz, Pal.Ramp(Pal.Metal, 2, 2604));
+            for (int i = 0; i < 9; i++)
+            {
+                var band = (i / 2) % 2 == 0 ? Pal.Ramp(Pal.Ochre, 3, 2605) : Pal.Ramp(Pal.Cream, 3, 2606);
+                int r = i < 3 ? 1 : 0;
+                g.Box(wx - r, 25 - i / 3 - r, wz + 1 + i, wx + r, 25 - i / 3 + r, wz + 1 + i, band);
+            }
+            // fuel drums by the door
+            g.Mat((byte)ResourceType.Scrap);
+            for (int i = 0; i < 4; i++)
+            {
+                float dx = -L - 4 - (i % 2) * 4, dz = -R + 6 + (i / 2) * 4;
+                g.CylY(dx, dz, 1.6f, 0, 4, (i + rnd.Next(2)) % 2 == 0 ? Pal.Ramp(Pal.Crimson, 1, 2607) : Pal.Ramp(Pal.RigGreen, 2, 2608));
+            }
+            float V = BunkerVoxel;
+            string plane = rnd.NextDouble() < 0.5 ? "Ultralight" : "Gyrocopter";
+            extras.Add(new Extra { kind = "aircraft", visual = plane, local = new Vector3(2f, 0f, 0f) * 1f, yaw = -90f });
+            extras.Add(new Extra { kind = "loot", table = "airfield", visual = "locker", local = new Vector3((hx1 - 2) * V, 0f, (hz0 + 3) * V), yaw = 180f });
+            extras.Add(new Extra { kind = "loot", table = "garage", visual = "crate", local = new Vector3((L - 4) * V, 0f, -(R - 8) * V), yaw = 0f });
             return g;
         }
 

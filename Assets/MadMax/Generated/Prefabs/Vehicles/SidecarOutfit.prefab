@@ -144,10 +144,63 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 199706988988512730}
   - {fileID: 3122929473117227180}
+  - {fileID: 1778507464151551119}
   m_Father: {fileID: 6852647574722032201}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2294638721505822855
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1778507464151551119}
+  - component: {fileID: 4731638925403316746}
+  m_Layer: 0
+  m_Name: Collider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1778507464151551119
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2294638721505822855}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5331678076956069141}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &4731638925403316746
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2294638721505822855}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.71999997, y: 0.64, z: 1.5999999}
+  m_Center: {x: 0.96, y: 0.59999996, z: -0.12}
 --- !u!1 &2905908291387124306
 GameObject:
   m_ObjectHideFlags: 0
@@ -338,8 +391,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.71999997, y: 0.64, z: 1.5999999}
-  m_Center: {x: 0.96, y: 0.59999996, z: -0.12}
+  m_Size: {x: 0.39999998, y: 1.04, z: 2.1599998}
+  m_Center: {x: 0, y: 0.79999995, z: -0.08}
 --- !u!1 &7263093374371890121
 GameObject:
   m_ObjectHideFlags: 0
@@ -500,6 +553,9 @@ MonoBehaviour:
   handbrake: 0
   steerPull: 0
   comOffsetX: 0.3
+  aircraft: 0
+  customCom: 0
+  centerOfMass: {x: 0, y: 0, z: 0}
   bakedDriver: 0
 --- !u!114 &4681897364032230604
 MonoBehaviour:
@@ -701,7 +757,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2828806614977667205}
+  - {fileID: 4384369907333751252}
   m_Father: {fileID: 7828050874352168507}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1592221030154240806
@@ -719,60 +775,7 @@ MonoBehaviour:
   accepts: 0
   maxSizeClass: 4
   mirrored: 0
-  current: {fileID: 5359096758107328697}
---- !u!1 &8234074514661130839
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 199706988988512730}
-  - component: {fileID: 1240455424880371753}
-  m_Layer: 0
-  m_Name: Collider
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &199706988988512730
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8234074514661130839}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5331678076956069141}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1240455424880371753
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8234074514661130839}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.39999998, y: 1.04, z: 2.1599998}
-  m_Center: {x: 0, y: 0.79999995, z: -0.08}
+  current: {fileID: 5892625349465985512}
 --- !u!1 &9102312120379790734
 GameObject:
   m_ObjectHideFlags: 0
@@ -852,7 +855,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8987058087518941766}
+  - {fileID: 8827832883502399360}
   m_Father: {fileID: 7828050874352168507}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5374993660017807159
@@ -870,7 +873,7 @@ MonoBehaviour:
   accepts: 0
   maxSizeClass: 4
   mirrored: 0
-  current: {fileID: 1271940393293152890}
+  current: {fileID: 1701346390577745852}
 --- !u!1001 &726197692972189972
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1021,7 +1024,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
---- !u!1001 &3369952748713612750
+--- !u!1001 &3845480040190153887
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1082,15 +1085,15 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
---- !u!4 &2828806614977667205 stripped
+--- !u!4 &4384369907333751252 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 686106849474901323, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
-  m_PrefabInstance: {fileID: 3369952748713612750}
+  m_PrefabInstance: {fileID: 3845480040190153887}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &5359096758107328697 stripped
+--- !u!114 &5892625349465985512 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7249436609970586999, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
-  m_PrefabInstance: {fileID: 3369952748713612750}
+  m_PrefabInstance: {fileID: 3845480040190153887}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -1098,7 +1101,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
---- !u!1001 &8448184713058174733
+--- !u!1001 &8288674690420296395
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1159,10 +1162,10 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
---- !u!114 &1271940393293152890 stripped
+--- !u!114 &1701346390577745852 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7249436609970586999, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
-  m_PrefabInstance: {fileID: 8448184713058174733}
+  m_PrefabInstance: {fileID: 8288674690420296395}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -1170,8 +1173,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
---- !u!4 &8987058087518941766 stripped
+--- !u!4 &8827832883502399360 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 686106849474901323, guid: 418e1eee6c94db578b144bac48f90acf, type: 3}
-  m_PrefabInstance: {fileID: 8448184713058174733}
+  m_PrefabInstance: {fileID: 8288674690420296395}
   m_PrefabAsset: {fileID: 0}

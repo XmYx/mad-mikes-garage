@@ -644,6 +644,15 @@ namespace MadMax.Game
                 Current.brakeInput = brake;
                 Current.handbrake = space;
                 if (Current.TryGetComponent<BikeBalance>(out var bikeLean)) bikeLean.leanBack = shift;          // wheelie
+                if (Current.TryGetComponent<FlightModel>(out var flight))
+                {
+                    // aircraft: W/S move the throttle lever, A/D bank, Space pulls up, Ctrl pushes down (pad: right stick)
+                    flight.rollInput = Mathf.Clamp(move.x, -1f, 1f);
+                    flight.throttleAxis = Mathf.Clamp(throttle - brake, -1f, 1f);
+                    float pitch = (space ? 1f : 0f) - (kb != null && kb.leftCtrlKey.isPressed ? 1f : 0f);
+                    if (pad != null) pitch -= pad.rightStick.ReadValue().y;
+                    flight.pitchInput = Mathf.Clamp(pitch, -1f, 1f);
+                }
             }
             else
             {

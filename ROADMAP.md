@@ -505,13 +505,15 @@ rumours, errands, haggling, parley, combat, ragdolls.
 
 
 ## 25. Aviation `T3`
-- [ ] **Flight model**: lift / drag / thrust / control torques per surface; stall; crash damage
-- [ ] **Gyrocopter** (autogyro: rotor spun by airspeed, pusher prop) and **ultralight** trike
-- [ ] **Flight HUD**: altitude, airspeed, compass; chase camera
-- [ ] **Airstrips & hangar**; take off from straight roads
-- [ ] **Aerial scouting**: sites and convoys show up from the air
+- [x] **Flight model**: lift / drag / thrust / control torques per surface; stall; crash damage
+- [x] **Gyrocopter** (autogyro: rotor spun by airspeed, pusher prop) and **ultralight** trike
+- [x] **Flight HUD**: altitude, airspeed, compass; chase camera
+- [x] **Airstrips & hangar**; take off from straight roads
+- [x] **Aerial scouting**: sites and convoys show up from the air
 
 *Ties:* vehicles, crafting, exploration, economy (fast deliveries).
+
+*Done:* `FlightModel` on designs with `aircraft` (`VehicleDriver.aircraft`: free-rolling gear, no reverse): per-surface aerodynamics from each surface's point velocity (angle of attack, linear lift to the stall, flat-plate lift and drag beyond it, induced + profile drag), ailerons / elevator / rudder by deflecting the surfaces, pusher thrust from engine rpm fading with airspeed, airframe drag, wind (`Fx.Wind`). The gyrocopter's rotor autorotates (tip speed follows the airflow, a pre-rotator spins it on the ground with throttle), lifts along the disc axis and the stick tilts the disc (authority grows with rotor speed). Controls: W/S throttle lever, A/D bank + coordinated rudder (nose wheel on the ground), Space pull / Ctrl push, S at idle brakes (pad: triggers, left stick, right stick pitch). Crashes > 11 m/s wreck the engine and throw the pilot (ragdoll); > 26 m/s explode. Designs `Ultralight` (flex-wing trike, tandem seats, 10 m striped wing) and `Gyrocopter` (enclosed pod, 8 m rotor, twin fins), spinning `Prop` / `Rotor` meshes (`VehicleDesign.spinners`), explicit centre of mass ahead of the main gear (`VehicleDesign.com`), parts `engine_2stroke_aero`, `wheel_aero`. Flight HUD: altitude over ground, airspeed, climb, heading, throttle, rotor rpm, artificial horizon, blinking STALL. Chase camera = the existing vehicle cameras. Airfields: new `SiteKind.Airfield` (1–9 per world, mostly desert): a 190–260 m strip graded level with painted centreline, thresholds, edges and aiming blocks (terrain features 4/5), an apron and a derelict Quonset hangar complex (rusted-through shell, radio hut with a locker — loot table `airfield` with `bp_aviation`, windsock, fuel drums) with one flying machine to find (`WastelandGame.FoundAircraft`, saved). Buildable `hangar` piece (coarse 0.16 m voxels, station `hangar`); aircraft recipes need it and the blueprint; bicycles are a workbench recipe. Straight roads work as runways. Aerial scouting above 25 m: sites, towns, convoys (raiders in red) and herds are tagged out to 250 m + 6 × altitude (≤ 1.2 km); first sightings of sites are noted (`Scouted`, saved).
 
 ---
 

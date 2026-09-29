@@ -39,7 +39,7 @@ namespace MadMax.Items
 
         static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
         {
-            { "use_saddle", "SADDLE" }, { "animal_chick", "CHICK" }, { "animal_kid", "GOAT KID" }, { "animal_calf", "CALF" }, { "animal_piglet", "PIGLET" }, { "animal_puppy", "PUPPY" },
+            { "bp_aviation", "BLUEPRINT: FLYING MACHINES" }, { "use_saddle", "SADDLE" }, { "animal_chick", "CHICK" }, { "animal_kid", "GOAT KID" }, { "animal_calf", "CALF" }, { "animal_piglet", "PIGLET" }, { "animal_puppy", "PUPPY" },
             { "misc_bone", "BONE" }, { "misc_feather", "FEATHER" }, { "trophy_tusks", "BOAR TUSKS" }, { "trophy_horns", "ANTELOPE HORNS" }, { "trophy_pelt", "WOLF PELT" },
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
             { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
@@ -134,6 +134,26 @@ namespace MadMax.Items
             {
                 if (list.Exists(r => r.output == design && r.kind == OutputKind.Vehicle)) continue;
                 int m = Mathf.RoundToInt(mass / 25f);
+                if (design == "Ultralight" || design == "Gyrocopter")
+                {
+                    list.Add(new Recipe
+                    {
+                        id = "veh_" + design, name = design.ToUpperInvariant(), category = RecipeCategory.Vehicles, kind = OutputKind.Vehicle, output = design,
+                        description = "FLYING MACHINE, EMPTY TANK (NEEDS A HANGAR)", station = "hangar", knowledge = "bp_aviation",
+                        resources = new[] { (ResourceType.Aluminium, 20), (ResourceType.Iron, m / 2), (ResourceType.Cloth, 16), (ResourceType.Rubber, 6), (ResourceType.Copper, 4) }
+                    });
+                    continue;
+                }
+                if (design == "Bicycle")
+                {
+                    list.Add(new Recipe
+                    {
+                        id = "veh_" + design, name = "BICYCLE", category = RecipeCategory.Vehicles, kind = OutputKind.Vehicle, output = design,
+                        description = "PEDAL POWER: SILENT, NO FUEL, COSTS STAMINA", station = "workbench",
+                        resources = new[] { (ResourceType.Iron, 6), (ResourceType.Rubber, 2), (ResourceType.Scrap, 4) }
+                    });
+                    continue;
+                }
                 list.Add(new Recipe
                 {
                     id = "veh_" + design, name = design.ToUpperInvariant(), category = RecipeCategory.Vehicles, kind = OutputKind.Vehicle, output = design,

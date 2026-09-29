@@ -779,6 +779,11 @@ namespace MadMax.World
                 case 2:
                     if (Mathf.Repeat(gx, 2f) < Cell * 0.99f || Mathf.Repeat(gz, 2f) < Cell * 0.99f) return Joint;
                     return Concrete[hs < 0.1f ? 0 : hs < 0.75f ? 1 : 2];
+                case 4:                                                                             // runway tarmac, weathered
+                    if (Mathf.Abs(Mathf.PerlinNoise(gx * 0.6f + 31f, gz * 0.6f + 7f) - 0.5f) < 0.02f) return Crack;
+                    return Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2];
+                case 5:                                                                             // faded runway paint
+                    return hs < 0.18f ? Asphalt[1] : Line;
                 default:
                     return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
             }

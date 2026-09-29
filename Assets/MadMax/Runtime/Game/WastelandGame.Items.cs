@@ -186,6 +186,22 @@ namespace MadMax.Game
             return v;
         }
 
+        /// <summary>Airfields whose hangar machine has been placed (it is a saved vehicle after that).</summary>
+        public readonly HashSet<string> FoundAircraft = new HashSet<string>();
+        /// <summary>Sites seen from the air (roadmap 25 scouting).</summary>
+        public readonly HashSet<string> Scouted = new HashSet<string>();
+
+        /// <summary>A vehicle found in the world (a hangar's flying machine): free to take, nearly dry tanks.</summary>
+        public VehicleDriver SpawnFound(string design, Vector3 p, Quaternion r)
+        {
+            var prefab = PrefabFor(design);
+            if (!prefab) return null;
+            var v = Instantiate(prefab, p, r).GetComponent<VehicleDriver>();
+            if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = sys.fuelCapacity * 0.15f;
+            Register(v, null);
+            return v;
+        }
+
         /// <summary>A vehicle crafted on another peer.</summary>
         public void SpawnVehicleRemote(string design, ushort netId, Vector3 p, Quaternion r)
         {

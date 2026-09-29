@@ -60,6 +60,9 @@ namespace MadMax.Vehicles
         /// <summary>Front-wheel angle (deg) set each step by <see cref="BikeBalance"/>; NaN = from <see cref="steerInput"/>.</summary>
         [System.NonSerialized] public float steerOverride = float.NaN;
         [Tooltip("Centre of mass offset to the right (m): sidecar outfits.")] public float comOffsetX;
+        [Tooltip("Aircraft: wheels roll free (the propeller pushes, FlightModel), the gearbox never reverses.")] public bool aircraft;
+        [Tooltip("Use centerOfMass instead of the body-bounds estimate.")] public bool customCom;
+        public Vector3 centerOfMass;
 
         public int Gear { get; private set; } = 1;
         public float DriveCommand { get; private set; }
@@ -176,11 +179,11 @@ namespace MadMax.Vehicles
             if (body && body.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
             {
                 var b = mf.sharedMesh.bounds;
-                rb.centerOfMass = new Vector3(comOffsetX, b.min.y + 0.25f, b.center.z);
+                rb.centerOfMass = customCom ? centerOfMass : new Vector3(comOffsetX, b.min.y + 0.25f, b.center.z);
             }
         }
 
-        bool IsDriven(Wheel w) => !w.idler && (drive == Drive.All || (drive == Drive.Front) == w.front);
+        bool IsDriven(Wheel w) => !w.idler && !aircraft && (drive == Drive.All || (drive == Drive.Front) == w.front);
 
         float DrivenRadius()
         {
@@ -223,7 +226,7 @@ namespace MadMax.Vehicles
             else
             {
                 if (Gear < 1) Gear = 1;
-                if (!Reversing && brakeInput > 0.1f && throttleInput < 0.1f && ForwardSpeed < 0.5f) Reversing = true;
+                if (!Reversing && !aircraft && brakeInput > 0.1f && throttleInput < 0.1f && ForwardSpeed < 0.5f) Reversing = true;
                 if (Reversing && throttleInput > 0.1f && ForwardSpeed > -0.5f) Reversing = false;
                 driveCmd = Reversing ? brakeInput : throttleInput;
                 brakeCmd = Reversing ? throttleInput : brakeInput;

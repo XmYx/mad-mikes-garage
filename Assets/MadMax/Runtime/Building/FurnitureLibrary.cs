@@ -25,6 +25,7 @@ namespace MadMax.Building
         public bool foundation;          // stands level on the ground (legs reach down), tiles with its neighbours
         public Vector4 deck;             // drivable top: half width, half length, top at the back / front edge (m, local)
         public int plan = -1;            // structure plan pseudo piece: index into StructurePlans (-2 = the capture tool)
+        public float voxel = VoxelMesher.DefaultSize;   // big coarse pieces (the hangar) use larger voxels
     }
 
     /// <summary>Placeable furniture and building pieces. Origin = mounting point on the surface, +Y = away from the

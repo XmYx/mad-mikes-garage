@@ -22,6 +22,43 @@ namespace MadMax.Building
             yield return D("smokehouse", "SMOKEHOUSE", In, Smokehouse(), 8, false, go => Station(go, "smokehouse", "SMOKE MEAT AND FISH", 0f).output = new Vector3(0f, 0.9f, 0.7f), (W, 12), (S, 2), (ResourceType.Stone, 4));
             yield return D("loom", "LOOM", In, Loom(), 4, false, go => Station(go, "loom", "WEAVE (LOOM)", 0f), (W, 8));
             yield return D("gunsmith", "GUNSMITH BENCH", In, GunsmithBench(), 8, false, go => Station(go, "gunsmith", "GUNSMITH BENCH", 0f).tier = 1f, (Fe, 6), (W, 4), (S, 4));
+            var hg = Hangar();
+            hg.Bevel();
+            yield return new FurnitureDef
+            {
+                id = "hangar", name = "HANGAR", category = In, grid = hg, cost = new[] { (Fe, 20), (S, 40), (W, 10) }, hits = 30, meshCollider = true, voxel = 0.16f,
+                mesh = VoxelMesher.Build(hg, "Furniture_hangar", 0.16f),
+                setup = go => { var st = Station(go, "hangar", "HANGAR (FLYING MACHINES)", 0f); st.tier = 0.5f; st.output = new Vector3(0f, 0.3f, 0.6f); }
+            };
+        }
+
+        /// <summary>Quonset hangar (roadmap 25): a corrugated half-cylinder 8.8 m wide, open at the front, with ribs, a
+        /// workbench along the back and a hoist beam. Flying machines are built in it. Coarse 0.16 m voxels.</summary>
+        static VoxelGrid Hangar()
+        {
+            var g = new VoxelGrid().Mat(Iron);
+            const int R = 27, L = 30;
+            var tin = Pal.Weathered(Pal.Metal, 0.3f, 2611, 2, -100);
+            var tinDark = Pal.Weathered(Pal.Metal, 0.45f, 2612, 1, -100);
+            var rib = Pal.Ramp(Pal.Black, 1, 2613);
+            for (int z = -L; z <= L; z++)
+            for (int x = -R - 1; x <= R + 1; x++)
+            for (int y = 0; y <= R + 1; y++)
+            {
+                float d = Mathf.Sqrt(x * x + y * y);
+                bool isRib = (z + L) % 10 == 0;
+                if (Mathf.Abs(d - R) > (isRib ? 1.1f : 0.6f)) continue;
+                int arc = Mathf.FloorToInt(Mathf.Atan2(y, x) * R);
+                g.Set(x, y, z, isRib ? rib : (arc & 2) == 0 ? tin : tinDark);
+            }
+            for (int x = -R; x <= R; x++)                                                      // back wall
+            for (int y = 0; y <= R; y++)
+                if (x * x + y * y <= R * R) g.Set(x, y, -L, (x & 3) == 0 ? tinDark : tin);
+            g.Mat(Wood);
+            g.Box(-10, 0, -L + 1, 10, 5, -L + 3, Pal.Ramp(Pal.Wood, 2, 2614));                   // workbench along the back
+            g.Mat(Iron);
+            g.Box(-1, 22, -L + 1, 1, 23, L - 1, Pal.Ramp(Pal.Ochre, 2, 2615));                    // hoist beam
+            return g;
         }
 
         static VoxelGrid ChemLab()

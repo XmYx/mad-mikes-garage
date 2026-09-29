@@ -146,6 +146,11 @@ namespace MadMax.Game
                 DrawVehiclePanel(car, 6, canvas.h - 38);
                 DrawPartsMap(car, canvas.w - 44, canvas.h - 70);
             }
+            if (car && car.TryGetComponent<MadMax.Vehicles.FlightModel>(out var flight))
+            {
+                DrawFlight(car, flight, fps ? 6 : 160, canvas.h - 52);
+                DrawAerial(flight);
+            }
 
             string prompt = game.RadialOpen ? null : game.Prompt;
             if (prompt != null)
@@ -285,7 +290,97 @@ namespace MadMax.Game
             foreach (var s in near)
             {
                 var p = new Vector3(s.pos.x, DeformableTerrainHeight(s.pos) + 4f, s.pos.y);
-                Tag(p, s.kind == MadMax.World.SiteKind.Bunker ? "BUNKER" : "ROCK TUNNEL", new Color32(160, 200, 255, 255));
+                Tag(p, SiteName(s), new Color32(160, 200, 255, 255));
+            }
+        }
+
+        static string SiteName(MadMax.World.Site s) => s.kind == MadMax.World.SiteKind.Bunker ? "BUNKER" : s.kind == MadMax.World.SiteKind.Airfield ? "AIRFIELD" : "ROCK TUNNEL";
+
+        /// <summary>Flight instruments (roadmap 25): altitude over the ground, airspeed, climb, heading, throttle,
+        /// rotor speed, an artificial horizon and a blinking stall warning.</summary>
+        void DrawFlight(VehicleDriver car, MadMax.Vehicles.FlightModel f, int x, int y)
+        {
+            canvas.Panel(x, y, 132, 46);
+            canvas.Text(x + 4, y + 4, "ALT " + Mathf.RoundToInt(f.Altitude) + "M", f.Altitude < 15f && f.Airborne ? Amber : Text);
+            canvas.Text(x + 4, y + 11, "SPD " + Mathf.RoundToInt(f.Airspeed * 3.6f) + " KM/H", Text);
+            float vs = f.VerticalSpeed;
+            canvas.Text(x + 4, y + 18, "V/S " + (vs >= 0f ? "+" : "-") + Mathf.Abs(vs).ToString("0.0"), vs < -6f ? Red : Dim);
+            int hdg = Mathf.RoundToInt(f.Heading) % 360;
+            string[] pts = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+            canvas.Text(x + 4, y + 25, "HDG " + hdg.ToString("000") + " " + pts[Mathf.RoundToInt(hdg / 45f) % 8], Text);
+            canvas.Text(x + 4, y + 33, "THR", Dim);
+            Bar(x + 18, y + 35, 40, f.Throttle, Amber);
+            if (f.kind == MadMax.Vehicles.FlightModel.Kind.Gyro) canvas.Text(x + 62, y + 33, "ROTOR " + Mathf.RoundToInt(f.RotorRpm), f.RotorRpm < 200f && f.Airborne ? Red : Dim);
+            // artificial horizon: the ground line tilts with the bank and slides with the pitch
+            int hx = x + 88, hy = y + 4, hw = 40, hh = 26;
+            canvas.Rect(hx, hy, hw, hh, new Color32(40, 70, 110, 255));
+            var fwd = car.transform.forward;
+            float pitch = -Vector3.SignedAngle(Vector3.ProjectOnPlane(fwd, Vector3.up), fwd, car.transform.right);
+            var upProj = Vector3.ProjectOnPlane(Vector3.up, fwd);
+            float roll = upProj.sqrMagnitude > 1e-4f ? Vector3.SignedAngle(upProj.normalized, car.transform.up, fwd) : 0f;
+            float ca = Mathf.Cos(roll * Mathf.Deg2Rad), sa = Mathf.Sin(roll * Mathf.Deg2Rad);
+            float cy = hy + hh * 0.5f + Mathf.Clamp(pitch * 0.4f, -hh * 0.5f, hh * 0.5f);
+            for (int i = 0; i < hw; i++)
+            {
+                float dx = i - hw * 0.5f;
+                int gy = Mathf.RoundToInt(cy - dx * sa / Mathf.Max(0.2f, ca));
+                for (int yy = Mathf.Max(hy, gy); yy < hy + hh; yy++) canvas.Rect(hx + i, yy, 1, 1, new Color32(110, 80, 50, 255));
+            }
+            canvas.Rect(hx + hw / 2 - 6, hy + hh / 2, 12, 1, Amber);
+            canvas.Rect(hx + hw / 2, hy + hh / 2 - 2, 1, 5, Amber);
+            if (f.Stalled && (Time.time * 3f) % 1f > 0.35f)
+            {
+                const string s = "STALL";
+                canvas.Text((canvas.w - PixelCanvas.TextWidth(s, 2)) / 2, 40, s, Red, 2);
+            }
+        }
+
+        /// <summary>From the air (above 25 m) sites, towns, convoys and herds show up to a range that grows with
+        /// altitude; the first sight of a site is noted.</summary>
+        void DrawAerial(MadMax.Vehicles.FlightModel f)
+        {
+            if (f.Altitude < 25f) return;
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam) return;
+            var me = f.transform.position;
+            float range = Mathf.Min(1200f, 250f + f.Altitude * 6f);
+            void Tag(Vector3 world, string text, Color32 col)
+            {
+                var sp = cam.WorldToViewportPoint(world);
+                if (sp.z <= 0f || sp.x < 0f || sp.x > 1f || sp.y < 0f || sp.y > 1f) return;
+                int px = Mathf.RoundToInt(sp.x * canvas.w), py = Mathf.RoundToInt((1f - sp.y) * canvas.h);
+                string d = Mathf.RoundToInt(Vector3.Distance(world, me)) + "M";
+                canvas.Rect(px - 1, py - 1, 3, 3, col);
+                canvas.Text(px - PixelCanvas.TextWidth(text) / 2, py - 10, text, col);
+                canvas.Text(px - PixelCanvas.TextWidth(d) / 2, py + 3, d, Dim);
+            }
+            var near = new System.Collections.Generic.List<MadMax.World.Site>();
+            game.World.SitesNear(me, range, near);
+            foreach (var s in near)
+            {
+                var p = new Vector3(s.pos.x, DeformableTerrainHeight(s.pos) + 2f, s.pos.y);
+                if ((p - me).magnitude > range) continue;
+                Tag(p, SiteName(s), new Color32(160, 200, 255, 255));
+                if (game.Scouted.Add(s.Key)) game.Toast("SPOTTED FROM THE AIR: " + SiteName(s) + " " + Mathf.RoundToInt(Vector3.Distance(p, me)) + " M");
+            }
+            foreach (var st in game.World.settlements)
+            {
+                var p = new Vector3(st.pos.x, DeformableTerrainHeight(st.pos) + 6f, st.pos.y);
+                if ((p - me).magnitude < range * 1.3f) Tag(p, MadMax.Npc.Market.TownName(st), Green);
+            }
+            var dir = MadMax.Npc.NpcDirector.Instance;
+            foreach (var v in game.AllVehicles)
+            {
+                if (!v || !v.aiDriven || (v.transform.position - me).sqrMagnitude > range * range) continue;
+                var c = dir ? dir.ConvoyOf(v) : null;
+                Tag(v.transform.position + Vector3.up * 3f, c != null && c.raiders ? "RAIDERS" : "TRAFFIC", c != null && c.raiders ? Red : Amber);
+            }
+            int lastHerd = -1;
+            foreach (var a in MadMax.Animals.Animal.All)
+            {
+                if (!a || !a.Alive || a.owned || a.herd == 0 || a.herd == lastHerd || a.Def.flies || (a.transform.position - me).sqrMagnitude > range * range) continue;
+                lastHerd = a.herd;
+                Tag(a.transform.position + Vector3.up * 2f, a.Def.name, new Color32(200, 180, 120, 255));
             }
         }
 
@@ -719,6 +814,7 @@ namespace MadMax.Game
                 "BUILD (B, HOLD: RADIAL): , . CATEGORY  1-0 PIECE  Y ROTATE  X DISMANTLE  R REPAIR  U UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
                 "DRIVING: X 4WD  L DIFF LOCK  E/Q SHIFT  N LIGHTS  Y HORN  CTRL NITROUS  T RECOVER/PARLEY  LMB WEAPON  MACHINES: 1 2 3",
                 "BIKES: A/D LEAN INTO THE TURN  SHIFT WHEELIE  CRASH = THROWN OFF (F TO GET BACK ON)  BICYCLE: PEDALS COST STAMINA",
+                "FLYING: W/S THROTTLE LEVER  A/D BANK  SPACE PULL UP  CTRL PUSH DOWN  S (IDLE) BRAKES  TAKE OFF FROM AIRSTRIPS OR STRAIGHT ROADS",
                 "RADIO: M ON/OFF  , . TUNE  [ ] VOLUME   FISHING: LMB CAST, CLICK ON A BITE, HOLD TO REEL   V VIEW  ESC MENU  H HELP"
             };
             int w = 0; foreach (var l in lines) w = Mathf.Max(w, PixelCanvas.TextWidth(l));

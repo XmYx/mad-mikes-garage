@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MadMax.World
 {
-    public enum SiteKind { Bunker, Outcrop }
+    public enum SiteKind { Bunker, Outcrop, Airfield }
 
     /// <summary>A generated landmark that reshapes the ground: a buried bunker (graded surface, floor pit under a
     /// voxel roof, entrance ramp) or a rock mesa with a natural tunnel running through it. Layouts are axis-aligned
@@ -25,8 +25,9 @@ namespace MadMax.World
         public int[] room;
         public bool[] doorX, doorZ;     // (i,j)-(i+1,j) and (i,j)-(i,j+1)
 
-        // outcrop: mesa of halfLen x halfWid (local z = tunnel axis)
+        // outcrop: mesa of halfLen x halfWid (local z = tunnel axis); airfield: runway of halfLen x halfWid along local z
         public float halfLen, halfWid, height;
+        public const float ApronX = 22f, ApronHalfX = 14f, ApronHalfZ = 16f;   // airfield: hangar apron centre (local +x) and size
         public const float TunnelHalf = 3.4f, TunnelWall = 0.5f, TunnelRoof = 5.2f;
 
         public int Room(int i, int j) => i < 0 || j < 0 || i >= gw || j >= gh ? -1 : room[j * gw + i];
@@ -116,9 +117,23 @@ namespace MadMax.World
             SiteKind kind;
             if (roll < (b == Biome.Nuclear ? 0.55 : b == Biome.Desert ? 0.3 : 0.25)) kind = SiteKind.Bunker;
             else if (roll < (b == Biome.Desert ? 0.7 : b == Biome.Forest ? 0.5 : 0.4)) kind = SiteKind.Outcrop;
+            else if (b != Biome.Nuclear && roll < (b == Biome.Desert ? 0.92 : b == Biome.Forest ? 0.62 : 0.52)) kind = SiteKind.Airfield;
             else return null;
             var s = new Site { kind = kind, pos = p, rot = rnd.Next(4), seed = rnd.Next(), cell = cell };
             if (kind == SiteKind.Bunker) PlanBunker(s, rnd);
+            else if (kind == SiteKind.Airfield)
+            {
+                // an old airstrip: 220-300 m of runway, apron and hangar to one side; needs fairly level land
+                s.halfLen = 95f + (float)rnd.NextDouble() * 35f;
+                s.halfWid = 9f;
+                s.top = BaseHeight(p.x, p.y);
+                s.reach = s.halfLen + 30f;
+                for (int i = -6; i <= 6; i++)
+                {
+                    var q = s.ToWorld(0f, s.halfLen * i / 6f);
+                    if (Mathf.Abs(BaseHeight(q.x, q.y) - s.top) > 10f) return null;
+                }
+            }
             else
             {
                 s.halfLen = 20f + (float)rnd.NextDouble() * 12f;
@@ -128,9 +143,9 @@ namespace MadMax.World
             }
             // keep clear of towns, lakes, roads, the start area and the world edge
             if (p.magnitude < 150f || Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.y)) > halfSize - 90f) return null;
-            foreach (var st in settlements) if ((st.pos - p).magnitude < st.radius + s.reach + 40f) return null;
+            foreach (var st in settlements) if ((st.pos - p).magnitude < st.radius + (kind == SiteKind.Airfield ? s.halfLen * 0.6f : s.reach) + 40f) return null;
             var hits = new List<RoadHit>();
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 9 && kind != SiteKind.Airfield; i++)                                 // airfields may have a road nearby: only the strip is checked
             {
                 float a = i * Mathf.PI * 2f / 8f;
                 var q = i == 8 ? p : p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s.reach;
@@ -138,6 +153,14 @@ namespace MadMax.World
                 roads.QueryAll(q.x, q.y, hits);
                 if (hits.Count > 0) return null;
             }
+            if (kind == SiteKind.Airfield)
+                for (float z = -s.halfLen; z <= s.halfLen; z += 20f)                                   // the strip itself stays dry and off the roads
+                {
+                    var q = s.ToWorld(0f, z);
+                    if (LakeAt(q.x, q.y, out float t) != null && t < 1.8f) return null;
+                    roads.QueryAll(q.x, q.y, hits);
+                    if (hits.Count > 0) return null;
+                }
             return s;
         }
 
@@ -210,6 +233,28 @@ namespace MadMax.World
         float ShapeSite(Site s, float x, float z, float h, ref GroundSample g, ref float wet)
         {
             var l = s.ToLocal(x, z);
+            if (s.kind == SiteKind.Airfield)
+            {
+                // runway graded flat along local z, painted; apron and hangar floor on the +x side
+                float rox = Mathf.Max(0f, Mathf.Abs(l.x) - s.halfWid), roz = Mathf.Max(0f, Mathf.Abs(l.y) - s.halfLen);
+                float ax = Mathf.Max(0f, Mathf.Abs(l.x - Site.ApronX) - Site.ApronHalfX), az = Mathf.Max(0f, Mathf.Abs(l.y) - Site.ApronHalfZ);
+                float rout = Mathf.Min(Mathf.Sqrt(rox * rox + roz * roz), Mathf.Sqrt(ax * ax + az * az));
+                float rgrade = 1f - Mathf.Clamp01((rout - 1f) / 14f);
+                h = Mathf.Lerp(h, s.top, rgrade * rgrade * (3f - 2f * rgrade));
+                if (rox <= 0f && roz <= 0f)
+                {
+                    g.feature = 4; g.road = 1f; g.paved = true; wet *= 0.2f;
+                    float ay = Mathf.Abs(l.y), axx = Mathf.Abs(l.x);
+                    bool centre = axx < 0.35f && Mathf.Repeat(l.y, 24f) < 12f && ay < s.halfLen - 20f;
+                    bool threshold = ay > s.halfLen - 10f && ay < s.halfLen - 4f && Mathf.Repeat(l.x + 0.75f, 1.5f) < 0.9f && axx < s.halfWid - 1.5f;
+                    bool edge = axx > s.halfWid - 0.6f && axx < s.halfWid - 0.3f;
+                    bool aim = Mathf.Abs(ay - (s.halfLen - 40f)) < 5f && Mathf.Abs(axx - 3.5f) < 1f;
+                    if (centre || threshold || edge || aim) g.feature = 5;
+                    return s.top;
+                }
+                if (ax <= 0f && az <= 0f) { g.feature = 2; g.road = 1f; g.paved = true; wet *= 0.2f; return s.top; }
+                return h;
+            }
             if (s.kind == SiteKind.Outcrop)
             {
                 bool corridor = Mathf.Abs(l.x) < Site.TunnelHalf && Mathf.Abs(l.y) < s.halfLen + 2f;

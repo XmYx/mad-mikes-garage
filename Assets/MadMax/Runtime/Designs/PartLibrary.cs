@@ -56,6 +56,7 @@ namespace MadMax.Designs
             yield return MonsterWheel();
             foreach (var p in Attachments()) yield return p;
             foreach (var p in Bikes()) yield return p;
+            foreach (var p in Aircraft()) yield return p;
         }
 
         static PartDesign Make(string key, PartCategory c, VoxelGrid g, float mass, int size = 1, float radius = 0)

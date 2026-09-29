@@ -123,7 +123,8 @@ namespace MadMax.EditorTools
                                           vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"],
                                           vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"],
                                           vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
-                                          vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"] };
+                                          vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"],
+                                          vehicles["Ultralight"], vehicles["Gyrocopter"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
             game.cameraRig = rig;
@@ -205,7 +206,8 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck(),
                                       VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
                                       VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy(),
-                                      VehicleDesigns.DirtBike(), VehicleDesigns.Chopper(), VehicleDesigns.Bicycle(), VehicleDesigns.SidecarOutfit() })
+                                      VehicleDesigns.DirtBike(), VehicleDesigns.Chopper(), VehicleDesigns.Bicycle(), VehicleDesigns.SidecarOutfit(),
+                                      VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter() })
             {
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
                 d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
@@ -306,6 +308,14 @@ namespace MadMax.EditorTools
                 go.GetComponent<MeshRenderer>().sharedMaterial = mat;
                 var bc = go.AddComponent<BoxCollider>(); bc.center = mm.bounds.center; bc.size = mm.bounds.size;
             }
+            foreach (var sp in d.spinners)
+            {
+                var go = new GameObject(sp.name, typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(root.transform, false);
+                go.transform.localPosition = (Vector3)sp.pivot * S;
+                go.GetComponent<MeshFilter>().sharedMesh = SaveMesh(VoxelMesher.Build(sp.grid, d.name + "_" + sp.name), sp.name + "_" + d.name);
+                go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            }
             if (d.name.StartsWith("CarTrailer")) root.AddComponent<TrailerDeck>();
             if (d.legs != null && d.legs.Count > 0)
             {
@@ -372,6 +382,15 @@ namespace MadMax.EditorTools
             if (d.gears != null) driver.gears = d.gears;
             driver.awdSelectable = d.awdSelectable; driver.hasDiffLock = d.diffLock;
             driver.comOffsetX = d.comX;
+            if (d.com.HasValue) { driver.customCom = true; driver.centerOfMass = d.com.Value; }
+            if (d.aircraft != null)
+            {
+                var fm = root.AddComponent<FlightModel>();
+                fm.kind = d.aircraft == "gyro" ? FlightModel.Kind.Gyro : FlightModel.Kind.Trike;
+                fm.maxThrust = d.aircraft == "gyro" ? 1600f : 1300f;
+                var prop = d.spinners.Find(sp => sp.name == "Prop");
+                if (prop.grid != null) fm.propAt = (Vector3)prop.pivot * S;
+            }
             if (d.bike) { var bb = root.AddComponent<BikeBalance>(); bb.sidecar = d.sidecar; bb.maxLean = d.name == "Chopper" ? 36f : d.name == "Bicycle" ? 34f : 44f; }
             var sys = root.AddComponent<VehicleSystems>();
             sys.fuelCapacity = d.fuelL; sys.oilCapacity = d.oilL; sys.coolantCapacity = d.coolantL;

@@ -78,6 +78,7 @@ namespace MadMax.Game
         public List<string> townQuests = new List<string>();
         public string factions;
         public List<MadMax.Animals.AnimalSave> animals = new List<MadMax.Animals.AnimalSave>();
+        public List<string> foundAircraft = new List<string>(), scouted = new List<string>();
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;

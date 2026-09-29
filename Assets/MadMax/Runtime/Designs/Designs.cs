@@ -74,6 +74,9 @@ namespace MadMax.Designs
         public bool bike, sidecar;             // two-wheeler (BikeBalance leans it); sidecar outfit: three wheels, no lean
         public float comX;                     // centre of mass offset (m) to the right (sidecar outfits)
         public Vector3Int? passenger;          // pillion / chair passenger eye (voxel coords); null = beside the driver
+        public string aircraft;                // "trike" / "gyro": FlightModel flies it (roadmap 25)
+        public Vector3? com;                   // explicit centre of mass (m), e.g. ahead of an aircraft's main gear
+        public readonly List<(string name, VoxelGrid grid, Vector3Int pivot)> spinners = new List<(string, VoxelGrid, Vector3Int)>();   // propellers, rotors: meshes, no colliders
         public Vector3Int eye;       // driver eye, voxel coordinates
         public VoxelGrid body;
         public VoxelGrid glass;
@@ -99,7 +102,7 @@ namespace MadMax.Designs
         /// and the arch rim is darkened like an inner fender. Keeps any design free of tyres poking through panels.</summary>
         public void CarveWheelArches(System.Func<string, PartDesign> part)
         {
-            if (body == null || crawler || bike) return;                                   // bikes: fenders sit above the travel by design
+            if (body == null || crawler || bike || aircraft != null) return;               // bikes and aircraft: fenders / pods clear the gear by design
             float travelVox = Mathf.Ceil(travel / VoxelMesher.DefaultSize);
             foreach (var s in sockets)
             {

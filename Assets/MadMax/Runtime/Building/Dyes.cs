@@ -34,7 +34,7 @@ namespace MadMax.Building
                 v.color = ramp[Mathf.Clamp(Mathf.RoundToInt(t * (ramp.Length - 1)), 0, ramp.Length - 1)];
                 g.voxels[k] = v;
             }
-            m = VoxelMesher.Build(g, "Furniture_" + def.id + "_dye" + dye);
+            m = VoxelMesher.Build(g, "Furniture_" + def.id + "_dye" + dye, def.voxel);
             cache[(def.id, dye)] = m;
             return m;
         }
