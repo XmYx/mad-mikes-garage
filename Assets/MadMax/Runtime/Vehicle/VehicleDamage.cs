@@ -48,6 +48,7 @@ namespace MadMax.Vehicles
             chassis = GetComponent<VehicleChassis>();
             rb = GetComponent<Rigidbody>();
             if (!TryGetComponent(out armour) && transform.Find("Body")) armour = gameObject.AddComponent<VehicleArmor>();
+            if (!GetComponent<VehicleTuning>() && driver && driver.driveable) gameObject.AddComponent<VehicleTuning>();
         }
 
         void OnCollisionEnter(Collision c) => Handle(c);

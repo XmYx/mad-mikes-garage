@@ -490,6 +490,20 @@ namespace MadMax.Building
             return g;
         }
 
+        /// <summary>Tuning bench: a steel bench with a vice, a tool board and the dyno monitor on a cart.</summary>
+        public static VoxelGrid TuningBench()
+        {
+            var g = new VoxelGrid().Mat(Iron);
+            g.Box(-9, 10, -4, 9, 11, 4, Pal.Ramp(Pal.Metal, 2, 1401));                                          // top
+            foreach (int x in new[] { -8, 8 }) foreach (int z in new[] { -3, 3 }) g.Box(x, 0, z, x, 9, z, Pal.Ramp(Pal.Metal, 1));
+            g.Box(-8, 3, -3, 8, 3, 3, Pal.Ramp(Pal.Metal, 0));                                                    // shelf
+            g.Box(5, 12, -1, 7, 14, 1, Pal.Ramp(Pal.Crimson, 3, 1402));                                           // vice
+            g.Box(-9, 12, -4, 9, 24, -4, p => (p.x + p.y) % 3 == 0 ? Pal.Chrome[1] : Pal.Pick(Pal.Olive, p, 1403, 1));   // tool board
+            g.Box(-7, 12, -1, -3, 17, 2, Pal.Ramp(Pal.Black, 1));                                                 // dyno monitor
+            g.Mat(Glass); g.Box(-6, 13, 3, -4, 16, 3, p => (p.y == 14 && p.x != -6) || (p.y == 15 && p.x == -6) ? Pal.Hex("58c858") : Pal.Glass[1]);   // green trace
+            return g;
+        }
+
         /// <summary>Wire fish trap (a funnel-mouthed cylinder on the lake bed) with a rope up to a red float.</summary>
         public static VoxelGrid FishTrap()
         {

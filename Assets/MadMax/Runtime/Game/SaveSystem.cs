@@ -23,6 +23,7 @@ namespace MadMax.Game
         public string cargo;               // machine bed / hopper contents
         public string radio;               // RadioReceiver state (on, station, volume)
         public string armor;               // VehicleArmor zones (material, condition)
+        public string tuning;              // VehicleTuning settings
     }
 
     [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; public int q; }

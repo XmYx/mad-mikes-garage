@@ -511,7 +511,7 @@ namespace MadMax.Game
                 if (!c) continue;
                 c.SetManual(settings.manualTransmission && !c.aiDriven);
                 c.gripMultiplier = c == Current ? Stats.DrivingGrip : 1f;
-                if (c.TryGetComponent<VehicleSystems>(out var vs)) vs.fuelMultiplier = Rules.fuelUse * (c == Current ? Stats.FuelEfficiency : 1f);
+                if (c.TryGetComponent<VehicleSystems>(out var vs)) vs.fuelMultiplier = Rules.fuelUse * (c == Current ? Stats.FuelEfficiency : 1f) * (c.TryGetComponent<VehicleTuning>(out var tn) ? tn.FuelFactor : 1f);
             }
             if (Menus.IsOpen)
             {
@@ -538,6 +538,11 @@ namespace MadMax.Game
             {
                 float v = Mathf.Abs(Current.ForwardSpeed);
                 Stats.Practice(Skill.Driving, v * Time.deltaTime * 0.02f * (1f + Current.WheelSlip * 2f + Current.Mud));
+                if ((Pressed(Key.LeftCtrl) || (pad != null && pad.leftStickButton.wasPressedThisFrame)) && Current.TryGetComponent<VehicleTuning>(out var nos))
+                {
+                    if (nos.FireNitrous()) { MadMax.Audio.Sfx.Play("explosion", Current.transform.position, 0.35f, 1.8f, 40f); Toast("NITROUS! " + nos.nitrous + " LEFT"); }
+                    else if (nos.nitrous <= 0 && !nos.NitrousOn) Toast("NO NITROUS FITTED (TUNING BENCH)");
+                }
                 if (Pressed(Key.X)) { Current.ToggleFourWheelDrive(); if (Current.awdSelectable) Toast(Current.FourWheelDrive ? "4WD ENGAGED" : "2WD"); }
                 if (Pressed(Key.L)) { Current.ToggleDiffLock(); Toast(Current.hasDiffLock ? (Current.diffLocked ? "DIFF LOCKED" : "DIFF OPEN") : "NO DIFF LOCK ON THIS VEHICLE"); }
                 if (Pressed(Key.E) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();

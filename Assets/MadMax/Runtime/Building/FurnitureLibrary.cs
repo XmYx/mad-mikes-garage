@@ -134,7 +134,8 @@ namespace MadMax.Building
                 D("washplant", "WASH PLANT", In, BuildPieces.WashPlant(), 12, false, go => Station(go, "washplant", "REFINE SOIL (WASH PLANT)", 0f), (Fe, 6), (S, 8)),
                 D("mixer", "CEMENT MIXER", In, BuildPieces.Mixer(), 10, false, go => Station(go, "mixer", "MIX (CEMENT MIXER)", 0f), (Fe, 6), (S, 4)),
                 D("still", "DISTILLERY", In, BuildPieces.Still(), 8, false, go => Station(go, "still", "DISTIL (STILL)", 0f), (Cu, 8), (G, 2)),
-                D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; }, (Co, 20), (Fe, 16), (S, 20)),
+                D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; go.AddComponent<TuningBench>(); }, (Co, 20), (Fe, 16), (S, 20)),
+                D("tuning_bench", "TUNING BENCH", In, BuildPieces.TuningBench(), 8, false, go => go.AddComponent<TuningBench>(), (Fe, 6), (Cu, 2), (G, 1)),
 
                 // decor
                 D("rug", "RUG", De, BuildPieces.Rug(), 1, false, null, (C, 3)),

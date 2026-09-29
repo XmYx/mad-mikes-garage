@@ -22,10 +22,12 @@ namespace MadMax.Vehicles
 
         /// <summary>Welded-on armour and other additions that are not parts (kg).</summary>
         [System.NonSerialized] public float extraMass;
+        /// <summary>Ballast from the tuning bench (kg).</summary>
+        [System.NonSerialized] public float tuneMass;
 
         public float TotalMass
         {
-            get { float m = bodyMass + extraMass; foreach (var p in Parts) m += p.mass; return m; }
+            get { float m = bodyMass + extraMass + tuneMass; foreach (var p in Parts) m += p.mass; return m; }
         }
 
         public MountSocket FindSocket(string socketName)

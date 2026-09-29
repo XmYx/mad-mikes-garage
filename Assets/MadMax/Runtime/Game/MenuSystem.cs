@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -103,6 +103,11 @@ namespace MadMax.Game
         Container container;
         bool containerSide;              // false = player's items, true = container's
         public void OpenContainer(Container c) { container = c; containerSide = false; Open(Page.Container); }
+
+        MadMax.Vehicles.VehicleTuning tuneTarget;
+        /// <summary>Tuning page (tuning bench / garage) for a vehicle.</summary>
+        public void OpenTuning(MadMax.Vehicles.VehicleTuning t) { tuneTarget = t; Open(Page.Tuning); }
+        static readonly string[] BrakeNames = { "STOCK", "VENTED DISCS", "RACING" };
 
         MadMax.Vehicles.VehicleArmor armourTarget;
         readonly int[] armourPlan = new int[MadMax.Vehicles.VehicleArmor.Zones];
@@ -466,6 +471,48 @@ namespace MadMax.Game
                     Add("BACK", () => Open(Page.Crafting));
                     break;
                 }
+                case Page.Tuning:
+                {
+                    var t = tuneTarget;
+                    if (!t) { Close(); break; }
+                    int mech = game.Stats.Level(MadMax.RPG.Skill.Mechanics);
+                    void Slider(string label, int need, Func<float> get, Action<float> set, float min, float max, float step, Func<float, string> show, string hint)
+                    {
+                        items.Add(new Item
+                        {
+                            label = label + (mech < need ? " [MECH " + need + "]" : ""), value = () => show(get()), hint = hint,
+                            adjust = d =>
+                            {
+                                if (mech < need) { game.Toast("NEEDS MECHANICS " + need); return; }
+                                set(Mathf.Clamp(Mathf.Round((get() + d * step) / step) * step, min, max));
+                                t.Apply(); game.Stats.Practice(MadMax.RPG.Skill.Mechanics, 0.5f);
+                            },
+                        });
+                    }
+                    string Signed(float v, float scale, string unit) => (v > 0.001f ? "+" : "") + Mathf.RoundToInt(v * scale) + unit;
+                    Slider("ENGINE MAP", 2, () => t.map, v => t.map = v, -1f, 1f, 0.25f, v => v < -0.01f ? "ECONOMY " + Mathf.RoundToInt(-v * 100) + "%" : v > 0.01f ? "POWER " + Mathf.RoundToInt(v * 100) + "%" : "STOCK",
+                        "POWER: +15% TORQUE, MORE FUEL AND HEAT.  ECONOMY: LESS OF BOTH");
+                    foreach (var (name, kit, get, fit) in new (string, string, Func<bool>, Action)[] { ("TURBO", "kit_turbo", () => t.turbo, () => t.turbo = true), ("SUPERCHARGER", "kit_supercharger", () => t.supercharger, () => t.supercharger = true) })
+                        items.Add(new Item
+                        {
+                            label = name + (mech < 4 ? " [MECH 4]" : ""), value = () => get() ? "FITTED" : game.Inventory.GetItem(kit) > 0 ? "E TO FIT" : "NEEDS A KIT",
+                            confirm = () => game.FitTuningKit(t, kit, get(), fit), enabled = () => !get(),
+                            hint = name == "TURBO" ? "BIG PUSH HIGH IN THE REVS, RUNS HOT" : "+20% ALL THE WAY, THIRSTY",
+                        });
+                    items.Add(new Item { label = "NITROUS", value = () => t.nitrous + " BOTTLES", hint = "E FIT A BOTTLE (5 S BOOST).  FIRE WITH LEFT CTRL / LEFT STICK",
+                        confirm = () => { if (game.Inventory.TakeItem("use_nitrous")) { t.nitrous++; game.Toast("NITROUS BOTTLE FITTED (" + t.nitrous + ")"); } else game.Toast("NO NITROUS BOTTLES"); } });
+                    Slider("GEARING", 3, () => t.gearing, v => t.gearing = v, -1f, 1f, 0.25f, v => v < -0.01f ? "SHORT" : v > 0.01f ? "LONG" : "STOCK", "SHORT: PULLS HARDER, LOWER TOP SPEED.  LONG: THE OTHER WAY");
+                    Slider("FINAL DRIVE", 3, () => t.finalDrive, v => t.finalDrive = v, -1f, 1f, 0.25f, v => Signed(v, 15f, "%"), "HIGHER: MORE PULL, LOWER TOP SPEED");
+                    Slider("RIDE HEIGHT", 1, () => t.ride, v => t.ride = v, -1f, 1f, 0.25f, v => Signed(v, v < 0f ? 5f : 12f, " CM"), "LIFT FOR ROCKS AND MUD, DROP FOR THE ROAD");
+                    Slider("SPRINGS", 2, () => t.stiffness, v => t.stiffness = v, -1f, 1f, 0.25f, v => v < -0.01f ? "SOFT" : v > 0.01f ? "STIFF" : "STOCK", "SOFT SOAKS BUMPS, STIFF HOLDS CORNERS");
+                    Slider("DAMPERS", 2, () => t.damping, v => t.damping = v, -1f, 1f, 0.25f, v => Signed(v, 35f, "%"), "MORE DAMPING: LESS BOUNCE, HARSHER RIDE");
+                    Slider("BRAKE BIAS", 1, () => t.brakeBias, v => t.brakeBias = v, 0.4f, 0.8f, 0.05f, v => "FRONT " + Mathf.RoundToInt(v * 100) + "%", "REARWARD BIAS TURNS IN, TOO MUCH SPINS YOU");
+                    items.Add(new Item { label = "BRAKES" + (mech < 2 ? " [MECH 2]" : ""), value = () => BrakeNames[t.brakeLevel], confirm = () => game.UpgradeBrakes(t), enabled = () => t.brakeLevel < 2, hint = "E UPGRADE: 4 IRON + 2 COPPER (+25% STOPPING)" });
+                    Slider("TYRE PRESSURE", 0, () => t.pressure, v => t.pressure = v, 0.6f, 1.25f, 0.05f, v => (v * 2.2f).ToString("0.0") + " BAR" + (v < 0.85f ? " SOFT" : v > 1.1f ? " HARD" : ""), "LOW: SAND AND MUD GRIP, SLOWER, WEARS.  HIGH: FAST ON ROADS");
+                    items.Add(new Item { label = "BALLAST", value = () => Mathf.RoundToInt(t.ballast) + " KG", adjust = d => game.TuneBallast(t, d), hint = "A/D LOAD OR UNLOAD 25 KG OF STONE (TRACTION, STABILITY)" });
+                    items.Add(new Item { label = "INTERIOR", value = () => t.stripped ? "STRIPPED" : "STOCK", confirm = () => game.StripInterior(t), hint = "E STRIP IT (-8% BODY WEIGHT, +SCRAP, CLOTH) OR REFIT IT" });
+                    break;
+                }
                 case Page.Armour:
                 {
                     var a = armourTarget;
@@ -800,6 +847,7 @@ namespace MadMax.Game
                 case Page.Repair: DrawList(c, station && station.type == "sewing" ? "MEND CLOTHES" : "REPAIR TOOLS", 250); DrawHint(c); break;
                 case Page.Salvage: DrawList(c, "SALVAGE", 250); DrawHint(c); break;
                 case Page.Armour: DrawList(c, "ARMOUR", 320); DrawHint(c); break;
+                case Page.Tuning: DrawTuning(c); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);
@@ -862,6 +910,60 @@ namespace MadMax.Game
         }
 
         int listFirst;
+
+        /// <summary>Tuning bench: the settings on the left, the stat card and dyno graph on the right.</summary>
+        void DrawTuning(PixelCanvas c)
+        {
+            var t = tuneTarget;
+            if (!t) return;
+            c.Rect(0, 0, c.w, c.h, new Color32(10, 5, 3, 120));
+            int rows = Mathf.Min(items.Count, (c.h - 44) / 10);
+            listFirst = Mathf.Clamp(listFirst, Mathf.Max(0, cursor - rows + 1), Mathf.Min(cursor, items.Count - rows));
+            int lw = Mathf.Min(300, c.w - 210), h = rows * 10 + 22;
+            int x = 8, y = Mathf.Max(4, (c.h - h) / 2);
+            c.Panel(x, y, lw, h);
+            c.Text(x + 6, y + 5, "TUNING  " + WastelandGame.Name(t), Amber, 1);
+            DrawItems(c, x + 6, y + 16, lw - 12, 1, listFirst, rows);
+
+            int sx = x + lw + 6, sw = c.w - sx - 8, sh = 160;
+            c.Panel(sx, y, sw, sh);
+            t.Card(out float torque, out float kw, out float top);
+            var rb = t.GetComponent<Rigidbody>();
+            var drv = t.GetComponent<MadMax.Vehicles.VehicleDriver>();
+            float mass = rb ? rb.mass : 1f;
+            float grip = 0f; int n = 0;
+            foreach (var ws in t.GetComponentsInChildren<MadMax.Vehicles.WheelStats>()) { grip += ws.grip; n++; }
+            grip = n > 0 ? grip / n * t.GripFactor(0f) : 0f;
+            float decel = Mathf.Min(drv ? drv.brakeForce / mass : 0f, grip * 9.81f);
+            int ty = y + 6;
+            void Row(string k, string v) { c.Text(sx + 6, ty, k, Dim); c.Text(sx + sw - 6 - PixelCanvas.TextWidth(v), ty, v, Text); ty += 9; }
+            Row("POWER", Mathf.RoundToInt(kw) + " KW  " + Mathf.RoundToInt(kw * 1.341f) + " HP");
+            Row("TORQUE", Mathf.RoundToInt(torque) + " NM");
+            Row("TOP SPEED", Mathf.RoundToInt(top) + " KM/H");
+            Row("WEIGHT", Mathf.RoundToInt(mass) + " KG");
+            Row("BRAKING", decel.ToString("0.0") + " M/S2");
+            Row("TYRE GRIP", grip.ToString("0.00") + (t.NitrousOn ? "  NOS!" : ""));
+            // dyno: torque (amber) and power (green) over the rev range
+            var e = t.GetComponentInChildren<MadMax.Vehicles.EngineStats>();
+            int gx = sx + 8, gy = ty + 4, gw = sw - 16, gh = y + sh - gy - 12;
+            c.Rect(gx, gy, gw, gh, new Color32(10, 6, 4, 220));
+            if (e && gh > 10 && torque > 0f)
+            {
+                int px = -1, pt = 0, pp = 0;
+                for (int i = 0; i <= gw; i++)
+                {
+                    float frac = Mathf.Max(0.05f, (float)i / gw), rpm = e.maxRpm * frac;
+                    float tq = e.TorqueAt(rpm) * t.TorqueFactor(frac), p = tq * rpm * 2f * Mathf.PI / 60000f;
+                    int yt = gy + gh - 1 - Mathf.RoundToInt(tq / (torque * 1.1f) * (gh - 2)), yp = gy + gh - 1 - Mathf.RoundToInt(p / (kw * 1.1f) * (gh - 2));
+                    if (px >= 0) { c.Line(gx + px, pt, gx + i, yt, Amber); c.Line(gx + px, pp, gx + i, yp, Green); }
+                    px = i; pt = yt; pp = yp;
+                }
+                c.Text(gx + 2, gy + gh + 3, "0", Dim);
+                string rmax = Mathf.RoundToInt(e.maxRpm) + " RPM";
+                c.Text(gx + gw - PixelCanvas.TextWidth(rmax), gy + gh + 3, rmax, Dim);
+                c.Text(gx + 2, gy + 2, "TORQUE", Amber); c.Text(gx + 34, gy + 2, "POWER", Green);
+            }
+        }
 
         void DrawItems(PixelCanvas c, int x, int y, int w, int scale, int first = 0, int rows = int.MaxValue)
         {

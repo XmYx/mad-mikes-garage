@@ -63,6 +63,8 @@ namespace MadMax.Vehicles
         public bool FourWheelDrive => drive == Drive.All;
         Drive twoWheelDrive = Drive.Rear;
         VehicleSystems systems;
+        VehicleTuning tuning;
+        int frontWheels;
         public bool Reversing { get; private set; }
         public float Rpm { get; private set; }
         public float ForwardSpeed { get; private set; }
@@ -130,6 +132,7 @@ namespace MadMax.Vehicles
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             chassis.Changed += Rebuild;
             systems = GetComponent<VehicleSystems>();
+            tuning = GetComponent<VehicleTuning>();
             twoWheelDrive = drive == Drive.All ? Drive.Rear : drive;
             var d = transform.Find("Body/Driver");
             driverMesh = d ? d.GetComponent<Renderer>() : null;
@@ -223,6 +226,7 @@ namespace MadMax.Vehicles
 
             int driven = 0;
             foreach (var w in wheels) if (w.part && w.grounded && IsDriven(w)) driven++;
+            frontWheels = 0; foreach (var w in wheels) if (w.front) frontWheels++;
 
             float driveForce = 0f;
             float power = systems ? systems.PowerFactor : 1f;
@@ -238,7 +242,7 @@ namespace MadMax.Vehicles
                 if (!neutral) target = Mathf.Lerp(target, engine.maxRpm, driveCmd * Mathf.Clamp01(freeRev));
                 Rpm = Mathf.Lerp(Rpm, Mathf.Min(target, engine.maxRpm), 12f * dt);
                 float health = 1f - 0.7f * Mathf.Clamp01(engine.GetComponent<VehiclePart>().damage);
-                float torque = Rpm >= engine.maxRpm * 0.995f ? 0f : engine.TorqueAt(Rpm) * driveCmd * health * power;
+                float torque = Rpm >= engine.maxRpm * 0.995f ? 0f : engine.TorqueAt(Rpm) * driveCmd * health * power * (tuning ? tuning.TorqueFactor(Rpm / engine.maxRpm) : 1f);
                 driveForce = neutral ? 0f : torque * ratio * efficiency / r * (Reversing ? -1f : 1f);
 
                 shiftTimer -= dt;
@@ -292,7 +296,7 @@ namespace MadMax.Vehicles
                 {
                     float wetHard = w.surf.wet * (1f - w.surf.mud);
                     float firm = Mathf.Lerp(w.stats.grip, w.stats.grip * w.stats.wetGrip, wetHard);
-                    grip = Mathf.Lerp(firm, w.stats.mudGrip, w.surf.mud) * w.stats.GripFactor;
+                    grip = Mathf.Lerp(firm, w.stats.mudGrip, w.surf.mud) * w.stats.GripFactor * (tuning ? tuning.GripFactor(Mathf.Max(w.surf.mud, w.surf.softness)) : 1f);
                 }
                 grip *= w.surf.ice > 0f ? Mathf.Lerp(1f, 0.25f, w.surf.ice) : 1f;
                 // road hazards dropped by other vehicles: oil takes the grip, caltrops puncture
@@ -342,11 +346,12 @@ namespace MadMax.Vehicles
                 float lng = w.drive;
                 // line lock: throttle + brake at low speed holds the undriven wheels only (burnout)
                 bool lineLock = driveCmd > 0.5f && brakeCmd > 0.5f && Mathf.Abs(ForwardSpeed) < 4f && isDriven && driven < wheels.Count;
-                float brake = (lineLock ? 0f : brakeCmd * brakeForce / wheels.Count) + (handbrake ? (!occupied ? brakeForce : !w.front ? brakeForce * 0.5f : 0f) : 0f);   // parked: every wheel locked
+                float bias = tuning ? tuning.BrakeShare(w.front, frontWheels, wheels.Count) : 1f;
+                float brake = (lineLock ? 0f : brakeCmd * brakeForce / wheels.Count * bias) + (handbrake ? (!occupied ? brakeForce : !w.front ? brakeForce * 0.5f : 0f) : 0f);   // parked: every wheel locked
                 brake += Mathf.Clamp01(w.part.damage) * 0.35f * w.spring;       // damaged wheel drags
                 lng -= Mathf.Clamp(w.vf * massPerWheel / dt, -brake, brake);
                 float press = Pressure(w);
-                float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f);   // mud and ruts drag
+                float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f) * (tuning ? tuning.RollingFactor : 1f);   // mud and ruts drag
                 lng -= Mathf.Clamp(w.vf * 4f, -1f, 1f) * crr * w.spring;
 
                 float mag = Mathf.Sqrt(lng * lng + lat * lat), slip = 0f;
@@ -408,7 +413,7 @@ namespace MadMax.Vehicles
             if (st)
             {
                 float abrasion = Mathf.Lerp(0.35f, 1f, hard) * (1f - w.surf.wet * 0.5f);
-                if (!st.Popped) st.wear = Mathf.Min(0.97f, st.wear + (scrub * abrasion * dt * 0.0012f + Mathf.Abs(w.vf) * dt * 0.0000015f) * st.wearRate);
+                if (!st.Popped) st.wear = Mathf.Min(0.97f, st.wear + (scrub * abrasion * dt * 0.0012f + Mathf.Abs(w.vf) * dt * 0.0000015f) * st.wearRate * (tuning ? tuning.TyreWearFactor : 1f));
                 st.heat = Mathf.Max(0f, st.heat + (scrub * hard * 0.06f - 0.03f) * dt);
                 if (!st.Popped && st.heat > 1f && st.wear > 0.55f) st.Pop();
                 if (!st.Popped && w.part.damage > 0.85f) st.Pop();

@@ -261,13 +261,22 @@ decorative turret.
 *Ties:* hunting, raiders, crafting, mining (explosives).
 
 ## 14. Vehicle tuning `T2`
-- [ ] **Tuning bench** (garage station) with a stat card: power, torque, top speed, weight, grip, braking
-- [ ] **Engine map**: power ↔ economy ↔ reliability; **turbo / supercharger** parts; **nitrous** (bottles)
-- [ ] **Gearing**: short / long ratios, final drive
-- [ ] **Suspension**: ride height, stiffness, damping (saved per vehicle)
-- [ ] **Brakes**: bias and upgrades; **tyre pressure** (low = soft-ground grip, slower, wears)
-- [ ] **Weight**: strip the interior / add ballast
-- [ ] **Dyno** graph on the bench
+- [x] **Tuning bench** (garage station) with a stat card: power, torque, top speed, weight, grip, braking
+- [x] **Engine map**: power ↔ economy ↔ reliability; **turbo / supercharger** parts; **nitrous** (bottles)
+- [x] **Gearing**: short / long ratios, final drive
+- [x] **Suspension**: ride height, stiffness, damping (saved per vehicle)
+- [x] **Brakes**: bias and upgrades; **tyre pressure** (low = soft-ground grip, slower, wears)
+- [x] **Weight**: strip the interior / add ballast
+- [x] **Dyno** graph on the bench
+      *Done:* `VehicleTuning` on every driveable vehicle (offsets from the design, written by `Apply()`, saved in
+      `VehicleSave.tuning`): engine map ±15 % torque vs fuel and heat, turbo kit (boost above ~45 % revs) and
+      supercharger kit (+20 %, thirsty), nitrous bottles (Left Ctrl / pad left stick: 5 s of +60 %, blue flame,
+      doubles heat; HUD "NOS Xn"), gearing ±15 %, final drive, ride height, springs, dampers, brake bias (per-wheel
+      share in `VehicleDriver`) and two brake upgrades, tyre pressure (grip on soft ground vs rolling and wear),
+      ballast in 25 kg stone steps (`VehicleChassis.tuneMass`) and a stripped interior. The TUNING page ([T] at a
+      garage or the new `tuning_bench` piece, wrench in the pack) gates settings by Mechanics level and shows the stat
+      card (kW / hp, Nm, top speed from gearing, drag and rolling, weight, braking, grip) and a dyno of torque and power
+      over the rev range. Kits at the garage / chem lab.
 
 *Ties:* economy, races (NPCs), mechanics skill gates, armour weight.
 

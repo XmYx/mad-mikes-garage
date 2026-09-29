@@ -191,6 +191,14 @@ namespace MadMax.Items
             yield return Itm("throw_smoke", "SMOKE BOMBS X2", RecipeCategory.Weapons, "chemlab", "throw_smoke", 2, "A CLOUD TO SLIP AWAY IN", null, (ResourceType.Charcoal, 2), (ResourceType.Sulfur, 1), (S, 1));
             yield return Itm("throw_rock", "THROWING ROCKS X2", RecipeCategory.Weapons, "workbench", "throw_rock", 2, "A KNOCK, AND A NOISE WHERE IT LANDS", null, (ResourceType.Stone, 1));
 
+            // ---- 14. vehicle tuning: forced induction and nitrous
+            var turbo = Itm("kit_turbo", "TURBO KIT", RecipeCategory.Attachments, "garage", "kit_turbo", 1, "FIT AT A TUNING BENCH (MECHANICS 4)", null, (Fe, 6), (Cu, 2), (ResourceType.Aluminium, 2));
+            turbo.knowledge = "read_book_mechanics_1";
+            yield return turbo;
+            yield return Itm("kit_supercharger", "SUPERCHARGER KIT", RecipeCategory.Attachments, "garage", "kit_supercharger", 1, "FIT AT A TUNING BENCH (MECHANICS 4)", null, (Fe, 8), (ResourceType.Aluminium, 3), (Rb, 1));
+            var nos = Itm("use_nitrous", "NITROUS BOTTLE", RecipeCategory.Attachments, "chemlab", "use_nitrous", 1, "5 S OF +60% TORQUE; FIT AT A TUNING BENCH", new[] { (ItemIds.Fertilizer, 2) }, (S, 2));
+            yield return nos;
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

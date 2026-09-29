@@ -135,7 +135,7 @@ namespace MadMax.Vehicles
                 if (!oilInFuel) oil = Mathf.Max(0f, oil - 0.00008f * load * dt);
 
                 // heat in, heat out
-                float heat = (0.25f + load * rpmFrac) * 4.4f;
+                float heat = (0.25f + load * rpmFrac) * 4.4f * (TryGetComponent<VehicleTuning>(out var tune) ? tune.HeatFactor : 1f);   // hot engine maps, boost, nitrous
                 float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? 1f - 0.6f * Mathf.Clamp01(radiator.damage) : 0f;
                 float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.6f + 0.4f * Mathf.Clamp01(speed / 20f)) : 0.55f + Mathf.Clamp01(speed / 25f) * 0.45f;
                 Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * dt;   // ~12 s time constant

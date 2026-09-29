@@ -299,6 +299,56 @@ namespace MadMax.Game
             Toast("WELDED " + VehicleArmor.MatNames[(int)m] + " ON THE " + VehicleArmor.ZoneNames[i]);
         }
 
+        // ------------------------------------------------------------------ tuning bench (roadmap 14)
+        public void FitTuningKit(VehicleTuning t, string kit, bool fitted, System.Action fit)
+        {
+            if (fitted) return;
+            if (Stats.Level(MadMax.RPG.Skill.Mechanics) < 4) { Toast("NEEDS MECHANICS 4"); return; }
+            if (!Inventory.TakeItem(kit)) { Toast("NO " + ItemCatalog.Name(kit)); return; }
+            fit(); t.Apply();
+            MadMax.Audio.Sfx.Play("ratchet", t.transform.position, 0.8f, 1f);
+            Stats.Practice(MadMax.RPG.Skill.Mechanics, 8f);
+            Toast(ItemCatalog.Name(kit).Replace(" KIT", "") + " FITTED");
+        }
+
+        public void UpgradeBrakes(VehicleTuning t)
+        {
+            if (t.brakeLevel >= 2) return;
+            if (Stats.Level(MadMax.RPG.Skill.Mechanics) < 2) { Toast("NEEDS MECHANICS 2"); return; }
+            if (Inventory.Get(ResourceType.Iron) < 4 || Inventory.Get(ResourceType.Copper) < 2) { Toast("NEED 4 IRON + 2 COPPER"); return; }
+            Inventory.TrySpend(ResourceType.Iron, 4); Inventory.TrySpend(ResourceType.Copper, 2);
+            t.brakeLevel++; t.Apply();
+            MadMax.Audio.Sfx.Play("ratchet", t.transform.position, 0.8f, 1.2f);
+            Stats.Practice(MadMax.RPG.Skill.Mechanics, 5f);
+            Toast("BRAKES UPGRADED");
+        }
+
+        /// <summary>Ballast in 25 kg steps of stone (taken from / given back to the pack).</summary>
+        public void TuneBallast(VehicleTuning t, int dir)
+        {
+            if (dir > 0)
+            {
+                if (t.ballast >= 400f) return;
+                if (!Inventory.TrySpend(ResourceType.Stone, 3)) { Toast("NEED 3 STONE PER 25 KG"); return; }
+                t.ballast += 25f;
+            }
+            else if (t.ballast > 0f) { t.ballast = Mathf.Max(0f, t.ballast - 25f); Inventory.Add(ResourceType.Stone, 3); }
+            t.Apply();
+        }
+
+        public void StripInterior(VehicleTuning t)
+        {
+            if (!t.stripped) { t.stripped = true; Inventory.Add(ResourceType.Scrap, 4); Inventory.Add(ResourceType.Cloth, 3); Toast("INTERIOR STRIPPED: +4 SCRAP, +3 CLOTH"); }
+            else
+            {
+                if (Inventory.Get(ResourceType.Scrap) < 4 || Inventory.Get(ResourceType.Cloth) < 3) { Toast("REFIT NEEDS 4 SCRAP + 3 CLOTH"); return; }
+                Inventory.TrySpend(ResourceType.Scrap, 4); Inventory.TrySpend(ResourceType.Cloth, 3);
+                t.stripped = false; Toast("INTERIOR REFITTED");
+            }
+            MadMax.Audio.Sfx.Play("ratchet", t.transform.position, 0.6f, 0.9f);
+            t.Apply();
+        }
+
         // ------------------------------------------------------------------ fluids
         string FluidInteraction(bool G, bool K)
         {
