@@ -36,6 +36,9 @@ namespace MadMax.Game
             if (Build) Build.SetActive(false);
             Current = car;
             car.Occupied = true;
+            var sn = MadMax.Net.NetSession.Instance;
+            var tow = car.GetComponent<TowCoupling>();
+            if (car.Body && car.Body.isKinematic && !(sn && sn.Online && !sn.Simulates(car)) && !(tow && tow.Tower)) Wake(car.Body);   // the sleeper skips the driven car: wake it here
             if (car.TryGetComponent<BikeBalance>(out var bike)) bike.Remount();                // pick it up if it went down
             if (car.TryGetComponent<VehicleDamage>(out var d)) { d.Impact -= OnImpact; d.Impact += OnImpact; }
             Player.gameObject.SetActive(true);

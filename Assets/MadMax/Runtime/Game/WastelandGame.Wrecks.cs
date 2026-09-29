@@ -36,10 +36,19 @@ namespace MadMax.Game
             var rnd = new System.Random(seed * 31 + 7);
             var prefabs = WreckPrefabs();
             var roads = World.roads.roads;
+            // the yard wrecks are plain cars (lights, bumpers, exhausts to take off), not machines or rigs
+            var cars = new List<int>();
+            for (int k = 0; k < prefabs.Count; k++)
+            {
+                var pfb = prefabs[k];
+                if (!pfb.GetComponent<VehicleDriver>().driveable || pfb.GetComponent<Machine>() || pfb.GetComponent<BikeBalance>() || !pfb.TryGetComponent<VehicleChassis>(out var ch)) continue;
+                foreach (var s in ch.GetComponentsInChildren<MountSocket>(true)) if (s.accepts == PartCategory.Lights) { cars.Add(k); break; }
+            }
             for (int i = 0; i < wreckCount; i++)
             {
                 Vector3 pos, dir;
                 int pf = rnd.Next(prefabs.Count);
+                if (i < 3 && cars.Count > 0) pf = cars[pf % cars.Count];
                 if (i < 3)
                 {
                     // a few at the back of the start yard so scavenging begins right away (cold: no fuel to cook off)
@@ -136,6 +145,7 @@ namespace MadMax.Game
             if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = rnd.NextDouble() < 0.3;
             Register(v, v.driveable ? wrecks : null);
             Ruin(v, rnd);
+            if (index == 0 && plan.cold) TutorialPart(v);
             if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
             if (go.TryGetComponent<VehicleSystems>(out var sys))
             {
@@ -144,6 +154,19 @@ namespace MadMax.Game
                 sys.coolant = sys.coolantCapacity * (float)rnd.NextDouble() * 0.8f;
             }
             v.Body.isKinematic = true;
+        }
+
+        /// <summary>The first yard wreck keeps a light bar on its roof: something to take off with the wrench and bolt onto
+        /// your own car (FIRST STEPS).</summary>
+        void TutorialPart(VehicleDriver v)
+        {
+            foreach (var s in v.GetComponent<VehicleChassis>().Sockets)
+            {
+                if (s.Current || s.accepts != PartCategory.Lights) continue;
+                var part = SpawnPart("lights_bar", s.transform.position, s.transform.rotation);
+                if (part && !s.Attach(part)) Destroy(part.gameObject);
+                return;
+            }
         }
 
         void SaveWreckPlan(SaveData d) { d.wrecksPlanned = wrecksPlanned; d.wrecksPending = new List<int>(wrecksPending); }

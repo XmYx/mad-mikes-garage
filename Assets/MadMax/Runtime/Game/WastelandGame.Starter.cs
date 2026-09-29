@@ -99,15 +99,38 @@ namespace MadMax.Game
             return true;
         }
 
+        /// <summary>A hand-carried part on <paramref name="wreck"/> (no wheels, engines or heavy gear) that a free socket of a
+        /// fleet car accepts.</summary>
+        bool HasFittingPart(VehicleDriver wreck)
+        {
+            if (!wreck.TryGetComponent<VehicleChassis>(out var wc)) return false;
+            foreach (var ws in wc.Sockets)
+            {
+                var part = ws.Current;
+                if (!part || part.mass > 120f || part.category == PartCategory.Wheel || part.category == PartCategory.Engine) continue;   // something to carry by hand
+                foreach (var car in fleet)
+                    if (car && car.TryGetComponent<VehicleChassis>(out var cc))
+                        foreach (var s in cc.Sockets) if (!s.Current && s.CanAccept(part)) return true;
+            }
+            return false;
+        }
+
         /// <summary>Point the way for the steps that need a place: the nearest wreck, the nearest town board.</summary>
         void StarterGuide()
         {
             var at = FocusPos;
             if (StarterStep == 2)
             {
-                VehicleDriver best = null; float bd = 600f;
-                foreach (var w in wrecks) if (w) { float d = Vector3.Distance(w.transform.position, at); if (d < bd) { bd = d; best = w; } }
+                // the nearest wreck carrying a part that fits a free socket on one of your cars
+                VehicleDriver best = null; float bd = 700f;
+                foreach (var w in wrecks)
+                {
+                    if (!w) continue;
+                    float d = Vector3.Distance(w.transform.position, at);
+                    if (d < bd && HasFittingPart(w)) { bd = d; best = w; }
+                }
                 if (best) SetWaypoint(best.transform.position, "A WRECK TO STRIP");
+                if (Inventory.GetItem(ItemIds.Wrench) <= 0) Toast("NO WRENCH? CRAFT ONE AT A WORKBENCH (4 SCRAP)");
             }
             else if (StarterStep == 3 && World != null)
             {

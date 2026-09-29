@@ -248,13 +248,14 @@ namespace MadMax.Game
                 Inventory.AddItem("tool_shovel");
                 Inventory.AddItem("seed_corn", 3); Inventory.AddItem("seed_potato", 3);
                 Inventory.AddItem(ItemIds.ClawHammer);
+                Inventory.AddItem(ItemIds.Wrench);                                                   // parts come off wrecks from the first hour
                 Inventory.Add(ResourceType.Scrap, 20); Inventory.Add(ResourceType.Wood, 10); Inventory.Add(ResourceType.Rubber, 4);
-                Inventory.Add(ResourceType.Cloth, 2); Inventory.Add(ResourceType.Fuel, 10); Inventory.Add(ResourceType.Diesel, 10); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 5);
+                Inventory.Add(ResourceType.Cloth, 2); Inventory.Add(ResourceType.Fuel, 10); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 2);   // light enough to run (no diesel: the machines come fuelled)
                 Inventory.AddItem("book_mechanics_1");
             }
             if (kit >= 2)
             {
-                Inventory.AddItem(ItemIds.Wrench); Inventory.AddItem(ItemIds.Cutter);
+                Inventory.AddItem(ItemIds.Cutter);
                 Inventory.Add(ResourceType.Scrap, 80); Inventory.Add(ResourceType.Wood, 40); Inventory.Add(ResourceType.Glass, 10); Inventory.Add(ResourceType.Rubber, 16);
                 Inventory.AddItem("vhs_driving"); Inventory.AddItem("book_builder");
             }
@@ -656,6 +657,7 @@ namespace MadMax.Game
             UpdateGarage();
             UpdateStarter();
             UpdateWreckStreaming();
+            RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
             LastEngine.Tick(this);
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {

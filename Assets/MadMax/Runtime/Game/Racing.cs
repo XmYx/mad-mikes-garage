@@ -19,6 +19,7 @@ namespace MadMax.Game
         {
             public Kind kind; public int town, fee, purse; public string title, record;
             public readonly List<Vector3> gates = new List<Vector3>();
+            public readonly List<Vector3> path = new List<Vector3>();        // road races: the whole route for the rivals
             public Vector3 start; public float gateRadius = 14f, limit = 600f;
         }
 
@@ -101,14 +102,19 @@ namespace MadMax.Game
                     if (sis == null) return false;
                     var route = new List<Vector3>();
                     RoadRoute.Find(w, centre, new Vector3(sis.pos.x, 0f, sis.pos.y), route);
-                    if (route.Count < 2) return false;
-                    e.start = route[Mathf.Min(1, route.Count - 1)];
+                    if (route.Count < 3) return false;
+                    // line up on the open road out of town, clear of the streets and the start yard
+                    int s0 = 1;
+                    while (s0 < route.Count - 2 && (Flat(route[s0] - centre) < st.radius * 0.8f || w.YardWeight(route[s0].x, route[s0].z) > 0f)) s0++;
+                    e.start = route[s0];
+                    for (int i = s0; i < route.Count; i++) e.path.Add(route[i]);
                     float acc = 0f;
-                    for (int i = 1; i < route.Count; i++)
+                    for (int i = s0 + 1; i < route.Count; i++)
                     {
                         acc += Flat(route[i] - route[i - 1]);
                         if (acc >= 250f || i == route.Count - 1) { e.gates.Add(route[i]); acc = 0f; }
                     }
+                    if (e.gates.Count == 0) return false;
                     e.limit = Mathf.Max(240f, e.gates.Count * 250f / 8f);                  // 8 m/s average is a crawl
                     break;
                 }
@@ -194,7 +200,7 @@ namespace MadMax.Game
             {
                 var last = Active.gates[Active.gates.Count - 1];
                 foreach (var ai in rivals)
-                    if (ai && !home.Contains(ai) && Flat(ai.transform.position - last) < 25f && ai.path != null && ai.index >= ai.path.Count - 3)
+                    if (ai && !home.Contains(ai) && Flat(ai.transform.position - last) < 25f && ai.path != null && ai.index >= ai.path.Count - 2)
                     {
                         home.Add(ai); beat++; ai.goal = AiDriver.Goal.Park;
                         game.Toast("A RIVAL CROSSED THE LINE (" + beat + ")");
@@ -232,7 +238,13 @@ namespace MadMax.Game
                 Vector3 p; Quaternion q;
                 if (Active.kind == Kind.Road) { p = car.transform.position + side * (i == 0 ? 4f : -4f) - fwd * (i == 2 ? 8f : 0f); q = Quaternion.LookRotation(fwd); }
                 else { var dir = Quaternion.Euler(0f, 120f * i + 60f, 0f) * fwd; p = car.transform.position + dir * 45f; q = Quaternion.LookRotation(-dir); }
-                p.y = (t ? t.HeightNoLoad(p.x, p.z) : p.y) + 1.2f;
+                // never inside another vehicle or a wall: step back down the road until the spot is clear
+                for (int tries = 0; tries < 6; tries++)
+                {
+                    p.y = (t ? t.HeightNoLoad(p.x, p.z) : p.y) + 1.2f;
+                    if (!Physics.CheckBox(p + Vector3.up * 0.3f, new Vector3(1.2f, 0.8f, 2.6f), q, ~(1 << Layers.Terrain), QueryTriggerInteraction.Ignore)) break;
+                    p -= (Active.kind == Kind.Road ? fwd : q * Vector3.forward) * 7f;
+                }
                 var v = game.SpawnAiVehicle(pool[r.Next(pool.Length)], p, q);
                 if (!v) continue;
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = sys.fuelCapacity; sys.oil = sys.oilCapacity; sys.coolant = sys.coolantCapacity; }
@@ -240,8 +252,9 @@ namespace MadMax.Game
                 if (Active.kind == Kind.Road)
                 {
                     var path = new List<Vector3> { p };
-                    path.AddRange(Active.gates);
+                    path.AddRange(Active.path);                                                  // the road itself, not just the gates
                     ai.SetPath(path, 1);
+                    ai.index = 1;                                                               // from the start line (SetPath looks two points ahead)
                     ai.cruise = 19f + (float)r.NextDouble() * 6f;                              // some are quicker than others
                 }
                 else
@@ -340,12 +353,22 @@ namespace MadMax.Game
             }
         }
 
-        /// <summary>Rivals further along than the player right now.</summary>
+        /// <summary>Rivals nearer the finish than the player right now (by the route index each is heading for).</summary>
         int Ahead()
         {
+            var car = game.Current;
+            if (!car || Active == null || Active.path.Count == 0) return 0;
+            int mine = NearestOnPath(car.transform.position);
             int n = 0;
-            foreach (var ai in rivals) if (ai && !home.Contains(ai) && ai.index - 1 > gate) n++;
+            foreach (var ai in rivals) if (ai && !home.Contains(ai) && NearestOnPath(ai.transform.position) > mine) n++;
             return n;
+        }
+
+        int NearestOnPath(Vector3 p)
+        {
+            int best = 0; float bd = float.MaxValue;
+            for (int i = 0; i < Active.path.Count; i++) { float d = Flat(Active.path[i] - p); if (d < bd) { bd = d; best = i; } }
+            return best;
         }
 
         /// <summary>Where the next gate is (for the HUD marker).</summary>

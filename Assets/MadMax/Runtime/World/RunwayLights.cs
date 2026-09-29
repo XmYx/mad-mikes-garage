@@ -6,12 +6,13 @@ namespace MadMax.World
 {
     /// <summary>An airfield's runway lights, still fed by the old solar bank: amber edge lamps every 30 m along both
     /// sides that glow (unlit material) after dusk, and green threshold lights with real point lights at both ends.
-    /// Spawned with the hangar piece; the flight HUD adds the approach aid (<see cref="Thresholds"/>).</summary>
+    /// Kept for airfields within a kilometre of the player (<see cref="Tick"/>), not tied to terrain streaming; the flight
+    /// HUD adds the approach aid (<see cref="Thresholds"/>).</summary>
     public class RunwayLights : MonoBehaviour
     {
         static readonly Dictionary<string, RunwayLights> bySite = new Dictionary<string, RunwayLights>();
         static Mesh lampMesh;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => bySite.Clear();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { bySite.Clear(); nextScan = 0f; }
 
         readonly List<MeshRenderer> lamps = new List<MeshRenderer>();
         readonly List<Light> glows = new List<Light>();
@@ -32,11 +33,31 @@ namespace MadMax.World
         {
             if (bySite.TryGetValue(s.Key, out var have) && have) return;
             var go = new GameObject("RunwayLights");
-            go.transform.SetParent(parent, true);
+            if (parent) go.transform.SetParent(parent, true);
             var rl = go.AddComponent<RunwayLights>();
             rl.Build(s, mat);
             bySite[s.Key] = rl;
         }
+
+        static float nextScan;
+        static readonly List<Site> near = new List<Site>();
+        static readonly List<string> drop = new List<string>();
+
+        /// <summary>Lights for every airfield within 1 km of <paramref name="focus"/>, whatever the terrain streaming does
+        /// (a pilot sees them from far out); sets further than 1.3 km go away.</summary>
+        public static void Tick(WorldGen world, Vector3 focus, Material mat)
+        {
+            if (world == null || !mat || Time.time < nextScan) return;
+            nextScan = Time.time + 2f;
+            world.SitesNear(focus, 1000f, near);
+            foreach (var s in near) if (s.kind == SiteKind.Airfield) For(s, null, mat);
+            drop.Clear();
+            foreach (var kv in bySite)
+                if (!kv.Value || Vector3.Distance(kv.Value.anchor, new Vector3(focus.x, kv.Value.anchor.y, focus.z)) > 1300f) drop.Add(kv.Key);
+            foreach (var k in drop) { if (bySite[k]) Destroy(bySite[k].gameObject); bySite.Remove(k); }
+        }
+
+        Vector3 anchor;
 
         static Mesh Lamp()
         {
@@ -50,6 +71,7 @@ namespace MadMax.World
 
         void Build(Site s, Material mat)
         {
+            anchor = new Vector3(s.pos.x, 0f, s.pos.y);
             day = mat;
             night = new Material(mat) { name = "RunwayLampLit" };
             night.SetFloat("_Unlit", 1f);
@@ -62,6 +84,7 @@ namespace MadMax.World
                     var lamp = new GameObject("Lamp", typeof(MeshFilter), typeof(MeshRenderer));
                     lamp.transform.SetParent(transform, false);
                     lamp.transform.position = new Vector3(p.x, t ? t.HeightNoLoad(p.x, p.y) : 0f, p.y);
+                    lamp.transform.localScale = Vector3.one * 3f;                                   // big enough to read as a dot from the air
                     lamp.GetComponent<MeshFilter>().sharedMesh = mesh;
                     var r = lamp.GetComponent<MeshRenderer>();
                     r.sharedMaterial = day; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
