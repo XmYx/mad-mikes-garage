@@ -400,6 +400,8 @@ namespace MadMax.Game
             // buffs and the latrine need, one short tag each
             string tags = (st.rested ? "RESTED " : "") + (st.fed ? "FED " : "") + (st.wetness > 0.3f ? "WET " : "") + (game.Coughing ? "COUGH " : "") + (needs && st.waste >= 100f ? "LATRINE" : "");
             if (tags.Length > 0) canvas.Text(tx, top + step * 4 + 3, tags.TrimEnd(), st.waste >= 100f && needs ? new Color32(210, 170, 90, 255) : new Color32(150, 210, 150, 255));
+            var horse = MadMax.Animals.Animal.Mounted;                                          // riding: the horse's wind
+            if (horse) Bar(x, top - 9, 48, horse.stamina / 100f, horse.Winded ? Red : new Color32(200, 160, 90, 255), "HRS");
         }
 
         void Bar(int x, int y, int w, float t, Color32 col, string label)
@@ -712,6 +714,7 @@ namespace MadMax.Game
             {
                 "WASD DRIVE/WALK  SPACE HANDBRAKE/JUMP  SHIFT RUN  LMB USE TOOL  RMB AIM  R RELOAD  1-8 HOTBAR  I INVENTORY  P SKILLS  O HEALTH",
                 "ON FOOT: SPACE AT A WALL VAULT/CLIMB  CTRL CROUCH (RUNNING: SLIDE, LANDING: ROLL)  STAND STILL ON A MOVING CAR: HOLD ON",
+                "ANIMALS: CROUCH AND STAY DOWNWIND TO HUNT  E BUTCHER/FEED/MILK/TAME  T FOLLOW/STAY  HORSE: W TROT  SHIFT GALLOP  SPACE JUMP  F DISMOUNT",
                 "F ENTER/EXIT  E USE/OPEN/CRAFT/TALK  T SECOND ACTION (LOCK, TRADE, TUNE)  Q DROP  J HITCH  G SERVICE  K SIPHON  U ARMOUR  TAB FLEET",
                 "BUILD (B, HOLD: RADIAL): , . CATEGORY  1-0 PIECE  Y ROTATE  X DISMANTLE  R REPAIR  U UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
                 "DRIVING: X 4WD  L DIFF LOCK  E/Q SHIFT  N LIGHTS  Y HORN  CTRL NITROUS  T RECOVER/PARLEY  LMB WEAPON  MACHINES: 1 2 3",

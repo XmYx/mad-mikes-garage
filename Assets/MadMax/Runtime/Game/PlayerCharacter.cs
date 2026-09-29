@@ -380,6 +380,16 @@ namespace MadMax.Game
 
         void UpdateSitting(float dt)
         {
+            if (SeatedOn && SeatedOn.ride != null)
+            {
+                // in the saddle: the input rides the animal; F (the game) gets off
+                SeatedOn.ride(moveInput, run, jump, dt);
+                jump = false;
+                FollowSeat();
+                Velocity = Vector3.zero;
+                anim.Tick(dt, new HumanAnimator.State { sitting = true, riding = true, steer = moveInput.x, lookPitch = lookPitch, grounded = true });
+                return;
+            }
             if (!SeatedOn || moveInput.sqrMagnitude > 0.25f || jump) { jump = false; StandUp(); return; }
             FollowSeat();
             Velocity = Vector3.zero;

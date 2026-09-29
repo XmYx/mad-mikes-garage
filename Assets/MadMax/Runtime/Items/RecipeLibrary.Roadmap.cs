@@ -206,6 +206,17 @@ namespace MadMax.Items
             yield return Itm("air_filter", "AIR FILTER", RecipeCategory.Supplies, "workbench", "use_air_filter", 1, "DUST CHOKES ENGINES: SWAP IT (G)", null, (C, 2), (S, 1));
             yield return Itm("spark_plugs", "SPARK PLUGS", RecipeCategory.Supplies, "workbench", "use_spark_plugs", 1, "WORN PLUGS MISFIRE (PETROL ENGINES): SWAP THEM (G)", null, (Cu, 1), (Fe, 1), (ResourceType.Clay, 1));
 
+            // ---- 23. animals: saddle, eggs and cheese, fletching, bone meal
+            yield return Itm("saddle", "SADDLE", RecipeCategory.Tools, "workbench", "use_saddle", 1, "RIDE A TAMED HORSE ([E] ON IT)", null, (ResourceType.Leather, 4), (Fe, 1), (C, 2));
+            foreach (var st in new[] { "stove", "oven" })
+            {
+                var fuel = st == "stove" ? ResourceType.Wood : ResourceType.None;
+                yield return Cook(st, "eggs", "FRIED EGGS", "food_egg_fried", 1, fuel, ("food_egg", 2));
+                yield return Cook(st, "cheese", "CHEESE", "food_cheese", 1, fuel, ("drink_milk", 3));
+            }
+            yield return Itm("arrows_feather", "ARROWS X6 (FLETCHED)", RecipeCategory.Weapons, "workbench", "ammo_arrow", 6, "FEATHERS MAKE THEM FLY TRUE", new[] { ("misc_feather", 2) }, (ResourceType.Wood, 1));
+            yield return Itm("bone_meal", "BONE MEAL X2", RecipeCategory.Supplies, "workbench", ItemIds.Fertilizer, 2, "GROUND BONES FEED THE GARDEN", new[] { ("misc_bone", 3) });
+
             // ---- 22. parkour: the grappling hook
             yield return Itm("grapple", "GRAPPLING HOOK", RecipeCategory.Tools, "workbench", "tool_grapple", 1, "24 M OF ROPE: HOOK A ROOF OR WALL AND REEL IN (AIM RMB)", null, (Fe, 3), (C, 3), (Rb, 1));
         }

@@ -13,6 +13,8 @@ namespace MadMax.Building
         /// <summary>Where to get off (local), instead of in front of the spot.</summary>
         public Vector3 exitLocal;
         public bool hasExit;
+        /// <summary>A mount's saddle (roadmap 23): the rider's move / run / jump input steers it instead of standing up.</summary>
+        public System.Action<Vector2, bool, bool, float> ride;
 
         public string Prompt(MadMax.Game.WastelandGame g) => hidden || (g.Player && g.Player.SeatedOn == this) ? null : "[E] SIT";
 

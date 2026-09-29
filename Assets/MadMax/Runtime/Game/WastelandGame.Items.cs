@@ -112,6 +112,9 @@ namespace MadMax.Game
                     foreach (var d in FurnitureLibrary.All) if (d.kit == id) { Build.Select(d.id); if (!Build.Active) Build.SetActive(true); }
                     break;
                 case ItemCategory.Clothing: Menus.Open(MenuSystem.Page.Character); break;
+                case ItemCategory.Other:
+                    if (id.StartsWith("animal_")) MadMax.Animals.AnimalDirector.Instance?.Release(this, id);                // a chick, kid, calf, piglet or pup
+                    break;
             }
         }
 

@@ -32,6 +32,9 @@ namespace MadMax.Voxel
         public static readonly Color32[] Navy = R("0e1630", "18244a", "243866", "34508a", "4a6aa8");
         public static readonly Color32[] Moss = R("142410", "20381a", "2e5024", "40682e", "58843c");
         public static readonly Color32[] Ochre = R("5a3a0c", "7c5214", "a06e1e", "c48c2a", "e0ac40");
+        // animals (roadmap 23): grey fur, pink skin (pigs, bald vulture heads, rat tails)
+        public static readonly Color32[] Fur = R("2e2c2a", "4a4642", "6a645e", "8e8680", "b0a8a0");
+        public static readonly Color32[] Pink = R("7a3c3a", "a05a56", "c07a70", "d8988a", "eab4a4");
         /// <summary>Ramp of a dye (1 red, 2 blue, 3 green, 4 yellow, 5 black, 6 white); null = undyed.</summary>
         public static Color32[] DyeRamp(int dye) => dye switch { 1 => Crimson, 2 => Navy, 3 => Moss, 4 => Ochre, 5 => Black, 6 => Cream, _ => null };
         public static readonly Color32 Void = Hex("07070a");

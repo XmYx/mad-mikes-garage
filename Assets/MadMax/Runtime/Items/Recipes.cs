@@ -39,6 +39,8 @@ namespace MadMax.Items
 
         static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
         {
+            { "use_saddle", "SADDLE" }, { "animal_chick", "CHICK" }, { "animal_kid", "GOAT KID" }, { "animal_calf", "CALF" }, { "animal_piglet", "PIGLET" }, { "animal_puppy", "PUPPY" },
+            { "misc_bone", "BONE" }, { "misc_feather", "FEATHER" }, { "trophy_tusks", "BOAR TUSKS" }, { "trophy_horns", "ANTELOPE HORNS" }, { "trophy_pelt", "WOLF PELT" },
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
             { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
             { "bp_cargo_generator", "BLUEPRINT: ONBOARD GENERATOR" }, { "bp_lights_search", "BLUEPRINT: SEARCHLIGHT" }, { "bp_framepack", "BLUEPRINT: FRAME PACK" },

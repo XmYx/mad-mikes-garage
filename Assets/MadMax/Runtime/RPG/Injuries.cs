@@ -113,6 +113,13 @@ namespace MadMax.RPG
                     Put(new Injury { zone = z, type = amount > 12f ? Wound.Laceration : rnd.NextDouble() < 0.5 ? Wound.Bruise : Wound.Scratch });
                     break;
                 }
+                case "BITE":
+                {
+                    // teeth and tusks: legs and arms, torn skin that bleeds (and gets dirty)
+                    var zones = new[] { BodyZone.LegL, BodyZone.LegR, BodyZone.ArmL, BodyZone.ArmR, BodyZone.HandL, BodyZone.HandR };
+                    Put(new Injury { zone = zones[rnd.Next(zones.Length)], type = amount > 14f ? Wound.DeepWound : amount > 6f ? Wound.Laceration : Wound.Scratch });
+                    break;
+                }
                 case "SHOT":
                 {
                     int n = amount > 15f ? 2 : 1;

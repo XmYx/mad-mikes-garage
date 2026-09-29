@@ -232,6 +232,35 @@ namespace MadMax.Building
             return g;
         }
 
+        /// <summary>Livestock trough (roadmap 23): a plank box on legs, split for feed and water.</summary>
+        public static VoxelGrid Trough()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            foreach (int x in new[] { -9, 9 }) foreach (int z in new[] { -3, 3 }) g.Box(x, 0, z, x, 2, z, Pal.Ramp(Pal.Wood, 1, 2301));
+            g.Box(-10, 3, -4, 10, 3, 4, Pal.Ramp(Pal.Wood, 2, 2302));                                     // floor
+            g.Box(-10, 4, -4, 10, 7, -4, Pal.Ramp(Pal.Wood, 2, 2303)); g.Box(-10, 4, 4, 10, 7, 4, Pal.Ramp(Pal.Wood, 2, 2303));
+            g.Box(-10, 4, -3, -10, 7, 3, Pal.Ramp(Pal.Wood, 1, 2304)); g.Box(10, 4, -3, 10, 7, 3, Pal.Ramp(Pal.Wood, 1, 2304));
+            g.Box(0, 4, -3, 0, 7, 3, Pal.Ramp(Pal.Wood, 1, 2304));                                        // divider
+            g.Box(-9, 4, -3, -1, 5, 3, Pal.Ramp(Pal.Ochre, 2, 2305));                                     // feed
+            g.Mat(Glass); g.Box(1, 4, -3, 9, 5, 3, Pal.Ramp(Pal.PaleBlue, 1, 2306));                     // water
+            g.Mat(Scrap); for (int x = -10; x <= 10; x += 5) g.Box(x, 7, -4, x, 7, 4, Pal.Ramp(Pal.Metal, 2, 2307));   // straps
+            return g;
+        }
+
+        /// <summary>Nest box (roadmap 23): three straw-lined cubbies under a tin roof; hens lay here.</summary>
+        public static VoxelGrid NestBox()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            g.Box(-8, 0, -3, 8, 0, 3, Pal.Ramp(Pal.Wood, 2, 2311));
+            g.Box(-8, 1, -3, 8, 8, -3, Pal.Ramp(Pal.Wood, 1, 2312));
+            foreach (int x in new[] { -8, -3, 2, 8 }) g.Box(x, 1, -2, x, 8, 3, Pal.Ramp(Pal.Wood, 2, 2313));
+            g.Box(-7, 1, -2, 7, 1, 2, Pal.Ramp(Pal.Ochre, 3, 2314));                                      // straw
+            foreach (int x in new[] { -5, 0, 5 }) g.Set(x, 2, 0, Pal.Solid(Pal.Cream[4]));                  // an egg in each
+            g.Box(-8, 1, 3, 8, 2, 3, Pal.Ramp(Pal.Wood, 1, 2315));                                        // lip
+            g.Mat(Scrap); g.Box(-9, 9, -4, 9, 9, 4, Pal.Weathered(Pal.Metal, 0.4f, 2316, 2));             // tin roof
+            return g;
+        }
+
         public static VoxelGrid FlowerPot()
         {
             var g = new VoxelGrid().Mat(Stone);

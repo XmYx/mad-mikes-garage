@@ -146,6 +146,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.World.WindDust>();
             gameObject.AddComponent<MadMax.World.Storms>();
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
+            gameObject.AddComponent<MadMax.Animals.AnimalDirector>().Init(this);
             Menus.Init(this);
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);
 

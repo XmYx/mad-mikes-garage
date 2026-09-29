@@ -36,6 +36,12 @@ namespace MadMax.Npc
             if (id == Contracts.Chit) return ChitValue;
             if (id.StartsWith("ammo_")) return id == "ammo_flare" ? 8f : id == "ammo_rifle" ? 4f : id == "ammo_cartridge" ? 3f : id == "ammo_arrow" ? 1f : 2f;
             if (id.StartsWith("bait_")) return 1f;
+            if (id.StartsWith("animal_")) return id == "animal_chick" ? 8f : id == "animal_calf" ? 45f : id == "animal_puppy" ? 30f : id == "animal_kid" ? 25f : 20f;
+            if (id == "use_saddle") return 40f;
+            if (id == "misc_bone") return 1f;
+            if (id == "misc_feather") return 0.5f;
+            if (id == "trophy_pelt") return 35f;
+            if (id == "trophy_tusks" || id == "trophy_horns") return 20f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
             if (id.StartsWith("trophy_fish")) return id.EndsWith("mutant") ? 60f : 25f;
             if (id.StartsWith("food_")) return id == "food_ration" ? 9f : id == "food_can" ? 6f : id == "food_rotten" ? 0f : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") ? 8f : 3f;
@@ -96,9 +102,11 @@ namespace MadMax.Npc
                                ("use_oil_filter", 0, 3), ("use_air_filter", 0, 3), ("use_spark_plugs", 0, 2), ("part:lights_emergency", 0, 1), ("part:wheel_monster", 0, 1) } },
             { "scrap", new[] { ("res:1", 20, 80), ("res:20", 2, 10), ("res:21", 1, 8), ("res:4", 4, 16), ("res:5", 4, 16), ("res:6", 4, 12), ("kit_wall_scrap", 0, 2), ("kit_barricade", 0, 2), ("tool_cutter", 0, 1) } },
             { "pack", new[] { ("food_can", 1, 4), ("drink_water", 2, 6), ("med_bandage", 1, 4), ("med_pills", 0, 2), ("ammo_shells", 0, 8), ("ammo_cartridge", 0, 6),
-                              ("use_oil_filter", 0, 2), ("use_air_filter", 0, 1), ("dye_red", 0, 2), ("dye_blue", 0, 2), ("seed_tomato", 0, 3), ("res:6", 2, 8), ("res:32", 0, 4) } },
+                              ("use_oil_filter", 0, 2), ("use_air_filter", 0, 1), ("dye_red", 0, 2), ("dye_blue", 0, 2), ("seed_tomato", 0, 3), ("res:6", 2, 8), ("res:32", 0, 4),
+                              ("animal_puppy", 0, 1), ("animal_calf", 0, 1), ("use_saddle", 0, 1) } },
             { "food", new[] { ("food_can", 2, 8), ("food_ration", 1, 5), ("drink_water", 3, 10), ("drink_soda", 1, 6), ("food_potato", 2, 8), ("food_corn", 2, 8), ("food_stew", 0, 3),
-                              ("seed_corn", 0, 4), ("seed_tomato", 0, 4), ("seed_potato", 0, 4), ("res:28", 10, 40) } },
+                              ("seed_corn", 0, 4), ("seed_tomato", 0, 4), ("seed_potato", 0, 4), ("res:28", 10, 40),
+                              ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
             { "salvage", new[] { ("med_bandage", 1, 5), ("med_pills", 0, 3), ("med_splint", 0, 2), ("med_disinfectant", 0, 2), ("ammo_shells", 5, 20), ("throw_molotov", 0, 3),
                                  ("tool_torch", 1, 3), ("tool_lantern", 0, 2), ("tool_gas_torch", 0, 1), ("tool_pipe_shotgun", 0, 1), ("tool_machete", 0, 1),
                                  ("book_charm", 0, 1), ("book_mechanics_1", 0, 1), ("vhs_salesman", 0, 1), ("vhs_driving", 0, 1), ("kit_floodlight", 0, 1) } },
@@ -112,7 +120,7 @@ namespace MadMax.Npc
             { "parts", new[] { "res:20", "res:21", "res:23", "res:5", "tool_" } },
             { "scrap", new[] { "res:4", "res:5", "res:6", "res:15", "res:16", "res:17", "res:18", "res:20", "res:21", "res:22", "res:23", "kit_" } },
             { "food", new[] { "food_", "drink_", "seed_", "res:28" } },
-            { "pack", new[] { "food_", "crop_", "med_", "cloth_", "misc_", "res:6", "res:31", "res:32" } },
+            { "pack", new[] { "food_", "crop_", "med_", "cloth_", "misc_", "trophy_", "res:6", "res:31", "res:32" } },
             { "salvage", new[] { "book_", "vhs_", "med_", "tool_", "ammo_", "cloth_", "misc_", "throw_" } },
             { "build", new[] { "res:2", "res:3", "res:10", "res:11", "res:12", "res:13", "res:24", "res:26", "res:27" } },
         };

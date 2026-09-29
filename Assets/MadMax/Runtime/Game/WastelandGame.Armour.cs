@@ -15,7 +15,7 @@ namespace MadMax.Game
 
         public static int KindOf(string cause) => cause switch
         {
-            "MELEE" => (int)DamageKind.Melee, "SHOT" => (int)DamageKind.Shot, "BLAST" => (int)DamageKind.Shot,
+            "MELEE" => (int)DamageKind.Melee, "BITE" => (int)DamageKind.Melee, "SHOT" => (int)DamageKind.Shot, "BLAST" => (int)DamageKind.Shot,
             "CRASH" => (int)DamageKind.Crash, "FALL" => (int)DamageKind.Fall, "BURNED" => (int)DamageKind.Burn, _ => -1
         };
 
@@ -52,7 +52,7 @@ namespace MadMax.Game
         {
             int k = KindOf(cause);
             if (k < 0) return 1f;
-            var zones = cause == "FALL" ? LowerZones : cause == "MELEE" || cause == "CRASH" ? UpperZones : AllZones;
+            var zones = cause == "FALL" || cause == "BITE" ? LowerZones : cause == "MELEE" || cause == "CRASH" ? UpperZones : AllZones;
             float p = 0f;
             foreach (var z in zones) p += Protection(z, k);
             return 1f - 0.7f * p / zones.Length;

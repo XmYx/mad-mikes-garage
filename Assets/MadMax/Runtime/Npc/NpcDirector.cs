@@ -195,6 +195,7 @@ namespace MadMax.Npc
         /// gang honks back.</summary>
         public void Horn(Vector3 at, MadMax.Vehicles.VehicleDriver car)
         {
+            MadMax.Animals.AnimalDirector.Instance?.Horn(at);
             foreach (var n in Npc.All)
             {
                 if (!n || !n.Alive) continue;
@@ -223,6 +224,7 @@ namespace MadMax.Npc
         /// break-ins in their town, the nervous run. <paramref name="suspicious"/> = the player did something shady.</summary>
         public void Noise(Vector3 at, float radius, bool suspicious = true)
         {
+            MadMax.Animals.AnimalDirector.Instance?.Noise(at, radius);                         // animals bolt from bangs
             var town = game ? game.World.SettlementAt(at.x, at.z) : null;
             foreach (var n in Npc.All)
             {

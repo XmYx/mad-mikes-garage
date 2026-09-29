@@ -86,6 +86,11 @@ namespace MadMax.Items
                 F("food_sugar", "SUGAR", 8, -3, 0, H("eeeadc")),
                 F("food_bread", "BREAD", 32, -4, 60, H("c89050")),
                 F("food_porridge", "WHEAT PORRIDGE", 28, 6, 20, H("d0b080")),
+                // roadmap 23: from the pen
+                F("food_egg", "EGG", 7, 0, 90, H("eeeadc"), 0.12f),
+                F("food_egg_fried", "FRIED EGGS", 26, 0, 30, H("f0d060"), 0f, 2f),
+                F("drink_milk", "MILK", 8, 22, 40, H("fbf8ee"), 0.05f),
+                F("food_cheese", "CHEESE", 24, -3, 0, H("e0ac40"), 0f, 2f),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>

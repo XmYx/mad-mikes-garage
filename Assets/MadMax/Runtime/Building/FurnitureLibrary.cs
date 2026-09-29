@@ -130,6 +130,8 @@ namespace MadMax.Building
                 D("composter", "COMPOSTER", Ga, BuildPieces.Composter(), 4, false, go => Station(go, "composter", "COMPOSTER", 0f), (W, 6)),
                 D("greenhouse", "GREENHOUSE", Ga, BuildPieces.Greenhouse(), 10, true, null, (W, 12), (G, 16)),
                 D("scarecrow", "SCARECROW", Ga, BuildPieces.Scarecrow(), 2, false, go => go.AddComponent<Scarecrow>(), (W, 3), (C, 3)),
+                D("trough", "TROUGH", Ga, BuildPieces.Trough(), 4, false, go => go.AddComponent<MadMax.Animals.Trough>(), (W, 8), (S, 1)),
+                D("nest_box", "NEST BOX", Ga, BuildPieces.NestBox(), 3, false, go => Box(go, "NEST BOX", 12f, false), (W, 5), (S, 1)),
                 D("fish_trap", "FISH TRAP", Ga, BuildPieces.FishTrap(), 3, false, go => go.AddComponent<FishTrap>(), (Fe, 2), (S, 2), (C, 1)),
 
                 // industry

@@ -173,7 +173,7 @@ namespace MadMax.Game
             {
                 bool T0 = KeyDown(kb, Key.T) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
                 string near = PieceInteraction(E, T0);
-                Prompt = (Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP") + (near != null ? "   " + near : "");
+                Prompt = (Player.SeatedOn && Player.SeatedOn.ride != null ? "[F] DISMOUNT" : Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP") + (near != null ? "   " + near : "");
                 if (F) Player.StandUp();
                 return;
             }
