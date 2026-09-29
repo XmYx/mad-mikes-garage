@@ -356,6 +356,7 @@ namespace MadMax.Game
                     break;
                 }
             }
+            Underwater(cam, ct);
             // perspective deadband: sub-millimetre / sub-arcminute camera noise re-samples every low-res pixel (flicker)
             if (!cam.orthographic && !snapNext)
             {
@@ -370,6 +371,32 @@ namespace MadMax.Game
                 shake = Mathf.MoveTowards(shake, 0f, dt * 2.5f);
             }
             snapNext = false;
+        }
+
+        static readonly int HoleId = Shader.PropertyToID("_MadMaxWaterHole"), SeaId = Shader.PropertyToID("_MadMaxSeaLevel");
+
+        /// <summary>Under the sea (user additions): a camera below the surface sees a short teal murk (darker deeper);
+        /// in the top-down views a diver or a submerged submarine opens a window in the surface around it.</summary>
+        void Underwater(Camera cam, Transform ct)
+        {
+            var t = DeformableTerrain.Instance;
+            Shader.SetGlobalFloat(SeaId, MadMax.World.WorldGen.SeaLevel + MadMax.World.Weather.LakeRise);
+            if (!t) return;
+            var p = ct.position;
+            float wl = t.WaterLevel(p.x, p.z);
+            bool dry = (player && player.Interior && player.Interior.airtight) || MadMax.Building.AirPocket.Contains(p);
+            if (!float.IsNaN(wl) && p.y < wl - 0.05f && !dry)
+            {
+                float depth = wl - p.y;
+                var murk = Color.Lerp(new Color(0.08f, 0.26f, 0.3f), new Color(0.01f, 0.05f, 0.08f), Mathf.Clamp01(depth / 35f)) * Mathf.Lerp(1f, 0.25f, MadMax.World.DayNight.Darkness);
+                RenderSettings.fog = true; RenderSettings.fogColor = murk;
+                RenderSettings.fogStartDistance = 0.3f; RenderSettings.fogEndDistance = Mathf.Lerp(24f, 12f, Mathf.Clamp01(depth / 30f));
+                cam.backgroundColor = murk;
+            }
+            // the window: only looking down from above at someone under the surface
+            var f = target ? target.position : p;
+            bool under = TopDownView && ((player && player.HeadUnder) || (vehicle && vehicle.TryGetComponent<MadMax.Vehicles.BoatModel>(out var bm) && bm.Submersion > 0.9f));
+            Shader.SetGlobalVector(HoleId, under ? new Vector4(f.x, f.z, 11f, 0.12f) : Vector4.zero);
         }
 
         Vector3 ClampAboveGround(Vector3 p)

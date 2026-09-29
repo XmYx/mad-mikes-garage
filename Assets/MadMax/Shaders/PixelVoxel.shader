@@ -49,6 +49,8 @@ Shader "MadMax/PixelVoxel"
         float _MadMaxSnow;       // snow dusting on upward faces
         float4 _MadMaxSnowLat;   // polar snow: x equator z, y distance where it starts, z ramp (m); z = 0 disables
         float _MadMaxCurve;      // planet horizon: drop per squared metre from the camera (1 / 2R)
+        float4 _MadMaxWaterHole; // xz centre, radius (0 = none), min alpha: the window through the sea around a diver / submarine
+        float _MadMaxSeaLevel;   // for the underwater tint seen through that window
         float _MadMaxAutumn;     // 0..1 foliage turning gold and rust (swaying materials: trees, grass)
         float4 _MadMaxClouds;    // x coverage 0..1, y shadow strength, z 1/scale (1/m); x = 0 disables
         float4 _MadMaxCloudOffset; // xy drift (noise space)
@@ -201,6 +203,12 @@ Shader "MadMax/PixelVoxel"
                 #endif
                 c = lerp(c, albedo, _Unlit);
                 c *= 1.0h + _MadMaxBrightnessDelta;
+                // under the sea, seen through the window around a diver: blue-green, darker with depth
+                if (_MadMaxWaterHole.z > 0.0 && i.positionWS.y < _MadMaxSeaLevel && distance(i.positionWS.xz, _MadMaxWaterHole.xy) < _MadMaxWaterHole.z * 1.2)
+                {
+                    half dpt = saturate((_MadMaxSeaLevel - i.positionWS.y) / 12.0);
+                    c = lerp(c, c * half3(0.35h, 0.62h, 0.7h) + half3(0.0h, 0.02h, 0.03h), 0.45h + dpt * 0.45h);
+                }
                 c = lerp(MixFog(c, i.fog), c, _NoFog);
                 return half4(c, 1);
             }

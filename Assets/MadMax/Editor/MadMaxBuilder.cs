@@ -406,6 +406,7 @@ namespace MadMax.EditorTools
                 bm.propAt = bprop.grid != null ? (Vector3)bprop.pivot * S : es != null ? ((Vector3)es.position + new Vector3(0f, -13f, -8f)) * S : Vector3.zero;
                 bm.deckAt = (Vector3)d.boatDeck * S;
                 if (d.boat == "sub") root.AddComponent<Submarine>();
+                if (d.boat == "trawler") root.AddComponent<TrawlNet>();
             }
             if (d.bike) { var bb = root.AddComponent<BikeBalance>(); bb.sidecar = d.sidecar; bb.maxLean = d.name == "Chopper" ? 36f : d.name == "Bicycle" ? 34f : 44f; }
             var sys = root.AddComponent<VehicleSystems>();

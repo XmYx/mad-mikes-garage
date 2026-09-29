@@ -7,7 +7,7 @@ namespace MadMax.Building
     /// analytically; this adds the upright decks on top so vehicles can drive up ramps and park on foundations.</summary>
     public static class StructureGround
     {
-        struct Deck { public Placeable piece; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; }
+        struct Deck { public Object owner; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; }
         static readonly List<Deck> decks = new List<Deck>();
         static readonly int[] nearBuf = new int[16];
         static readonly HashSet<(Collider, Rigidbody)> ignored = new HashSet<(Collider, Rigidbody)>();
@@ -18,15 +18,20 @@ namespace MadMax.Building
         public static void Add(Placeable p, Vector4 size)
         {
             Remove(p);
-            var t = p.transform;
-            if (t.up.y < 0.9f || p.GetComponentInParent<Rigidbody>()) return;       // only upright decks on the ground
-            float r = Mathf.Sqrt(size.x * size.x + size.y * size.y) + 2.5f;           // + a car overhang (ramp lips)
-            decks.Add(new Deck { piece = p, collider = p.GetComponent<Collider>(), sloped = size.z != size.w, toLocal = t.worldToLocalMatrix, toWorld = t.localToWorldMatrix, size = size, centre = t.position, reach2 = r * r });
+            if (p.transform.up.y < 0.9f || p.GetComponentInParent<Rigidbody>()) return;       // only upright decks on the ground
+            AddDeck(p, p.transform, p.GetComponent<Collider>(), size);
         }
 
-        public static void Remove(Placeable p)
+        /// <summary>A deck that is not a built piece (the title's lunar stage): half extents x/z, top heights at −z/+z.</summary>
+        public static void AddDeck(Object owner, Transform t, Collider collider, Vector4 size)
         {
-            for (int i = decks.Count - 1; i >= 0; i--) if (decks[i].piece == p || !decks[i].piece) decks.RemoveAt(i);
+            float r = Mathf.Sqrt(size.x * size.x + size.y * size.y) + 2.5f;           // + a car overhang (ramp lips)
+            decks.Add(new Deck { owner = owner, collider = collider, sloped = size.z != size.w, toLocal = t.worldToLocalMatrix, toWorld = t.localToWorldMatrix, size = size, centre = t.position, reach2 = r * r });
+        }
+
+        public static void Remove(Object owner)
+        {
+            for (int i = decks.Count - 1; i >= 0; i--) if (decks[i].owner == owner || !decks[i].owner) decks.RemoveAt(i);
         }
 
         /// <summary>Raise <paramref name="height"/> to the highest deck under <paramref name="at"/> that lies below it

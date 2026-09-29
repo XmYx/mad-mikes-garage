@@ -48,6 +48,8 @@ namespace MadMax.World
 
         public Light sun;
         float sunBase;
+        /// <summary>The sun's full daylight intensity (before night and weather).</summary>
+        public float SunBase => sunBase;
         Quaternion sunBaseRot;
 
         public void Init(Light s)

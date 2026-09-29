@@ -92,6 +92,10 @@ namespace MadMax.Animals
                 Coat = R(Pal.Wood, 1), Belly = R(Pal.Wood, 3), Accent = R(Pal.Rust, 2), features = "legs6 antennae",
                 walk = 0.8f, run = 5.5f, health = 8f, bite = 3f, mass = 1f, reach = 0.7f, sight = 10f, hearing = 20f, smell = 30f, herdMin = 3, herdMax = 6,
                 biomes = new[] { Biome.Town, Biome.City, Biome.Nuclear }, density = 0.6f, nocturnal = true, drops = new[] { ("food_bugmeat", 1, 1) } };
+            yield return new AnimalDef { id = "crab", name = "SHORE CRAB", nature = Nature.Prey, plan = BodyPlan.Arthropod, len = 5, depth = 2, width = 6, leg = 1, head = 1, tail = 1, scale = 0.6f,
+                Coat = R(Pal.Crimson, 2), Belly = R(Pal.Cream, 3), Accent = R(Pal.Rust, 1), features = "pincers",
+                walk = 0.35f, run = 1.8f, health = 3f, bite = 1f, mass = 0.3f, reach = 0.4f, sight = 6f, hearing = 8f, smell = 0f, herdMin = 1, herdMax = 1,
+                density = 0f, drops = new[] { ("food_fish_raw", 0, 1) } };                                                   // put on the beaches by World/SeaLife
             yield return new AnimalDef { id = "beetle", name = "DUNG BEETLE", nature = Nature.Prey, plan = BodyPlan.Arthropod, len = 3, depth = 2, width = 3, leg = 1, head = 1, tail = 1, scale = 0.5f,
                 Coat = R(Pal.Black, 1), Belly = R(Pal.Black, 2), Accent = R(Pal.Navy, 1), features = "legs6 shell",
                 walk = 0.25f, run = 0.8f, health = 1f, mass = 0.01f, sight = 2f, hearing = 3f, smell = 0f, herdMin = 1, herdMax = 1,

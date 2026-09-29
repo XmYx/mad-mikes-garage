@@ -15,6 +15,7 @@ namespace MadMax.Items
         public float weight;              // abundance in its lakes
         public Biome[] biomes;            // lakes of these biomes (null: any clean lake)
         public bool mutant, junk;
+        public bool sea;                  // salt water only (the ocean); lake fish stay in lakes and rivers
         public Color32 color;
     }
 
@@ -43,6 +44,15 @@ namespace MadMax.Items
             new FishDef { id = "twohead", name = "TWO-HEADED CATFISH", minKg = 3f, maxKg = 35f, strength = 0.85f, bait = Meat, time = 2, weight = 2f, mutant = true, color = H("6ad04a") },
             new FishDef { id = "eyeless", name = "EYELESS PIKE", minKg = 2f, maxKg = 18f, strength = 0.8f, bait = Meat, time = 3, weight = 1.5f, mutant = true, color = H("b0e060") },
             // junk
+            // ---- the sea (user additions)
+            new FishDef { id = "sardine", name = "SARDINE", minKg = 0.05f, maxKg = 0.2f, strength = 0.15f, bait = Insects, time = 3, weight = 8f, sea = true, color = H("a8b8c8") },
+            new FishDef { id = "mackerel", name = "MACKEREL", minKg = 0.3f, maxKg = 1.6f, strength = 0.4f, bait = Meat, time = 1, weight = 6f, sea = true, color = H("4a7a8a") },
+            new FishDef { id = "seabass", name = "SEA BASS", minKg = 0.8f, maxKg = 8f, strength = 0.55f, bait = Meat, time = 1, weight = 3f, sea = true, color = H("8a9aa0") },
+            new FishDef { id = "cod", name = "COD", minKg = 1.5f, maxKg = 25f, strength = 0.6f, bait = Meat, time = 0, weight = 3f, sea = true, biomes = new[] { Biome.Tundra, Biome.Forest, Biome.Village }, color = H("8a8a6a") },
+            new FishDef { id = "snapper", name = "RED SNAPPER", minKg = 1f, maxKg = 12f, strength = 0.6f, bait = Meat, time = 3, weight = 3f, sea = true, biomes = new[] { Biome.Tropical, Biome.Desert, Biome.Town, Biome.City }, color = H("c04a3a") },
+            new FishDef { id = "tuna", name = "BLUEFIN TUNA", minKg = 20f, maxKg = 250f, strength = 1f, bait = Meat, time = 1, weight = 0.6f, sea = true, color = H("2a3a5a") },
+            new FishDef { id = "flounder3", name = "THREE-EYED FLOUNDER", minKg = 1f, maxKg = 9f, strength = 0.45f, bait = Worms, time = 0, weight = 1.2f, sea = true, mutant = true, color = H("9ac070") },
+            new FishDef { id = "angler", name = "GLOWING ANGLERFISH", minKg = 2f, maxKg = 30f, strength = 0.8f, bait = Meat, time = 2, weight = 0.8f, sea = true, mutant = true, color = H("3a4a2a") },
             new FishDef { id = "boot", name = "OLD BOOT", minKg = 0.6f, maxKg = 1.2f, strength = 0.1f, weight = 0.6f, junk = true, color = H("3a2a1a") },
             new FishDef { id = "can", name = "RUSTY CAN", minKg = 0.2f, maxKg = 0.5f, strength = 0.05f, weight = 0.6f, junk = true, color = H("80401d") },
             new FishDef { id = "lockbox", name = "LOCKBOX", minKg = 3f, maxKg = 6f, strength = 0.2f, weight = 0.12f, junk = true, color = H("4f4842") },
@@ -53,16 +63,18 @@ namespace MadMax.Items
         public static string BaitName(string bait) => bait == Worms ? "WORMS" : bait == Insects ? "INSECTS" : bait == Meat ? "CUT MEAT" : bait == Corn ? "CORN DOUGH" : "NO BAIT";
 
         /// <summary>What lives in a lake: toxic lakes hold only mutants (and junk).</summary>
-        public static void Pool(Biome biome, bool toxic, List<FishDef> into)
+        public static void Pool(Biome biome, bool toxic, List<FishDef> into, bool sea = false)
         {
             into.Clear();
             foreach (var f in All)
             {
                 if (f.junk) { into.Add(f); continue; }
+                if (f.sea != sea) continue;
+                if (sea && f.mutant) { if (toxic || biome == Biome.Nuclear) into.Add(f); continue; }   // fallout seas breed a few oddities among the rest
                 if (f.mutant != toxic) continue;
                 if (f.biomes == null || System.Array.IndexOf(f.biomes, biome) >= 0) into.Add(f);
             }
-            if (!toxic && into.Count <= 3) into.Add(All[0]);                   // perch get everywhere
+            if (!toxic && !sea && into.Count <= 3) into.Add(All[0]);           // perch get everywhere
         }
 
         /// <summary>Relative bite rate of a species (junk only snags).</summary>

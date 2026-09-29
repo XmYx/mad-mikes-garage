@@ -56,7 +56,8 @@ namespace MadMax.Game
             if (bait != null) g.Inventory.TakeItem(bait);
             var biome = t.BiomeAt(castTo.x, castTo.z);
             var lake = t.World.LakeAt(castTo.x, castTo.z, out _);
-            FishLibrary.Pool(biome, lake != null ? lake.toxic : biome == Biome.Nuclear, pool);
+            bool sea = lake == null && t.World.Ocean(castTo.x, castTo.z);
+            FishLibrary.Pool(biome, lake != null ? lake.toxic : biome == Biome.Nuclear && !sea, pool, sea);
             depth = t.WaterDepth(castTo.x, castTo.z);
             origin = from; castFrom = TipPos(user); flyT = 0f;
             phase = Phase.Flying; Active = this;

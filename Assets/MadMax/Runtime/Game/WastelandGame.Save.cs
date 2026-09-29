@@ -100,6 +100,7 @@ namespace MadMax.Game
             foreach (var kv in Inventory.Items) if (kv.Value > 0) d.items.Add(new ItemSave { id = kv.Key, count = kv.Value });
             d.hotbar = (string[])Hotbar.Clone();
             d.tankAir = TankAir;
+            d.boatsFound = new List<string>(BoatsFound);
             foreach (var kv in GasPump.Used) { d.pumpKeys.Add(kv.Key); d.pumpUsed.Add(kv.Value); }
             d.terrain = terrain.SaveEdits(FocusPos);
             d.npcs = MadMax.Npc.NpcRegistry.SaveAll();
@@ -315,6 +316,7 @@ namespace MadMax.Game
         {
             Inventory.Restore(d.resources, d.items.ConvertAll(i => new KeyValuePair<string, int>(i.id, i.count)));
             if (d.tankAir >= 0f) TankAir = d.tankAir;
+            BoatsFound.Clear(); if (d.boatsFound != null) foreach (var k in d.boatsFound) BoatsFound.Add(k);
             if (d.hotbar != null && d.hotbar.Length == HotbarSize) { Hotbar = d.hotbar; for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] == "") Hotbar[i] = null; }
             SyncHotbar();
             terrain.LoadEdits(d.terrain);

@@ -128,6 +128,7 @@ namespace MadMax.Audio
             if (!listener) return;
             var g = MadMax.Game.WastelandGame.Instance;
             Transform target = g && g.Current ? g.Current.transform : g && g.Player ? g.Player.transform : null;
+            if (MadMax.Game.TitleSequence.Playing) target = null;                                // the title film is heard from its camera
             var cam = Camera.main;
             if (target) listener.position = target.position + Vector3.up * 1.2f;
             else if (cam) listener.position = cam.transform.position;

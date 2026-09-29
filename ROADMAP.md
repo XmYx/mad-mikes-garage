@@ -754,20 +754,20 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 ## User additions (2026-09-29, second list)
 
 ### Boats and submarines
-- [ ] Boats of various sizes and jobs to get around, fish from and live on.
-- [ ] Submarines, usable as bases too: oxygen and electricity from onboard resources.
-- [ ] Diving suits for working underwater.
-- [ ] Underwater base building with a ground-level entrance and submarine docking.
+- [x] Boats of various sizes and jobs to get around, fish from and live on. *Done:* `Designs/BoatDesigns` Raft, Skiff, Trawler (fish hold + `TrawlNet`, [1] at the helm), Houseboat (walk-in cabin, bunk, stove); `BoatModel` (float points, drag, prop, rudder, wake) on a wheel-less `VehicleDriver`; built at the `slipway` piece; found boats moored off coastal towns and a skiff near the start (`WastelandGame.Boats`, saved `boatsFound`).
+- [x] Submarines, usable as bases too: oxygen and electricity from onboard resources. *Done:* Iron Eel (`Vehicle/Submarine`: ballast dive/surface, 30 kWh battery charged by the diesel on the surface or snorkel depth and at a docking collar, cabin air from the snorkel and `O2Rack` bottles, sealed walk-in interior as a base); `bp_submarine` from loot and traders.
+- [x] Diving suits for working underwater. *Done:* `dive_helmet`, `dive_suit`, `air_tank` (clothing, crafted), tank air (saved), `air_compressor` refills, O2 bottles; `PlayerCharacter.Diving` (swim at depth, head under), air bar on the HUD, murk + water window (`CameraRig.Underwater`).
+- [x] Underwater base building with a ground-level entrance and submarine docking. *Done:* `FurnitureLibrary.Sea`: `sea_dome`, `sea_tunnel` (airtight `AirPocket`s: dry inside), `shore_entrance` (walk down from the beach), `docking_collar` (`DockingCollar`: the sub docks, charges and the crew walks through).
 
 ### Wildlife
-- [ ] Fish and other underwater fauna and flora.
-- [ ] Birds, mammals, lizards, snakes, scorpions, spiders and bugs.
+- [x] Fish and other underwater fauna and flora. *Done:* `World/SeaLife` (schools of sardines, mackerel, perch, reef fish that scatter from divers and hulls, jumping fish, stinging jellyfish, beach crabs), sea species in `FishLibrary` (rod, trawl), seabed kelp / coral / sea grass in the flora.
+- [x] Birds, mammals, lizards, snakes, scorpions, spiders and bugs. *Done:* `AnimalLibrary.Wild` (jackrabbit, coyote, deer, bear, armadillo, raccoon, lizard, gila, rad lizard, cottonmouth, python, crow, turkey, scorpion, rad scorpion, tarantula, cave spider, rad roach, crab, beetle; `BodyPlan.Arthropod` + sprawling gaits, venom → antivenom), flying insects (`World/Insects`: fireflies, butterflies, dragonflies, gnats, carcass flies); chitin vest, venom and hide recipes.
 
 ### Vehicles
-- [ ] Aircraft easy to turn on the ground, to brake and to reverse.
+- [x] Aircraft easy to turn on the ground, to brake and to reverse. *Done:* `FlightModel` taxi yaw control, pull brake on the ground, reverse thrust (reversed prop pitch, REV on the flight panel).
 
 ### World
-- [ ] The world is a rotating planet (illusion, chosen by the user): continents and oceans with biomes spread to fit, east–west wrap, a slight horizon curvature, and sun, moon and seasons driven by spin, tilt and orbit. Big enough to feel large, light enough to simulate.
-- [ ] Intro lands on the Moon with the neon sign, Earth visible in space.
-- [ ] Everything new ties into crafting and resources and fits the post-apocalyptic look and lore.
+- [x] The world is a rotating planet (illusion, chosen by the user): continents and oceans with biomes spread to fit, east–west wrap, a slight horizon curvature, and sun, moon and seasons driven by spin, tilt and orbit. Big enough to feel large, light enough to simulate. *Done:* `WorldGen.Planet` (continent noise, 9.6 km circumference with an open-ocean date line → `CrossDateLine`, latitude biomes incl. `Tundra`, ice walls at the poles, climate offset by latitude), 40 towns on land, `_MadMaxCurve` horizon (setting HORIZON CURVE), `DayNight.SunDirection/MoonDirection` from hour, declination and latitude, moon phases, polar snow line.
+- [x] Intro lands on the Moon with the neon sign, Earth visible in space. *Done:* the title climbs into a darkening, starry sky and cuts to the Moon (`Designs/MoonArt`: cratered regolith, Mad Mike's crash-landed scrap rocket and its tyre tracks, an old-world lander with a bleached flag, the planet sampled from this world's generator under a cloud shell); `TitleSequence.OnMoon` stands weather, clouds and ambience down; boot film re-recorded.
+- [x] Everything new ties into crafting and resources and fits the post-apocalyptic look and lore. *Done:* boats and the sub from `slipway` recipes (scrap, wood, iron, aluminium, rubber, cloth, copper; the sub needs `bp_submarine`), dive gear at the workbench, sea base pieces paid in iron, glass, concrete and scrap, wildlife drops (hides, meat, chitin, venom) into food and clothing recipes, blueprints from loot; rusted, patched voxel looks from `Pal` ramps.
 

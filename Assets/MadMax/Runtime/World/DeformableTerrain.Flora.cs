@@ -159,6 +159,15 @@ namespace MadMax.World
                 float water = ch.water[k];
                 bool sea = !float.IsNaN(water) && Mathf.Abs(water - WorldGen.SeaLevel) < 0.01f;           // salt shores: bare beach sand
                 if (sea && ch.shore[k] > 0.15f) continue;
+                if (sea && yMin < water - 0.8f)
+                {
+                    // the sea floor (user additions): sea grass, kelp in cool seas, coral in warm ones, urchins on rocks
+                    if (Hash(gi * 5 + 11, gj * 3 + 7) > 0.3f * (0.5f + Mathf.PerlinNoise(gx * 0.09f + 4f, gz * 0.09f + 9f))) continue;
+                    float sy00 = ch.h[k] + ch.d[k], sy10 = ch.h[k + 1] + ch.d[k + 1], sy01 = ch.h[k + V] + ch.d[k + V], sy11 = ch.h[k + V + 1] + ch.d[k + V + 1];
+                    var sc = new CellInfo { i = i, j = j, gi = gi, gj = gj, y00 = sy00, y10 = sy10, y01 = sy01, y11 = sy11, stage = 3 };
+                    Seabed(sc, water - yMin, Mathf.Abs(WorldGen.Latitude(gz)));
+                    continue;
+                }
                 bool wetFoot = !float.IsNaN(water) && yMin < water + Weather.LakeRise + 0.05f;
                 bool shore = !wetFoot && ch.shore[k] > 0.3f && biome != Biome.Desert;
                 if (wetFoot && (yMin < water + Weather.LakeRise - 0.35f || biome == Biome.Desert || sea)) continue;   // open water
@@ -315,6 +324,44 @@ namespace MadMax.World
 
         static float Rn(in CellInfo c, int n) => Hash(c.gi * 31 + n * 7, c.gj * 17 + n * 13);
         static float Grow(in CellInfo c) => c.stage / 3f;
+
+        static readonly Color32[] SeaGrass = { C(0x1e4a2a), C(0x265a30), C(0x2e6a38), C(0x3a7a40) };
+        static readonly Color32[] Kelp = { C(0x3a3a14), C(0x4a4a1a), C(0x5a5620), C(0x6a6428) };
+        static readonly Color32[] Coral = { C(0xd8588a), C(0xe07a3a), C(0x8a4ab4), C(0xd8c040), C(0x4ac0b0) };
+        static readonly Color32 Urchin = C(0x3a1a3a), SeaRock = C(0x3e4448);
+
+        /// <summary>One sea-floor cell: coral heads and sea grass in the tropics, kelp strands reaching for the light in
+        /// cooler water, a boulder with urchins now and then.</summary>
+        void Seabed(in CellInfo c, float depth, float lat)
+        {
+            float r = Rn(c, 3);
+            if (r > 0.93f)
+            {
+                float x = c.i * Cell + 0.04f, z = c.j * Cell + 0.04f, y = c.Ground(0.3f, 0.3f) - 0.05f;
+                Box(x, y, z, 0.16f, 0.12f, 0.14f, SeaRock, 255, 255);
+                Box(x + 0.04f, y + 0.12f, z + 0.04f, 0.06f, 0.05f, 0.06f, Urchin, 255, 255);
+                return;
+            }
+            if (lat < 25f && r < 0.45f)
+            {
+                var col = Coral[Mathf.FloorToInt(Rn(c, 5) * Coral.Length) % Coral.Length];
+                int branches = 3 + Mathf.FloorToInt(Rn(c, 6) * 3f);
+                for (int b = 0; b < branches; b++)
+                    Stalk(c, 0.25f + Rn(c, 50 + b) * 0.5f, 0.25f + Rn(c, 60 + b) * 0.5f, 0.12f + Rn(c, 70 + b) * 0.35f, col, FV * 1.5f);
+                return;
+            }
+            if (lat >= 25f && r < 0.25f && depth > 1.6f)
+            {
+                // kelp: a strand up to near the surface, leaves every 30 cm, floppy (sways)
+                float h = Mathf.Min(depth - 0.3f, 6f) * (0.6f + Rn(c, 8) * 0.4f);
+                float fx = 0.3f + Rn(c, 9) * 0.4f, fz = 0.3f + Rn(c, 10) * 0.4f;
+                Stalk(c, fx, fz, h, Kelp[1]);
+                float x = c.i * Cell + fx * Cell, z = c.j * Cell + fz * Cell, y0 = c.Ground(fx, fz);
+                for (float y = 0.4f; y < h; y += 0.3f) Box(x - FV, y0 + y, z, FV * 3f, FV, FV, Kelp[(int)(y * 3f) & 3], Bend(y), Bend(y + 0.1f));
+                return;
+            }
+            Tuft(c, SeaGrass, 4, 0.3f);
+        }
 
         void Tuft(in CellInfo c, Color32[] ramp, int maxBlades, float height)
         {

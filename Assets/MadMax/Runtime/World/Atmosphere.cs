@@ -102,7 +102,9 @@ namespace MadMax.World
                 case Biome.Tundra: tint = new Vector3(0.93f, 0.98f, 1.06f); sat = 0.8f; con = 1.04f; break;
                 default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 1f; con = 1.03f; break;
             }
-            float rain = Weather.Raining ? 1f : 0f, snow = Weather.Snowing ? 1f : 0f, night = DayNight.Darkness;
+            if (MadMax.Game.TitleSequence.OnMoon) { tint = new Vector3(0.97f, 1f, 1.05f); sat = 0.85f; con = 1.12f; }   // airless: cold and hard
+            bool moonSet = MadMax.Game.TitleSequence.OnMoon;
+            float rain = Weather.Raining && !moonSet ? 1f : 0f, snow = Weather.Snowing && !moonSet ? 1f : 0f, night = DayNight.Darkness;
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.95f, 0.98f, 1.04f), rain));
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.0f, 1.02f, 1.06f), snow));
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 0.95f, 1.1f), night));
@@ -115,7 +117,7 @@ namespace MadMax.World
             float k = 1f - Mathf.Exp(-0.8f * dt);                                                    // eases across a biome edge
             gTint = Vector3.Lerp(gTint, tint, k); gSat = Mathf.Lerp(gSat, sat, k); gContrast = Mathf.Lerp(gContrast, con, k);
             // heat haze over hot, dry ground in the day
-            float hot = Mathf.Clamp01((Weather.Temperature - 27f) / 10f) * (1f - night) * (1f - rain) * (b == Biome.Desert ? 1f : b == Biome.Nuclear ? 0.7f : b == Biome.Town || b == Biome.City || b == Biome.Village ? 0.5f : 0.2f);
+            float hot = moonSet ? 0f : Mathf.Clamp01((Weather.Temperature - 27f) / 10f) * (1f - night) * (1f - rain) * (b == Biome.Desert ? 1f : b == Biome.Nuclear ? 0.7f : b == Biome.Town || b == Biome.City || b == Biome.Village ? 0.5f : 0.2f);
             haze = Mathf.MoveTowards(haze, hot, dt * 0.2f);
             flash = Mathf.Max(0f, flash - dt * 4f);
             grade.SetColor("_GradeTint", new Color(gTint.x, gTint.y, gTint.z, 1f));
@@ -203,13 +205,14 @@ namespace MadMax.World
             if (!cam || Application.isBatchMode) return;
             float dark = DayNight.Darkness;
             float phase = DayNight.MoonPhase, lit = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI * 2f);
-            bool show = SkyVisible && dark > 0.35f && !OccluderFadeUnderground;
+            bool onMoon = MadMax.Game.TitleSequence.OnMoon || MadMax.Game.TitleSequence.SpaceFade > 0.6f;   // the title's climb and lunar set: stars, no moon
+            bool show = onMoon || SkyVisible && dark > 0.35f && !OccluderFadeUnderground;
             if (show && !stars) BuildSky();
             if (!stars) return;
-            bool starsOn = show && CloudCover < 0.75f;
+            bool starsOn = show && (onMoon || CloudCover < 0.75f);
             if (stars.gameObject.activeSelf != starsOn) stars.gameObject.SetActive(starsOn);
             var dir = DayNight.MoonDirection;
-            bool moonUp = show && dir.y > -0.02f && lit > 0.06f;
+            bool moonUp = show && !onMoon && dir.y > -0.02f && lit > 0.06f;
             if (moon.gameObject.activeSelf != moonUp) moon.gameObject.SetActive(moonUp);
             if (!show) return;
             var c = cam.transform.position;
@@ -303,7 +306,7 @@ namespace MadMax.World
             for (int i = 0; i < puffs.Count; i++)
             {
                 var p = puffs[i];
-                bool on = SkyVisible && i < visible;
+                bool on = SkyVisible && i < visible && !MadMax.Game.TitleSequence.OnMoon;
                 if (p.gameObject.activeSelf != on) p.gameObject.SetActive(on);
                 if (!on) continue;
                 var pos = p.position + wind * dt;

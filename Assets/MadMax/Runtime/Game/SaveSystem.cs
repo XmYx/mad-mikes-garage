@@ -101,6 +101,7 @@ namespace MadMax.Game
         public MadMax.RPG.CharacterStats stats;
         public string[] hotbar;
         public float tankAir = -1f;                  // diving tank air (s); -1 = full (older saves)
+        public List<string> boatsFound = new List<string>();   // found boats already put in the world
         public List<string> pumpKeys = new List<string>(); public List<float> pumpUsed = new List<float>();
         public List<MadMax.World.DeformableTerrain.ChunkEdit> terrain = new List<MadMax.World.DeformableTerrain.ChunkEdit>();
     }

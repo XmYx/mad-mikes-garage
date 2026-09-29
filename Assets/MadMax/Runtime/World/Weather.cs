@@ -160,7 +160,7 @@ namespace MadMax.World
             float area = size.x * size.y;
             float perM2 = (snowing ? 0.55f : 1.5f) * Mathf.Clamp(3000f / Mathf.Max(1f, area), 0.35f, 1f);
             var em = rain.emission;
-            em.rateOverTime = Raining && !MadMax.Game.OccluderFade.Underground ? perM2 * area : 0f;
+            em.rateOverTime = Raining && !MadMax.Game.OccluderFade.Underground && !MadMax.Game.TitleSequence.OnMoon ? perM2 * area : 0f;
             var main = rain.main;
             main.maxParticles = Mathf.Clamp(Mathf.RoundToInt(perM2 * area * main.startLifetime.constant * 1.2f), 2000, 40000);
             // wind slant; in the 2.5D views the rain also leans across the screen so it reads as diagonal lines

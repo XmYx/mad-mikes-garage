@@ -159,6 +159,7 @@ namespace MadMax.Game
             gameObject.AddComponent<Racing>();
             gameObject.AddComponent<MadMax.Npc.NpcVoice>();
             gameObject.AddComponent<Insects>();
+            gameObject.AddComponent<SeaLife>();
             gameObject.AddComponent<MadMax.World.FarTerrain>();
             gameObject.AddComponent<MadMax.World.RiverFoam>();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
@@ -666,6 +667,7 @@ namespace MadMax.Game
             RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
             UpdatePlanet();
             UpdateDiving();
+            UpdateBoats();
             LastEngine.Tick(this);
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {

@@ -21,12 +21,14 @@ Shader "MadMax/Water"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
             float _MadMaxCurve;      // 1 / (2 R): the horizon drop per squared metre
             float _MadMaxNight;
+            float4 _MadMaxWaterHole;   // xz centre, radius (0 = none), alpha left in the middle
             struct A { float4 positionOS : POSITION; half4 color : COLOR; };
-            struct V { float4 positionCS : SV_POSITION; half4 color : COLOR; half fog : TEXCOORD0; };
+            struct V { float4 positionCS : SV_POSITION; half4 color : COLOR; half fog : TEXCOORD0; float2 xz : TEXCOORD1; };
             V vert (A i)
             {
                 V o;
                 float3 ws = TransformObjectToWorld(i.positionOS.xyz);
+                o.xz = ws.xz;
                 float2 d = ws.xz - _WorldSpaceCameraPos.xz;
                 ws.y -= dot(d, d) * _MadMaxCurve;
                 o.positionCS = TransformWorldToHClip(ws);
@@ -39,6 +41,11 @@ Shader "MadMax/Water"
             {
                 half4 c = i.color;
                 c.rgb = SRGBToLinear(c.rgb);                                   // vertex colours are sRGB (Linear project)
+                if (_MadMaxWaterHole.z > 0.0)                                  // a window through the surface around a diver below
+                {
+                    float hd = distance(i.xz, _MadMaxWaterHole.xy);
+                    c.a *= lerp(_MadMaxWaterHole.w, 1.0, saturate((hd - _MadMaxWaterHole.z * 0.6) / (_MadMaxWaterHole.z * 0.4)));
+                }
                 c.rgb = MixFog(c.rgb, i.fog);
                 return c;
             }
