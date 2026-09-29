@@ -6,10 +6,11 @@ using UnityEngine.InputSystem;
 
 namespace MadMax.Game
 {
-    public enum ViewMode { Isometric, TiltShift, ThirdPerson, FirstPerson }
+    public enum ViewMode { Isometric, TiltShift, ThirdPerson, FirstPerson, TopDown, Hood, Bumper }
 
     /// <summary>All views render through the PixelArtCamera. Works for vehicles and the on-foot player.
-    /// Scroll / +/- zoom, Z/C rotate (iso, tilt-shift), mouse look (RMB in vehicles, free on foot), V cycles views.</summary>
+    /// Scroll / +/- zoom, Z/C rotate and PgUp/PgDn tilt (iso, tilt-shift, top-down; RMB drag does both there), mouse
+    /// look (RMB in vehicles, free on foot), V cycles views. Vehicles add the hood and bumper cameras.</summary>
     [DefaultExecutionOrder(-90)]
     public class CameraRig : MonoBehaviour
     {
@@ -28,6 +29,10 @@ namespace MadMax.Game
         public Vector2 tiltDistanceRange = new Vector2(25f, 160f);
         public float tiltDistance = 60f;
 
+        [Header("Top-down (orthographic, straight down)")]
+        public Vector2 topSizeRange = new Vector2(5f, 40f);
+        public float topSize = 14f;
+
         [Header("Third person")]
         public float thirdFov = 55f;
         public Vector2 thirdDistanceRange = new Vector2(2.5f, 18f);
@@ -44,7 +49,14 @@ namespace MadMax.Game
         public float fogStart = 38f, fogEnd = 70f;
 
         /// <summary>Camera pitch for head look / aiming (degrees, + = down).</summary>
-        public float LookPitch => mode == ViewMode.FirstPerson ? lookPitch : mode == ViewMode.ThirdPerson ? orbitPitch - 12f : 20f;
+        public float LookPitch => mode == ViewMode.FirstPerson || mode == ViewMode.Hood || mode == ViewMode.Bumper ? lookPitch : mode == ViewMode.ThirdPerson ? orbitPitch - 12f : 20f;
+
+        /// <summary>Views looking down on the scene: the mouse cursor aims and picks, cutaways are on.</summary>
+        public bool TopDownView => mode == ViewMode.Isometric || mode == ViewMode.TiltShift || mode == ViewMode.TopDown;
+        /// <summary>Views that aim through the screen centre.</summary>
+        public bool CrosshairView => !TopDownView;
+        /// <summary>Extra pitch (degrees) on the iso and tilt-shift views: PgUp/PgDn or a vertical RMB drag.</summary>
+        public float tilt;
 
         /// <summary>Horizontal camera heading; on-foot movement is relative to it.</summary>
         public float ViewYaw { get; private set; } = 45f;
@@ -62,6 +74,7 @@ namespace MadMax.Game
         Quaternion lastCamRot = Quaternion.identity;
         Vector3 rawCamPos;
         bool snapNext = true, cursorReleased;
+        Vector3 hoodLocal, bumperLocal;
 
         public void SetTarget(Transform t)
         {
@@ -83,6 +96,8 @@ namespace MadMax.Game
             var body = t ? t.Find("Body") : null;
             if (vehicle && body && body.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
                 targetScale = Mathf.Clamp(mf.sharedMesh.bounds.size.z / 4.6f, 0.8f, 2.4f);
+            if (vehicle) VehicleMounts(t, body);
+            if (player && (mode == ViewMode.Hood || mode == ViewMode.Bumper)) mode = ViewMode.FirstPerson;   // vehicle-only views
             lastTargetPos = t ? t.position : Vector3.zero;
             velocity = Vector3.zero;
             snapNext = true;
@@ -94,9 +109,34 @@ namespace MadMax.Game
         /// <summary>Screen shake scaled by impact strength (m/s above the damage threshold).</summary>
         public void Shake(float strength) { if (GameSettings.Current.cameraShake) shake = Mathf.Min(1f, shake + strength * 0.08f); }
 
+        static readonly ViewMode[] Order = { ViewMode.Isometric, ViewMode.TiltShift, ViewMode.TopDown, ViewMode.ThirdPerson, ViewMode.FirstPerson, ViewMode.Hood, ViewMode.Bumper };
+
+        /// <summary>Hood and bumper camera spots (target-local) from the body mesh: on the bonnet just ahead of the
+        /// windscreen, and low on the front bumper.</summary>
+        void VehicleMounts(Transform t, Transform body)
+        {
+            var e = eye ? t.InverseTransformPoint(eye.position) : new Vector3(0f, 1.2f, 0.4f);
+            hoodLocal = e + new Vector3(0f, 0.2f, 0.8f); bumperLocal = new Vector3(0f, 0.55f, 2.3f);
+            if (!body || !body.TryGetComponent<MeshFilter>(out var mf) || !mf.sharedMesh || !mf.sharedMesh.isReadable) return;
+            var b = mf.sharedMesh.bounds;
+            var lo = t.InverseTransformPoint(body.TransformPoint(new Vector3(b.center.x, b.min.y, b.max.z)));
+            float front = lo.z;
+            float hoodY = float.MinValue, z0 = Mathf.Min(e.z + 0.5f, front - 0.3f);
+            foreach (var v in mf.sharedMesh.vertices)
+            {
+                var w = t.InverseTransformPoint(body.TransformPoint(v));
+                if (Mathf.Abs(w.x) < 0.35f && w.z > z0 && w.z < front && w.y > hoodY) hoodY = w.y;
+            }
+            if (hoodY == float.MinValue) hoodY = e.y - 0.2f;
+            hoodLocal = new Vector3(0f, hoodY + 0.28f, Mathf.Min(z0 + 0.25f, front - 0.1f));
+            bumperLocal = new Vector3(0f, lo.y + 0.3f, front + 0.08f);
+        }
+
         public void Cycle()
         {
-            mode = (ViewMode)(((int)mode + 1) % 4);
+            int i = System.Array.IndexOf(Order, mode);
+            do i = (i + 1) % Order.Length; while (player && (Order[i] == ViewMode.Hood || Order[i] == ViewMode.Bumper));
+            mode = Order[i];
             if (player) { orbitYaw = ViewYaw; lookYaw = ViewYaw; }
             else { orbitYaw = lookYaw = 0; }
             lookPitch = 0;
@@ -133,7 +173,18 @@ namespace MadMax.Game
             if (pad != null && !(game && game.Current && game.Current.GetComponent<MadMax.Vehicles.FlightModel>())) look += pad.rightStick.ReadValue() * 120f * Time.deltaTime * gs.mouseSensitivity;   // aircraft: the stick flies
             if (gs.invertY) look.y = -look.y;
             if (mode == ViewMode.ThirdPerson) { orbitYaw += look.x; orbitPitch = Mathf.Clamp(orbitPitch - look.y, -10f, 70f); }
-            if (mode == ViewMode.FirstPerson)
+            if (TopDownView)
+            {
+                // 2.5D views: RMB drag (or the pad's right stick when not aiming) turns and tilts, PgUp/PgDn tilt
+                bool aim = game && game.Aiming, glass = game && game.Player && game.Player.Tool is BinocularsTool;
+                Vector2 drag = Vector2.zero;
+                if (mouse != null && mouse.rightButton.isPressed && !aim && !glass && !WastelandGame.RadialBlocksLook) drag = mouse.delta.ReadValue() * 0.25f * gs.mouseSensitivity;
+                if (pad != null && !pad.leftTrigger.isPressed && !(game && game.Current)) drag += pad.rightStick.ReadValue() * 90f * Time.deltaTime * gs.mouseSensitivity;
+                if (gs.invertY) drag.y = -drag.y;
+                yaw += drag.x;
+                tilt = Mathf.Clamp(tilt - drag.y * 0.5f + ((Controls.Held(Controls.Act.CamTiltUp) ? 1f : 0f) - (Controls.Held(Controls.Act.CamTiltDown) ? 1f : 0f)) * 40f * Time.deltaTime, -25f, 40f);
+            }
+            if (mode == ViewMode.FirstPerson || mode == ViewMode.Hood || mode == ViewMode.Bumper)
             {
                 lookYaw += look.x;
                 if (!player) lookYaw = Mathf.Clamp(lookYaw, -120f, 120f);
@@ -153,7 +204,8 @@ namespace MadMax.Game
                 case ViewMode.Isometric: isoSize = Mathf.Clamp(isoSize * Mathf.Pow(1.12f, steps), isoSizeRange.x, isoSizeRange.y); break;
                 case ViewMode.TiltShift: tiltDistance = Mathf.Clamp(tiltDistance * Mathf.Pow(1.12f, steps), tiltDistanceRange.x, tiltDistanceRange.y); break;
                 case ViewMode.ThirdPerson: thirdDistance = Mathf.Clamp(thirdDistance * Mathf.Pow(1.1f, steps), thirdDistanceRange.x, thirdDistanceRange.y); break;
-                case ViewMode.FirstPerson: fpsFov = Mathf.Clamp(fpsFov + steps * 4f, fpsFovRange.x, fpsFovRange.y); break;
+                case ViewMode.FirstPerson: case ViewMode.Hood: case ViewMode.Bumper: fpsFov = Mathf.Clamp(fpsFov + steps * 4f, fpsFovRange.x, fpsFovRange.y); break;
+                case ViewMode.TopDown: topSize = Mathf.Clamp(topSize * Mathf.Pow(1.12f, steps), topSizeRange.x, topSizeRange.y); break;
             }
         }
 
@@ -177,7 +229,8 @@ namespace MadMax.Game
             Vector3 focus = filteredTarget + Vector3.up * (player ? 1.0f : 0.8f) + velocity * 0.25f;
             smoothFocus = snapNext ? focus : Vector3.Lerp(smoothFocus, focus, 1f - Mathf.Exp(-6f * dt));
 
-            bool perspectiveFog = mode == ViewMode.ThirdPerson || mode == ViewMode.FirstPerson;
+            if (!vehicle && (mode == ViewMode.Hood || mode == ViewMode.Bumper)) mode = ViewMode.FirstPerson;
+            bool perspectiveFog = CrosshairView;
             float mistAmount = MadMax.World.Atmosphere.Fog;
             var sky = MadMax.World.DayNight.Tint(Color.Lerp(fogColor, new Color(0.7f, 0.7f, 0.68f), Mathf.Clamp01(mistAmount * 1.3f)));
             RenderSettings.fog = perspectiveFog || mistAmount > 0.02f;
@@ -193,7 +246,7 @@ namespace MadMax.Game
             else
             {
                 // top-down views: the focus sits at the camera distance; haze there = half the mist, thicker towards the top of the screen
-                float focusDepth = mode == ViewMode.Isometric ? 60f : tiltDistance;
+                float focusDepth = mode == ViewMode.TiltShift ? tiltDistance : 60f;
                 RenderSettings.fogStartDistance = focusDepth - 12f;
                 RenderSettings.fogEndDistance = focusDepth - 12f + 12f / Mathf.Max(0.02f, mistAmount * 0.5f);
             }
@@ -201,8 +254,8 @@ namespace MadMax.Game
             cam.backgroundColor = OccluderFade.Underground ? new Color(0.045f, 0.032f, 0.026f) : sky;   // earth around an underground cutaway
             if (fade)
             {
-                fade.worldCut = mode == ViewMode.Isometric || mode == ViewMode.TiltShift;
-                fade.cutMode = mode == ViewMode.FirstPerson ? 0 : mode == ViewMode.ThirdPerson ? 1 : 2;
+                fade.worldCut = TopDownView;
+                fade.cutMode = mode == ViewMode.ThirdPerson ? 1 : TopDownView ? 2 : 0;
             }
             pixel.postMaterial = mode == ViewMode.TiltShift ? tiltShiftMaterial : null;
             bool fps = mode == ViewMode.FirstPerson;
@@ -223,7 +276,7 @@ namespace MadMax.Game
                     cam.orthographic = true;
                     cam.orthographicSize = isoSize * (BinocularsTool.Looking ? 1.8f : 1f);     // binoculars: see further
                     cam.nearClipPlane = 0.3f; cam.farClipPlane = 300f;
-                    var r = Quaternion.Euler(player && player.Interior ? 68f : isoPitch, yaw, 0f);   // look down into interiors
+                    var r = Quaternion.Euler(player && player.Interior ? 68f : Mathf.Clamp(isoPitch + tilt, 12f, 85f), yaw, 0f);   // look down into interiors
                     ct.rotation = r;
                     var pos = smoothFocus - r * Vector3.forward * 60f;
                     ct.position = pos;
@@ -236,9 +289,33 @@ namespace MadMax.Game
                     cam.orthographic = false;
                     cam.fieldOfView = tiltFov;
                     cam.nearClipPlane = 1f; cam.farClipPlane = 600f;
-                    var r = Quaternion.Euler(player && player.Interior ? 70f : tiltPitch, yaw, 0f);
+                    var r = Quaternion.Euler(player && player.Interior ? 70f : Mathf.Clamp(tiltPitch + tilt, 20f, 85f), yaw, 0f);
                     ct.SetPositionAndRotation(smoothFocus - r * Vector3.forward * tiltDistance, r);
                     ViewYaw = yaw;
+                    break;
+                }
+                case ViewMode.TopDown:
+                {
+                    cam.orthographic = true;
+                    cam.orthographicSize = topSize * (BinocularsTool.Looking ? 1.8f : 1f);
+                    cam.nearClipPlane = 0.3f; cam.farClipPlane = 300f;
+                    var r = Quaternion.Euler(90f, yaw, 0f);
+                    ct.rotation = r;
+                    var pos = smoothFocus + Vector3.up * 60f;
+                    ct.position = pos;
+                    pixel.SetTruePosition(pos);
+                    ViewYaw = yaw;
+                    break;
+                }
+                case ViewMode.Hood:
+                case ViewMode.Bumper:
+                {
+                    cam.orthographic = false;
+                    cam.fieldOfView = BinocularsTool.Looking ? 12f : mode == ViewMode.Bumper ? Mathf.Max(fpsFov, 64f) : fpsFov;
+                    cam.nearClipPlane = 0.05f; cam.farClipPlane = Mathf.Max(Mathf.Lerp(fogEnd, 640f, MadMax.World.FarTerrain.Aerial) + 10f, 120f);
+                    var local = mode == ViewMode.Hood ? hoodLocal : bumperLocal;
+                    ct.SetPositionAndRotation(target.TransformPoint(local), target.rotation * Quaternion.Euler(lookPitch + (mode == ViewMode.Hood ? 3f : 0f), lookYaw, 0f));
+                    ViewYaw = ct.eulerAngles.y;
                     break;
                 }
                 case ViewMode.ThirdPerson:
@@ -288,7 +365,7 @@ namespace MadMax.Game
             lastCamPos = ct.position; lastCamRot = ct.rotation;
             if (shake > 0.001f)
             {
-                float a = shake * shake * (mode == ViewMode.Isometric ? isoSize * 0.05f : 0.25f);
+                float a = shake * shake * (mode == ViewMode.Isometric ? isoSize * 0.05f : mode == ViewMode.TopDown ? topSize * 0.03f : 0.25f);
                 ct.position += ct.rotation * new Vector3(Random.Range(-a, a), Random.Range(-a, a), 0f);
                 shake = Mathf.MoveTowards(shake, 0f, dt * 2.5f);
             }

@@ -22,6 +22,14 @@ namespace MadMax.Audio
         void Awake()
         {
             car = GetComponent<VehicleDriver>(); sys = GetComponent<VehicleSystems>(); chassis = GetComponent<VehicleChassis>();
+            if (sys) sys.CrankResult += caught =>
+            {
+                if (engine == null) return;
+                if (caught) Sfx.Play("engine_catch", transform.position, 0.8f, Random.Range(0.92f, 1.05f), 40f);
+                else Sfx.Play("sputter", transform.position, 0.7f, Random.Range(0.9f, 1.1f), 30f);
+                var g = MadMax.Game.WastelandGame.Instance;
+                if (!caught && g && g.Current == car) g.Toast("WON'T START (ENGINE " + Mathf.RoundToInt(sys.StartChance * 100f) + "%) - TRY AGAIN");
+            };
             if (chassis) chassis.Changed += Refit;
         }
 
@@ -59,11 +67,14 @@ namespace MadMax.Audio
             if (!near) { OnDisable(); return; }
             Fit();
 
-            float master = MadMax.Game.GameSettings.Current.sfxVolume;
+            float master = MadMax.Game.GameSettings.Current.sfxVolume * MadMax.Game.GameSettings.Current.vehicleVolume;
             var game = MadMax.Game.WastelandGame.Instance;
             bool inside = game && game.Current == car;
             var eng = car.Engine;
-            bool running = eng && (car.Occupied || car.throttleInput > 0.01f) && (!sys || sys.fuel > 0f);
+            var net = MadMax.Net.NetSession.Instance;
+            bool started = !sys || sys.Started || (net && net.Online && !net.Simulates(car));          // remote cars: assume running
+            bool running = eng && started && (car.Occupied || car.throttleInput > 0.01f) && (!sys || sys.fuel > 0f);
+            Sfx.Loop(this, "starter", sys && sys.Cranking && engine != null ? 0.7f : 0f, 1f, 30f);
             if (engine != null && eng)
             {
                 engine.maxRpm = eng.maxRpm; engine.idleRpm = eng.idleRpm;

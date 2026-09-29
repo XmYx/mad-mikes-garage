@@ -35,6 +35,9 @@ namespace MadMax.Audio
                 case "collapse": d = Rumble(rnd, 1.6f); break;
                 case "rotor": d = Chop(rnd); break;
                 case "beep": d = Horn(); break;
+                case "starter": d = Starter(rnd); break;
+                case "engine_catch": d = Catch(rnd); break;
+                case "sputter": d = Sputter(rnd); break;
                 default: return null;
             }
             var clip = AudioClip.Create("Synth_" + key, d.Length, 1, Rate, false);
@@ -235,6 +238,59 @@ namespace MadMax.Audio
                 for (int i = s0; i < n; i++) { float t = (i - s0) / (float)Rate; x[i] += Noise(r) * Mathf.Exp(-t / 0.045f); }
             }
             LowPass(x, 500f);
+            Normalize(x, 0.6f);
+            return x;
+        }
+
+        /// <summary>The starter motor: a whining gear with the engine's compression strokes dragging it (loop).</summary>
+        static float[] Starter(System.Random r)
+        {
+            int n = (int)(0.6f * Rate);
+            var x = new float[n];
+            float ph = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float chug = 0.55f + 0.45f * Mathf.Sin(2f * Mathf.PI * 6.67f * t);                     // four compressions in 0.6 s
+                ph += (180f + 60f * chug) / Rate;
+                float whine = (ph % 1f) * 2f - 1f;
+                x[i] = whine * 0.45f * chug + Noise(r) * 0.25f * chug;
+            }
+            LowPass(x, 1800f);
+            Normalize(x, 0.55f);
+            return x;
+        }
+
+        /// <summary>It caught: a few ragged firing pulses rising into a short revving roar.</summary>
+        static float[] Catch(System.Random r)
+        {
+            int n = (int)(1.1f * Rate);
+            var x = new float[n];
+            float ph = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float f = Mathf.Lerp(12f, 55f, Mathf.Clamp01(t / 0.35f)) * (t > 0.35f ? Mathf.Lerp(1f, 0.6f, (t - 0.35f) / 0.75f) : 1f);   // rev up, settle
+                ph += f / Rate;
+                float pulse = Mathf.Pow(Mathf.Clamp01(Mathf.Sin(2f * Mathf.PI * ph)), 6f);
+                x[i] = (pulse * 1.2f + Noise(r) * 0.2f * pulse) * Mathf.Clamp01((1.1f - t) / 0.3f);
+            }
+            LowPass(x, 900f);
+            Normalize(x, 0.8f);
+            return x;
+        }
+
+        /// <summary>It didn't: two or three coughs and the starter winding down.</summary>
+        static float[] Sputter(System.Random r)
+        {
+            int n = (int)(0.8f * Rate);
+            var x = new float[n];
+            foreach (float at in new[] { 0.05f, 0.25f, 0.5f })
+            {
+                int s0 = (int)(at * Rate);
+                for (int i = s0; i < n; i++) { float t = (i - s0) / (float)Rate; x[i] += (Noise(r) * 0.8f + Mathf.Sin(2f * Mathf.PI * 70f * t)) * Mathf.Exp(-t / 0.05f); }
+            }
+            LowPass(x, 700f);
             Normalize(x, 0.6f);
             return x;
         }

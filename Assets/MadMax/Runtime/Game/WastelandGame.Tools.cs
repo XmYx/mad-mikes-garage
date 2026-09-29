@@ -131,7 +131,7 @@ namespace MadMax.Game
             AimScreen = new Vector2(-1f, -1f);
             if (!Aiming || !cameraRig) return;
             var cam = cameraRig.pixel.GetComponent<Camera>();
-            bool topDown = cameraRig.mode == ViewMode.Isometric || cameraRig.mode == ViewMode.TiltShift;
+            bool topDown = cameraRig.TopDownView;
             Vector2 view = ForceAim ? (topDown ? ForceAimViewport : new Vector2(0.5f, 0.5f))
                 : topDown && mouse != null ? new Vector2(mouse.position.ReadValue().x / Screen.width, mouse.position.ReadValue().y / Screen.height) : new Vector2(0.5f, 0.5f);
             // top-down with a pad: the right stick points the aim around the character (camera-relative)
@@ -160,7 +160,7 @@ namespace MadMax.Game
         public Vector3 AimDirection(PlayerCharacter user, Vector3 origin, float range)
         {
             if (Aiming) return (AimPoint - origin).normalized;
-            if (cameraRig && (cameraRig.mode == ViewMode.FirstPerson || cameraRig.mode == ViewMode.ThirdPerson))
+            if (cameraRig && cameraRig.CrosshairView)
             {
                 var cam = cameraRig.pixel.transform;
                 return Physics.Raycast(cam.position, cam.forward, out var ch, range, ~0, QueryTriggerInteraction.Ignore) ? (ch.point - origin).normalized : cam.forward;

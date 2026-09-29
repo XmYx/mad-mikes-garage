@@ -346,7 +346,11 @@ namespace MadMax.Game
                     }
                     else if (settingsTab == 3)
                     {
+                        Opt("MASTER VOLUME", () => Mathf.RoundToInt(s.masterVolume * 100) + "%", d => { s.masterVolume = Mathf.Clamp01(Mathf.Round((s.masterVolume + d * 0.1f) * 10f) / 10f); AudioListener.volume = s.masterVolume; });
                         Opt("EFFECTS VOLUME", () => Mathf.RoundToInt(s.sfxVolume * 100) + "%", d => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("VEHICLE VOLUME", () => Mathf.RoundToInt(s.vehicleVolume * 100) + "%", d => s.vehicleVolume = Mathf.Clamp01(Mathf.Round((s.vehicleVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("WEAPON VOLUME", () => Mathf.RoundToInt(s.weaponVolume * 100) + "%", d => s.weaponVolume = Mathf.Clamp01(Mathf.Round((s.weaponVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("VOICE VOLUME", () => Mathf.RoundToInt(s.voiceVolume * 100) + "%", d => s.voiceVolume = Mathf.Clamp01(Mathf.Round((s.voiceVolume + d * 0.1f) * 10f) / 10f));
                         Opt("AMBIENT VOLUME", () => Mathf.RoundToInt(s.ambientVolume * 100) + "%", d => s.ambientVolume = Mathf.Clamp01(Mathf.Round((s.ambientVolume + d * 0.1f) * 10f) / 10f));
                         Opt("INTERFACE VOLUME", () => Mathf.RoundToInt(s.uiVolume * 100) + "%", d => s.uiVolume = Mathf.Clamp01(Mathf.Round((s.uiVolume + d * 0.1f) * 10f) / 10f));
                         Opt("RADIO VOLUME", () => Mathf.RoundToInt(s.radioVolume * 100) + "%", d => s.radioVolume = Mathf.Clamp01(Mathf.Round((s.radioVolume + d * 0.1f) * 10f) / 10f));
@@ -450,7 +454,8 @@ namespace MadMax.Game
                     R("FUEL USE", () => "X" + r.fuelUse.ToString("0.0"), d => r.fuelUse = Mathf.Clamp(r.fuelUse + d * 0.25f, 0.25f, 3f));
                     R("SKILL LEARNING", () => "X" + r.learning.ToString("0.0"), d => r.learning = Mathf.Clamp(r.learning + d * 0.25f, 0.25f, 4f));
                     R("DAMAGE TAKEN", () => "X" + r.damage.ToString("0.0"), d => r.damage = Mathf.Clamp(r.damage + d * 0.25f, 0.25f, 3f));
-                    R("WRECKS", () => r.wrecks.ToString(), d => r.wrecks = Mathf.Clamp(r.wrecks + d * 6, 0, 120));
+                    R("WRECKAGE", () => GameRules.WreckDensity(r.wrecks) + " (" + r.wrecks + ")", d => r.wrecks = Mathf.Clamp(r.wrecks + d * 6, 0, 120));
+                    R("LOOT", () => GameRules.LootNames[r.loot], d => r.loot = Mathf.Clamp(r.loot + d, 0, GameRules.LootNames.Length - 1));
                     R("WEATHER", () => GameRules.WeatherNames[r.weather], d => r.weather = Mathf.Clamp(r.weather + d, 0, 3));
                     R("SEASON", () => GameRules.SeasonNames[r.season], d => r.season = (r.season + d + 4) % 4);
                     R("SEASONS TURN", () => GameRules.SeasonLengthNames[r.seasonLength], d => r.seasonLength = (r.seasonLength + d + GameRules.SeasonLengths.Length) % GameRules.SeasonLengths.Length);
@@ -461,7 +466,6 @@ namespace MadMax.Game
                     R("DAY LENGTH", () => GameRules.DayLengthNames[r.dayLength], d => r.dayLength = Mathf.Clamp(r.dayLength + d, 0, GameRules.DayLengths.Length - 1));
                     R("SURVIVAL NEEDS", () => r.survival ? "ON" : "OFF", d => r.survival = !r.survival);
                     R("HUNGER RATE", () => "X" + r.hungerRate.ToString("0.00"), d => r.hungerRate = Mathf.Clamp(r.hungerRate + d * 0.25f, 0.25f, 3f));
-                    R("LOOT", () => GameRules.LootNames[r.loot], d => r.loot = Mathf.Clamp(r.loot + d, 0, 2));
                     Add("CHARACTER >", () => Open(Page.Creation));
                     Add(hostNew ? "START AND HOST" : "START", StartGame);
                     Add("BACK", () => Open(Page.Main));

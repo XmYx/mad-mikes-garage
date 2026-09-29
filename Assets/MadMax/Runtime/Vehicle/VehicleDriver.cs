@@ -498,7 +498,8 @@ namespace MadMax.Vehicles
                 float frac = Mathf.Clamp01(depth / 1.5f);
                 rb.AddForceAtPosition(Vector3.up * frac * rb.mass * 9.81f * 0.85f / wheels.Count, p);
                 var v = rb.GetPointVelocity(p);
-                rb.AddForceAtPosition(-v * frac * rb.mass * 0.7f / wheels.Count, p);
+                var flow = terrain.World.RiverFlow(p.x, p.z);                                 // a river carries what floats
+                rb.AddForceAtPosition(-(v - new Vector3(flow.x, 0f, flow.y)) * frac * rb.mass * 0.7f / wheels.Count, p);
                 sub += frac;
                 if (v.magnitude > 1.5f && Random.value < frac * v.magnitude * 0.08f)
                     MadMax.World.Fx.Smoke(new Vector3(p.x, lvl + 0.05f, p.z), Vector3.up * Random.Range(1.5f, 3f) + v * 0.2f + Random.insideUnitSphere, Random.Range(0.3f, 0.7f), new Color(0.8f, 0.88f, 0.92f, 0.7f), 0.7f);

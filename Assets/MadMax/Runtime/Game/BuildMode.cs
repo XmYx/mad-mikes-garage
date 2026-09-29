@@ -252,7 +252,7 @@ namespace MadMax.Game
             best = default;
             var cam = rig.pixel.GetComponent<Camera>();
             Ray ray;
-            if (rig.mode == ViewMode.FirstPerson || rig.mode == ViewMode.ThirdPerson) ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            if (rig.CrosshairView) ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
             else
             {
                 var m = Mouse.current != null ? Mouse.current.position.ReadValue() : new Vector2(Screen.width / 2f, Screen.height / 2f);

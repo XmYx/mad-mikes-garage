@@ -211,7 +211,7 @@ namespace MadMax.Game
 
             DrawMinimap(canvas.w - 70, 6, 64);
             DrawWeather(canvas.w - 70, 74);
-            if (fps || rig.mode == ViewMode.ThirdPerson) DrawCompass();
+            if (rig.CrosshairView) DrawCompass();
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.Online) canvas.Text(canvas.w - 70, 94, $"{net.Status} {net.PlayerCount}P", Dim);
             string where = car ? WastelandGame.Name(car) : game.Player.Interior ? "IN " + WastelandGame.Name(game.Player.Interior) : "ON FOOT";
@@ -233,11 +233,12 @@ namespace MadMax.Game
             if (starter != null && !(game.Menus && game.Menus.IsOpen))
             {
                 starter = Controls.Localize(starter);
-                canvas.Text((canvas.w - PixelCanvas.TextWidth(starter)) / 2, fps || rig.mode == ViewMode.ThirdPerson ? 16 : 4, starter, new Color32(235, 200, 120, 255));
+                canvas.Text((canvas.w - PixelCanvas.TextWidth(starter)) / 2, rig.CrosshairView ? 16 : 4, starter, new Color32(235, 200, 120, 255));
             }
             DrawResources(6, 22);
             if (!car && !(game.Build && game.Build.Active) && !(game.Menus && game.Menus.IsOpen)) DrawToolbar();
             if (!car) DrawVitals(6, canvas.h - 16);
+            else DrawVitalsCompact(6, fps ? canvas.h - 12 : car.GetComponent<MadMax.Vehicles.FlightModel>() ? canvas.h - 80 : canvas.h - 64);
             DrawTemperatureVignette();
             if (game.LearningId != null) DrawLearning();
             if (game.Build && game.Build.RadialOpen) DrawRadial();
@@ -674,6 +675,41 @@ namespace MadMax.Game
             if (horse) Bar(x, top - 9, 48, horse.stamina / 100f, horse.Winded ? Red : new Color32(200, 160, 90, 255), "HRS");
         }
 
+        /// <summary>The vitals while driving: one row of icons, each with a small upright gauge, above the vehicle panel.</summary>
+        void DrawVitalsCompact(int x, int y)
+        {
+            var st = game.Stats;
+            bool needs = game.Rules.survival;
+            int n = needs ? 5 : 2;
+            canvas.Rect(x, y - 1, n * 14 + 2, 11, new Color32(24, 14, 9, 190));
+            void Cell(string[] icon, float t, Color32 col, bool low)
+            {
+                bool blink = low && (Time.unscaledTime * 2.5f) % 1f < 0.5f;
+                Icon(x + 1, y + 1, icon);
+                if (blink) canvas.Rect(x, y, 9, 9, new Color32(255, 60, 40, 80));
+                canvas.Rect(x + 9, y + 1, 3, 7, new Color32(8, 5, 3, 255));
+                int h = Mathf.RoundToInt(7 * Mathf.Clamp01(t));
+                if (h > 0) canvas.Rect(x + 10, y + 8 - h, 1, h, low ? Red : col);
+                x += 14;
+            }
+            Cell(HeartIcon, st.health / Mathf.Max(1f, st.MaxHealth), new Color32(214, 70, 70, 255), st.health < st.MaxHealth * 0.25f);
+            Cell(BoltIcon, st.stamina / Mathf.Max(1f, st.MaxStamina), new Color32(120, 200, 100, 255), game.Vitals && game.Vitals.Exhausted);
+            if (needs)
+            {
+                Cell(AppleIcon, st.hunger / 100f, new Color32(220, 150, 70, 255), st.hunger < 20f);
+                Cell(DropIcon, st.thirst / 100f, new Color32(90, 160, 235, 255), st.thirst < 20f);
+                Cell(SoapIcon, st.hygiene / 100f, new Color32(236, 176, 196, 255), st.hygiene < 25f);
+            }
+            x += 4;
+            if (st.bodyTemp < 35.5f || st.bodyTemp > 38.5f)
+            {
+                Icon(x, y + 1, ThermoIcon);
+                canvas.Text(x + 7, y + 2, GameSettings.Current.metric ? st.bodyTemp.ToString("0.0") + "C" : (st.bodyTemp * 1.8f + 32f).ToString("0.0") + "F", st.bodyTemp < 35.5f ? new Color32(120, 170, 255, 255) : Red);
+                x += 34;
+            }
+            foreach (var inj in st.injuries) if (inj.Bleeding) { if ((Time.time * 2f) % 1f > 0.4f) canvas.Text(x, y + 2, "BLEEDING", Red); break; }
+        }
+
         void Bar(int x, int y, int w, float t, Color32 col, string label)
         {
             canvas.Text(x, y, label, Dim);
@@ -764,7 +800,7 @@ namespace MadMax.Game
             canvas.Text(cx - PixelCanvas.TextWidth(hint) / 2, cy - r - 20, hint, Dim);
         }
 
-        static string ViewName(ViewMode m) => m == ViewMode.Isometric ? "ISO" : m == ViewMode.TiltShift ? "TILT" : m == ViewMode.ThirdPerson ? "3RD" : "1ST";
+        static string ViewName(ViewMode m) => m == ViewMode.Isometric ? "ISO" : m == ViewMode.TiltShift ? "TILT" : m == ViewMode.ThirdPerson ? "3RD" : m == ViewMode.FirstPerson ? "1ST" : m == ViewMode.TopDown ? "TOP" : m == ViewMode.Hood ? "HOOD" : "BUMPER";
 
         void DrawVehiclePanel(VehicleDriver car, int x, int y)
         {
@@ -1103,7 +1139,7 @@ namespace MadMax.Game
             }
             if (Time.unscaledTime - rx.ChangedAt > 6f) return;
             string line = rx.StationLabel() + (string.IsNullOrEmpty(rx.NowPlaying) ? "" : "  -  " + rx.NowPlaying);
-            int w = PixelCanvas.TextWidth(line) + 10, x = (canvas.w - w) / 2, y = rig.mode == ViewMode.FirstPerson || rig.mode == ViewMode.ThirdPerson ? 15 : 4;
+            int w = PixelCanvas.TextWidth(line) + 10, x = (canvas.w - w) / 2, y = rig.CrosshairView ? 15 : 4;
             canvas.Panel(x, y, w, 12);
             canvas.Text(x + 5, y + 4, line, Amber);
         }

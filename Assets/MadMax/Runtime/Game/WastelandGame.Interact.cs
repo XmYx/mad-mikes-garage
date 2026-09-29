@@ -58,6 +58,7 @@ namespace MadMax.Game
             var car = Current;
             if (car && !car.GetComponent<BikeBalance>()) MadMax.Audio.Sfx.Play("car_door", car.transform.position, 0.6f, 0.95f, 25f, 0.3f);
             if (!car) return;
+            if (car.TryGetComponent<VehicleSystems>(out var ign)) ign.Stop();                 // keys out
             MadMax.Net.NetSession.Instance?.RequestVehicle(car, false);
             Current = null;
             car.Occupied = false;
@@ -139,7 +140,7 @@ namespace MadMax.Game
             var fallback = Current ? Current.transform.position + Current.transform.forward * 30f : Vector3.zero;
             if (!cameraRig || !cameraRig.pixel) return fallback;
             var cam = cameraRig.pixel.GetComponent<Camera>();
-            bool topDown = cameraRig.mode == ViewMode.Isometric || cameraRig.mode == ViewMode.TiltShift;
+            bool topDown = cameraRig.TopDownView;
             Ray ray;
             if (!topDown) ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
             else

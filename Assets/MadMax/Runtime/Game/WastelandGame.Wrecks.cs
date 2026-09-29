@@ -207,8 +207,9 @@ namespace MadMax.Game
                 var part = s.Current;
                 if (!part) continue;
                 double roll = rnd.NextDouble();
-                if (roll < 0.28) { var p = s.Detach(false); if (p) Destroy(p.gameObject); }        // stripped
-                else if (roll < 0.42)
+                float strip = Rules.StripChance;                                                    // LOOT: how picked-over wrecks are
+                if (roll < strip) { var p = s.Detach(false); if (p) Destroy(p.gameObject); }        // stripped
+                else if (roll < strip + 0.14)
                 {
                     var p = s.Detach(true);                                                          // lying nearby
                     if (!p) continue;

@@ -47,6 +47,7 @@ namespace MadMax.Game
         public int autosaveMinutes = 10; // 0 off
         // audio
         public float ambientVolume = 1f;
+        public float masterVolume = 1f, vehicleVolume = 1f, weaponVolume = 1f, voiceVolume = 1f;   // audio channels (user additions)
         public float uiVolume = 1f;
         // handling assists
         public bool simFlight;           // raw flight model: no rate commands, auto-level, bank or AoA limits
@@ -116,6 +117,7 @@ namespace MadMax.Game
 
         public void Apply(WastelandGame game)
         {
+            AudioListener.volume = Mathf.Clamp01(masterVolume);
             var rig = game ? game.cameraRig : null;
             if (rig && rig.pixel)
             {

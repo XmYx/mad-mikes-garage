@@ -912,6 +912,15 @@ namespace MadMax.World
             return col;
         }
 
+        /// <summary>A puddle at this ground point for the current wetness (low spots of a fixed noise fill first).</summary>
+        static bool Puddle(float gx, float gz)
+        {
+            float w = Weather.Wetness;
+            if (w < 0.2f || Weather.Snow > 0.4f) return false;
+            float pn = Mathf.PerlinNoise(gx * 0.45f + 13f, gz * 0.45f + 7f) * 0.8f + Mathf.PerlinNoise(gx * 1.3f + 5f, gz * 1.3f + 29f) * 0.2f;
+            return pn < w * 0.42f - 0.06f;
+        }
+
         Color32 CellColor(Chunk ch, int i, int j)
         {
             int k = j * V + i;
@@ -994,13 +1003,20 @@ namespace MadMax.World
                 var baseC = asphalt ? Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2] : Concrete[hs < 0.3f ? 1 : hs < 0.9f ? 2 : 3];
                 if (ch.compact[k] == 0 && set >= 1f && hs > 0.8f) baseC = asphalt ? Asphalt[3] : Concrete[0];   // rough, unrolled finish
                 col = set < 1f ? Color32.Lerp(asphalt ? C(0x1a1614) : Concrete[0], baseC, set * 0.7f) : baseC;
+                if (set >= 1f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, 0.3f);
                 if (Weather.Snow > 0.3f && set >= 1f) col = Color32.Lerp(col, SnowCol, Mathf.Round(Weather.Snow * 2f) / 3f);
                 return col;
             }
             var s = MakeSurface(ch, k);
             float wq = Mathf.Round(s.wet * 4f) / 4f;
-            if (paved && road > 0.5f) col = Color32.Lerp(col, Crack, wq * 0.35f);
+            if (paved && road > 0.5f)
+            {
+                col = Color32.Lerp(col, Crack, wq * 0.35f);
+                if (Weather.Wetness > 0.4f && hs > 0.93f) col = Color32.Lerp(col, WaterHi, 0.45f);           // wet asphalt catches the light
+            }
             else col = Color32.Lerp(col, hs > 0.5f ? Mud : MudLight, wq * 0.7f);
+            // puddles on roads and tracks: they spread in the rain and shrink back as the ground dries
+            if (road > 0.4f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, paved ? 0.25f : 0.1f);
             if (s.wet > 0.85f && (d < -0.03f || ch.wet[k] > 0.8f) && Weather.Wetness > 0.25f && road < 0.5f)
                 col = hs > 0.88f ? WaterHi : Water;
             if (d < -0.015f) col = Color32.Lerp(col, Mud, Mathf.Clamp(-d * 3f, 0.12f, 0.45f));

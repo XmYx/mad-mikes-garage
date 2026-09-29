@@ -15,7 +15,7 @@ namespace MadMax.Game
         {
             Forward, Back, Left, Right, Jump, Run, Crouch,
             Use, Second, Drop, Enter, Hitch, Service, Siphon, Build, Armour, Reload,
-            Inventory, Skills, Health, Map, Help, View, CamLeft, CamRight, ZoomIn, ZoomOut,
+            Inventory, Skills, Health, Map, Help, View, CamLeft, CamRight, ZoomIn, ZoomOut, CamTiltUp, CamTiltDown,
             ShiftUp, ShiftDown, FourWheel, DiffLock, Lights, Horn, Nitrous, Recover, Dropper, Smoke, Climate,
             RadioPower, RadioPrev, RadioNext, VolumeDown, VolumeUp,
             BuildRotate, BuildDismantle, BuildUpgrade, BuildRepair, BuildPrevCategory, BuildNextCategory, BuildPrevPiece, BuildNextPiece,
@@ -28,7 +28,7 @@ namespace MadMax.Game
         {
             Key.W, Key.S, Key.A, Key.D, Key.Space, Key.LeftShift, Key.LeftCtrl,
             Key.E, Key.T, Key.Q, Key.F, Key.J, Key.G, Key.K, Key.B, Key.U, Key.R,
-            Key.I, Key.P, Key.O, Key.M, Key.H, Key.V, Key.Z, Key.C, Key.Equals, Key.Minus,
+            Key.I, Key.P, Key.O, Key.M, Key.H, Key.V, Key.Z, Key.C, Key.Equals, Key.Minus, Key.PageUp, Key.PageDown,
             Key.E, Key.Q, Key.X, Key.L, Key.N, Key.Y, Key.LeftCtrl, Key.T, Key.B, Key.U, Key.K,
             Key.Slash, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.Y, Key.X, Key.U, Key.R, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
@@ -40,7 +40,7 @@ namespace MadMax.Game
         {
             "FORWARD / THROTTLE", "BACK / BRAKE", "LEFT", "RIGHT", "JUMP / HANDBRAKE / PULL UP", "RUN / WHEELIE / GALLOP", "CROUCH / PUSH DOWN",
             "USE / TAKE / TALK", "SECOND ACTION / TRADE", "DROP PART", "ENTER / EXIT / RIDE", "HITCH TRAILER", "SERVICE VEHICLE", "SIPHON FUEL", "BUILD MODE", "WELD ARMOUR", "RELOAD",
-            "INVENTORY", "SKILLS", "HEALTH", "MAP & JOURNAL", "HELP SHEET", "CAMERA VIEW", "CAMERA LEFT", "CAMERA RIGHT", "ZOOM IN", "ZOOM OUT",
+            "INVENTORY", "SKILLS", "HEALTH", "MAP & JOURNAL", "HELP SHEET", "CAMERA VIEW", "CAMERA LEFT", "CAMERA RIGHT", "ZOOM IN", "ZOOM OUT", "CAMERA TILT UP", "CAMERA TILT DOWN",
             "SHIFT UP", "SHIFT DOWN", "4WD", "DIFF LOCK", "LIGHTS", "HORN", "NITROUS", "RECOVER / PARLEY", "REAR DROPPER", "SMOKE SCREEN", "CLIMATE",
             "RADIO POWER", "RADIO TUNE DOWN", "RADIO TUNE UP", "RADIO VOLUME DOWN", "RADIO VOLUME UP",
             "BUILD: ROTATE", "BUILD: DISMANTLE", "BUILD: UPGRADE", "BUILD: REPAIR", "BUILD: PREV CATEGORY", "BUILD: NEXT CATEGORY", "BUILD: PREV PIECE", "BUILD: NEXT PIECE",

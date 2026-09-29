@@ -313,7 +313,8 @@ namespace MadMax.Game
                 airborne = false; fallSpeed = 0f; jump = false;
                 if (horizontal.sqrMagnitude > 0.1f && Random.value < dt * 4f)
                     MadMax.World.Fx.Smoke(new Vector3(transform.position.x, waterLvl + 0.05f, transform.position.z), Vector3.up * 0.8f + Random.insideUnitSphere * 0.4f, 0.35f, new Color(0.8f, 0.88f, 0.92f, 0.6f), 0.6f);
-                cc.Move((horizontal + Vector3.up * vy) * dt);
+                var flow = terrain ? terrain.World.RiverFlow(transform.position.x, transform.position.z) : Vector2.zero;   // swept downstream
+                cc.Move((horizontal + new Vector3(flow.x, 0f, flow.y) * 0.85f + Vector3.up * vy) * dt);
                 Velocity = cc.velocity;
                 Face(dir, dt, Quaternion.Euler(0, viewYaw, 0));
                 Animate(dt, new Vector2(Velocity.x, Velocity.z).magnitude * 0.6f, false, 0f);

@@ -62,9 +62,12 @@ namespace MadMax.World
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             var shape = rain.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
-            shape.scale = new Vector3(40f, 0.1f, 40f);
+            shape.scale = new Vector3(40f, 40f, 0.1f);                // a thin horizontal sheet (local Z = down)
             go.transform.rotation = Quaternion.Euler(90f, 0, 0);   // emit downwards
             shape.rotation = Vector3.zero;
+            var vel = rain.velocityOverLifetime;                      // wind (and the 2.5D slant) blows the drops sideways
+            vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(0f); vel.y = new ParticleSystem.MinMaxCurve(0f); vel.z = new ParticleSystem.MinMaxCurve(0f);
             var em = rain.emission; em.rateOverTime = 0;
             var r = go.GetComponent<ParticleSystemRenderer>();
             var sh = Fx.RuntimeShader("ParticlesUnlit", "Universal Render Pipeline/Particles/Unlit");
@@ -84,18 +87,71 @@ namespace MadMax.World
             var noise = rain.noise;
             if (snow)
             {
-                main.startLifetime = 7f; main.startSpeed = 2.2f; main.startSize = 0.08f;
+                main.startLifetime = FallHeight(true) / 2.2f + 1f; main.startSpeed = 2.2f; main.startSize = 0.08f;
                 main.startColor = new Color(1f, 1f, 1f, 0.9f);
                 r.renderMode = ParticleSystemRenderMode.Billboard;
                 noise.enabled = true; noise.strength = 0.6f; noise.frequency = 0.3f;
             }
             else
             {
-                main.startLifetime = 1.2f; main.startSpeed = 22f; main.startSize = 0.05f;
+                main.startLifetime = FallHeight(false) / 22f + 0.15f; main.startSpeed = 22f; main.startSize = 0.05f;
                 main.startColor = new Color(0.85f, 0.8f, 0.78f, 0.55f);
-                r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 4f;
+                r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 2f; r.velocityScale = 0.018f;   // streaks along the fall
                 noise.enabled = false;
             }
+        }
+
+        /// <summary>Height of the precipitation layer above the ground under the view (m).</summary>
+        static float FallHeight(bool snow) => snow ? 11f : 16f;
+
+        static readonly Vector3[] viewCorners = { new Vector3(0f, 0f), new Vector3(1f, 0f), new Vector3(0f, 1f), new Vector3(1f, 1f), new Vector3(0.5f, 0.5f), new Vector3(0.5f, 0f), new Vector3(0.5f, 1f) };
+
+        /// <summary>Fits the emitting sheet over everything the camera can see between the ground and the top of the
+        /// layer: every view-corner ray is cut at the ground and at the layer top (perspective rays stop at the fog), in
+        /// a frame turned with the camera, so iso, tilt-shift, top-down and the perspective views are all filled.</summary>
+        void CoverView(Camera cam, bool snowing)
+        {
+            var t = DeformableTerrain.Instance;
+            var ct = cam.transform;
+            Vector3 o = ct.position;
+            float gy = t ? t.Height(o.x, o.z) : 0f;
+            var centreRay = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            if (centreRay.direction.y < -0.05f) { float d = (gy - o.y) / centreRay.direction.y; if (d > 0f && d < 400f) { var g = centreRay.GetPoint(d); gy = t ? t.Height(g.x, g.z) : gy; } }
+            float h = FallHeight(snowing), top = gy + h;
+            float reach = cam.orthographic ? 400f : Mathf.Clamp(RenderSettings.fog ? RenderSettings.fogEndDistance : 80f, 30f, 90f);
+            var q = Quaternion.Euler(0f, ct.eulerAngles.y, 0f); var inv = Quaternion.Inverse(q);
+            Vector2 mn = new Vector2(float.MaxValue, float.MaxValue), mx = new Vector2(float.MinValue, float.MinValue);
+            void Add(Vector3 p) { var l = inv * (p - o); mn = Vector2.Min(mn, new Vector2(l.x, l.z)); mx = Vector2.Max(mx, new Vector2(l.x, l.z)); }
+            if (!cam.orthographic) Add(o);
+            foreach (var v in viewCorners)
+            {
+                var ray = cam.ViewportPointToRay(v);
+                foreach (float plane in new[] { gy, top })
+                {
+                    float d = Mathf.Abs(ray.direction.y) > 1e-3f ? (plane - ray.origin.y) / ray.direction.y : -1f;
+                    Add(ray.GetPoint(d > 0f ? Mathf.Min(d, reach) : cam.orthographic ? 0f : reach));
+                }
+            }
+            mn -= Vector2.one * 3f; mx += Vector2.one * 3f;
+            var size = Vector2.Min(mx - mn, new Vector2(220f, 220f));
+            var mid = (mn + mx) * 0.5f;
+            var centre = o + q * new Vector3(mid.x, 0f, mid.y);
+            rain.transform.SetPositionAndRotation(new Vector3(centre.x, top, centre.z), q * Quaternion.Euler(90f, 0f, 0f));
+            var shape = rain.shape;
+            shape.scale = new Vector3(size.x, size.y, 0.1f);
+            // density per square metre; very large views thin out (far drops are below a pixel anyway)
+            float area = size.x * size.y;
+            float perM2 = (snowing ? 0.55f : 1.5f) * Mathf.Clamp(3000f / Mathf.Max(1f, area), 0.35f, 1f);
+            var em = rain.emission;
+            em.rateOverTime = Raining && !MadMax.Game.OccluderFade.Underground ? perM2 * area : 0f;
+            var main = rain.main;
+            main.maxParticles = Mathf.Clamp(Mathf.RoundToInt(perM2 * area * main.startLifetime.constant * 1.2f), 2000, 40000);
+            // wind slant; in the 2.5D views the rain also leans across the screen so it reads as diagonal lines
+            var rig = MadMax.Game.WastelandGame.Instance ? MadMax.Game.WastelandGame.Instance.cameraRig : null;
+            bool flat = rig && rig.TopDownView;
+            var side = Fx.Wind * (snowing ? 0.9f : 0.6f) + (flat ? ct.right * (snowing ? 1.2f : 9f) : Vector3.zero);
+            var vel = rain.velocityOverLifetime;
+            vel.x = new ParticleSystem.MinMaxCurve(side.x); vel.y = new ParticleSystem.MinMaxCurve(0f); vel.z = new ParticleSystem.MinMaxCurve(side.z);
         }
 
         public static void Configure(int frequency, int season, bool snow, int daysPerSeason = 4)
@@ -159,6 +215,7 @@ namespace MadMax.World
             {
                 float target = Raining ? 1f : 0f;
                 float rate = Raining ? 1f / soakSeconds : 1f / drySeconds;
+                if (!Raining) rate *= Mathf.Lerp(0.3f, 1.6f, DayNight.SunFactor) * Mathf.Clamp(Temperature / 22f, 0.4f, 1.6f);   // the sun dries it out, nights keep the puddles
                 if (Temperature < 0f && !Raining) rate *= 0.1f;                          // frozen ground stays icy
                 Wetness = Mathf.MoveTowards(Wetness, target, rate * dt);
                 if (Temperature > 0.5f && Snow > 0f)
@@ -171,26 +228,9 @@ namespace MadMax.World
             if (rain)
             {
                 if (snowing != snowParticles) SetParticleMode(snowing);
-                var em = rain.emission;
-                // cover what the camera sees: centre on the view's ground point, size and rate follow the zoom
-                float span = 40f;
                 var cam = follow ? follow.GetComponent<Camera>() : null;
-                Vector3 centre = follow ? follow.position + follow.forward * 30f : Vector3.zero;
-                if (cam)
-                {
-                    var t = DeformableTerrain.Instance;
-                    float gy = t ? t.Height(follow.position.x, follow.position.z) : 0f;
-                    var ray = new Ray(follow.position, follow.forward);
-                    if (Mathf.Abs(ray.direction.y) > 0.05f) { float d = (gy - ray.origin.y) / ray.direction.y; if (d > 0f && d < 400f) centre = ray.GetPoint(d); }
-                    span = cam.orthographic ? Mathf.Max(40f, cam.orthographicSize * 2.6f * cam.aspect) : Mathf.Clamp(Vector3.Distance(follow.position, centre) * 1.2f, 40f, 160f);
-                }
-                var shape = rain.shape;
-                shape.scale = new Vector3(span, 0.1f, span);
-                float area = span * span / 1600f;
-                em.rateOverTime = Raining && !MadMax.Game.OccluderFade.Underground ? (snowing ? 900f : 2500f) * area : 0f;
-                var main = rain.main;
-                main.maxParticles = Mathf.Clamp(Mathf.RoundToInt(6000 * area), 6000, 40000);
-                rain.transform.position = new Vector3(centre.x, centre.y + 14f, centre.z);
+                if (cam) CoverView(cam, snowing);
+                else { var em = rain.emission; em.rateOverTime = 0f; }
             }
             if (sun) sun.intensity = DayNight.SunFactor * Mathf.Lerp(sunBase, sunBase * 0.55f, Raining ? Mathf.Min(1, Wetness * 3 + (snowing ? 0.6f : 0f)) : Wetness * 0.5f);
         }

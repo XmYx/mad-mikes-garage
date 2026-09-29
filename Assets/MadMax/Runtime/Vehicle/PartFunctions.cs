@@ -36,6 +36,13 @@ namespace MadMax.Vehicles
                     go.AddComponent<FuelFeed>();
                     break;
                 }
+                case "cargo_wind_turbine":
+                {
+                    Node(p, UtilityKind.Power, new Vector3(0f, 0.4f, 0f));
+                    var wm = Use(go.AddComponent<Windmill>());
+                    wm.rated = 500f; wm.height = 3f; wm.rotor = go.transform.Find("rotor");
+                    break;
+                }
                 case "lights_bar": case "lights_search": go.AddComponent<PartLight>(); break;
                 case "lights_emergency": go.AddComponent<EmergencyLights>(); break;
                 case "snorkel": go.AddComponent<Snorkel>(); break;

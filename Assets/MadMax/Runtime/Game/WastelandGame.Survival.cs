@@ -352,7 +352,7 @@ namespace MadMax.Game
         /// <summary>Built piece under the crosshair (first / third person) or nearest in front of the player.</summary>
         Placeable PieceInFront(float reach)
         {
-            if (cameraRig && cameraRig.pixel && (cameraRig.mode == ViewMode.FirstPerson || cameraRig.mode == ViewMode.ThirdPerson))
+            if (cameraRig && cameraRig.pixel && cameraRig.CrosshairView)
             {
                 var cam = cameraRig.pixel.transform;
                 if (Physics.Raycast(cam.position, cam.forward, out var hit, reach + 4f, ~0, QueryTriggerInteraction.Ignore))

@@ -11,7 +11,7 @@ namespace MadMax.Vehicles
     {
         None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
         CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384,
-        ServiceDue = 32768, Clogged = 65536, Misfire = 131072, Labouring = 262144
+        ServiceDue = 32768, Clogged = 65536, Misfire = 131072, Labouring = 262144, EngineOff = 524288
     }
 
     /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
@@ -68,6 +68,52 @@ namespace MadMax.Vehicles
         public Fault Faults { get; private set; }
         public bool HasEngine => driver && driver.Engine;
 
+        // ---- engine start (user additions): off until cranked; the throttle cranks it; the chance to catch falls with
+        // the engine's condition, cold, worn plugs, a clogged filter and low oil. AI drivers' engines just run.
+        /// <summary>The engine is running (started and not stalled).</summary>
+        public bool Started { get; private set; }
+        public bool Cranking => Time.time < crankUntil;
+        float crankUntil = -1f, nextCrank;
+        bool crankCatches;
+        /// <summary>Raised when a crank ends: true = it caught.</summary>
+        public event System.Action<bool> CrankResult;
+
+        /// <summary>0..1 chance that a crank catches right now.</summary>
+        public float StartChance
+        {
+            get
+            {
+                var e = driver ? driver.Engine : null;
+                if (!e) return 0f;
+                var ep = e.GetComponent<VehiclePart>();
+                float cond = 1f - (ep ? ep.damage : 0f);
+                float c = 0.3f + 0.7f * cond * cond + (ep ? (ep.quality - 1) * 0.05f : 0f);
+                float ambient = MadMax.World.Weather.Temperature;
+                if (Temperature < 45f) c -= ambient < -10f ? 0.3f : ambient < 0f ? 0.15f : 0f;                   // a cold engine is stubborn
+                if (UsesPlugs && plugs < 0.3f) c -= 0.2f;
+                if (airFilter < 0.3f) c -= 0.1f;
+                if (!oilInFuel && OilFraction < 0.25f) c -= 0.1f;
+                return Mathf.Clamp(c, 0.05f, 0.97f);
+            }
+        }
+
+        /// <summary>Turn the key: a second or so on the starter, then it catches or it doesn't.</summary>
+        public void Crank()
+        {
+            if (Started || Cranking || Time.time < nextCrank || !driver || !driver.Engine) return;
+            var ep = driver.Engine.GetComponent<VehiclePart>();
+            if (ep && ep.partId == "engine_pedals") { Started = true; return; }
+            crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f);
+            nextCrank = crankUntil + 0.6f;
+            crankCatches = fuel > 0f && !WrongFuel && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
+        }
+
+        /// <summary>Running without a crank (the title film's car, a vehicle handed over already running).</summary>
+        public void ForceStart() { Started = true; crankUntil = -1f; }
+
+        /// <summary>Switch off (the driver got out, or it stalled).</summary>
+        public void Stop() { Started = false; crankUntil = -1f; }
+
         VehicleDriver driver;
         VehicleDamage damage;
         BikeBalance bike;
@@ -97,6 +143,15 @@ namespace MadMax.Vehicles
         {
             float dt = Time.fixedDeltaTime;
             var engine = driver.Engine;
+            // ignition: AI drivers' engines run; a player's cranks on the throttle
+            if (driver.aiDriven && engine) Started = true;
+            else if (!Started && driver.Occupied && engine && (driver.throttleInput > 0.1f || driver.brakeInput > 0.1f)) Crank();
+            if (crankUntil > 0f && Time.time >= crankUntil)
+            {
+                crankUntil = -1f;
+                Started = crankCatches;
+                CrankResult?.Invoke(crankCatches);
+            }
             var f = Fault.None;
             var ep = engine ? engine.GetComponent<VehiclePart>() : null;
             float engineDamage = ep ? ep.damage : 0f;
@@ -150,7 +205,9 @@ namespace MadMax.Vehicles
             bool flooded = !float.IsNaN(lvl) && intake < lvl;
             if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
             UpdateFire(dt, ePos, ref f);
-            bool running = driver.Occupied && fuel > 0f && !seized && !flooded && !wrong;
+            if (Started && (fuel <= 0f || seized || flooded || wrong)) Started = false;                           // stalled
+            if (!Started) f |= Fault.EngineOff;
+            bool running = driver.Occupied && Started && fuel > 0f && !seized && !flooded && !wrong;
             float power = running ? 1f : 0f;
             if (running)
             {
@@ -291,6 +348,7 @@ namespace MadMax.Vehicles
             if ((f & Fault.NoEngine) != 0) return "NO ENGINE";
             if ((f & Fault.Seized) != 0) return "ENGINE SEIZED";
             if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";
+            if ((f & Fault.EngineOff) != 0 && driver && driver.Occupied) return Cranking ? "CRANKING..." : "ENGINE OFF: THROTTLE TO START";
             if ((f & Fault.NoOil) != 0) return "NO OIL - ENGINE DAMAGE";
             if ((f & Fault.Overheat) != 0) return "OVERHEATING";
             if ((f & Fault.Labouring) != 0) return "ENGINE LABOURING: EASE OFF";

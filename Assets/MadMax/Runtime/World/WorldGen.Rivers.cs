@@ -119,6 +119,31 @@ namespace MadMax.World
             return dist < half + BankWidth;
         }
 
+        /// <summary>The current at a point (xz, m/s): downstream along the course, fastest mid-channel and where the bed
+        /// drops; zero outside the channel and in dry wadis. Thread-safe.</summary>
+        public Vector2 RiverFlow(float x, float z)
+        {
+            if (!riverGrid.TryGetValue(new Vector2Int(Mathf.FloorToInt(x / RiverCell), Mathf.FloorToInt(z / RiverCell)), out var list)) return Vector2.zero;
+            var p = new Vector2(x, z);
+            float best = float.MaxValue; River rv = null; int seg = 0; float tt = 0f;
+            foreach (var rs in list)
+            {
+                var r = rivers[rs.x];
+                var a = r.pts[rs.y]; var ab = r.pts[rs.y + 1] - a;
+                float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(1e-4f, ab.sqrMagnitude));
+                float d = (a + ab * t - p).magnitude;
+                if (d < best) { best = d; rv = r; seg = rs.y; tt = t; }
+            }
+            if (rv == null) return Vector2.zero;
+            float half = Mathf.Lerp(rv.half[seg], rv.half[seg + 1], tt);
+            if (best > half || NaturalBiome(x, z) == Biome.Desert) return Vector2.zero;
+            var dir = (rv.pts[seg + 1] - rv.pts[seg]).normalized;
+            float drop = rv.level[seg] - rv.level[seg + 1];
+            float speed = Mathf.Clamp(0.5f + drop / RiverStep * 50f, 0.4f, 2.2f);
+            float across = best / half;
+            return dir * speed * (1f - across * across);
+        }
+
         /// <summary>Carve the river bed and banks into <paramref name="h"/>, set the water (not in the desert: dry wadis).
         /// Returns the ford weight for roads (1 in the channel, fading up the bank).</summary>
         float ShapeRiver(float x, float z, ref float h, ref GroundSample s, ref float wet)

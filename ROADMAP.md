@@ -728,3 +728,46 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       *Done:* fires heat each vehicle (and try to ignite each piece) once per tick.
 - [x] The tuning card's top speed is an estimate (drag and gearing only).
       *Done:* the card solves the real force balance per gear (torque curve and tuning, rev limiter, drag and tyre rolling resistance).
+
+## User additions (2026-09-29)
+
+### Environment
+- [x] Solar panels, wind turbines (large, medium; small one mountable on a lorry) and water turbines generate electricity, with their crafting and resource chain. *Done:* `SolarPanel` (400 W, sun × cloud/rain/dust/snow), `Windmill` (wind at hub height + vehicle speed; large 3 kW on a 15 m tower, medium 900 W, lorry part `cargo_wind_turbine` 500 W), `WaterTurbine` (1.2 kW × river current); kits from coils, blades and arc-furnace solar cells (`FurnitureLibrary.Power`).
+- [x] River flow: the water visibly runs downstream and carries floating things and swimmers. *Done:* `WorldGen.Rivers` (`RiverFlow`), `RiverFoam` flecks, buoyancy drag and swim drift follow the current.
+- [x] Wet and dry roads, puddles that clear when it is sunny. *Done:* wet-asphalt sheen and road/paved puddles in `DeformableTerrain`; drying × sun and temperature in `Weather`.
+
+### Audio
+- [ ] New hillbilly / Southern US voice sources; an armada of NPC lines (greetings, reactions in conversation, bumped into, nearby chatter, NPC-to-NPC exchanges) with some rough language, sarcasm and wasteland puns.
+
+### Game / HUD
+- [x] Separate audio channel volumes in the settings. *Done:* MASTER / EFFECTS / VEHICLE / WEAPON / VOICE / AMBIENT / INTERFACE / RADIO (`Sfx.Channel` by key).
+- [x] Player stat icons in the car too. *Done:* `PixelHud.DrawVitalsCompact` (icon + upright gauge row above the vehicle panel; bottom-left in first person).
+- [x] Camera rotation and tilt in the 2.5D views; a top-down camera, a hood camera and a car FPV view. *Done:* RMB drag / pad stick / Z C / PgUp PgDn in iso, tilt-shift and TOP; `ViewMode.TopDown`, `Hood`, `Bumper` (spots from the body mesh); `CameraRig.TopDownView` / `CrosshairView`.
+- [x] Loot and wreck density settings for a new game. *Done:* WRECKAGE (NONE..SCRAPYARD) and LOOT (SCARCE..HOARDER: loot rolls, crate rolls, how stripped wrecks are — `GameRules.StripChance`).
+
+### Weather effects
+- [x] Rain and snow fill the whole view in every camera; in 2.5D the rain falls as diagonal lines. *Done:* `Weather.CoverView` fits the emitting sheet to the view frustum between the ground and the layer top; wind + a screen-right slant in top-down views.
+
+### Vehicles
+- [x] Engine start: cranking with sound, the chance to start falls with engine condition. *Done:* `VehicleSystems.Crank/StartChance` (condition², quality, cold, plugs, filter, oil), starter / catch / sputter sounds, stalls on no fuel, seizure, flooding or wrong fuel.
+
+## User additions (2026-09-29, second list)
+
+### Boats and submarines
+- [ ] Boats of various sizes and jobs to get around, fish from and live on.
+- [ ] Submarines, usable as bases too: oxygen and electricity from onboard resources.
+- [ ] Diving suits for working underwater.
+- [ ] Underwater base building with a ground-level entrance and submarine docking.
+
+### Wildlife
+- [ ] Fish and other underwater fauna and flora.
+- [ ] Birds, mammals, lizards, snakes, scorpions, spiders and bugs.
+
+### Vehicles
+- [ ] Aircraft easy to turn on the ground, to brake and to reverse.
+
+### World
+- [ ] The world is a rotating planet (illusion, chosen by the user): continents and oceans with biomes spread to fit, east–west wrap, a slight horizon curvature, and sun, moon and seasons driven by spin, tilt and orbit. Big enough to feel large, light enough to simulate.
+- [ ] Intro lands on the Moon with the neon sign, Earth visible in space.
+- [ ] Everything new ties into crafting and resources and fits the post-apocalyptic look and lore.
+

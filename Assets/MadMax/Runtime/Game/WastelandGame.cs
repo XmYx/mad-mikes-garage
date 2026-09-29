@@ -155,6 +155,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.World.Storms>();
             gameObject.AddComponent<Racing>();
             gameObject.AddComponent<MadMax.World.FarTerrain>();
+            gameObject.AddComponent<MadMax.World.RiverFoam>();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             gameObject.AddComponent<MadMax.Animals.AnimalDirector>().Init(this);
@@ -732,7 +733,7 @@ namespace MadMax.Game
                     rod.reel = (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed);
                     if (attack) rod.Click();
                 }
-                else if (attack && cameraRig && !(Build && Build.Active)) Player.Attack(cameraRig.mode == ViewMode.ThirdPerson || cameraRig.mode == ViewMode.FirstPerson);
+                else if (attack && cameraRig && !(Build && Build.Active)) Player.Attack(cameraRig.CrosshairView);
                 if (cameraRig)
                 {
                     Player.viewYaw = cameraRig.ViewYaw;

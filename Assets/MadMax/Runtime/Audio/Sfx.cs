@@ -35,6 +35,16 @@ namespace MadMax.Audio
         }
 
         static float Master => MadMax.Game.GameSettings.Current.sfxVolume;
+
+        /// <summary>The channel a sound belongs to (settings: vehicles, weapons, voices), times the effects volume.</summary>
+        public static float Channel(string key)
+        {
+            var s = MadMax.Game.GameSettings.Current;
+            if (key.StartsWith("shot") || key == "bow" || key == "explosion") return s.weaponVolume;
+            if (key.StartsWith("engine") || key == "starter" || key == "sputter" || key.StartsWith("tyre") || key == "horn" || key == "car_door" || key.StartsWith("crash") || key == "rotor" || key == "hydraulic" || key == "siren") return s.vehicleVolume;
+            if (key.StartsWith("voice") || key.StartsWith("npc_")) return s.voiceVolume;
+            return 1f;
+        }
         static bool Muted => Application.isBatchMode;
 
         public static AudioClip Clip(string key)
@@ -84,7 +94,7 @@ namespace MadMax.Audio
             var s = Next();
             s.transform.position = pos;
             s.spatialBlend = 1f; s.maxDistance = range;
-            s.clip = clip; s.pitch = pitch; s.volume = Mathf.Clamp01(volume) * Master;
+            s.clip = clip; s.pitch = pitch; s.volume = Mathf.Clamp01(volume) * Master * Channel(key);
             s.Play();
         }
 
@@ -162,7 +172,7 @@ namespace MadMax.Audio
                     }
                     s.transform.position = r.pos;
                     s.spatialBlend = r.flat ? 0f : 1f; s.maxDistance = r.range;
-                    s.volume = Mathf.Clamp01(r.vol) * Master; s.pitch = r.pitch;
+                    s.volume = Mathf.Clamp01(r.vol) * Master * Channel(r.key); s.pitch = r.pitch;
                     r.owner = null;   // served
                 }
             foreach (var v in loopVoices) if (!v.used) { if (v.src.isPlaying) v.src.Stop(); v.owner = null; v.key = null; }

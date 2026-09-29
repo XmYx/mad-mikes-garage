@@ -66,6 +66,7 @@ namespace MadMax.Game
                 car.name = "IntroCar";
                 if (DeformableTerrain.Instance) DeformableTerrain.Instance.extraFoci.Add(car.transform);   // stream the road ahead of it
                 car.Occupied = true;
+                if (car.TryGetComponent<VehicleSystems>(out var ign)) ign.ForceStart();          // the film opens with the engine running
                 car.bakedDriver = true;
                 if (car.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = sys.fuelCapacity;
             }

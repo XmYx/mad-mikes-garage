@@ -42,6 +42,7 @@ namespace MadMax.Game
                     else Hints.Show("bike", K(Controls.Act.Left) + "/" + K(Controls.Act.Right) + " LEAN INTO TURNS  " + K(Controls.Act.Run) + " WHEELIE  HIT SOMETHING HARD: THROWN OFF");
                 }
                 else if (car.GetComponent<Machine>()) Hints.Show("machine", "1 2 3 WORK THE TOOL  (SHIFT+1/2 SLEW)  " + K(Controls.Act.Enter) + " GET OUT");
+                else if (car.TryGetComponent<VehicleSystems>(out var ign) && !ign.Started && Hints.Show("ignition", "ENGINE OFF: " + K(Controls.Act.Forward) + " CRANKS IT - A WORN ENGINE MAY TAKE A FEW TRIES", 3)) { }
                 else Hints.Show("drive", K(Controls.Act.Forward) + "/" + K(Controls.Act.Back) + " THROTTLE / BRAKE  " + K(Controls.Act.Jump) + " HANDBRAKE  " + K(Controls.Act.Enter) + " EXIT  " + K(Controls.Act.View) + " CAMERA");
                 if (MadMax.World.DayNight.Darkness > 0.5f && car.TryGetComponent<VehicleLights>(out var vl) && !vl.On) Hints.Show("lights", K(Controls.Act.Lights) + " HEADLIGHTS");
                 if (car.TryGetComponent<VehicleSystems>(out var sys) && sys.fuelCapacity > 0f && sys.FuelFraction < 0.15f)

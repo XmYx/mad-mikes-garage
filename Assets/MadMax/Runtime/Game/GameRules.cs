@@ -26,12 +26,17 @@ namespace MadMax.Game
         public int dayLength = 2;           // index into DayLengths
         public float hungerRate = 1f;       // hunger / thirst / hygiene drain multiplier
         public bool survival = true;        // hunger, thirst, hygiene on/off
-        public int loot = 1;                // 0 scarce, 1 normal, 2 plenty
+        public int loot = 1;                // 0 scarce, 1 normal, 2 plenty, 3 hoarder: loot rolls, crates, wreck stripping
         public int raids = 2;               // raids on claimed bases: 0 never, 1 rare, 2 normal, 3 often (BaseRaid.Intervals)
 
         public static readonly float[] DayLengths = { 0f, 12f, 24f, 48f, 96f };
         public static readonly string[] DayLengthNames = { "ENDLESS DAY", "12 MIN", "24 MIN", "48 MIN", "96 MIN" };
-        public static readonly string[] LootNames = { "SCARCE", "NORMAL", "PLENTY" };
+        public static readonly string[] LootNames = { "SCARCE", "NORMAL", "PLENTY", "HOARDER" };
+
+        /// <summary>The yard wreck count as a density word for the NEW GAME page.</summary>
+        public static string WreckDensity(int n) => n == 0 ? "NONE" : n <= 12 ? "FEW" : n <= 24 ? "SPARSE" : n <= 42 ? "NORMAL" : n <= 66 ? "MANY" : "SCRAPYARD";
+        /// <summary>Chance a wreck's part was stripped away before you got there (by <see cref="loot"/>).</summary>
+        public float StripChance => loot <= 0 ? 0.45f : loot == 1 ? 0.28f : loot == 2 ? 0.15f : 0.07f;
         public static readonly string[] RaidNames = { "NEVER", "RARE (6 DAYS)", "NORMAL (3 DAYS)", "OFTEN (1.5 DAYS)" };
 
         public static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD", "BRUTAL" };

@@ -624,7 +624,7 @@ namespace MadMax.World
                     {
                         d.shatterBelow = 0.6f; d.impactThreshold = 2.5f;
                         d.loot = new[] { ResourceType.Scrap, ResourceType.Rubber, ResourceType.Cloth, ResourceType.Glass };
-                        d.lootRolls = 2;
+                        d.lootRolls = 1 + MadMax.Game.GameRules.Current.loot;
                     }
                     if (pl.id == "Table") d.shatterBelow = 0.5f;
                     if (pl.id == "GasPump0")

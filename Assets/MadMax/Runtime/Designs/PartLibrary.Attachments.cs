@@ -16,6 +16,7 @@ namespace MadMax.Designs
             yield return CargoBox();
             yield return WaterTank();
             yield return OnboardGenerator();
+            yield return WindTurbineSmall();
             yield return LightBar();
             yield return EmergencyLights();
             yield return Searchlight();
@@ -125,6 +126,30 @@ namespace MadMax.Designs
             g.Box(6, 3, 5, 7, 6, 5, Pal.Ramp(Pal.Black, 1)); g.Set(7, 5, 6, Pal.Solid(Pal.Amber));                          // panel and lamp
             g.Tube(new Vector3(-7, 4, -3), new Vector3(-7, 11, -3), 0.5f, Pal.Ramp(Pal.Rust, 2));                            // exhaust
             return Make("cargo_generator", PartCategory.Cargo, g, 110, 3);
+        }
+
+        /// <summary>Small wind turbine for a cargo bed (user additions): a mast, a nacelle with a tail vane and a three-blade
+        /// rotor (segment "rotor", spun by <c>Windmill</c>) feeding the vehicle's power bus; the airstream helps on the move.</summary>
+        public static PartDesign WindTurbineSmall()
+        {
+            var g = new VoxelGrid();
+            g.Box(-3, 0, -3, 3, 1, 3, Pal.Ramp(Pal.Metal, 2, 1461));                                                        // foot plate
+            g.Box(-1, 2, -1, 1, 25, 1, Pal.Weathered(Pal.Metal, 0.4f, 1462, 1, 0));                                          // mast
+            foreach (int y in new[] { 8, 16 }) g.Box(-2, y, -2, 2, y, 2, Pal.Ramp(Pal.Rust, 1, 1463));                        // clamps
+            g.Box(-2, 26, -5, 2, 29, 3, Pal.Weathered(Pal.Cream, 0.3f, 1464, 2, 0));                                         // nacelle
+            g.Box(0, 27, -10, 0, 31, -6, Pal.Ramp(Pal.Rust, 2, 1465));                                                       // tail vane
+            g.Set(0, 30, -5, Pal.Solid(Pal.Amber));
+            g.Use("rotor");
+            g.CylZ(0, 28, 1.3f, 4, 5, Pal.Ramp(Pal.Metal, 2, 1466));                                                         // hub
+            for (int b = 0; b < 3; b++)
+            {
+                float a = b * Mathf.PI * 2f / 3f + 0.4f;
+                var d = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                var hub = new Vector3(0f, 28f, 5f);
+                g.Tube(hub + d * 1.3f, hub + d * 12f, 0.6f, Pal.Weathered(Pal.Cream, 0.25f, 1467 + b, 2, 0));
+            }
+            g.Use("body");
+            return Make("cargo_wind_turbine", PartCategory.Cargo, g, 45, 2).Segment("rotor", new Vector3Int(0, 28, 5));
         }
 
         // ---------------------------------------------------------------- lights

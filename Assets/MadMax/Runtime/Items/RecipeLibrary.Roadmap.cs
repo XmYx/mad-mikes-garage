@@ -215,6 +215,19 @@ namespace MadMax.Items
                 yield return Cook(st, "cheese", "CHEESE", "food_cheese", 1, fuel, ("drink_milk", 3));
             }
             yield return Itm("arrows_feather", "ARROWS X6 (FLETCHED)", RecipeCategory.Weapons, "workbench", "ammo_arrow", 6, "FEATHERS MAKE THEM FLY TRUE", new[] { ("misc_feather", 2) }, (ResourceType.Wood, 1));
+            // power from the weather (user additions): cells, blades and coils, then the kits
+            yield return Itm("coil", "GENERATOR COIL", RecipeCategory.Supplies, "workbench", ItemIds.Coil, 1, "COPPER WINDINGS FOR TURBINES", null, (Cu, 4), (Fe, 2));
+            yield return Itm("blade", "TURBINE BLADE", RecipeCategory.Supplies, "workbench", ItemIds.Blade, 1, "SHAPED ALUMINIUM", null, (ResourceType.Aluminium, 3), (S, 1));
+            yield return Itm("solar_cell", "SOLAR CELLS X2", RecipeCategory.Supplies, "arc_furnace", ItemIds.SolarCell, 2, "SILICON WAFERS (NEEDS POWER)", null, (ResourceType.Silica, 3), (Cu, 1));
+            yield return Itm("kit_solar", "SOLAR PANEL KIT", RecipeCategory.Building, "workbench", ItemIds.SolarKit, 1, "400 W IN FULL SUN", new[] { (ItemIds.SolarCell, 4) }, (ResourceType.Aluminium, 2), (G, 2));
+            yield return Itm("kit_wind", "LARGE WIND TURBINE KIT", RecipeCategory.Building, "workbench", ItemIds.WindKit, 1, "3 KW ON A 15 M TOWER", new[] { (ItemIds.Blade, 3), (ItemIds.Coil, 2) }, (Fe, 24), (ResourceType.Concrete, 6));
+            yield return Itm("kit_wheel", "WATER WHEEL KIT", RecipeCategory.Building, "workbench", ItemIds.WaterWheelKit, 1, "1.2 KW IN A RUNNING RIVER", new[] { (ItemIds.Coil, 1) }, (ResourceType.Wood, 14), (Fe, 6));
+            yield return new Recipe
+            {
+                id = "wind_small", name = "SMALL WIND TURBINE", category = RecipeCategory.Vehicles, kind = OutputKind.Part, output = "cargo_wind_turbine", station = "garage",
+                description = "CARGO BED TURBINE: CHARGES THE VEHICLE'S POWER", seconds = 12f,
+                items = new[] { (ItemIds.Blade, 2), (ItemIds.Coil, 1) }, resources = new[] { (S, 4), (Fe, 2) }
+            };
             yield return new Recipe
             {
                 id = "last_engine", name = "THE LAST ENGINE", category = RecipeCategory.Vehicles, kind = OutputKind.Part, output = MadMax.Game.LastEngine.Part, station = "garage",
