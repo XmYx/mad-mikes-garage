@@ -19,10 +19,11 @@ namespace MadMax.Npc
         static readonly HashSet<int> accepted = new HashSet<int>();
         static readonly HashSet<int> won = new HashSet<int>();                       // the raid on this town was beaten
         static readonly List<Npc> attackers = new List<Npc>();
-        static int defending = -1;
+        static int defending = -1, eventDay = -1;
+        static bool eventRaid;
         static float nextCheck;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { stage.Clear(); accepted.Clear(); won.Clear(); attackers.Clear(); defending = -1; nextCheck = 0f; }
+        static void ResetStatics() { stage.Clear(); accepted.Clear(); won.Clear(); attackers.Clear(); defending = -1; nextCheck = 0f; eventDay = -1; eventRaid = false; }
 
         static WorldGen World => DeformableTerrain.Instance ? DeformableTerrain.Instance.World : null;
 
@@ -96,10 +97,13 @@ namespace MadMax.Npc
             g.Toast("JOB TAKEN: " + Title(s));
         }
 
+        static Faction rewardFaction = Faction.Settlers;
+
         /// <summary>Hand the job in. Returns the boss's reply (null = not done yet).</summary>
         public static string TurnIn(WastelandGame g, int town, Vector3 at)
         {
             int s = Stage(town);
+            rewardFaction = Factions.OfSettlement(Town(town));
             if (s >= Stages || !accepted.Contains(town)) return null;
             switch (s)
             {
@@ -142,7 +146,7 @@ namespace MadMax.Npc
             g.Inventory.Add(ResourceType.Scrap, scrap);
             g.Inventory.AddItem(Contracts.Chit, chits);
             if (item != null) g.Inventory.AddItem(item, 2);
-            NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + rep);
+            Factions.Shift(rewardFaction, rep);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 4f);
             MadMax.Audio.Sfx.Play2D("cash", 0.8f);
             g.Toast("PAID " + scrap + " SCRAP + " + chits + " CHITS" + (item != null ? " + " + ItemIds.Name(item) : ""));
@@ -174,7 +178,16 @@ namespace MadMax.Npc
             {
                 int alive = 0;
                 foreach (var n in attackers) if (n && n.Alive && !n.Surrendered) alive++;
-                if (alive == 0)
+                if (alive == 0 && eventRaid)
+                {
+                    // a raid out of the blue, beaten off (roadmap 21 events)
+                    g.Inventory.Add(ResourceType.Scrap, 60);
+                    Factions.Shift(Factions.OfSettlement(Town(defending)), 8);
+                    g.Toast(Market.TownName(Town(defending)) + " CHEERS YOU - THE RAIDERS ARE BEATEN (+60 SCRAP)");
+                    MadMax.Audio.Sfx.Play("crowd_cheer", me, 0.6f);
+                    defending = -1; attackers.Clear(); eventRaid = false;
+                }
+                else if (alive == 0)
                 {
                     won.Add(defending);
                     g.Toast("THE RAID IS BROKEN - " + Market.TownName(Town(defending)) + " IS SAFE. SEE THE BOSS");
@@ -198,6 +211,15 @@ namespace MadMax.Npc
                 Raid(g, st);
                 return;
             }
+            // now and then a gang hits the town the player is in at dusk (roadmap 21 events)
+            if (eventDay == DayNight.Day) return;
+            var w = World;
+            var here = w != null ? w.SettlementAt(me.x, me.z) : null;
+            if (here == null) return;
+            eventDay = DayNight.Day;
+            if (Rng(here.index, 50 + DayNight.Day).NextDouble() > 0.3) return;
+            eventRaid = true;
+            Raid(g, here);
         }
 
         static void Raid(WastelandGame g, Settlement st)

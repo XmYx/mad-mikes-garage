@@ -160,7 +160,13 @@ namespace MadMax.Npc
             choices.Clear();
             Add("WHO ARE YOU?", About);
             Add("WHAT'S HAPPENING AROUND HERE?", Rumours);
-            if (P.Vendor) Add("SHOW ME WHAT YOU'VE GOT.", () => { if (S.disposition <= -40) { line = "I DON'T SELL TO YOUR KIND."; return; } if (npc.Closed) { line = "WE'RE SHUT. COME BACK AFTER SUNRISE."; return; } WantsTrade = true; });
+            if (P.Vendor) Add("SHOW ME WHAT YOU'VE GOT.", () =>
+            {
+                if (S.disposition <= -40) { line = "I DON'T SELL TO YOUR KIND."; return; }
+                if (Factions.Hostile(Factions.Of(npc))) { line = "THE " + Factions.Names[(int)Factions.Of(npc)] + " DON'T TRADE WITH YOU. NOT AFTER WHAT YOU DID."; return; }
+                if (npc.Closed) { line = "WE'RE SHUT. COME BACK AFTER SUNRISE."; return; }
+                WantsTrade = true;
+            });
             if (P.role == NpcRole.Leader) Add("ANY WORK FOR THE TOWN?", BossJob, TownQuests.Stage(P.town) < TownQuests.Stages ? TownQuests.Title(TownQuests.Stage(P.town)) : null);
             if (P.role == NpcRole.Leader && TownQuests.ParcelFor(g, P.town, out var parcelFrom))
                 Add("I'M HERE FOR THE PARCEL FOR " + parcelFrom + ".", () => { g.Inventory.AddItem(TownQuests.Parcel); line = "MEDICINE. THEY NEED IT MORE THAN WE DO. GO CAREFUL."; Hub(false); });
@@ -244,7 +250,8 @@ namespace MadMax.Npc
             Add("GET OUT OF HERE. DON'T LET ME SEE YOU AGAIN.", () =>
             {
                 npc.LetGo();
-                NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 2);
+                Factions.Shift(Faction.Settlers, 2, false);
+                Factions.Shift(Factions.Of(npc), 5);
                 End("THANK YOU... I WON'T FORGET THIS.");
             }, "MERCY: +REPUTATION");
             Add("EMPTY YOUR POCKETS.", () =>
@@ -485,6 +492,8 @@ namespace MadMax.Npc
         void Finish(Convoy.Outcome o, string text)
         {
             End(text);
+            var gang = Factions.OfGang(P.gang);                                                   // standing with the gang (roadmap 21)
+            Factions.Shift(gang, o == Convoy.Outcome.Paid ? 3 : o == Convoy.Outcome.Recruited ? 40 : o == Convoy.Outcome.Failed ? -5 : o == Convoy.Outcome.Scared ? -2 : 0);
             if (o != Convoy.Outcome.Failed) S.Set(NpcSave.Parleyed);
             npc.convoy?.OnParley(o);
             if (o == Convoy.Outcome.Failed && npc.convoy == null) S.Set(NpcSave.Hostile);

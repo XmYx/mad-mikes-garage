@@ -785,9 +785,11 @@ namespace MadMax.Npc
             if (drivenCar) LeaveWheel();
             if (asleep) SetAsleep(false);
             if (companion) Companions.Lost(this);
-            if (byPlayer && spared) { NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 10); WastelandGame.Instance?.Toast("YOU KILLED SOMEONE WHO HAD GIVEN UP"); }
-            else if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile) && !companion) NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 15);
-            if (byPlayer && Profile.Raider && !spared) NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
+            // standing (roadmap 21): the dead one's faction remembers; its friends and enemies take note
+            var side = Factions.Of(this);
+            if (byPlayer && spared) { Factions.Shift(Faction.Settlers, -10, false); Factions.Shift(side, -8); WastelandGame.Instance?.Toast("YOU KILLED SOMEONE WHO HAD GIVEN UP"); }
+            else if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile) && !companion) Factions.Shift(side == Faction.None ? Faction.Settlers : side, -15);
+            else if (byPlayer && Profile.Raider) Factions.Shift(side, -6);
             if (byPlayer) Contracts.ReportKill(this);                                        // bounties
             cc.enabled = false;
             if (tool) { tool.transform.SetParent(null, true); var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f; Destroy(tool.gameObject, 60f); }

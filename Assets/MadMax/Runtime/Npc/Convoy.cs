@@ -41,7 +41,7 @@ namespace MadMax.Npc
         public bool Spawned => cars.Count > 0 || walkers.Count > 0;
         public string Gang => crew.Count > 0 ? crew[0].gang : "RAIDERS";
         /// <summary>The boss was won over at a parley: this gang lets the player pass.</summary>
-        public bool Friendly => raiders && crew.Count > 0 && NpcRegistry.Get(crew[0]).disposition >= 50;
+        public bool Friendly => raiders && crew.Count > 0 && (NpcRegistry.Get(crew[0]).disposition >= 50 || Factions.Friendly(Factions.OfGang(Gang)));
 
         public Convoy(string id, bool raiders, string kind, List<Vector3> road, int seed, ConvoySave save)
         {
@@ -150,7 +150,8 @@ namespace MadMax.Npc
                     if (raiders)
                     {
                         float sight = (g.Current && Mathf.Abs(g.Current.ForwardSpeed) > 15f ? 110f : 75f) * (Contracts.Hauling ? 1.4f : 1f) * (1f - 0.6f * Storms.Dust)   // cargo draws them, dust blinds them
-                                      * (Disguised(g) ? 0.35f : 1f);                                                                                                 // our own colours on the doors
+                                      * (Disguised(g) ? 0.35f : 1f)                                                                                                  // our own colours on the doors
+                                      * (Factions.Hostile(Factions.OfGang(Gang)) ? 1.3f : 1f);                                                                         // they are looking for you
                         if (Friendly) { if (dist < 30f && Time.time > truceUntil) { truceUntil = Time.time + 120f; MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f); g.Toast("THE " + Gang + " HONK A GREETING"); } }
                         else if (Time.time > truceUntil && !inTown && dist < sight) Confront(g);
                     }

@@ -271,6 +271,8 @@ namespace MadMax.Npc
             if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); UpdateBoards(focus); UpdateFires(focus); Contracts.Tick(); }
             Companions.Tick(game);
             TownQuests.Tick(game);
+            GuildEscort.Tick(game);
+            Factions.Tick(game);
             // spawn at most one person per frame (body meshes are built on first use)
             for (int i = 0; i < wanted.Count; i++)
             {

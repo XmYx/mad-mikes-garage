@@ -431,6 +431,13 @@ namespace MadMax.Game
                     foreach (var id in st.traits) { var t = MadMax.RPG.Traits.Get(id); if (t != null) items.Add(new Item { label = t.name, value = () => "TRAIT", hint = t.description }); }
                     foreach (var k in st.knowledge) items.Add(new Item { label = k.Replace("k_", "").Replace('_', ' ').ToUpperInvariant(), value = () => "KNOWN" });
                     items.Add(new Item { label = "CARRYING", value = () => game.CarriedWeight.ToString("0.0") + " / " + st.CarryCapacity.ToString("0") + " KG" });
+                    items.Add(new Item { label = "- STANDING -", enabled = () => false });
+                    for (int fi = 0; fi < MadMax.Npc.Factions.Count; fi++)
+                    {
+                        var f = (MadMax.Npc.Faction)fi;
+                        items.Add(new Item { label = MadMax.Npc.Factions.Names[fi], value = () => MadMax.Npc.Factions.Standing(f) + " " + MadMax.Npc.Factions.Rep(f), hint = "DEEDS SHIFT IT; FRIENDS OF A FACTION FOLLOW A THIRD AS MUCH, ITS ENEMIES THE OTHER WAY" });
+                    }
+                    foreach (var cm in MadMax.Npc.Companions.Live) if (cm) items.Add(new Item { label = "COMPANION " + cm.Profile.Name, value = () => cm.order == 1 ? "WAITING" : cm.order == 2 ? "GUARDING" : cm.Driving ? "DRIVING" : "FOLLOWING", enabled = () => false });
                     foreach (var kv in game.FishRecords)
                     {
                         var fd = MadMax.Items.FishLibrary.Get(kv.Key);
@@ -544,15 +551,16 @@ namespace MadMax.Game
                         items.Add(new Item
                         {
                             label = c.title,
-                            value = () => c.failed ? "FAILED" : c.completed ? "CLAIM " + c.reward : here ? "HAND IN " + c.done + "/" + c.need : c.Delivery ? "DUE DAY " + (c.deadline + 1) : c.done + "/" + c.need,
+                            value = () => c.failed ? "FAILED" : c.completed ? "CLAIM " + c.reward : here ? "HAND IN " + c.done + "/" + c.need : c.Supply ? "HAND IN" : c.Escort ? "ESCORTING" : c.Delivery ? "DUE DAY " + (c.deadline + 1) : c.done + "/" + c.need,
                             confirm = () =>
                             {
                                 if (c.failed) { MadMax.Npc.Contracts.Active.Remove(c); Rebuild(); return; }
                                 if (c.completed) MadMax.Npc.Contracts.Pay(game, c);
                                 else if (here) MadMax.Npc.Contracts.Deliver(game, c, b.transform.position);
+                                else if (c.Supply) MadMax.Npc.Contracts.HandIn(game, c);
                                 Rebuild();
                             },
-                            hint = c.failed ? "E: STRIKE IT OFF" : c.completed ? "E: TAKE THE PAY" : here ? "E: HAND IN THE CRATES WITHIN 15 M" : "IN PROGRESS",
+                            hint = c.failed ? "E: STRIKE IT OFF" : c.completed ? "E: TAKE THE PAY" : here ? "E: HAND IN THE CRATES WITHIN 15 M" : c.Supply ? "E: HAND OVER THE GOODS" : "IN PROGRESS",
                         });
                     }
                     items.Add(new Item { label = "- TODAY'S JOBS -", enabled = () => false });
@@ -699,6 +707,7 @@ namespace MadMax.Game
                     if (!talkNpc) { Close(); break; }
                     var npc = talkNpc; var p = npc.Profile; var inv = game.Inventory;
                     MadMax.Npc.Trade.Town = MadMax.Npc.Market.Near(npc.transform.position);
+                    MadMax.Npc.Trade.Seller = MadMax.Npc.Factions.Of(npc);
                     float bargain = MadMax.Npc.Trade.Bargain(game, npc.State);
                     items.Add(new Item { label = MadMax.Npc.Market.TownName(MadMax.Npc.Trade.Town) + ": " + MadMax.Npc.Market.Hint(MadMax.Npc.Trade.Town), enabled = () => false });
                     if (p.kind == "fuel" && inv.GetItem(MadMax.Npc.Contracts.Chit) > 0) items.Add(new Item { label = "GUILD CHITS", value = () => inv.GetItem(MadMax.Npc.Contracts.Chit) + " (" + MadMax.Npc.Trade.ChitValue + " SCRAP EACH HERE)", enabled = () => false });

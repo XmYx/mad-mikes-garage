@@ -11,11 +11,14 @@ namespace MadMax.Npc
     public class Contract
     {
         public string id, title, target;
-        public int kind;                  // 0 boss bounty, 1 raider cull, 2 pests, 3 delivery
+        public int kind;                  // 0 boss bounty, 1 raider cull, 2 pests, 3 delivery, 4 faction supply (target "res:N"), 5 Guild escort
+        public int faction = -1;          // whose standing it moves (roadmap 21); -1 = by kind
         public int town, dest = -1;       // offered at / delivery destination (settlement index)
         public int need, done, reward, chits, rep, days, deadline = -1;
         public bool completed, failed;
         public bool Delivery => kind == 3;
+        public bool Supply => kind == 4;
+        public bool Escort => kind == 5;
     }
 
     /// <summary>Bounty boards and the Fuel Guild's hauling (roadmap 15). Every town's board offers today's jobs
@@ -72,6 +75,26 @@ namespace MadMax.Npc
                     reward = 10 * crates + Mathf.RoundToInt(dist / 40f), chits = crates + Mathf.FloorToInt(dist / 800f), rep = 3,
                 });
             }
+            // the town's own faction asks for supplies (roadmap 21)
+            var owner = Factions.OfSettlement(st);
+            if (owner != Faction.None && !Factions.Hostile(owner))
+            {
+                var (res, n, what) = owner switch
+                {
+                    Faction.Church => (MadMax.Items.ResourceType.Fuel, 40, "OFFERING FOR THE LAST ENGINE: 40 L FUEL"),
+                    Faction.Nomads => (MadMax.Items.ResourceType.Water, 30, "WATER FOR THE CARAVANS: 30 L"),
+                    Faction.Remnants => (MadMax.Items.ResourceType.Copper, 8, "WIRE FOR THE BUNKER: 8 COPPER"),
+                    _ => (MadMax.Items.ResourceType.Wood, 25, "FIREWOOD FOR THE WINTER: 25 WOOD"),
+                };
+                list.Add(new Contract { id = "S" + st.index + ":" + day, kind = 4, faction = (int)owner, target = "res:" + (int)res, need = n, title = what, reward = n * 2 + 20, rep = 6, town = st.index });
+            }
+            // the Guild wants a rig escorted to the town down the road
+            if (!GuildEscort.Busy && !Factions.Hostile(Faction.FuelGuild) && GuildEscort.RouteFrom(st, out var route, out var to) && r.NextDouble() < 0.7)
+            {
+                float km = 0f; for (int i = 1; i < route.Count; i++) km += Vector3.Distance(route[i - 1], route[i]);
+                list.Add(new Contract { id = "E" + st.index + ":" + day, kind = 5, faction = (int)Faction.FuelGuild, title = "ESCORT A GUILD RIG TO " + Market.TownName(to) + " (" + Mathf.RoundToInt(km / 100f) / 10f + " KM)",
+                                        reward = 80 + Mathf.RoundToInt(km / 20f), chits = 3, rep = 6, town = st.index });
+            }
             list.RemoveAll(c => taken.Contains(c.id));
             return list;
         }
@@ -92,6 +115,7 @@ namespace MadMax.Npc
             }
             else g.Toast("JOB TAKEN: " + c.title);
             Active.Add(c);
+            if (c.Escort) GuildEscort.Start(g, c);
         }
 
         /// <summary>A kill by the player (NPC deaths; animals report with <see cref="ReportPest"/>).</summary>
@@ -128,7 +152,7 @@ namespace MadMax.Npc
                 if (c.Delivery && !c.completed && !c.failed && c.deadline >= 0 && DayNight.Day > c.deadline)
                 {
                     c.failed = true;
-                    NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - c.rep);
+                    Factions.Shift(Faction.FuelGuild, -c.rep);
                     WastelandGame.Instance?.Toast("HAUL FAILED: " + c.title);
                 }
         }
@@ -138,13 +162,27 @@ namespace MadMax.Npc
         {
             if (!c.completed) return;
             if (c.id.StartsWith("Q")) { g.Toast("TELL THE TOWN BOSS IT'S DONE"); return; }        // a town boss's job (TownQuests)
-            g.Inventory.Add(MadMax.Items.ResourceType.Scrap, c.reward);
+            int pay = c.reward;
+            if ((c.Delivery || c.Escort) && g.Current && MadMax.Vehicles.VehiclePaint.DecalOf(g.Current) == Factions.Decal[(int)Faction.FuelGuild]) pay += pay / 10;   // Guild colours
+            g.Inventory.Add(MadMax.Items.ResourceType.Scrap, pay);
             if (c.chits > 0) g.Inventory.AddItem(Chit, c.chits);
-            NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + c.rep);
+            Factions.Shift(c.faction >= 0 ? (Faction)c.faction : c.Delivery ? Faction.FuelGuild : Faction.Settlers, c.rep);
             Active.Remove(c);
             MadMax.Audio.Sfx.Play2D("cash", 0.8f);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 3f);
-            g.Toast("PAID " + c.reward + " SCRAP" + (c.chits > 0 ? " + " + c.chits + " CHITS" : ""));
+            g.Toast("PAID " + pay + " SCRAP" + (c.chits > 0 ? " + " + c.chits + " CHITS" : ""));
+        }
+
+        /// <summary>Hand in a faction's supply job at a board (roadmap 21).</summary>
+        public static bool HandIn(WastelandGame g, Contract c)
+        {
+            if (!c.Supply || c.completed || c.failed || c.target == null || !c.target.StartsWith("res:")) return false;
+            var res = (MadMax.Items.ResourceType)int.Parse(c.target.Substring(4));
+            if (g.Inventory.Get(res) < c.need) { g.Toast("NEED " + c.need + " " + MadMax.Items.ResourceInfo.Name(res) + " (YOU HAVE " + g.Inventory.Get(res) + ")"); return false; }
+            g.Inventory.TrySpend(res, c.need);
+            c.done = c.need; c.completed = true;
+            Pay(g, c);
+            return true;
         }
 
         /// <summary>Crates within reach of the destination board count for their haul; delivered ones go away.</summary>

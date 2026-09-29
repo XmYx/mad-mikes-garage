@@ -439,12 +439,29 @@ rumours, errands, haggling, parley, combat, ragdolls.
 *Ties:* factions, economy, animals, base building.
 
 ## 21. Factions `T3`
-- [ ] **Registry**: town settlers, Fuel Guild, Church of the Last Engine, Salt Nomads, Bunker Remnants and the four
+- [x] **Registry**: town settlers, Fuel Guild, Church of the Last Engine, Salt Nomads, Bunker Remnants and the four
       raider gangs
-- [ ] **Reputation** per faction with ranks (hostile → allied); actions shift it; **relations** between factions
-- [ ] **Territories**: each town and region belongs to a faction
-- [ ] **Faction leaders & jobs**; rewards: discounts, gear, safe passage, guards
-- [ ] **Events**: raider attacks on towns you can defend, Guild convoys to escort
+- [x] **Reputation** per faction with ranks (hostile → allied); actions shift it; **relations** between factions
+- [x] **Territories**: each town and region belongs to a faction
+- [x] **Faction leaders & jobs**; rewards: discounts, gear, safe passage, guards
+- [x] **Events**: raider attacks on towns you can defend, Guild convoys to escort
+      *Done:* `Npc/Factions` — nine factions, standing −100..100 in ranks HUNTED / HOSTILE / DISTRUSTED / NEUTRAL /
+      FRIENDLY / TRUSTED / ALLIED (the settlers' is the old reputation), a relations matrix (settlers and Guild allied,
+      Church and Rustmen both worship engines, gangs feud with each other, Remnants against the Church) — every shift
+      ripples a third to friends (same way) and enemies (other way). Deeds: kills (a raider hurts their gang, pleases
+      their enemies; killing peaceful folk or someone who surrendered costs a lot), parley outcomes (pay, recruit,
+      threaten), mercy, bounties, hauls and escorts (Guild), town bosses' jobs (the town's faction), faction supply
+      jobs. Territories: settlements belong to settlers, the Church, the Nomads (desert towns) or the Remnants
+      (cities); roads to the gang that rides them — crossing in shows whose ground it is and your standing.
+      Effects: traders price by their faction's standing (−15 % allied … +40 % hunted) and hostile factions refuse to
+      trade; FRIENDLY gangs give safe passage (they honk instead of blocking), HOSTILE ones spot you from 30 % farther;
+      a gift at TRUSTED (chits and fuel, medicine, blessed nitrous, a shemagh and canteen, a geiger and hazmat, a skull
+      mask) and a guard companion at ALLIED (settlers, Guild, Remnants); Guild colours on your vehicle add 10 % to
+      haul and escort pay. Faction jobs on boards: supply runs by the town's faction (Church fuel offerings, Nomad
+      water, Remnant copper, settler firewood). Events: a gang hits the town you are in at dusk now and then (beat
+      them: +60 scrap, +8 standing); Guild escort jobs (`Npc/GuildEscort`): a Guild rig in Guild colours drives the
+      road to the next town, waits when you fall behind, is ambushed halfway, pays on arrival. Standings on the P
+      page; saved (`SaveData.factions`).
 
 *Ties:* NPCs, economy, dialogue, base raids, bounties.
 

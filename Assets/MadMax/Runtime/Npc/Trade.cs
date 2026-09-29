@@ -80,8 +80,10 @@ namespace MadMax.Npc
         /// <summary>Fuel Guild chits count for this much scrap at fuel vendors.</summary>
         public const int ChitValue = 6;
 
-        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f)));
-        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f)));
+        /// <summary>The faction the current trader answers to (prices by standing, roadmap 21).</summary>
+        public static Faction Seller = Faction.None;
+        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f) * Factions.PriceFactor(Seller)));
+        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f) / Factions.PriceFactor(Seller)));
 
         // ------------------------------------------------------------------ stock
 
