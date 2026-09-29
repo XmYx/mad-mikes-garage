@@ -84,14 +84,18 @@ lantern, pipe shotgun, molotov.
 *Exists:* bumpers, bull bar, plow, ram, spikes, plates, winch, crane, jerry rack, twin tanks, spoiler, exhausts,
 decorative turret.
 
-- [ ] **Roof rack / cargo box**: container on the roof
-- [ ] **Snorkel**: engine keeps breathing in deep water (no flooding up to the snorkel)
-- [ ] **Light bar / searchlight**: bright spot beam
-- [ ] **Working weapons**: roof machine gun (driver aims with the mouse), harpoon launcher (pull a vehicle),
+- [x] **Roof rack / cargo box**: container on the roof
+- [x] **Snorkel**: engine keeps breathing in deep water (no flooding up to the snorkel)
+- [x] **Light bar / searchlight**: bright spot beam
+- [x] **Working weapons**: roof machine gun (driver aims with the mouse), harpoon launcher (pull a vehicle),
       flamethrower, rear caltrop / oil-slick dropper, smoke launcher
-- [ ] **Side steps / roof ladder**: climb onto the roof
-- [ ] **Water tank**: carry water for farms and showers
-- [ ] **Generator on board**: powers pieces built on the vehicle
+- [x] **Side steps / roof ladder**: climb onto the roof
+- [x] **Water tank**: carry water for farms and showers
+- [x] **Generator on board**: powers pieces built on the vehicle
+      *Done:* 14 parts (`PartLibrary.Attachments`), new sockets lights / snorkel / steps on the four cars, functions
+      added at runtime by `PartFunctions` (state saved per socket), `VehicleWeapons` (LMB roof weapon aimed by mouse
+      or crosshair, B dropper, U smoke), `RoadHazards`, `SmokeScreen` (raider fire misses through it), the vehicle
+      power / water bus in `UtilityGrid`, roof perch via `RoofAccess`.
 
 *Ties:* combat (raiders), irrigation, base building on vehicles, economy.
 

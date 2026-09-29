@@ -8,7 +8,7 @@ namespace MadMax.Items
     {
         static IEnumerable<Recipe> Roadmap()
         {
-            var S = ResourceType.Scrap; var W = ResourceType.Wood; var G = ResourceType.Glass; var Rb = ResourceType.Rubber;
+            var S = ResourceType.Scrap; var G = ResourceType.Glass; var Rb = ResourceType.Rubber;
             var Fe = ResourceType.Iron; var Cu = ResourceType.Copper; var Oil = ResourceType.Oil;
             // ---- 1. tools
             yield return Itm("crowbar", "CROWBAR", RecipeCategory.Tools, "workbench", "tool_crowbar", 1, "PRY LOCKS OPEN; SOLID MELEE", null, (Fe, 2));
@@ -51,6 +51,14 @@ namespace MadMax.Items
             yield return Sew("schoolbag", "SCHOOL BAG", "+8 KG CARRY", null, (C, 4));
             yield return Sew("hikingpack", "HIKING PACK", "+18 KG CARRY", null, (C, 8), (Rb, 1));
             yield return Sew("framepack", "FRAME PACK", "+28 KG CARRY", null, (C, 8), (ResourceType.Aluminium, 2));
+            // ---- 4. vehicle attachments: ammunition for mounted weapons
+            var mg = Itm("ammo_mg", "MG BELT X2", RecipeCategory.Weapons, "workbench", "ammo_mg", 2, "20 ROUNDS EACH FOR A ROOF MG", null, (Cu, 1), (S, 2));
+            mg.knowledge = "read_book_gunsmith";
+            yield return mg;
+            yield return Itm("ammo_harpoon", "HARPOON BOLTS X2", RecipeCategory.Weapons, "workbench", "ammo_harpoon", 2, "BARBED BOLTS FOR THE HARPOON", null, (Fe, 2));
+            yield return Itm("ammo_caltrops", "CALTROP BAG", RecipeCategory.Weapons, "workbench", "ammo_caltrops", 1, "FOR THE REAR DROPPER", null, (S, 3));
+            yield return Itm("ammo_smoke", "SMOKE GRENADES X2", RecipeCategory.Weapons, "workbench", "ammo_smoke", 2, "FOR SMOKE DISCHARGERS", null, (ResourceType.Charcoal, 2), (ResourceType.Cloth, 1));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

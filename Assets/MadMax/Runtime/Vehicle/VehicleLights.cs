@@ -9,6 +9,8 @@ namespace MadMax.Vehicles
     {
         public int mode;                       // 0 auto, 1 on, 2 off
         public static readonly string[] ModeNames = { "LIGHTS AUTO", "LIGHTS ON", "LIGHTS OFF" };
+        /// <summary>Headlights lit (light bars and searchlights follow).</summary>
+        public bool On { get; private set; }
         Light[] heads, tails;
         VehicleDriver driver;
 
@@ -46,6 +48,7 @@ namespace MadMax.Vehicles
         {
             if (heads == null) return;
             bool on = mode == 1 || (mode == 0 && driver.Occupied && DayNight.Darkness > 0.3f);
+            On = on;
             heads[0].enabled = on && LightBudget.Allowed(heads[0], true);
             float brake = driver.brakeInput > 0.1f || driver.handbrake && driver.Occupied ? 1f : 0f;
             foreach (var t in tails)

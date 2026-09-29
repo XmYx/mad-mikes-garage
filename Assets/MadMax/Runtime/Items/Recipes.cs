@@ -40,6 +40,7 @@ namespace MadMax.Items
         static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
         {
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
+            { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
@@ -93,10 +94,20 @@ namespace MadMax.Items
                     default:
                         res.Add((ResourceType.Scrap, metal)); res.Add((ResourceType.Iron, Mathf.Max(1, metal / 3))); break;
                 }
+                // attachments with telling materials
+                switch (id)
+                {
+                    case "cargo_generator": res.Add((ResourceType.Copper, 6)); res.Add((ResourceType.Aluminium, 2)); break;
+                    case "cargo_water_tank": res.Clear(); res.Add((ResourceType.Rubber, 6)); res.Add((ResourceType.Scrap, 4)); break;
+                    case "lights_bar": case "lights_search": res.Add((ResourceType.Glass, 2)); res.Add((ResourceType.Copper, 2)); break;
+                    case "snorkel": res.Add((ResourceType.Rubber, 2)); break;
+                    case "weapon_flamer": res.Add((ResourceType.Copper, 3)); break;
+                }
                 list.Add(new Recipe
                 {
                     id = "part_" + id, name = id.Replace('_', ' ').ToUpperInvariant(), category = RecipeCategory.Vehicles, kind = OutputKind.Part,
-                    output = id, description = cat.ToString().ToUpperInvariant() + " PART, SIZE " + size, resources = res.ToArray(), station = "garage"
+                    output = id, description = cat.ToString().ToUpperInvariant() + " PART, SIZE " + size, resources = res.ToArray(), station = "garage",
+                    knowledge = id == "weapon_mg" || id == "weapon_flamer" ? "read_book_gunsmith" : null
                 });
             }
         }

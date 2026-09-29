@@ -7,7 +7,7 @@ namespace MadMax.Designs
 {
     /// <summary>Generic, vehicle-agnostic parts. Each grid's origin is the part's mount point.
     /// Side parts are authored for the RIGHT side (+X outward); left sockets mirror them.</summary>
-    public static class PartLibrary
+    public static partial class PartLibrary
     {
         public static IEnumerable<PartDesign> All()
         {
@@ -53,6 +53,7 @@ namespace MadMax.Designs
             yield return SportWheel();
             yield return TrackWheel();
             yield return HoeArm();
+            foreach (var p in Attachments()) yield return p;
         }
 
         static PartDesign Make(string key, PartCategory c, VoxelGrid g, float mass, int size = 1, float radius = 0)

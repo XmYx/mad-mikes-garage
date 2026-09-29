@@ -33,6 +33,7 @@ namespace MadMax.Vehicles
 
         /// <summary>Every enabled part (mounted, loose or carried) for proximity queries.</summary>
         public static readonly System.Collections.Generic.List<VehiclePart> Registry = new System.Collections.Generic.List<VehiclePart>();
+        void Awake() => PartFunctions.Setup(this);
         void OnEnable() => Registry.Add(this);
         void OnDisable() => Registry.Remove(this);
 
@@ -46,6 +47,27 @@ namespace MadMax.Vehicles
         public void Detach()
         {
             if (Socket) Socket.Detach();
+        }
+
+        const char Sep = '\u001e';
+
+        /// <summary>State of the part's functional components (rack contents, tank water, generator fuel...), saved per
+        /// socket and for loose parts. Null when the part has none.</summary>
+        public string SaveState()
+        {
+            var parts = GetComponents<MadMax.Building.IPlaceState>();
+            if (parts.Length == 0) return null;
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < parts.Length; i++) { if (i > 0) sb.Append(Sep); sb.Append(parts[i].SaveState() ?? ""); }
+            return sb.ToString();
+        }
+
+        public void LoadState(string state)
+        {
+            if (string.IsNullOrEmpty(state)) return;
+            var parts = GetComponents<MadMax.Building.IPlaceState>();
+            var chunks = state.Split(Sep);
+            for (int i = 0; i < parts.Length && i < chunks.Length; i++) parts[i].LoadState(chunks[i]);
         }
 
         /// <summary>Mount on the first free compatible socket of a vehicle.</summary>

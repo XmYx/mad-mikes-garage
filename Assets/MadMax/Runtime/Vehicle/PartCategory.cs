@@ -15,6 +15,9 @@ namespace MadMax.Vehicles
         Weapon,
         Radiator,
         Armor,
-        Tool
+        Tool,
+        Lights,
+        Snorkel,
+        Steps
     }
 }

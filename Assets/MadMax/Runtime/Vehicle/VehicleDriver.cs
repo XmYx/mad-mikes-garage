@@ -295,6 +295,12 @@ namespace MadMax.Vehicles
                     grip = Mathf.Lerp(firm, w.stats.mudGrip, w.surf.mud) * w.stats.GripFactor;
                 }
                 grip *= w.surf.ice > 0f ? Mathf.Lerp(1f, 0.25f, w.surf.ice) : 1f;
+                // road hazards dropped by other vehicles: oil takes the grip, caltrops puncture
+                if (MadMax.World.RoadHazards.Count > 0 && MadMax.World.RoadHazards.At(w.contact, out var hazard))
+                {
+                    if (hazard == MadMax.World.RoadHazards.Kind.Oil) grip *= 0.22f;
+                    else if (w.stats && !w.stats.Popped && Mathf.Abs(w.vf) > 1.5f && Random.value < dt * 4f) w.stats.Pop();
+                }
                 if (handbrake && occupied && !w.front) grip *= handbrakeGrip;      // parked vehicles keep full grip
                 w.maxF = grip * gripMultiplier * w.spring * (w.broken ? 0.72f : 1f);
             }

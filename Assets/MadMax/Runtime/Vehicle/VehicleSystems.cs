@@ -37,7 +37,8 @@ namespace MadMax.Vehicles
         VehicleChassis chassis;
         bool hasRadiatorSocket;
         MountSocket radiatorSocket;
-        float fxTimer;
+        float fxTimer, snorkelCheck;
+        Snorkel snorkel;
 
         const float Ambient = 25f, HotLimit = 110f, CriticalLimit = 125f;
 
@@ -86,7 +87,9 @@ namespace MadMax.Vehicles
             var terrain = MadMax.World.DeformableTerrain.Instance;
             var ePos = engine.transform.position;
             float lvl = terrain ? terrain.WaterLevel(ePos.x, ePos.z) : float.NaN;
-            bool flooded = !float.IsNaN(lvl) && ePos.y + 0.2f < lvl;
+            if ((snorkelCheck -= dt) <= 0f) { snorkelCheck = 1f; snorkel = GetComponentInChildren<Snorkel>(); }
+            float intake = snorkel && snorkel.Mounted ? Mathf.Max(ePos.y + 0.2f, snorkel.Intake.y) : ePos.y + 0.2f;      // a snorkel breathes high
+            bool flooded = !float.IsNaN(lvl) && intake < lvl;
             if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
             UpdateFire(dt, ePos, ref f);
             bool running = driver.Occupied && fuel > 0f && !seized && !flooded;

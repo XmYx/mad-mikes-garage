@@ -27,7 +27,7 @@ namespace MadMax.Items
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
             ItemCategory.Weapon => 2.5f,
-            ItemCategory.Ammo => 0.05f,
+            ItemCategory.Ammo => id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
             ItemCategory.Throwable => 0.8f,
             ItemCategory.Food => 0.4f,
             ItemCategory.Consumable => 0.3f,

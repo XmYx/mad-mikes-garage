@@ -176,6 +176,9 @@ namespace MadMax.Designs
             d.Socket("armor", PartCategory.Armor, 13, 5, -3, null, true);
             d.Socket("cargo", PartCategory.Cargo, 0, 11, -24, "cargo_twin_fuel_tanks");
             d.Socket("roof", PartCategory.Weapon, 0, 18, -4, null);
+            d.Socket("lights", PartCategory.Lights, 0, 18, 1, null);
+            d.Socket("snorkel", PartCategory.Snorkel, 13, 9, 6, null);
+            d.Socket("steps", PartCategory.Steps, 12, 2, -3, null, true);
             return d;
         }
 
@@ -308,6 +311,9 @@ namespace MadMax.Designs
             d.Socket("cargo", PartCategory.Cargo, 0, 21, -18, "cargo_jerry_rack");
             d.Socket("armor", PartCategory.Armor, 13, 8, 0, "armor_plate", true);
             d.Socket("roof", PartCategory.Weapon, 0, 22, -3, "weapon_turret_cannon");
+            d.Socket("lights", PartCategory.Lights, 0, 22, 2, null);
+            d.Socket("snorkel", PartCategory.Snorkel, 13, 10, 5, "snorkel");
+            d.Socket("steps", PartCategory.Steps, 12, 4, 1, null, true);
             return d;
         }
         // ================================================================== TRABANT P50 (two-tone, round lamps)
@@ -411,6 +417,9 @@ namespace MadMax.Designs
             d.Socket("bumper_rear", PartCategory.RearBumper, 0, 3, -22, "bumper_trabant_rear");
             d.Socket("armor", PartCategory.Armor, 10, 4, -2, null, true, 1);
             d.Socket("roof", PartCategory.Weapon, 0, 18, -4, null);
+            d.Socket("lights", PartCategory.Lights, 0, 18, 0, null);
+            d.Socket("snorkel", PartCategory.Snorkel, 10, 7, 6, null);
+            d.Socket("steps", PartCategory.Steps, 9, 2, 0, null, true);
             return d;
         }
 
@@ -522,6 +531,9 @@ namespace MadMax.Designs
             d.Socket("bumper_front", PartCategory.FrontBumper, 0, 3, 54, "bumper_plow");
             d.Socket("roof", PartCategory.Weapon, 0, 50, 0, "weapon_turret_cannon");
             d.Socket("cargo", PartCategory.Cargo, 0, 50, -40, "cargo_jerry_rack");
+            d.Socket("lights", PartCategory.Lights, 0, 50, 22, "lights_bar");
+            d.Socket("snorkel", PartCategory.Snorkel, 16, 20, 0, null);
+            d.Socket("steps", PartCategory.Steps, 16, 12, 6, null);
 
             d.colliders.Add(VehicleDesign.Box(-9, 8, -61, 9, 14, 54));      // chassis
             d.colliders.Add(VehicleDesign.Box(-15, 15, -58, 15, 16, 25));   // floor

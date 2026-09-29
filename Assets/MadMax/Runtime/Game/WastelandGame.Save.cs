@@ -82,7 +82,7 @@ namespace MadMax.Game
                     cargo = v.TryGetComponent<Container>(out var cg) ? cg.SaveState() : null
                 };
                 foreach (var s in v.GetComponent<VehicleChassis>().Sockets)
-                    vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f });
+                    vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, state = s.Current ? s.Current.SaveState() : null, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f });
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; }
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
                 var tc = v.GetComponent<TowCoupling>();
@@ -91,7 +91,7 @@ namespace MadMax.Game
             }
             foreach (var part in VehiclePart.Registry)
                 if (part && !part.Socket && part != Player.Carried)
-                    d.loose.Add(new LooseSave { part = part.partId, position = part.transform.position, rotation = part.transform.rotation, damage = part.damage, netId = part.netId });
+                    d.loose.Add(new LooseSave { part = part.partId, state = part.SaveState(), position = part.transform.position, rotation = part.transform.rotation, damage = part.damage, netId = part.netId });
             foreach (var p in FindObjectsByType<Placeable>(FindObjectsSortMode.None))
             {
                 var chassis = p.GetComponentInParent<VehicleChassis>();
@@ -179,12 +179,12 @@ namespace MadMax.Game
                 {
                     var saved = vs.sockets.Find(x => x.socket == s.name);
                     if (saved == null) continue;
-                    if (s.Current && s.Current.partId == saved.part) { s.Current.damage = saved.damage; if (s.Current.TryGetComponent<WheelStats>(out var ws0)) ws0.wear = saved.wear; continue; }
+                    if (s.Current && s.Current.partId == saved.part) { s.Current.damage = saved.damage; s.Current.LoadState(saved.state); if (s.Current.TryGetComponent<WheelStats>(out var ws0)) ws0.wear = saved.wear; continue; }
                     var old = s.Detach(false);
                     if (old) Destroy(old.gameObject);
                     if (string.IsNullOrEmpty(saved.part)) continue;
                     var part = SpawnPart(saved.part, s.transform.position, s.transform.rotation);
-                    if (part) { s.Attach(part); part.damage = saved.damage; if (part.TryGetComponent<WheelStats>(out var ws1)) ws1.wear = saved.wear; }
+                    if (part) { s.Attach(part); part.damage = saved.damage; part.LoadState(saved.state); if (part.TryGetComponent<WheelStats>(out var ws1)) ws1.wear = saved.wear; }
                 }
                 if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; }
                 if (!string.IsNullOrEmpty(vs.cargo) && go.TryGetComponent<Container>(out var cargo)) cargo.LoadState(vs.cargo);
@@ -202,6 +202,7 @@ namespace MadMax.Game
                 var part = SpawnPart(l.part, l.position, l.rotation);
                 if (!part) continue;
                 part.damage = l.damage;
+                part.LoadState(l.state);
                 part.netId = l.netId;
                 var rb = part.gameObject.AddComponent<Rigidbody>();
                 rb.mass = part.mass; rb.isKinematic = true;

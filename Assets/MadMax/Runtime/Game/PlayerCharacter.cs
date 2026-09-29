@@ -121,7 +121,7 @@ namespace MadMax.Game
         /// <summary>Swing / fire the equipped tool (faces the view direction first in first/third person).</summary>
         public void Attack(bool faceViewYaw)
         {
-            if (!Tool || swingT >= 0f || Carried || SeatedIn || Sitting || Ragdolled) return;
+            if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled) return;
             var g = WastelandGame.Instance;
             if (g && Tool.TwoHanded && g.ArmBroken) { g.Toast("BROKEN ARM: CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
@@ -216,7 +216,10 @@ namespace MadMax.Game
         void FollowSeat()
         {
             var t = SeatedOn.transform;
-            transform.SetPositionAndRotation(t.TransformPoint(seatSpot + Vector3.down * (0.94f * Rig.appearance.height)), t.rotation);
+            var pos = t.TransformPoint(seatSpot + Vector3.down * (0.94f * Rig.appearance.height));
+            // standing on a roof: upright, free to turn (first person follows the view)
+            if (SeatedOn.standing) transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, faceView ? viewYaw : transform.eulerAngles.y, 0f));
+            else transform.SetPositionAndRotation(pos, t.rotation);
         }
 
         public void StandUp()
@@ -364,7 +367,8 @@ namespace MadMax.Game
             if (!SeatedOn || moveInput.sqrMagnitude > 0.25f || jump) { jump = false; StandUp(); return; }
             FollowSeat();
             Velocity = Vector3.zero;
-            anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, lookPitch = lookPitch, grounded = true });
+            if (SeatedOn.standing) Animate(dt, 0f, true, 0f);
+            else anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, lookPitch = lookPitch, grounded = true });
         }
 
         void UpdateSeated(float dt)

@@ -97,6 +97,41 @@ namespace MadMax.Game
             return car.transform.position + Vector3.up * 3f;
         }
 
+        static readonly RaycastHit[] aimHits = new RaycastHit[16];
+
+        /// <summary>Where the driver aims mounted weapons: under the mouse in top-down views, the screen centre in third /
+        /// first person. Skips the vehicle itself; top-down aims chest-high above the ground.</summary>
+        public Vector3 VehicleAim()
+        {
+            var fallback = Current ? Current.transform.position + Current.transform.forward * 30f : Vector3.zero;
+            if (!cameraRig || !cameraRig.pixel) return fallback;
+            var cam = cameraRig.pixel.GetComponent<Camera>();
+            bool topDown = cameraRig.mode == ViewMode.Isometric || cameraRig.mode == ViewMode.TiltShift;
+            Ray ray;
+            if (!topDown) ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            else
+            {
+                var m = Mouse.current != null ? Mouse.current.position.ReadValue() : new Vector2(Screen.width / 2f, Screen.height / 2f);
+                ray = cam.ViewportPointToRay(new Vector3(m.x / Screen.width, m.y / Screen.height, 0f));
+            }
+            int n = Physics.RaycastNonAlloc(ray, aimHits, 300f, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue; var p = fallback;
+            for (int i = 0; i < n; i++)
+            {
+                if (Current && aimHits[i].collider.transform.IsChildOf(Current.transform)) continue;
+                if (aimHits[i].distance < best) { best = aimHits[i].distance; p = aimHits[i].point; }
+            }
+            if (best == float.MaxValue)
+            {
+                // nothing with a collider under the cursor: meet the ground plane at the vehicle's height
+                float y = Current ? Current.transform.position.y : 0f;
+                if (Mathf.Abs(ray.direction.y) > 0.01f) { float t = (y - ray.origin.y) / ray.direction.y; if (t > 0f) p = ray.origin + ray.direction * t; }
+                else p = ray.origin + ray.direction * 80f;
+            }
+            if (topDown) p += Vector3.up * 0.9f;
+            return p;
+        }
+
         VehicleDriver FindNearby(float maxDist)
         {
             VehicleDriver best = null; float bestD = maxDist;
@@ -133,12 +168,12 @@ namespace MadMax.Game
                 return;
             }
 
-            // ---- sitting on furniture: stand up, use what is in reach
+            // ---- sitting on furniture (or standing on a roof): get up / down, use what is in reach
             if (Player.Sitting)
             {
                 bool T0 = KeyDown(kb, Key.T) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
                 string near = PieceInteraction(E, T0);
-                Prompt = "[F] STAND UP" + (near != null ? "   " + near : "");
+                Prompt = (Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP") + (near != null ? "   " + near : "");
                 if (F) Player.StandUp();
                 return;
             }

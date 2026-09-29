@@ -254,6 +254,7 @@ namespace MadMax.Npc
             if (fx) for (int i = 0; i < 4; i++) fx.EmitPuff(muzzle + aim * 0.6f, new Color32(255, 200, 90, 255), 0.07f * power, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
             float moving = g.Current ? Mathf.Abs(g.Current.ForwardSpeed) : g.Player.Velocity.magnitude;
             float chance = Mathf.Clamp01(1.05f - dist / 20f - moving * 0.03f);
+            if (SmokeScreen.Blocks(muzzle, target)) chance *= 0.15f;                            // firing blind into smoke
             int n = Physics.RaycastNonAlloc(muzzle, aim, shotHits, dist + 3f, ~0, QueryTriggerInteraction.Ignore);
             RaycastHit hit = default; float best = float.MaxValue;
             for (int i = 0; i < n; i++)

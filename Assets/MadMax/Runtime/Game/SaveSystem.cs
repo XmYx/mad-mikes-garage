@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MadMax.Game
 {
-    [Serializable] public class SocketSave { public string socket, part; public float damage, wear; }
+    [Serializable] public class SocketSave { public string socket, part, state; public float damage, wear; }
 
     [Serializable]
     public class VehicleSave
@@ -23,7 +23,7 @@ namespace MadMax.Game
         public string radio;               // RadioReceiver state (on, station, volume)
     }
 
-    [Serializable] public class LooseSave { public string part; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; }
+    [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; }
     [Serializable] public class PlacedSave { public string id; public int vehicle = -1; public Vector3 localPosition; public Quaternion localRotation; public int hits; public uint netId; public string state, owner; }
     [Serializable] public class DestroyedSave { public string key, template; public bool all; public List<Vector3Int> removed = new List<Vector3Int>(); }
     [Serializable] public class ItemSave { public string id; public int count; }

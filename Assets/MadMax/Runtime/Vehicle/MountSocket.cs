@@ -60,7 +60,9 @@ namespace MadMax.Vehicles
             part.Socket = null;
             part.transform.SetParent(null, true);
             part.transform.localScale = Vector3.one;   // loose parts are never mirrored (BoxColliders reject negative scale)
-            foreach (var c in part.GetComponentsInChildren<Collider>()) c.enabled = true;
+            // a part taken off to be destroyed, carried or moved must not sit as a static collider inside the vehicle
+            // for a physics step (the vehicle would be shoved out violently): colliders only come back when it drops
+            foreach (var c in part.GetComponentsInChildren<Collider>()) c.enabled = drop;
             if (drop && Application.isPlaying && !part.GetComponent<Rigidbody>())
             {
                 var rb = part.gameObject.AddComponent<Rigidbody>();

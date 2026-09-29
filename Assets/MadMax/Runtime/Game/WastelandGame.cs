@@ -467,6 +467,7 @@ namespace MadMax.Game
                 if (!v.GetComponent<Winch>()) v.gameObject.AddComponent<Winch>();
                 if (!v.GetComponent<Crane>()) v.gameObject.AddComponent<Crane>();
                 if (!v.GetComponent<VehicleClimate>()) v.gameObject.AddComponent<VehicleClimate>();
+                if (!v.GetComponent<VehicleWeapons>()) v.gameObject.AddComponent<VehicleWeapons>();
             }
             if (v.netId == 0) v.netId = nextVehicleId++;
             else nextVehicleId = (ushort)Mathf.Max(nextVehicleId, v.netId + 1);
@@ -556,6 +557,13 @@ namespace MadMax.Game
                 if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
                 if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f, kb.leftShiftKey.isPressed);
                 if (Pressed(Key.K) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
+                if (Current.TryGetComponent<VehicleWeapons>(out var guns) && !ExternalInput)
+                    guns.Control(new WeaponInput
+                    {
+                        fire = mouse != null && mouse.leftButton.isPressed, firePressed = mouse != null && mouse.leftButton.wasPressedThisFrame,
+                        alt = kb != null && kb.leftShiftKey.isPressed, drop = Pressed(Key.B), smoke = Pressed(Key.U),
+                        aim = VehicleAim(), dt = Time.deltaTime
+                    });
                 if (Current.TryGetComponent<Machine>(out var machine) && kb != null)
                     machine.Control(new MachineKeys
                     {

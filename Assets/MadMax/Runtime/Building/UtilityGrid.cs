@@ -52,6 +52,14 @@ namespace MadMax.Building
             for (int i = 0; i < nodes.Count; i++)
                 foreach (var l in nodes[i].links)
                     if (l.kind == kind && byId.TryGetValue(l.id, out int j)) parent[Find(i)] = Find(j);
+            // everything on one vehicle shares its wiring and plumbing (onboard generator, water tank, built pieces)
+            var byVehicle = new Dictionary<MadMax.Vehicles.VehicleChassis, int>();
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var v = nodes[i].GetComponentInParent<MadMax.Vehicles.VehicleChassis>();
+                if (!v) continue;
+                if (byVehicle.TryGetValue(v, out int j)) parent[Find(i)] = Find(j); else byVehicle[v] = i;
+            }
             var map = new Dictionary<int, int>();
             for (int i = 0; i < nodes.Count; i++)
             {
