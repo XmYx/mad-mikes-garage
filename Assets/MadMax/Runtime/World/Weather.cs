@@ -15,7 +15,12 @@ namespace MadMax.World
         public static float Ice => Temperature < 0f ? Mathf.Clamp01(Mathf.Max(Wetness * 1.2f - 0.15f, Snow * 0.6f)) * Mathf.Clamp01(-Temperature / 3f + 0.4f) : 0f;
         public static bool SnowAllowed = true;
         public static int Frequency = 2;                         // 0 never .. 3 stormy
-        public static int Season;                                // 0 summer, 1 autumn, 2 winter
+        public static int Season;                                // 0 summer, 1 autumn, 2 winter, 3 spring
+        /// <summary>Game days per season (0: the season never changes); the year runs summer → autumn → winter → spring.</summary>
+        public static int DaysPerSeason = 4, SeasonStart;
+        /// <summary>0..1 through the current season.</summary>
+        public static float SeasonProgress { get; private set; }
+        static readonly int AutumnId = Shader.PropertyToID("_MadMaxAutumn");
         public static bool Auto = true;
         /// <summary>Lakes rise while it rains (m above their dry level) and drain slowly afterwards.</summary>
         public static float LakeRise { get; private set; }
@@ -35,7 +40,7 @@ namespace MadMax.World
         void Awake() { timer = 60f; tempNoise = Random.value * 100f; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { LakeRise = 0f; Wetness = 0; Snow = 0; Raining = false; Temperature = 25f; Frequency = 2; Season = 0; SnowAllowed = true; Auto = true; }
+        static void ResetStatics() { LakeRise = 0f; Wetness = 0; Snow = 0; Raining = false; Temperature = 25f; Frequency = 2; Season = 0; SnowAllowed = true; Auto = true; DaysPerSeason = 4; SeasonStart = 0; SeasonProgress = 0f; }
 
         public static void Restore(bool raining, float wetness, float snow = 0f, float temperature = float.NaN, float lakeRise = 0f)
         {
@@ -93,19 +98,36 @@ namespace MadMax.World
             }
         }
 
-        public static void Configure(int frequency, int season, bool snow)
+        public static void Configure(int frequency, int season, bool snow, int daysPerSeason = 4)
         {
-            Frequency = frequency; Season = season; SnowAllowed = snow; Wetness = 0f; Raining = false; LakeRise = 0f;
+            Frequency = frequency; Season = season; SeasonStart = season; DaysPerSeason = daysPerSeason; SnowAllowed = snow; Wetness = 0f; Raining = false; LakeRise = 0f;
             Temperature = SeasonTemp;
             Snow = season == 2 && snow ? 0.6f : 0f;
         }
 
-        static float SeasonTemp => Season == 0 ? 30f : Season == 1 ? 11f : -5f;
+        static float SeasonTemp => Season == 0 ? 30f : Season == 1 ? 11f : Season == 2 ? -5f : 17f;
+
+        /// <summary>The year turns with the days: season from the start season and the day count; autumn colours.</summary>
+        static void UpdateSeason()
+        {
+            if (DaysPerSeason > 0)
+            {
+                float d = (DayNight.Day + DayNight.Hours / 24f) / DaysPerSeason;
+                int s = (SeasonStart + Mathf.FloorToInt(d)) % 4;
+                if (s != Season) { Season = s; MadMax.Game.WastelandGame.Instance?.Toast(SeasonNames[s] + " IS HERE"); }
+                SeasonProgress = d - Mathf.Floor(d);
+            }
+            // foliage turns gold and rust through autumn, stays brown in winter, greens up in spring
+            float autumn = Season == 1 ? SeasonProgress * 0.9f : Season == 2 ? 0.75f : Season == 3 ? Mathf.Max(0f, 0.75f - SeasonProgress * 1.5f) : 0f;
+            Shader.SetGlobalFloat(AutumnId, autumn);
+        }
+        public static readonly string[] SeasonNames = { "SUMMER", "AUTUMN", "WINTER", "SPRING" };
 
         void Update()
         {
             float dt = Time.deltaTime;
             bool authority = !(MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient);
+            UpdateSeason();
             if (authority)
             {
                 // temperature drifts slowly around the season value, colder while precipitating

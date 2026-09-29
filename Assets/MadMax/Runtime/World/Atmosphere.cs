@@ -58,8 +58,9 @@ namespace MadMax.World
             float h = DayNight.Hours;
             float morning = Bell(h, 6.3f, 1.6f), evening = Bell(h, 19.6f, 1.4f) * 0.55f;
             float precip = Weather.Raining ? (Weather.Snowing ? 0.8f : 0.65f) : 0f;
-            float target = Mathf.Clamp01(Mathf.Max(morning * (0.45f + localDamp), evening * (0.6f + localDamp)) + precip + Weather.Wetness * 0.15f + localDamp * 0.25f);
-            Fog = Mathf.MoveTowards(Fog, target, dt * 0.05f);
+            float target = Mathf.Clamp01(Mathf.Max(morning * (0.45f + localDamp), evening * (0.6f + localDamp)) + precip + Weather.Wetness * 0.15f + localDamp * 0.25f
+                                         + Storms.Dust * 0.95f + Storms.Rad * 0.45f);
+            Fog = Mathf.MoveTowards(Fog, target, dt * (Storms.Dust > 0.05f ? 0.2f : 0.05f));
 
             float cover = Weather.Raining ? 0.9f : 0.3f + 0.18f * Mathf.Sin(Time.time * 0.01f);
             CloudCover = Mathf.MoveTowards(CloudCover, cover, dt * 0.02f);
@@ -105,6 +106,10 @@ namespace MadMax.World
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.0f, 1.02f, 1.06f), snow));
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 0.95f, 1.1f), night));
             sat *= (1f - 0.2f * rain) * (1f - 0.12f * snow) * (1f - 0.2f * night);
+            // storms: orange murk in a dust storm, a sick green glow in a radiation storm
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.14f, 0.95f, 0.7f), Storms.Dust));
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 1.1f, 0.84f), Storms.Rad));
+            sat *= (1f - 0.3f * Storms.Dust) * (1f - 0.25f * Storms.Rad);
             con *= (1f - 0.05f * rain) * (1f - 0.1f * Fog);
             float k = 1f - Mathf.Exp(-0.8f * dt);                                                    // eases across a biome edge
             gTint = Vector3.Lerp(gTint, tint, k); gSat = Mathf.Lerp(gSat, sat, k); gContrast = Mathf.Lerp(gContrast, con, k);
@@ -132,13 +137,14 @@ namespace MadMax.World
             {
                 bolts = 0;
                 secondFlash = Time.time + Random.Range(0.08f, 0.16f);
-                if (cam && SkyVisible)
+                // a real strike near the player (it seeks tall things, lights fires, electrifies metal)
+                var g = MadMax.Game.WastelandGame.Instance;
+                var focusPos = g && g.Current ? g.Current.transform.position : g && g.Player ? g.Player.transform.position : cam ? cam.transform.position : Vector3.zero;
+                var ground = Storms.PickStrike(focusPos);
+                Storms.Strike(ground);
+                if (cam)
                 {
                     if (!bolt) bolt = BuildBolt();
-                    var dir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
-                    var ground = cam.transform.position + dir * Random.Range(55f, 95f);
-                    var tt = DeformableTerrain.Instance;
-                    if (tt) ground.y = tt.Height(ground.x, ground.z);
                     bolt.position = ground;
                     bolt.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                     bolt.gameObject.SetActive(true);

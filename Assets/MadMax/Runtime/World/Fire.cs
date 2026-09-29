@@ -119,12 +119,17 @@ namespace MadMax.World
             float reach = radius * (0.8f + intensity);
             int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 0.5f, reach, near, ~0, QueryTriggerInteraction.Ignore);
             var game = MadMax.Game.WastelandGame.Instance;
+            bool playerBurned = false;
             for (int i = 0; i < n; i++)
             {
                 var c = near[i];
-                // players
+                // players (once per tick, however many hitbox colliders are in the flames)
                 var pc = c.GetComponentInParent<MadMax.Game.PlayerCharacter>();
-                if (pc && game && pc == game.Player && game.Vitals && !game.Current) { game.Vitals.Hurt(9f * intensity * dt * 2f, "BURNED"); continue; }
+                if (pc)
+                {
+                    if (!playerBurned && game && pc == game.Player && game.Vitals && !game.Current) { playerBurned = true; game.Vitals.Hurt(9f * intensity * dt * 2f, "BURNED"); }
+                    continue;
+                }
                 if (!Authority) continue;                     // clients mirror fires; the server burns and spreads
                 // props: char them away and spread
                 var d = c.GetComponentInParent<DestructibleVoxels>();

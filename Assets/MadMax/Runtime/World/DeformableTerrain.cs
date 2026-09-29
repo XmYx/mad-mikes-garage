@@ -69,6 +69,8 @@ namespace MadMax.World
             public byte[] pave, compact;      // 0 none, 1 asphalt, 2 concrete; compacted by a roller
             public float[] cure;              // 0 wet .. 1 set
             public bool terraformed;
+            public float[] rut;               // wheel / foot deformation that heals (not terraform), null until rutted
+            public float rutHealAt;
             public GameObject go;
             public Mesh mesh;
             public MeshCollider col;
@@ -265,12 +267,56 @@ namespace MadMax.World
         void Put(int cx, int cz, int li, int lj, float v)
         {
             var ch = Data(new Vector2Int(cx, cz));
+            int rk = lj * V + li;
+            // ruts and berms are tracked apart so they can heal; terraforming makes a cell's shape permanent
+            if (terraforming) { if (ch.rut != null) ch.rut[rk] = 0f; }
+            else
+            {
+                if (ch.rut == null) { ch.rut = new float[V * V]; ch.rutHealAt = Time.time; rutted.Add(ch); }
+                ch.rut[rk] += v - ch.d[rk];
+            }
             ch.d[lj * V + li] = v;
             ch.meshDirty = ch.colDirty = ch.deformed = true;
             MarkTrampled(ch, lj * V + li);
             if (terraforming) ch.terraformed = true;
         }
         bool terraforming;
+
+        // ------------------------------------------------------------------ ruts heal (roadmap 17)
+        readonly List<Chunk> rutted = new List<Chunk>();
+        int rutCursor;
+        float rutTimer;
+
+        /// <summary>Ruts, berms and footprints settle back over the days: about half a day, faster in rain, fastest
+        /// when a dust storm drifts sand into them. A few chunks per second, round robin.</summary>
+        void HealRuts(float dt)
+        {
+            if ((rutTimer -= dt) > 0f || rutted.Count == 0) return;
+            rutTimer = 0.33f;
+            float daySeconds = (DayNight.DayMinutes > 0f ? DayNight.DayMinutes : 24f) * 60f;
+            float mult = (Weather.Raining && !Weather.Snowing ? 3f : 1f) * (1f + Storms.Dust * 5f);
+            for (int n = 0; n < 2 && rutted.Count > 0; n++)
+            {
+                rutCursor = (rutCursor + 1) % rutted.Count;
+                var ch = rutted[rutCursor];
+                if (!chunks.TryGetValue(ch.c, out var live) || live != ch) { rutted.RemoveAt(rutCursor); continue; }   // streamed out
+                float elapsed = Time.time - ch.rutHealAt;
+                if (elapsed < 20f) continue;
+                ch.rutHealAt = Time.time;
+                float f = 1f - Mathf.Exp(-0.693f * elapsed / daySeconds * mult);                  // halves in a day
+                bool any = false, changed = false;
+                for (int k = 0; k < ch.rut.Length; k++)
+                {
+                    float r = ch.rut[k];
+                    if (r > -0.001f && r < 0.001f) { ch.rut[k] = 0f; continue; }
+                    float h = r * f;
+                    ch.d[k] -= h; ch.rut[k] -= h;
+                    any = true; changed |= Mathf.Abs(h) > 0.0005f;
+                }
+                if (changed) { ch.meshDirty = true; ch.colDirty = true; }
+                if (!any) { ch.rut = null; rutted.RemoveAt(rutCursor); }
+            }
+        }
 
         /// <summary>Press a tyre footprint into the ground. <paramref name="dig"/> (0..1) is wheel-spin that excavates.</summary>
         public void Deform(Vector3 contact, Vector3 fwd, Vector3 side, float width, float load, float dig, float dt)
@@ -329,6 +375,7 @@ namespace MadMax.World
         void Update()
         {
             if (World == null || !focus) return;
+            HealRuts(Time.deltaTime);
             focusChunks.Clear();
             focusChunks.Add(ChunkOf(focus.position));
             foreach (var f in extraFoci) if (f) focusChunks.Add(ChunkOf(f.position));

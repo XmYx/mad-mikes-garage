@@ -46,6 +46,7 @@ Shader "MadMax/PixelVoxel"
         float _MadMaxBrightnessDelta;
         float _MadMaxNight;      // 0 day .. 1 night
         float _MadMaxSnow;       // snow dusting on upward faces
+        float _MadMaxAutumn;     // 0..1 foliage turning gold and rust (swaying materials: trees, grass)
         float4 _MadMaxClouds;    // x coverage 0..1, y shadow strength, z 1/scale (1/m); x = 0 disables
         float4 _MadMaxCloudOffset; // xy drift (noise space)
 
@@ -146,6 +147,13 @@ Shader "MadMax/PixelVoxel"
                     half hd = frac(sin(dot(cd, float3(41.13, 17.71, 93.37))) * 24634.63);
                     half low = saturate((_DirtTop - i.positionWS.y) / 0.9);
                     if (hd < _Dirt * low * 0.75h) albedo = lerp(albedo, half3(0.075h, 0.045h, 0.025h), 0.8h);
+                }
+                // autumn: leaves and grass turn gold and rust, voxel by voxel
+                if (_MadMaxAutumn > 0.001h && (_Sway + _SwayTip) > 0.0h && albedo.g > albedo.r * 1.1h && albedo.g > albedo.b)
+                {
+                    float3 ac = floor(i.positionWS * 6.0 + 0.5);
+                    half ha = frac(sin(dot(ac, float3(7.13, 157.1, 113.7))) * 43758.5453);
+                    if (ha < _MadMaxAutumn) albedo = ha < _MadMaxAutumn * 0.45h ? albedo.ggg * half3(1.9h, 0.55h, 0.12h) : albedo.ggg * half3(1.6h, 1.05h, 0.18h);
                 }
                 // light snow dusting: a scatter of voxels on upward faces
                 half3 nW = normalize(i.normalWS);

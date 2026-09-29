@@ -149,7 +149,7 @@ namespace MadMax.Npc
                 case Phase.Travel:
                     if (raiders)
                     {
-                        float sight = (g.Current && Mathf.Abs(g.Current.ForwardSpeed) > 15f ? 110f : 75f) * (Contracts.Hauling ? 1.4f : 1f);   // cargo draws them
+                        float sight = (g.Current && Mathf.Abs(g.Current.ForwardSpeed) > 15f ? 110f : 75f) * (Contracts.Hauling ? 1.4f : 1f) * (1f - 0.6f * Storms.Dust);   // cargo draws them, dust blinds them
                         if (Friendly) { if (dist < 30f && Time.time > truceUntil) { truceUntil = Time.time + 120f; MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f); g.Toast("THE " + Gang + " HONK A GREETING"); } }
                         else if (Time.time > truceUntil && !inTown && dist < sight) Confront(g);
                     }

@@ -24,6 +24,7 @@ namespace MadMax.Game
             }
             float lvl = terrain.WaterLevel(p.x, p.z);
             if (!float.IsNaN(lvl) && CurrentBiome == Biome.Nuclear && p.y < lvl) rad += 0.8f;
+            if (Storms.Rad > 0.01f) rad += Storms.Rad * 1.2f * (Sheltered || Player.Interior ? 0.15f : 1f);   // radiation storm: under a roof or out
             if (Current) rad *= 0.35f;                                                 // the cab shields a little
             rad *= 1f - Stats.Level(Skill.Survival) * 0.05f;
             rad *= RadiationPassed;                                                   // hazmat suit, gas mask

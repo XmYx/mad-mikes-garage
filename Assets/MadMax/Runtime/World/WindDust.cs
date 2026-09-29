@@ -32,7 +32,7 @@ namespace MadMax.World
             float dt = Time.deltaTime, t = Time.time;
             // direction drifts over minutes, strength over tens of seconds, gusts over seconds
             float angle = (Mathf.PerlinNoise(t * 0.004f, 3.1f) - 0.5f) * 540f * Mathf.Deg2Rad;
-            float storm = Weather.Raining ? (Weather.Snowing ? 0.7f : 1f) : 0f;
+            float storm = Mathf.Max(Weather.Raining ? (Weather.Snowing ? 0.7f : 1f) : 0f, Storms.Dust * 2.2f);   // dust storms blow hardest
             float target = Mathf.Lerp(1.2f, 4.5f, Mathf.PerlinNoise(t * 0.02f, 7.7f)) + storm * 4f;
             Strength = Mathf.MoveTowards(Strength, target, dt * 0.5f);
             Gust = Mathf.Clamp01(Mathf.PerlinNoise(t * 0.45f, 1.3f) * 1.6f - 0.5f + storm * 0.2f);

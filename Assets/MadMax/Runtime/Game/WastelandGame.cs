@@ -109,7 +109,7 @@ namespace MadMax.Game
             else Rules.seed = seed;
             if (pending != null) seed = pending.seed;
             GameRules.Current = Rules;
-            Weather.Configure(Rules.weather, Rules.season, Rules.snow);
+            Weather.Configure(Rules.weather, Rules.season, Rules.snow, GameRules.SeasonLengths[Mathf.Clamp(Rules.seasonLength, 0, GameRules.SeasonLengths.Length - 1)]);
             wreckCount = Rules.wrecks;
             Stats = SaveSystem.PendingCharacter ?? (pending != null && pending.stats != null && !joining ? pending.stats : new CharacterStats());
             if (SaveSystem.PendingCharacter != null) Stats.ApplyTraitStart();
@@ -143,6 +143,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.Audio.AmbientAudio>();
             gameObject.AddComponent<MadMax.World.Atmosphere>();
             gameObject.AddComponent<MadMax.World.WindDust>();
+            gameObject.AddComponent<MadMax.World.Storms>();
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             Menus.Init(this);
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);

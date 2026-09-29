@@ -322,12 +322,25 @@ decorative turret.
 ## 17. Environment `T2`
 *Exists:* biomes, rain / snow, day / night, lakes, fire, radiation, sites, ground flora, overgrowth, wind.
 
-- [ ] **Seasons** advance with the days (temperature, snow, autumn colours)
-- [ ] **Dust storms**: moving fronts, low visibility, sandblasting, drifting sand
-- [ ] **Radiation storms** in the fallout zones
-- [ ] **Thunderstorms**: lightning strikes (fires, electrified metal)
-- [ ] **Ruts heal** over days (rain speeds it up)
-- [ ] **Caves** in mesas (ore, bats, shelter)
+- [x] **Seasons** advance with the days (temperature, snow, autumn colours)
+- [x] **Dust storms**: moving fronts, low visibility, sandblasting, drifting sand
+- [x] **Radiation storms** in the fallout zones
+- [x] **Thunderstorms**: lightning strikes (fires, electrified metal)
+- [x] **Ruts heal** over days (rain speeds it up)
+- [x] **Caves** in mesas (ore, bats, shelter)
+      *Done:* `Weather.Season` turns every `DaysPerSeason` days (new game: SEASONS TURN every 2/4/8 days or never;
+      summer → autumn → winter → spring with their temperatures); the global `_MadMaxAutumn` turns swaying foliage gold
+      and rust through autumn, holds in winter and greens up in spring. `World/Storms`: dust storms roll over the
+      desert when it is hot and dry (fronts build over 45 s, blow for 3–6 min, pass): sand streaks on the wind, fog
+      and a sandy grade, sandblasting an uncovered face (a mask or scarf stops it), raiders half-blind, vehicles
+      dusted, ruts drifting over six times faster. Radiation storms flare in the nuclear zone: green motes, a heavy
+      dose outdoors (a roof or an interior cuts it to 15 %, the cab to 35 %). Lightning seeks tall things near the
+      player, breaks what it hits, lights flammable props and dry forest ground, electrifies vehicles within 12 m
+      for a few seconds (the cab keeps you safe; touching one outside shocks), and strikes a walker down. Ruts and
+      berms from tyres heal by half each day (three times faster in rain) while terraforming stays. Mesa tunnels
+      carry ore seams in their walls (the mapped deposit, else a seeded pick of iron, copper, coal, tin, sulphur or
+      lead; mined like any voxel), a bat roost in the deepest roofed stretch (flushes at 7 m or a light at 14 m) and
+      an old camp: a guttering oil lamp and a crate (`cave` loot table: guano, tins, a lantern, dynamite, bait).
 
 *Ties:* gardening, clothing, visuals, animals, mining.
 

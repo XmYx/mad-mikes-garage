@@ -18,7 +18,8 @@ namespace MadMax.Game
         public float damage = 1f;           // damage taken multiplier
         public int wrecks = 36;
         public int weather = 2;             // 0 never, 1 rare, 2 normal, 3 often
-        public int season;                  // 0 summer, 1 autumn, 2 winter
+        public int season;                  // starting season: 0 summer, 1 autumn, 2 winter, 3 spring
+        public int seasonLength = 2;        // index into SeasonLengths
         public bool snow = true;
         public float biomeScale = 1f;       // size of biome regions
         public bool permadeath;
@@ -35,7 +36,9 @@ namespace MadMax.Game
         public static readonly string[] KitNames = { "NOTHING", "BASIC", "FULL WORKSHOP" };
         public static readonly string[] FleetNames = { "FULL FLEET", "SCAVENGER", "TRABANT", "ON FOOT" };
         public static readonly string[] WeatherNames = { "NEVER RAINS", "RARE", "NORMAL", "STORMY" };
-        public static readonly string[] SeasonNames = { "SUMMER", "AUTUMN", "WINTER" };
+        public static readonly string[] SeasonNames = { "SUMMER", "AUTUMN", "WINTER", "SPRING" };
+        public static readonly int[] SeasonLengths = { 0, 2, 4, 8 };
+        public static readonly string[] SeasonLengthNames = { "NEVER CHANGES", "2 DAYS", "4 DAYS", "8 DAYS" };
 
         /// <summary>Rules of the running game (defaults until a game starts).</summary>
         public static GameRules Current = new GameRules();

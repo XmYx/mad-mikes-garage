@@ -79,7 +79,7 @@ namespace MadMax.World
             p.job = Task.Run(() =>
             {
                 var extras = new List<Extra>();
-                var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, index, pos);
+                var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, index, pos, extras);
                 g.Bevel();
                 return (g, VoxelMesher.BuildData(g, s.kind == SiteKind.Bunker ? BunkerVoxel : TunnelVoxel), extras);
             });
@@ -162,7 +162,25 @@ namespace MadMax.World
             foreach (var e in p.extras)
             {
                 var at = p.pos + q * e.local;
-                if (e.kind == "lamp")
+                if (e.kind == "bats")
+                {
+                    var go = new GameObject("BatColony");
+                    go.transform.SetParent(parent, true);
+                    go.transform.SetPositionAndRotation(at, q);
+                    go.AddComponent<BatColony>();
+                }
+                else if (e.kind == "oil_lamp")
+                {
+                    var def = MadMax.Building.FurnitureLibrary.Get("lamp");
+                    var go = new GameObject("CampLamp", typeof(MeshFilter), typeof(MeshRenderer));
+                    go.transform.SetParent(parent, true);
+                    go.transform.SetPositionAndRotation(at, q);
+                    if (def != null) { go.GetComponent<MeshFilter>().sharedMesh = def.mesh; go.GetComponent<MeshRenderer>().sharedMaterial = mat; }
+                    var glow = new GameObject("Light"); glow.transform.SetParent(go.transform, false); glow.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+                    var l = glow.AddComponent<BunkerLamp>();
+                    l.dying = e.dying; l.hum = false; l.color = new Color(1f, 0.72f, 0.4f); l.range = 6f; l.brightness = 2.6f;
+                }
+                else if (e.kind == "lamp")
                 {
                     var go = new GameObject("BunkerLamp");
                     go.transform.SetParent(parent, true);
@@ -202,7 +220,7 @@ namespace MadMax.World
             if (p.grid != null) return p.grid;
             if (p.job != null) { p.job.Wait(); Ready(p); return p.grid; }
             var extras = new List<Extra>();
-            var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, p.index, p.pos);
+            var g = s.kind == SiteKind.Bunker ? Bunker(world, s, extras) : Tunnel(world, s, p.index, p.pos, extras);
             g.Bevel();
             p.grid = g; p.extras = extras;
             p.mesh = VoxelMesher.Build(g, p.id, p.size);
@@ -371,11 +389,25 @@ namespace MadMax.World
         static readonly Color32[] Sandstone = { Pal.Hex("6a3e24"), Pal.Hex("7e4c2c"), Pal.Hex("925a34"), Pal.Hex("a66a3e"), Pal.Hex("b87c4a") };
         static readonly Color32[] RockGrey = { Pal.Hex("34302c"), Pal.Hex("403b36"), Pal.Hex("4c4640"), Pal.Hex("5a534b"), Pal.Hex("686056") };
 
-        static VoxelGrid Tunnel(WorldGen world, Site s, int index, Vector3 origin)
+        static VoxelGrid Tunnel(WorldGen world, Site s, int index, Vector3 origin, List<Extra> extras)
         {
             var g = new VoxelGrid().Mat((byte)ResourceType.Stone);
             const float v = TunnelVoxel;
             float zc = -s.halfLen - 2f + (index + 0.5f) * SegmentLen;
+            // caves (roadmap 17): the mesa's own ore shows in the tunnel walls — veins to pick at
+            float oreStrength = world.OreAt(s.pos.x, s.pos.y, out var oreKind);
+            if (oreKind == ResourceType.None)
+            {
+                // no deposit mapped here: most mesas still carry a seam of something
+                var r = new System.Random(s.seed * 7919 + 17);
+                if (r.NextDouble() < 0.75)
+                {
+                    oreKind = CaveOres[r.Next(CaveOres.Length)];
+                    oreStrength = 0.3f + (float)r.NextDouble() * 0.4f;
+                }
+            }
+            float veinChance = oreKind == ResourceType.None ? 0f : 0.05f + 0.18f * oreStrength;
+            var vein = OreColour(oreKind);
             var biome = world.NaturalBiome(s.pos.x, s.pos.y);
             var shade = biome == Biome.Desert ? Sandstone : RockGrey;
             // strata by world height, like the mesa slopes on the terrain
@@ -408,7 +440,12 @@ namespace MadMax.World
                     {
                         // rock walls: two voxels at the inner face, further out only a lip over the terrain seam
                         int from = ax < 3.2f ? j0 : Mathf.Max(j0, jc - 1);
-                        for (int j = from; j <= jc; j++) g.Set(i, j, k, rock);
+                        for (int j = from; j <= jc; j++)
+                        {
+                            bool ore = ax < 3.2f && veinChance > 0f && Pal.Noise(new Vector3(i * 0.35f, j * 0.35f, k * 0.35f), s.seed + 12) < veinChance;
+                            if (ore) { g.Mat((byte)oreKind); g.Set(i, j, k, vein); g.Mat((byte)ResourceType.Stone); }
+                            else g.Set(i, j, k, rock);
+                        }
                         continue;
                     }
                     if (!roofed) continue;
@@ -429,7 +466,29 @@ namespace MadMax.World
                         if (Pal.Hash(dx, dy + k, dz, s.seed + 7) < 0.8f) g.Set(side * (10 - dx), j + dy, k + dz, rock);
                 }
             }
+            // the roost and an old camp in the deepest roofed stretch
+            if (index == PieceCount(s) / 2 && Roofed(zc))
+            {
+                float floor = Floor(0f, zc) - origin.y;
+                extras.Add(new Extra { kind = "bats", local = new Vector3(0f, floor + 4.3f, 0f) });                  // BatColony hangs them on the arch
+                extras.Add(new Extra { kind = "loot", table = "cave", visual = "crate", yaw = 90f, local = new Vector3(1.9f, Floor(1.9f, zc + 1.5f) - origin.y, 1.5f) });
+                extras.Add(new Extra { kind = "oil_lamp", dying = true, local = new Vector3(1.5f, Floor(1.5f, zc + 0.4f) - origin.y, 0.4f) });   // guttering, low on oil
+            }
             return g;
         }
+
+        static readonly ResourceType[] CaveOres = { ResourceType.IronOre, ResourceType.IronOre, ResourceType.IronOre, ResourceType.CopperOre, ResourceType.CopperOre, ResourceType.Coal, ResourceType.Coal, ResourceType.TinOre, ResourceType.Sulfur, ResourceType.LeadOre };
+
+        /// <summary>Ore vein paint: dark haematite for iron, verdigris for copper, soot for coal, pale for tin and bauxite.</summary>
+        static VoxMat OreColour(ResourceType ore) => ore switch
+        {
+            ResourceType.CopperOre => Pal.Ramp(new[] { Pal.Hex("1e5a4a"), Pal.Hex("2a7a5e"), Pal.Hex("3e9a72") }, 1, 1801),
+            ResourceType.Coal => Pal.Ramp(Pal.Black, 1, 1802),
+            ResourceType.TinOre or ResourceType.Bauxite => Pal.Ramp(new[] { Pal.Hex("8a8278"), Pal.Hex("a39888"), Pal.Hex("c0b29c") }, 1, 1803),
+            ResourceType.Sulfur => Pal.Ramp(new[] { Pal.Hex("a08a1e"), Pal.Hex("c4aa2a"), Pal.Hex("e0c840") }, 1, 1804),
+            ResourceType.UraniumOre => Pal.Ramp(new[] { Pal.Hex("3a5a1e"), Pal.Hex("5a8a2a"), Pal.Hex("8ac03e") }, 1, 1805),
+            ResourceType.LeadOre => Pal.Ramp(Pal.Metal, 2, 1806),
+            _ => Pal.Ramp(new[] { Pal.Hex("2e1c1e"), Pal.Hex("48282a"), Pal.Hex("6a3430"), Pal.Hex("a4582a") }, 1, 1807),   // haematite, rust glints
+        };
     }
 }

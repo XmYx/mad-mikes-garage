@@ -12,7 +12,7 @@ namespace MadMax.World
         public static Vector3 Wind = new Vector3(1.2f, 0f, 0.6f);
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void Reset() => instance = null;
 
-        ParticleSystem smoke, sparks;
+        ParticleSystem smoke, sparks, streaks;
         Mesh skidMesh;
         const int MaxSkids = 1400;
         Vector3[] sv = new Vector3[MaxSkids * 4];
@@ -105,6 +105,15 @@ namespace MadMax.World
             sparks = MakeSystem("Sparks", 800, null);
             var sm = sparks.main; sm.gravityModifier = 1f;
             var sr = sparks.GetComponent<ParticleSystemRenderer>(); sr.renderMode = ParticleSystemRenderMode.Stretch; sr.velocityScale = 0.04f; sr.lengthScale = 1f;
+
+            // wind-driven streaks (blown sand, sleet): stretched along their velocity, fading in and out
+            streaks = MakeSystem("Streaks", 1500, null);
+            var stc = streaks.colorOverLifetime; stc.enabled = true;
+            var sg = new Gradient();
+            sg.SetKeys(new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.white, 1) },
+                       new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.2f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) });
+            stc.color = sg;
+            var str = streaks.GetComponent<ParticleSystemRenderer>(); str.renderMode = ParticleSystemRenderMode.Stretch; str.velocityScale = 0.06f; str.lengthScale = 1f;
 
             skidMesh = new Mesh { name = "Skidmarks" };
             skidMesh.MarkDynamic();
@@ -258,6 +267,13 @@ namespace MadMax.World
         {
             var e = new ParticleSystem.EmitParams { position = p, velocity = v, startSize = size, startLifetime = life * Random.Range(0.8f, 1.2f), startColor = c, rotation = Random.Range(0f, 360f) };
             I.smoke.Emit(e, 1);
+        }
+
+        /// <summary>One streak flying with the wind (sand in a dust storm).</summary>
+        public static void Streak(Vector3 p, Vector3 v, float size, Color c, float life = 1.2f)
+        {
+            var e = new ParticleSystem.EmitParams { position = p, velocity = v, startSize = size, startLifetime = life * Random.Range(0.8f, 1.2f), startColor = c };
+            I.streaks.Emit(e, 1);
         }
 
         public static void Sparks(Vector3 p, Vector3 dir, int n, Color c)

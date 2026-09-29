@@ -136,6 +136,12 @@ namespace MadMax.RPG
                     }
                     break;
                 }
+                case "SHOCK":
+                {
+                    // the current goes in at a hand
+                    Put(new Injury { zone = rnd.NextDouble() < 0.5 ? BodyZone.HandL : BodyZone.HandR, type = Wound.Burn, severity = 0.5f });
+                    break;
+                }
                 case "BURNED":
                 {
                     var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));

@@ -656,11 +656,14 @@ namespace MadMax.Game
         {
             string sky = Weather.Snowing ? "SNOW" : Weather.Raining ? "RAIN" : Weather.Snow > 0.2f ? "SNOWY" : "DRY";
             canvas.Text(x, y, sky, Weather.Raining ? Amber : Dim);
+            canvas.Text(x + 22, y, Weather.SeasonNames[Mathf.Clamp(Weather.Season, 0, 3)], Dim);
             string t = Mathf.RoundToInt(Weather.Temperature) + "C";
             canvas.Text(x + 64 - PixelCanvas.TextWidth(t), y, t, Weather.Temperature < 0f ? new Color32(150, 190, 255, 255) : Dim);
             Bar(x, y + 8, 64, Weather.Wetness, new Color32(110, 120, 140, 255));
             if (Weather.Snow > 0.01f) Bar(x, y + 11, 64, Weather.Snow, new Color32(230, 230, 240, 255));
-            if (Weather.Ice > 0.3f) canvas.Text(x, y + 15, "ICE", new Color32(150, 190, 255, 255));
+            int ly = y + 15;
+            if (Storms.Name != null) { canvas.Text(x, ly, Storms.Name, (Time.unscaledTime % 1f) < 0.6f ? Red : Amber); ly += 7; }
+            if (Weather.Ice > 0.3f) canvas.Text(x, ly, "ICE", new Color32(150, 190, 255, 255));
         }
 
         void DrawBuildPanel()
