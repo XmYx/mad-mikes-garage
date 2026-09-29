@@ -67,9 +67,26 @@ namespace MadMax.RPG
         static readonly BodyZone[] Lower = { BodyZone.LegL, BodyZone.LegR, BodyZone.FootL, BodyZone.FootR };
 
         /// <summary>Turn a damage event into wounds (crashes, falls, burns). Other causes (hunger, radiation...) leave none.</summary>
-        public static void Apply(List<Injury> list, float amount, string cause, System.Random rnd)
+        public static void Apply(List<Injury> list, float amount, string cause, System.Random rnd, Func<BodyZone, float> protect = null, Action<BodyZone> deflected = null)
         {
             if (amount < 2f) return;
+            // armour on the zone: often stops the wound outright, else makes it lighter
+            void Put(Injury inj)
+            {
+                float p = protect != null ? Mathf.Clamp01(protect(inj.zone)) : 0f;
+                if (p > 0f)
+                {
+                    double r = rnd.NextDouble();
+                    if (r < p * 0.6) { deflected?.Invoke(inj.zone); return; }
+                    if (r < p)
+                    {
+                        inj.type = inj.type switch { Wound.DeepWound => Wound.Laceration, Wound.Laceration => Wound.Bruise, Wound.Fracture => Wound.Bruise, Wound.Scratch => Wound.Bruise, _ => inj.type };
+                        inj.severity *= 1f - p * 0.5f;
+                        deflected?.Invoke(inj.zone);
+                    }
+                }
+                list.Add(inj);
+            }
             switch (cause)
             {
                 case "CRASH":
@@ -80,20 +97,20 @@ namespace MadMax.RPG
                         var z = Upper[rnd.Next(Upper.Length)];
                         var w = amount > 30f && rnd.NextDouble() < 0.35 ? Wound.Fracture : amount > 18f ? (rnd.NextDouble() < 0.5 ? Wound.DeepWound : Wound.Laceration) : amount > 8f ? Wound.Laceration : (rnd.NextDouble() < 0.5 ? Wound.Scratch : Wound.Bruise);
                         if (w == Wound.Fracture && (z == BodyZone.Head || z == BodyZone.Torso)) w = Wound.DeepWound;
-                        list.Add(new Injury { zone = z, type = w });
+                        Put(new Injury { zone = z, type = w });
                     }
                     break;
                 }
                 case "FALL":
                 {
                     var z = Lower[rnd.Next(Lower.Length)];
-                    list.Add(new Injury { zone = z, type = amount > 22f ? Wound.Fracture : amount > 10f ? Wound.Laceration : Wound.Bruise });
+                    Put(new Injury { zone = z, type = amount > 22f ? Wound.Fracture : amount > 10f ? Wound.Laceration : Wound.Bruise });
                     break;
                 }
                 case "MELEE":
                 {
                     var z = Upper[rnd.Next(Upper.Length)];
-                    list.Add(new Injury { zone = z, type = amount > 12f ? Wound.Laceration : rnd.NextDouble() < 0.5 ? Wound.Bruise : Wound.Scratch });
+                    Put(new Injury { zone = z, type = amount > 12f ? Wound.Laceration : rnd.NextDouble() < 0.5 ? Wound.Bruise : Wound.Scratch });
                     break;
                 }
                 case "SHOT":
@@ -102,7 +119,7 @@ namespace MadMax.RPG
                     for (int i = 0; i < n; i++)
                     {
                         var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));
-                        list.Add(new Injury { zone = all[rnd.Next(all.Length)], type = amount > 18f ? Wound.DeepWound : Wound.Laceration });
+                        Put(new Injury { zone = all[rnd.Next(all.Length)], type = amount > 18f ? Wound.DeepWound : Wound.Laceration });
                     }
                     break;
                 }
@@ -115,7 +132,7 @@ namespace MadMax.RPG
                     {
                         var z = all[rnd.Next(all.Length)];
                         var w = amount > 35f && rnd.NextDouble() < 0.4 && z != BodyZone.Head && z != BodyZone.Torso ? Wound.Fracture : i == 0 ? Wound.Burn : Wound.Laceration;
-                        list.Add(new Injury { zone = z, type = w, severity = w == Wound.Burn ? 0.7f : 1f });
+                        Put(new Injury { zone = z, type = w, severity = w == Wound.Burn ? 0.7f : 1f });
                     }
                     break;
                 }
@@ -125,7 +142,7 @@ namespace MadMax.RPG
                     var z = all[rnd.Next(all.Length)];
                     var existing = list.Find(x => x.zone == z && x.type == Wound.Burn);
                     if (existing != null) existing.severity = Mathf.Min(1f, existing.severity + 0.2f);
-                    else list.Add(new Injury { zone = z, type = Wound.Burn, severity = 0.6f });
+                    else Put(new Injury { zone = z, type = Wound.Burn, severity = 0.6f });
                     break;
                 }
             }

@@ -33,7 +33,7 @@ namespace MadMax.Items
             ItemCategory.Consumable => id == "use_battery" ? 8f : 0.3f,
             ItemCategory.Seed => 0.02f,
             ItemCategory.Crop => 0.2f,
-            ItemCategory.Clothing => 0.8f,
+            ItemCategory.Clothing => MadMax.Game.ClothingLibrary.Get(id) is MadMax.Game.ClothingDef cd && cd.weight > 0f ? cd.weight : 0.8f,
             ItemCategory.Media => 0.4f,
             ItemCategory.Kit => 6f,
             _ => 1f

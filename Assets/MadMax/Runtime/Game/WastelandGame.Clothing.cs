@@ -57,7 +57,7 @@ namespace MadMax.Game
                 var d = ClothingLibrary.Get(id);
                 ClothWear.TryGetValue(id, out var w);
                 float before = w;
-                w += amount / Mathf.Max(0.2f, d.durability) * GameRules.Current.DamageTaken * QualityWear(ClothingLibrary.ItemId(d));
+                w += amount / Mathf.Max(0.2f, d.durability * (d.armor != null ? 2f : 1f)) * GameRules.Current.DamageTaken * QualityWear(ClothingLibrary.ItemId(d));   // armour is built to take it
                 if (w >= 1f) { FallApart(d); rebuild = true; continue; }
                 ClothWear[id] = w;
                 if (before < 0.65f && w >= 0.65f) { rebuild = true; Toast("YOUR " + d.name + " IS TORN"); }
@@ -75,13 +75,16 @@ namespace MadMax.Game
         }
 
         /// <summary>Cloth it takes to mend a garment fully.</summary>
-        public int MendCost(string defId) => Mathf.Max(1, Mathf.CeilToInt((1f - GarmentCondition(defId)) * 4f));
+        public int MendCost(string defId) => Mathf.Max(1, Mathf.CeilToInt((1f - GarmentCondition(defId)) * (ClothingLibrary.Get(defId)?.armor != null ? 6f : 4f)));
+        /// <summary>What a garment is mended with: cloth, or the armour's own material (scrap, rubber, leather, iron).</summary>
+        public ResourceType MendWith(string defId) => ClothingLibrary.Get(defId)?.mendWith ?? ResourceType.Cloth;
 
         public bool Mend(string defId, float amount = 1f)
         {
             if (GarmentCondition(defId) >= 0.999f) return false;
             int cloth = amount >= 1f ? MendCost(defId) : 1;
-            if (!Inventory.TrySpend(ResourceType.Cloth, cloth)) { Toast("NEED " + cloth + " CLOTH"); return false; }
+            var res = MendWith(defId);
+            if (!Inventory.TrySpend(res, cloth)) { Toast("NEED " + cloth + " " + ResourceInfo.Name(res)); return false; }
             ClothWear.TryGetValue(defId, out var w);
             ClothWear[defId] = Mathf.Max(0f, w - amount - Stats.Level(Skill.Crafting) * 0.02f);
             Stats.Practice(Skill.Crafting, 2f);
@@ -124,6 +127,7 @@ namespace MadMax.Game
             if (!Player || Vitals == null || Vitals.Dead) return;
             var s = Stats;
             s.carryBonus = CarryBonus;
+            UpdateArmourNoise(dt);
             // ---- wetness: rain and snow soak you outdoors, swimming at once; shelter, warmth and heat dry you
             bool exposed = Weather.Raining && !Sheltered && !Current;
             if (Player.Swimming) s.wetness = 1f;

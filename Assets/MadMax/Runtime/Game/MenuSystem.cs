@@ -503,10 +503,10 @@ namespace MadMax.Game
                         items.Add(new Item
                         {
                             label = cd.name + (game.Wearing(gid) ? " (WORN)" : ""),
-                            value = () => Mathf.RoundToInt(game.GarmentCondition(gid) * 100f) + "%" + (game.GarmentCondition(gid) < 0.999f ? "  " + game.MendCost(gid) + " CLOTH" : ""),
+                            value = () => Mathf.RoundToInt(game.GarmentCondition(gid) * 100f) + "%" + (game.GarmentCondition(gid) < 0.999f ? "  " + game.MendCost(gid) + " " + ResourceInfo.Name(game.MendWith(gid)) : ""),
                             enabled = () => game.GarmentCondition(gid) < 0.999f,
                             confirm = () => { game.Mend(gid); Rebuild(); },
-                            hint = "ENTER MEND WITH CLOTH"
+                            hint = "ENTER MEND (ARMOUR TAKES ITS OWN MATERIAL)"
                         });
                     }
                     if (ids.Count == 0) items.Add(new Item { label = "NO CLOTHES TO MEND", enabled = () => false });

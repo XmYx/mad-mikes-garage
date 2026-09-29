@@ -44,7 +44,7 @@ namespace MadMax.Npc
             if (id.StartsWith("vhs_")) return 14f;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return 3f;
             if (id.StartsWith("kit_")) return 28f;
-            if (id.StartsWith("cloth_")) return 10f;
+            if (id.StartsWith("cloth_")) { var cd = MadMax.Game.ClothingLibrary.Get(id); return cd?.armor != null ? 14f + cd.weight * 5f + cd.armor[1] * 40f : 10f; }
             if (id.StartsWith("throw_")) return 12f;
             if (id.StartsWith("farm_")) return 5f;
             if (id.StartsWith("use_")) return 8f;

@@ -156,8 +156,20 @@ namespace MadMax.Items
             foreach (var st in new[] { "stove", "oven" })
                 yield return Cook(st, "glowfish", "GRILLED GLOWFISH", "food_glowfish_cooked", 1, st == "stove" ? ResourceType.Wood : ResourceType.None, ("food_fish_glow", 1));
 
+            // ---- 12. body armour
+            var Le = ResourceType.Leather;
+            yield return Armr("vest_scrap", "SCRAP PLATE VEST", "workbench", "STOPS BLADES AND BUCKSHOT; 7 KG, CLANKS", (S, 10), (Le, 2));
+            yield return Armr("vest_tyre", "TYRE-RUBBER VEST", "workbench", "SOAKS CRASHES AND BLOWS; QUIET", (Rb, 6), (C, 2));
+            yield return Armr("arm_guards", "ARM GUARDS", "sewing", "LEATHER AND STUDS FOR THE ARMS", (Le, 3), (S, 2));
+            yield return Armr("gauntlets", "GAUNTLETS", "workbench", "METAL HANDS AGAINST BLADES AND FIRE", (Fe, 2), (Le, 1));
+            yield return Armr("shin_guards", "SHIN GUARDS", "workbench", "FOR FALLS AND KICKS", (S, 4), (Le, 1));
+            yield return Armr("helmet", "SCRAP HELMET", "workbench", "A POT WITH A STRAP", (S, 4), (C, 1));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
+
+        static Recipe Armr(string id, string name, string station, string desc, params (ResourceType, int)[] res) =>
+            Itm("a_" + id, name, RecipeCategory.Clothing, station, "cloth_" + id, 1, desc, null, res);
 
         static Recipe Sew(string id, string name, string desc, (string, int)[] items, params (ResourceType, int)[] res) =>
             Itm("c_" + id, name, RecipeCategory.Clothing, "sewing", "cloth_" + id, 1, desc, items, res);

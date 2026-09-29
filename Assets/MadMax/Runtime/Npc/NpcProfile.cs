@@ -56,6 +56,13 @@ namespace MadMax.Npc
                 if (r.NextDouble() < 0.5 || role == NpcRole.RaiderBoss) p.outfit.Add("helmet");
                 if (p.look.hair == HairStyle.Long || p.look.hair == HairStyle.Ponytail) p.look.hair = HairStyle.Mohawk;
                 p.tool = role == NpcRole.RaiderBoss ? "tool_pipe_shotgun" : Pick("tool_pipe_club", "tool_machete", "tool_pipe_shotgun", "tool_pipe");
+                // welded and strapped-on armour (the boss wears the best); drops when they fall
+                double ar = r.NextDouble();
+                if (role == NpcRole.RaiderBoss) p.outfit.Add(ar < 0.4 ? "vest_kevlar" : "vest_scrap");
+                else if (ar < 0.35) p.outfit.Add("vest_scrap");
+                else if (ar < 0.6) p.outfit.Add("vest_tyre");
+                if (r.NextDouble() < 0.35) p.outfit.Add("arm_guards");
+                if (r.NextDouble() < 0.3) p.outfit.Add("shin_guards");
             }
             else
             {

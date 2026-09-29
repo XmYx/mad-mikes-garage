@@ -299,7 +299,13 @@ namespace MadMax.Npc
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
             if (mode == Mode.Dead) return;
-            float dmg = power * 28f;
+            // their armour: gunfire (player guns, vehicle weapons) or blows
+            var gp = WastelandGame.Instance;
+            int kind = (int)DamageKind.Melee;
+            if (gp && source && (source.GetComponentInParent<VehicleDriver>() || (gp.Player && gp.Player.Tool is RangedTool && source.transform.IsChildOf(gp.Player.transform)))) kind = (int)DamageKind.Shot;
+            float armour = WastelandGame.NpcProtection(rig.outfit, kind);
+            if (armour > 0.25f) MadMax.Audio.Sfx.Play("hit_metal", point, 0.5f, 1.2f);
+            float dmg = power * 28f * (1f - 0.7f * armour);
             health -= dmg;
             lastBlow = direction.normalized * Mathf.Clamp(power * 90f, 30f, 400f);
             lastHurt = Time.time;
@@ -347,6 +353,11 @@ namespace MadMax.Npc
             var loot = pelvis.AddComponent<Lootable>();
             loot.key = "N" + Profile.id; loot.table = Profile.Raider ? "raider" : Profile.Vendor ? "shop" : "house";
             loot.title = Profile.Name + "'S BODY";
+            foreach (var o in rig.outfit)                                                     // strip their armour
+            {
+                var cd = ClothingLibrary.Get(o);
+                if (cd?.armor != null && Random.value < 0.7f) loot.extra.Add(ClothingLibrary.ItemId(cd));
+            }
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);
             convoy?.MemberDied(this);
         }

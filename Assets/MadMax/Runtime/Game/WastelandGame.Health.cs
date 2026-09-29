@@ -19,7 +19,8 @@ namespace MadMax.Game
         public void Injure(float amount, string cause)
         {
             int before = Stats.injuries.Count;
-            InjuryRules.Apply(Stats.injuries, amount, cause, injuryRnd);
+            int kind = KindOf(cause);
+            InjuryRules.Apply(Stats.injuries, amount, cause, injuryRnd, kind < 0 ? null : (System.Func<BodyZone, float>)(z => Protection(z, kind)), z => Deflected(z, amount));
             // clothes take the damage too: a crash or fire everything, a hit what covers the wound
             if (cause == "CRASH") TearClothes(null, amount / 150f);
             else if (cause == "BURNED") TearClothes(null, amount / 40f);

@@ -6,7 +6,9 @@ using UnityEngine;
 namespace MadMax.Game
 {
     public enum BodyPart { Pelvis, Chest, Head, UpperArmL, UpperArmR, ForearmL, ForearmR, HandL, HandR, ThighL, ThighR, ShinL, ShinR, FootL, FootR }
-    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack }
+    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack, Vest, Arms, Shins }
+    /// <summary>Damage kinds armour protects against (index into <see cref="ClothingDef.armor"/>).</summary>
+    public enum DamageKind { Melee, Shot, Crash, Fall, Burn }
     public enum HairStyle { Bald, Buzz, Short, Mohawk, Ponytail, Long }
 
     /// <summary>Body look. Serializable (saves, network).</summary>
@@ -40,6 +42,10 @@ namespace MadMax.Game
         public string style;                                         // look for first impressions: raider, hazmat, drifter
         public Func<Appearance, VoxelGrid> prop;                     // rigid extra (hat brim, backpack) in 4 cm voxels, bone-local
         public BodyPart propBone = BodyPart.Chest;
+        public float[] armor;                                        // protection per DamageKind on the covered zones (null = none)
+        public float weight;                                         // kg (0 = light clothing)
+        public float noise;                                          // clank while moving (metal armour)
+        public MadMax.Items.ResourceType mendWith = MadMax.Items.ResourceType.Cloth;
     }
 
     /// <summary>Human proportions, voxel meshes for body/garments/hair (4 cm voxels = twice the world detail).</summary>

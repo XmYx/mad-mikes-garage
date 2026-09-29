@@ -38,6 +38,7 @@ namespace MadMax.Game
         public void Hurt(float amount, string cause)
         {
             if (stats == null || Dead || amount <= 0f) return;
+            if (WastelandGame.Instance) amount *= WastelandGame.Instance.ArmourFactor(cause);        // body armour
             stats.health -= amount * GameRules.Current.DamageTaken;
             WastelandGame.Instance?.Injure(amount * GameRules.Current.DamageTaken, cause);
             lastHurt = Time.time;

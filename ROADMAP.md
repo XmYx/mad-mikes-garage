@@ -220,11 +220,19 @@ decorative turret.
 *Ties:* raiders, tuning, crafting, welder.
 
 ## 12. Player armor `T2`
-- [ ] **Zones**: helmets, chest plates (scrap plate, tyre-rubber vest, kevlar), arm guards, gauntlets, shin guards
-- [ ] **Protection per damage type** (melee, shot, crash, fall, burn) reduces damage and injury chance on the
+- [x] **Zones**: helmets, chest plates (scrap plate, tyre-rubber vest, kevlar), arm guards, gauntlets, shin guards
+- [x] **Protection per damage type** (melee, shot, crash, fall, burn) reduces damage and injury chance on the
       covered zones (ties the injury system)
-- [ ] **Weight & noise**; durability and repair
-- [ ] Raiders drop their armour
+- [x] **Weight & noise**; durability and repair
+- [x] Raiders drop their armour
+      *Done:* `ClothingDef.armor` (per `DamageKind`), `weight`, `noise`, `mendWith`; new slots Vest / Arms / Shins;
+      scrap plate / tyre-rubber / kevlar vests, arm guards, gauntlets, shin guards, motorcycle helmet, and the scrap
+      helmet and shoulder armour now protect. `WastelandGame.Armour`: zone cover from the garment's coverage,
+      protection fades with condition, `ArmourFactor` cuts damage in `PlayerVitals.Hurt`, `InjuryRules.Apply` stops or
+      softens wounds on covered zones (the armour takes the wear, "YOUR ARMOUR TOOK THE BLOW"); weight counts in the
+      pack, metal clanks (NPC noise, louder running); mended at the sewing table with its own material (scrap, rubber,
+      leather, iron). Raiders wear vests and guards (hits on them are softened, metal clang) and drop them (70 %) on
+      their bodies; kevlar and moto helmets are loot; workbench / sewing recipes; traders price by protection.
 
 *Ties:* injuries, crafting, raiders, economy.
 

@@ -22,6 +22,8 @@ namespace MadMax.Game
                 { "duster", (6f, -2f) }, { "poncho", (2f, 0.5f) }, { "hazmat", (3f, -4f) }, { "gasmask", (0.5f, -1f) }, { "sweater", (6f, -2f) }, { "overalls", (2.5f, -0.5f) },
                 { "cowboy", (0.5f, 3f) }, { "bomber", (7f, -2f) }, { "shemagh", (1f, 2f) }, { "fingerless", (0.8f, 0f) }, { "combat_boots", (2f, -0.5f) },
                 { "welding_mask", (0.5f, -1f) }, { "skull_mask", (0.5f, -0.5f) }, { "schoolbag", (0f, -0.3f) }, { "hikingpack", (0.5f, -0.8f) }, { "framepack", (0.5f, -1f) },
+                { "vest_scrap", (1f, -1.5f) }, { "vest_tyre", (1.5f, -1.5f) }, { "vest_kevlar", (1f, -1f) }, { "arm_guards", (0.5f, -0.5f) },
+                { "gauntlets", (0.5f, -0.3f) }, { "shin_guards", (0.3f, -0.3f) }, { "moto_helmet", (1f, -1.5f) },
             };
             foreach (var d in l) if (t.TryGetValue(d.id, out var v)) { d.warmth = v.w; d.cooling = v.c; }
             return l;
@@ -73,8 +75,8 @@ namespace MadMax.Game
                 Def("goggles", "GOGGLES", ClothingSlot.Face, 0.9f, (v, p, t) => v.z > 1 && Mathf.Abs(v.x) >= 1 ? Pal.Hex("d08a30") : Pal.Black[0],
                     (BP.Head, new Vector2(0.58f, 0.66f))),
                 Def("bandana", "BANDANA", ClothingSlot.Face, 0.9f, (v, p, t) => v.z > -1 ? Weave(v, red, 810, 1) : Pal.Black[1], (BP.Head, new Vector2(0.28f, 0.47f))).Gear(filter: true),
-                Def("helmet", "SCRAP HELMET", ClothingSlot.Head, 1.6f, (v, p, t) => Pal.Hash(v, 811) > 0.85f ? Pal.Chrome[2] : Weave(v, Pal.Metal, 812, 2), (BP.Head, new Vector2(0.68f, 1f))).Gear(durability: 3f, style: "raider"),
-                Def("shoulder", "SHOULDER ARMOUR", ClothingSlot.Back, 2.4f, (v, p, t) => Weave(v, Pal.Chrome, 813, 1), (BP.UpperArmL, new Vector2(0f, 0.3f))).Gear(durability: 3f, style: "raider"),
+                Def("helmet", "SCRAP HELMET", ClothingSlot.Head, 1.6f, (v, p, t) => Pal.Hash(v, 811) > 0.85f ? Pal.Chrome[2] : Weave(v, Pal.Metal, 812, 2), (BP.Head, new Vector2(0.68f, 1f))).Gear(durability: 3f, style: "raider").Armor(0.5f, 0.3f, 0.45f, 0.3f, 0.2f, 1.5f, 0.2f, Scrap),
+                Def("shoulder", "SHOULDER ARMOUR", ClothingSlot.Back, 2.4f, (v, p, t) => Weave(v, Pal.Chrome, 813, 1), (BP.UpperArmL, new Vector2(0f, 0.3f))).Gear(durability: 3f, style: "raider").Armor(0.35f, 0.2f, 0.2f, 0.1f, 0.2f, 1.5f, 0.25f, Scrap),
                 Def("coat", "WINTER PARKA", ClothingSlot.Outer, 2.2f, (v, p, t) => p == BP.Chest && v.y % 6 == 0 ? Pal.Olive[0] : Weave(v, Pal.Olive, 814, 2),
                     (BP.Chest, Full), (BP.Pelvis, Full), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, Full), (BP.ForearmR, Full), (BP.ThighL, new Vector2(0, 0.35f)), (BP.ThighR, new Vector2(0, 0.35f))).Gear(waterproof: 0.3f),
                 Def("hoodie", "HOODIE", ClothingSlot.Torso, 0.9f, (v, p, t) => Weave(v, Pal.Metal, 815, 2),
@@ -150,6 +152,45 @@ namespace MadMax.Game
                     },
                     (BP.Head, new Vector2(0.22f, 0.8f))).Gear(style: "raider"),
 
+                // ---- roadmap 12: armour, layered over the clothes (protection in Armor(): melee, shot, crash, fall, burn)
+                Def("vest_scrap", "SCRAP PLATE VEST", ClothingSlot.Vest, 2.6f, (v, p, t) =>
+                    {
+                        if (p == BP.Chest && t > 0.84f) return (Mathf.Abs(v.x) == 2 || Mathf.Abs(v.x) == 3) ? Pal.Black[1] : default;   // straps over the shoulders
+                        int row = Mathf.FloorToInt(t * 5f);
+                        if (v.y % 4 == 0 && (v.x & 1) == 0) return Pal.Chrome[1];                                            // rivet rows
+                        return (row + (v.x > 0 ? 1 : 0)) % 2 == 0 ? Pal.Pick(Pal.Metal, v, 850 + row, 2) : Pal.Pick(Pal.Rust, v, 855 + row, 2);
+                    },
+                    (BP.Chest, Full), (BP.Pelvis, new Vector2(0f, 0.3f))).Gear(durability: 3f, style: "raider").Armor(0.55f, 0.4f, 0.3f, 0.1f, 0.25f, 7f, 0.6f, Scrap),
+                Def("vest_tyre", "TYRE-RUBBER VEST", ClothingSlot.Vest, 2.4f, (v, p, t) =>
+                    {
+                        if (p == BP.Chest && t > 0.84f) return (Mathf.Abs(v.x) == 2 || Mathf.Abs(v.x) == 3) ? Pal.Black[0] : default;
+                        return ((v.x + v.y) & 3) < 2 ? Pal.Tire[2] : Pal.Tire[1];                                           // tread
+                    },
+                    (BP.Chest, Full), (BP.Pelvis, new Vector2(0f, 0.3f))).Gear(durability: 2f).Armor(0.45f, 0.25f, 0.5f, 0.2f, 0f, 4.5f, 0.1f, Rubber),
+                Def("vest_kevlar", "KEVLAR VEST", ClothingSlot.Vest, 2.0f, (v, p, t) =>
+                    {
+                        if (p == BP.Chest && t > 0.84f) return (Mathf.Abs(v.x) == 2 || Mathf.Abs(v.x) == 3) ? Pal.Navy[0] : default;
+                        if (p == BP.Chest && t < 0.4f && v.z > 0 && v.x % 3 != 0) return Pal.Pick(Pal.Olive, v, 857, 1);      // pouches
+                        return Pal.Pick(Pal.Navy, v, 858, 1);
+                    },
+                    (BP.Chest, Full), (BP.Pelvis, new Vector2(0f, 0.25f))).Gear(durability: 2.2f).Armor(0.3f, 0.75f, 0.2f, 0.1f, 0.1f, 3.5f, 0.05f, Cloth),
+                Def("arm_guards", "ARM GUARDS", ClothingSlot.Arms, 2.1f, (v, p, t) => (v.y % 3 == 0 && ((v.x + v.z) & 1) == 0) ? Pal.Chrome[2] : Pal.Pick(Pal.Wood, v, 859, 1),
+                    (BP.UpperArmL, new Vector2(0.35f, 1f)), (BP.UpperArmR, new Vector2(0.35f, 1f)), (BP.ForearmL, new Vector2(0f, 0.85f)), (BP.ForearmR, new Vector2(0f, 0.85f)))
+                    .Gear(durability: 2f, style: "raider").Armor(0.45f, 0.15f, 0.3f, 0.2f, 0.3f, 2f, 0.25f, Leather),
+                Def("gauntlets", "GAUNTLETS", ClothingSlot.Hands, 1.3f, (v, p, t) => (p == BP.HandL || p == BP.HandR) && v.y % 2 == 0 ? Pal.Chrome[1] : Pal.Pick(Pal.Metal, v, 860, 2),
+                    (BP.HandL, Full), (BP.HandR, Full), (BP.ForearmL, new Vector2(0.75f, 1f)), (BP.ForearmR, new Vector2(0.75f, 1f)))
+                    .Gear(durability: 3f).Armor(0.5f, 0.1f, 0.35f, 0.3f, 0.45f, 1.2f, 0.2f, Iron),
+                Def("shin_guards", "SHIN GUARDS", ClothingSlot.Shins, 1.9f, (v, p, t) => t < 0.12f ? Pal.Pick(Pal.Chrome, v, 861, 1) : (v.y % 4 == 0 ? Pal.Rust[2] : Pal.Pick(Pal.Metal, v, 862, 2)),
+                    (BP.ShinL, new Vector2(0f, 0.8f)), (BP.ShinR, new Vector2(0f, 0.8f)), (BP.ThighL, new Vector2(0.9f, 1f)), (BP.ThighR, new Vector2(0.9f, 1f)))
+                    .Gear(durability: 2.5f, style: "raider").Armor(0.4f, 0.15f, 0.35f, 0.45f, 0.2f, 2f, 0.3f, Scrap),
+                Def("moto_helmet", "MOTORCYCLE HELMET", ClothingSlot.Head, 1.9f, (v, p, t) =>
+                    {
+                        if (v.z > 1 && t > 0.5f && t < 0.66f && Mathf.Abs(v.x) <= 3) return Pal.Glass[1];                   // visor
+                        if (Mathf.Abs(v.x) <= 1 && v.z < 2) return Pal.Cream[3];                                            // racing stripe
+                        return Pal.Pick(Pal.Crimson, v, 863, 3);
+                    },
+                    (BP.Head, new Vector2(0.25f, 1f))).Gear(durability: 2.5f).Armor(0.45f, 0.2f, 0.75f, 0.6f, 0.3f, 1.4f, 0f, Scrap),
+
                 // ---- backpacks: straps on the chest, the bag as a rigid prop on the back
                 Def("schoolbag", "SCHOOL BAG", ClothingSlot.Pack, 0.7f, Straps(Pal.Navy), (BP.Chest, new Vector2(0.3f, 0.98f))).Gear(carry: 8f).Prop(BP.Chest, a =>
                     {
@@ -193,6 +234,17 @@ namespace MadMax.Game
         }
 
         static ClothingDef Prop(this ClothingDef d, BP bone, System.Func<Appearance, VoxelGrid> make) { d.prop = make; d.propBone = bone; return d; }
+
+        const MadMax.Items.ResourceType Scrap = MadMax.Items.ResourceType.Scrap, Rubber = MadMax.Items.ResourceType.Rubber, Leather = MadMax.Items.ResourceType.Leather,
+            Iron = MadMax.Items.ResourceType.Iron, Cloth = MadMax.Items.ResourceType.Cloth;
+
+        /// <summary>Armour stats: protection per <see cref="DamageKind"/> on what the garment covers, weight, clank and the
+        /// material it is mended with.</summary>
+        static ClothingDef Armor(this ClothingDef d, float melee, float shot, float crash, float fall, float burn, float kg, float noise, MadMax.Items.ResourceType mend)
+        {
+            d.armor = new[] { melee, shot, crash, fall, burn }; d.weight = kg; d.noise = noise; d.mendWith = mend;
+            return d;
+        }
 
         /// <summary>Default outfit for a new wastelander.</summary>
         public static readonly string[] Starter = { "tshirt", "jacket", "pants", "boots", "shoulder" };
