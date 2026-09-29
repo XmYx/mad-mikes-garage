@@ -120,10 +120,12 @@ namespace MadMax.Game
             WheelStats.Popped_ -= OnTyrePop; WheelStats.Popped_ += OnTyrePop;
             viewRadius = GameSettings.Current.ViewRadius;
             VehicleDamage.Scrapped += OnScrapped;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.World");                    // markers for load profiling (dev builds)
             World = new WorldGen(seed);
             terrain = new GameObject("Terrain").AddComponent<DeformableTerrain>();
             terrain.viewRadius = viewRadius;
             terrain.Init(World, terrainMaterial, propMaterial);
+            UnityEngine.Profiling.Profiler.EndSample();
             var weather = new GameObject("Weather").AddComponent<Weather>();
             var fx = new GameObject("WorldFx");
             fx.AddComponent<DebrisSystem>().Init(propMaterial);
@@ -145,9 +147,11 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.World.Atmosphere>();
             gameObject.AddComponent<MadMax.World.WindDust>();
             gameObject.AddComponent<MadMax.World.Storms>();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             gameObject.AddComponent<MadMax.Animals.AnimalDirector>().Init(this);
             Menus.Init(this);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);
 
             if (pending != null)
@@ -161,20 +165,28 @@ namespace MadMax.Game
             }
             else
             {
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Terrain");
                 terrain.BuildAllNow(p);
                 Physics.SyncTransforms();
+                UnityEngine.Profiling.Profiler.EndSample();
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fleet");
                 SpawnFleet(p, dir);
+                UnityEngine.Profiling.Profiler.EndSample();
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
                 SpawnWrecks(p);
+                UnityEngine.Profiling.Profiler.EndSample();
                 GiveStartingKit(Rules.startingKit);
             }
             Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
 
             if (cameraRig)
             {
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Hud");
                 weather.Init(cameraRig.pixel.transform, sun);
                 InitSurvival();
                 gameObject.AddComponent<LineOfSight>();
                 gameObject.AddComponent<PixelHud>().Init(this, cameraRig);
+                UnityEngine.Profiling.Profiler.EndSample();
             }
             if (joining) { JoinAsClient(); played = true; }
             else if (pending != null) { RestorePlayer(pending); played = true; Toast("GAME LOADED"); }
@@ -585,20 +597,28 @@ namespace MadMax.Game
                 if (radio && !(Build && Build.Active))
                     radio.HandleKeys(Current && Pressed(Key.M), Pressed(Key.Comma) ? -1 : Pressed(Key.Period) ? 1 : 0, Pressed(Key.LeftBracket) ? -1 : Pressed(Key.RightBracket) ? 1 : 0);
             }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Items");
             UpdateHotbar(kb, mouse);
             UpdateEncumbrance();
             UpdateLearning();
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Survival");
             UpdateEnvironment();
             UpdateSurvival(Time.deltaTime);
             UpdateRefuel(Time.deltaTime);
             UpdateHealth(Time.deltaTime);
             UpdateClothing(Time.deltaTime);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (Pressed(Key.I)) Menus.Open(MenuSystem.Page.Inventory);
             if (Pressed(Key.P)) Menus.Open(MenuSystem.Page.Skills);
             if (Pressed(Key.O)) Menus.Open(MenuSystem.Page.Health);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Interaction");
             UpdateInteraction(kb, pad);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Sleepers");
             UpdateServerFoci();
             UpdateSleepers();
+            UnityEngine.Profiling.Profiler.EndSample();
             if (Current && (Pressed(Key.T) || (pad != null && pad.selectButton.wasPressedThisFrame)) && !MadMax.Npc.NpcDirector.TryParley()) Current.Recover();
             if (Current && Pressed(Key.Backspace)) DropRandomPart(Current);
             if (Current && Pressed(Key.G) && Current.TryGetComponent<VehicleDamage>(out var dmg)) dmg.Repair();

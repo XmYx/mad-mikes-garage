@@ -267,23 +267,49 @@ namespace MadMax.Npc
             if (net && net.IsClient) return;
             var focus = game.Current ? game.Current.transform.position : game.Player.transform.position;
             float dt = Time.deltaTime;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Convoys");
             foreach (var c in convoys) c.Tick(game, focus, dt);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (game.Menus.IsOpen && game.Menus.TalkingTo) game.Menus.TalkingTo.Attend(game.Player.transform.position);
 
-            if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); UpdateBoards(focus); UpdateFires(focus); Contracts.Tick(); }
+            if (Time.time >= scanAt)
+            {
+                scanAt = Time.time + 0.5f;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Scan"); Scan(focus); UnityEngine.Profiling.Profiler.EndSample();
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Boards"); UpdateBoards(focus); UnityEngine.Profiling.Profiler.EndSample();
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Fires"); UpdateFires(focus); UnityEngine.Profiling.Profiler.EndSample();
+                Contracts.Tick();
+            }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Ticks");
             Companions.Tick(game);
             TownQuests.Tick(game);
             GuildEscort.Tick(game);
             Factions.Tick(game);
-            // spawn at most one person per frame (body meshes are built on first use)
-            for (int i = 0; i < wanted.Count; i++)
+            UnityEngine.Profiling.Profiler.EndSample();
+            // spawn at most one person per frame; their body meshes are built on worker threads first (a few people ahead)
+            int warming = 0;
+            for (int i = 0; i < wanted.Count && warming < 6; i++)
             {
                 var s = wanted[i];
                 if (live.ContainsKey(s.id)) continue;
                 if (NpcRegistry.IsDead(s.id) || retired.Contains(s.id) || Companions.Has(s.id)) { live[s.id] = null; continue; }
-                SpawnSpot(s);
+                var p = ProfileOf(s);
+                if (!MadMax.Game.HumanRig.Prewarm(p.look, p.outfit)) { warming++; continue; }
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Spawn");
+                SpawnSpot(s, p);
+                UnityEngine.Profiling.Profiler.EndSample();
                 break;
             }
+        }
+
+        readonly Dictionary<string, NpcProfile> profiles = new Dictionary<string, NpcProfile>();
+        readonly Dictionary<int, List<(string id, Vector2 pos, float yaw)>> townBuildings = new Dictionary<int, List<(string id, Vector2 pos, float yaw)>>();
+
+        NpcProfile ProfileOf(Spot s)
+        {
+            if (profiles.TryGetValue(s.id, out var p)) return p;
+            if (profiles.Count > 400) profiles.Clear();
+            return profiles[s.id] = NpcProfile.Make(s.id, s.role, Stable(s.id) ^ game.World.seed, s.kind);
         }
 
         void Scan(Vector3 focus)
@@ -296,8 +322,11 @@ namespace MadMax.Npc
                 float d = Vector2.Distance(st.pos, new Vector2(focus.x, focus.z)) - st.radius;
                 if (d > SpawnRange) continue;
                 var rnd = new System.Random(world.seed ^ st.index * 7727);
-                var buildings = new List<(string id, Vector2 pos, float yaw)>();
-                BiomeProps.Buildings(world, st, buildings);
+                if (!townBuildings.TryGetValue(st.index, out var buildings))
+                {
+                    townBuildings[st.index] = buildings = new List<(string id, Vector2 pos, float yaw)>();   // deterministic: laid out once
+                    BiomeProps.Buildings(world, st, buildings);
+                }
                 int shop = 0;
                 foreach (var b in buildings)
                 {
@@ -380,7 +409,7 @@ namespace MadMax.Npc
             }
         }
 
-        Vector3 Ground(Vector2 p) => new Vector3(p.x, DeformableTerrain.Instance.Height(p.x, p.y) + 0.05f, p.y);
+        Vector3 Ground(Vector2 p) => new Vector3(p.x, DeformableTerrain.Instance.HeightNoLoad(p.x, p.y) + 0.05f, p.y);   // scans reach past the loaded terrain
 
         void Want(Spot s, Vector3 focus)
         {
@@ -388,10 +417,8 @@ namespace MadMax.Npc
             wanted.Add(s); wantedIds.Add(s.id);
         }
 
-        void SpawnSpot(Spot s)
+        void SpawnSpot(Spot s, NpcProfile p)
         {
-            int seed = Stable(s.id) ^ game.World.seed;
-            var p = NpcProfile.Make(s.id, s.role, seed, s.kind);
             var pos = s.pos;
             if (s.stall > 0)
             {

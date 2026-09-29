@@ -211,7 +211,7 @@ namespace MadMax.Npc
                 var p = PointAt(travel - i * 13f, out var dir);
                 var side = Vector3.Cross(Vector3.up, dir).normalized;
                 p += side * (raiders ? (i % 2 == 0 ? 1.8f : -1.8f) : 2.2f);        // keep right, raiders two abreast
-                p.y = terrain.Height(p.x, p.z) + 1.2f;
+                p.y = terrain.HeightNoLoad(p.x, p.z) + 1.2f;
                 var v = g.SpawnAiVehicle(designs[i], p, Quaternion.LookRotation(Flat(dir)));
                 if (!v) continue;
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = sys.fuelCapacity; sys.oil = sys.oilCapacity; sys.coolant = sys.coolantCapacity; }
@@ -268,7 +268,7 @@ namespace MadMax.Npc
         Npc Walker(WastelandGame g, int crewIndex, Vector3 near, bool aggro)
         {
             var terrain = DeformableTerrain.Instance;
-            var p = near; p.y = terrain.Height(p.x, p.z) + 0.1f;
+            var p = near; p.y = terrain.HeightNoLoad(p.x, p.z) + 0.1f;
             var n = Npc.Spawn(crew[crewIndex], p, 0f, null, g.propMaterial);
             n.convoy = this; n.aggro = aggro;
             n.mode = aggro ? Npc.Mode.Fight : Npc.Mode.Stand;

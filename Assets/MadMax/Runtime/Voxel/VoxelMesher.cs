@@ -22,7 +22,39 @@ namespace MadMax.Voxel
             public readonly List<Vector3> verts = new List<Vector3>(), norms = new List<Vector3>(), uv3 = new List<Vector3>();
             public readonly List<Color32> cols = new List<Color32>();
             public readonly List<int> tris = new List<int>();
+            // interleaved GPU layout (packed with the lists, so the upload is two copies, not one per channel)
+            internal Vertex[] packed;
+            internal ushort[] index16;
+            internal int[] index32;
+            internal Bounds bounds;
+
+            internal void Pack()
+            {
+                int n = verts.Count;
+                packed = new Vertex[n];
+                var min = n > 0 ? verts[0] : Vector3.zero; var max = min;
+                for (int i = 0; i < n; i++)
+                {
+                    var v = verts[i];
+                    packed[i] = new Vertex { pos = v, normal = norms[i], color = cols[i], uv3 = uv3[i] };
+                    min = Vector3.Min(min, v); max = Vector3.Max(max, v);
+                }
+                bounds = new Bounds((min + max) * 0.5f, max - min);
+                if (n > 65535) index32 = tris.ToArray();
+                else { index16 = new ushort[tris.Count]; for (int i = 0; i < index16.Length; i++) index16[i] = (ushort)tris[i]; }
+            }
         }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        internal struct Vertex { public Vector3 pos, normal; public Color32 color; public Vector3 uv3; }
+
+        static readonly VertexAttributeDescriptor[] Layout =
+        {
+            new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3),
+            new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4),
+            new VertexAttributeDescriptor(VertexAttribute.TexCoord3, VertexAttributeFormat.Float32, 3),
+        };
 
         public static Mesh Build(VoxelGrid grid, string name, float size = DefaultSize) => ToMesh(BuildData(grid, size), name);
 
@@ -58,19 +90,33 @@ namespace MadMax.Voxel
             }
 
             foreach (var w in verts) md.uv3.Add(smooth[w].normalized);
+            md.Pack();
             return md;
         }
 
         public static Mesh ToMesh(MeshData md, string name)
         {
+            if (md.packed == null || md.packed.Length != md.verts.Count) md.Pack();
             var mesh = new Mesh { name = name };
-            if (md.verts.Count > 65000) mesh.indexFormat = IndexFormat.UInt32;
-            mesh.SetVertices(md.verts);
-            mesh.SetNormals(md.norms);
-            mesh.SetColors(md.cols);
-            mesh.SetUVs(3, md.uv3);
-            mesh.SetTriangles(md.tris, 0);
-            mesh.RecalculateBounds();
+            if (md.packed.Length == 0) return mesh;
+            const MeshUpdateFlags quiet = MeshUpdateFlags.DontValidateIndices | MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontNotifyMeshUsers;
+            int n = md.packed.Length;
+            mesh.SetVertexBufferParams(n, Layout);
+            mesh.SetVertexBufferData(md.packed, 0, 0, n, 0, quiet);
+            if (md.index32 != null)
+            {
+                mesh.SetIndexBufferParams(md.index32.Length, IndexFormat.UInt32);
+                mesh.SetIndexBufferData(md.index32, 0, 0, md.index32.Length, quiet);
+            }
+            else
+            {
+                mesh.SetIndexBufferParams(md.index16.Length, IndexFormat.UInt16);
+                mesh.SetIndexBufferData(md.index16, 0, 0, md.index16.Length, quiet);
+            }
+            int count = md.index32 != null ? md.index32.Length : md.index16.Length;
+            mesh.subMeshCount = 1;
+            mesh.SetSubMesh(0, new SubMeshDescriptor(0, count) { bounds = md.bounds, vertexCount = n }, quiet);
+            mesh.bounds = md.bounds;
             return mesh;
         }
     }

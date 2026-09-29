@@ -20,12 +20,19 @@ namespace MadMax.Vehicles
 
         void Awake() { driver = GetComponent<VehicleDriver>(); rb = GetComponent<Rigidbody>(); }
 
+        VehiclePart cranePart;
+        MountSocket[] sockets;
+
+        /// <summary>The mounted crane part (every vehicle carries this component: no allocation per lookup).</summary>
         public VehiclePart CranePart
         {
             get
             {
-                foreach (var s in GetComponentsInChildren<MountSocket>()) if (s.Current && s.Current.partId == PartId) return s.Current;
-                return null;
+                if (cranePart && cranePart.Socket && cranePart.transform.IsChildOf(transform)) return cranePart;
+                sockets ??= GetComponentsInChildren<MountSocket>(true);
+                cranePart = null;
+                foreach (var s in sockets) if (s && s.Current && s.Current.partId == PartId) { cranePart = s.Current; break; }
+                return cranePart;
             }
         }
 

@@ -201,6 +201,11 @@ namespace MadMax.World
             return ch;
         }
 
+        /// <summary>Height without forcing chunk data into existence (spawn decisions far out): the generated ground
+        /// where the chunk isn't loaded yet.</summary>
+        public float HeightNoLoad(float x, float z) =>
+            chunks.ContainsKey(new Vector2Int(FloorDiv(Mathf.FloorToInt(x / Cell), N), FloorDiv(Mathf.FloorToInt(z / Cell), N))) ? Height(x, z) : World.Sample(x, z).height;
+
         public float Height(float x, float z)
         {
             float gx = x / Cell, gz = z / Cell;
@@ -362,6 +367,15 @@ namespace MadMax.World
         public void BuildAllNow(Vector3 around)
         {
             var fc = ChunkOf(around);
+            // chunk data on all cores first (Generate is pure), then meshes, colliders and props on the main thread
+            var need = new List<Vector2Int>();
+            foreach (var o in offsets)
+                if (o.magnitude * ChunkWorld <= viewRadius + ChunkWorld && !chunks.ContainsKey(fc + o)) need.Add(fc + o);
+            var made = new Chunk[need.Count];
+            var world = World;
+            try { System.Threading.Tasks.Parallel.For(0, need.Count, i => made[i] = Generate(world, need[i])); }
+            catch (System.Exception e) { Debug.LogException(e); }
+            foreach (var ch in made) if (ch != null && !chunks.ContainsKey(ch.c)) Insert(ch);
             foreach (var o in offsets)
             {
                 if (o.magnitude * ChunkWorld > viewRadius + ChunkWorld) continue;
@@ -659,6 +673,15 @@ namespace MadMax.World
         {
             var ch = Locate(Mathf.RoundToInt(x / Cell), Mathf.RoundToInt(z / Cell), out int k);
             return ch.water[k] + Weather.LakeRise;
+        }
+
+        /// <summary><see cref="WaterDepth"/> without forcing chunk data (far-off decisions): the generated lake level and
+        /// ground where the chunk isn't loaded.</summary>
+        public float WaterDepthNoLoad(float x, float z)
+        {
+            if (chunks.ContainsKey(new Vector2Int(FloorDiv(Mathf.RoundToInt(x / Cell), N), FloorDiv(Mathf.RoundToInt(z / Cell), N)))) return WaterDepth(x, z);
+            var s = World.Sample(x, z);
+            return float.IsNaN(s.water) ? 0f : Mathf.Max(0f, s.water + Weather.LakeRise - s.height);
         }
 
         /// <summary>Depth of water above the ground at a point (0 when dry).</summary>

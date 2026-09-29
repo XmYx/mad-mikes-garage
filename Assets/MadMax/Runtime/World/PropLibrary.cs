@@ -54,6 +54,9 @@ namespace MadMax.World
             for (int i = 0; i < shacks.Length; i++) shacks[i] = T(Shack(i), "Shack" + i);
             crate = T(Crate(), "Crate");
             table = T(Table(), "Table");
+            var meshes = new List<Mesh>();
+            foreach (var set in new[] { trees, rocks, shacks }) foreach (var t in set) meshes.Add(t.mesh);
+            PropRemesher.Prebake(meshes);
         }
 
         static VoxelGrid Rock(int seed, int r)

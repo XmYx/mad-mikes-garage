@@ -59,6 +59,8 @@ namespace MadMax.World
             Add(T("Streetlight0", Streetlight(), 0.08f));
             Add(T("GasPump0", GasPumpGrid(), 0.08f));
             foreach (var ore in OreRamps.Keys) for (int v = 0; v < 2; v++) Add(T("Ore_" + ore + v, OreRock(ore, v), 0.12f));
+            var meshes = new List<Mesh>(); foreach (var t in templates.Values) meshes.Add(t.mesh);
+            PropRemesher.Prebake(meshes);                                                   // colliders cooked now, not at the first house
         }
 
         // ------------------------------------------------------------------ ore outcrops

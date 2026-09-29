@@ -595,8 +595,8 @@ namespace MadMax.Animals
             var t = DeformableTerrain.Instance;
             if (t && !Def.flies)
             {
-                if (t.WaterDepth(ahead.x, ahead.z) > (Def.mass > 200f ? 0.9f : 0.3f)) return true;
-                if (t.Height(ahead.x, ahead.z) - me.y > 1.1f) return true;
+                if (t.WaterDepthNoLoad(ahead.x, ahead.z) > (Def.mass > 200f ? 0.9f : 0.3f)) return true;
+                if (t.HeightNoLoad(ahead.x, ahead.z) - me.y > 1.1f) return true;
             }
             float y = Mathf.Max(0.2f, Def.Height * 0.5f);
             int n = Physics.SphereCastNonAlloc(me + Vector3.up * y, Mathf.Min(0.25f, col.radius), dir, hits, look, ~0, QueryTriggerInteraction.Ignore);
@@ -615,7 +615,7 @@ namespace MadMax.Animals
         float Ground(WastelandGame g, Vector3 p)
         {
             var t = DeformableTerrain.Instance;
-            float h = t ? t.Height(p.x, p.z) : p.y;
+            float h = t ? t.HeightNoLoad(p.x, p.z) : p.y;
             if (Physics.Raycast(new Vector3(p.x, Mathf.Max(p.y, h) + 0.9f, p.z), Vector3.down, out var hit, 1.8f, ~0, QueryTriggerInteraction.Ignore)
                 && hit.point.y > h + 0.05f && hit.normal.y > 0.6f && !hit.collider.transform.IsChildOf(transform) && !(g.Player && hit.collider.transform.IsChildOf(g.Player.transform)) && !hit.collider.GetComponentInParent<Animal>())
                 return hit.point.y;
@@ -695,7 +695,7 @@ namespace MadMax.Animals
                 float look = 0.9f + Mathf.Abs(speed) * dt;
                 var t = DeformableTerrain.Instance;
                 var ahead = me + dir * look;
-                bool wall = t && (t.WaterDepth(ahead.x, ahead.z) > 1.1f || t.Height(ahead.x, ahead.z) - me.y > 1.2f);
+                bool wall = t && (t.WaterDepthNoLoad(ahead.x, ahead.z) > 1.1f || t.HeightNoLoad(ahead.x, ahead.z) - me.y > 1.2f);
                 if (!wall)
                 {
                     int n = Physics.SphereCastNonAlloc(me + Vector3.up * (clear + 0.3f), 0.3f, dir, hits, look, ~0, QueryTriggerInteraction.Ignore);

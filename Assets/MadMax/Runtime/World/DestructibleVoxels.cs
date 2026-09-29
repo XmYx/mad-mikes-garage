@@ -24,7 +24,7 @@ namespace MadMax.World
         public int lootRolls;
 
         VoxelGrid grid;
-        bool owned;
+        bool owned, pendingRebuild;
         Mesh ownMesh;
         MeshFilter mf;
         Collider col;
@@ -90,7 +90,9 @@ namespace MadMax.World
                 d.anchored = false;
             }
             else d.col = go.AddComponent<MeshCollider>();
-            d.SetMesh(d.owned ? d.ownMesh = VoxelMesher.Build(d.grid, name, size) : sharedMesh);
+            if (!d.owned) d.SetMesh(sharedMesh);
+            else if (d.grid.Count < AsyncVoxels || !sharedMesh) d.SetMesh(d.ownMesh = VoxelMesher.Build(d.grid, name, size));
+            else { d.SetMesh(sharedMesh); d.Remesh(); }          // a damaged building streaming back in: the template until its mesh is ready
             if (key != null)
             {
                 byKey[key] = d;
@@ -137,7 +139,7 @@ namespace MadMax.World
             if (other.GetComponent<MadMax.Vehicles.VehicleChassis>())
                 radius = Mathf.Max(radius, Mathf.Lerp(0.3f, 0.95f, (speed - impactThreshold) / 10f)); // cut a car-sized hole
             if (radius < voxelSize * 1.5f) return;
-            // carve at each distinct contact so a wide bumper opens a wide hole
+            // carve at each distinct contact so a wide bumper opens a wide hole (one collapse check + remesh at the end)
             int removed = 0;
             var dir = c.GetContact(0).normal;                    // from the other body into this one
             var carved = new List<Vector3>(4);
@@ -146,11 +148,13 @@ namespace MadMax.World
                 var p = c.GetContact(i).point;
                 bool near = false;
                 foreach (var q in carved) if ((q - p).sqrMagnitude < radius * radius * 0.5f) { near = true; break; }
-                if (near) continue;
-                carved.Add(p);
+                if (!near) carved.Add(p);
+            }
+            for (int i = 0; i < carved.Count; i++)
+            {
                 if (!this) return;                                  // destroyed by a previous carve
-                Broadcast(p, dir, radius, 1f);
-                removed += Carve(p, dir, radius, 1f, other.linearVelocity * 0.5f);
+                Broadcast(carved[i], dir, radius, 1f);
+                removed += Carve(carved[i], dir, radius, 1f, other.linearVelocity * 0.5f, true, i == carved.Count - 1);
             }
             if (removed > 15 && this && !GetComponent<Rigidbody>())
             {
@@ -160,8 +164,9 @@ namespace MadMax.World
             }
         }
 
-        /// <summary>Remove voxels in a sphere pushed slightly into the object. Returns the number removed.</summary>
-        public int Carve(Vector3 worldPoint, Vector3 worldDir, float radius, float power, Vector3 debrisVelocity, bool yields = true)
+        /// <summary>Remove voxels in a sphere pushed slightly into the object. Returns the number removed.
+        /// <paramref name="rebuild"/> false defers the collapse check and remesh to the next carve that rebuilds.</summary>
+        public int Carve(Vector3 worldPoint, Vector3 worldDir, float radius, float power, Vector3 debrisVelocity, bool yields = true, bool rebuild = true)
         {
             if (grid == null) return 0;
             if (!owned)
@@ -203,26 +208,68 @@ namespace MadMax.World
             removedVox.Clear();
             debris.Clear();
             foreach (var p in removedKeys) Take(p);
-            if (anchored && removedKeys.Count > 0) CollapseUnsupported();
-            bool shattered = shatterBelow > 0f && grid.Count < initialCount * shatterBelow;
-            if (shattered)
+            bool shattered = false, deferred = pendingRebuild, lateCollapse = false;
+            if (rebuild)
             {
-                removedKeys.Clear();
-                removedKeys.AddRange(grid.voxels.Keys);
-                foreach (var p in removedKeys) Take(p);
+                if (anchored && (removedKeys.Count > 0 || deferred))
+                {
+                    if (grid.Count < AsyncVoxels) CollapseUnsupported();
+                    else lateCollapse = true;                                  // big: checked on a worker with the remesh
+                }
+                shattered = shatterBelow > 0f && grid.Count < initialCount * shatterBelow;
+                if (shattered)
+                {
+                    removedKeys.Clear();
+                    removedKeys.AddRange(grid.voxels.Keys);
+                    foreach (var p in removedKeys) Take(p);
+                }
             }
-            if (removedVox.Count == 0 && !cracked) return 0;
+            if (removedVox.Count == 0 && !cracked && !(rebuild && deferred)) return 0;
 
-            if (DebrisSystem.Instance) DebrisSystem.Instance.Emit(debris, voxelSize, debrisVelocity);
-            if (yields) Yield(worldPoint, shattered || grid.Count == 0);
+            if (DebrisSystem.Instance && debris.Count > 0) DebrisSystem.Instance.Emit(debris, voxelSize, debrisVelocity);
+            if (yields) Yield(worldPoint, rebuild && (shattered || grid.Count == 0));
+            if (!rebuild) { pendingRebuild = true; return removedVox.Count; }
+            pendingRebuild = false;
 
             if (grid.Count == 0) { Destroy(gameObject); return removedVox.Count; }
+            Remesh(lateCollapse);
+            if (removedVox.Count > 0 || deferred) Carved?.Invoke();
+            return removedVox.Count;
+        }
+
+        /// <summary>Drop voxels the worker found cut off from the ground (<see cref="PropRemesher"/>): debris, pickups.</summary>
+        public void Collapse(List<Vector3Int> fallen)
+        {
+            removedVox.Clear(); debris.Clear();
+            Vector3 sum = Vector3.zero;
+            foreach (var p in fallen) { if (grid.voxels.ContainsKey(p)) sum += (Vector3)p; Take(p); }
+            if (removedVox.Count == 0) return;
+            if (DebrisSystem.Instance) DebrisSystem.Instance.Emit(debris, voxelSize, Vector3.zero);
+            Yield(transform.TransformPoint(sum / removedVox.Count * voxelSize), grid.Count == 0);
+            if (grid.Count == 0) { Destroy(gameObject); return; }
+            Carved?.Invoke();
+        }
+
+        const int AsyncVoxels = 3000;       // bigger grids mesh on a worker thread (PropRemesher)
+        int meshVersion, appliedVersion;
+
+        /// <summary>New mesh + collider for the current grid: at once for small props, a few frames later for big ones.</summary>
+        void Remesh(bool collapse = false)
+        {
+            meshVersion++;
+            if (grid.Count < AsyncVoxels) ApplyMesh(VoxelMesher.Build(grid, name, voxelSize), meshVersion);
+            else PropRemesher.Queue(this, grid.Clone(), voxelSize, meshVersion, col is MeshCollider, collapse ? groundY : (int?)null);
+        }
+
+        /// <summary>Swap in a mesh built from the grid as it was at carve <paramref name="version"/> (older results are dropped).</summary>
+        public void ApplyMesh(Mesh m, int version)
+        {
+            if (version <= appliedVersion) { Destroy(m); return; }
+            appliedVersion = version;
             var old = ownMesh;
-            ownMesh = VoxelMesher.Build(grid, name, voxelSize);
+            ownMesh = m;
             SetMesh(ownMesh);
             if (old) Destroy(old);
-            if (removedVox.Count > 0) Carved?.Invoke();
-            return removedVox.Count;
         }
 
         void Take(Vector3Int p)

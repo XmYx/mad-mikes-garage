@@ -23,18 +23,64 @@ namespace MadMax.Game
         /// <summary>No physics hair strands (distant or numerous characters).</summary>
         public bool noStrands;
         static readonly Dictionary<string, Mesh> shared = new Dictionary<string, Mesh>();
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => shared.Clear();
+        // meshes being built ahead on a worker (Prewarm): one task per character, keyed by every part it makes
+        static readonly Dictionary<string, System.Threading.Tasks.Task<Dictionary<string, MadMax.Voxel.VoxelMesher.MeshData>>> warming =
+            new Dictionary<string, System.Threading.Tasks.Task<Dictionary<string, MadMax.Voxel.VoxelMesher.MeshData>>>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { shared.Clear(); warming.Clear(); }
 
-        string LookKey => $"{appearance.skinTone},{(int)appearance.hair},{appearance.hairColor},{appearance.beard},{appearance.height:0.00},{appearance.build:0.00}";
+        static string KeyOf(Appearance a) => $"{a.skinTone},{(int)a.hair},{a.hairColor},{a.beard},{a.height:0.00},{a.build:0.00}";
+        string LookKey => KeyOf(appearance);
 
-        Mesh Cached(string key, System.Func<Mesh> make)
+        Mesh Cached(string key, string name, System.Func<Mesh> make)
         {
             if (!shareMeshes) return make();
             key = LookKey + "|" + key;
             if (shared.TryGetValue(key, out var m) && m) return m;
-            m = make();
+            if (warming.TryGetValue(key, out var job) && job.IsCompleted)
+            {
+                // meshed ahead on a worker: only the upload is left
+                warming.Remove(key);
+                MadMax.Voxel.VoxelMesher.MeshData md = null;
+                if (!job.IsFaulted) job.Result.TryGetValue(key, out md);
+                m = job.IsFaulted ? make() : md != null ? MadMax.Voxel.VoxelMesher.ToMesh(md, name) : null;
+            }
+            else m = make();
             shared[key] = m;
             return m;
+        }
+
+        /// <summary>Crowds: mesh a shared-mesh character's parts on a worker thread. True once all of them are ready, so
+        /// the spawn itself only uploads meshes (a body is ~20 ms of voxel work).</summary>
+        public static bool Prewarm(Appearance a, List<string> outfit)
+        {
+            string look = KeyOf(a) + "|";
+            bool ready = true;
+            List<(string key, System.Func<MadMax.Voxel.VoxelMesher.MeshData> make)> missing = null;
+            void Need(string key, System.Func<MadMax.Voxel.VoxelMesher.MeshData> make)
+            {
+                if (shared.ContainsKey(key)) return;
+                if (warming.TryGetValue(key, out var running)) { ready &= running.IsCompleted; return; }
+                (missing ??= new List<(string, System.Func<MadMax.Voxel.VoxelMesher.MeshData>)>()).Add((key, make));
+            }
+            foreach (var b in HumanDesign.Skeleton(a)) { var part = b.part; Need(look + "body" + part, () => HumanDesign.BodyData(part, a)); }
+            foreach (var id in outfit)
+            {
+                var d = ClothingLibrary.Get(id);
+                if (d == null) continue;
+                foreach (var part in d.coverage.Keys) { var pp = part; Need(look + d.id + pp, () => HumanDesign.GarmentData(d, pp, a)); }
+                if (d.prop != null) Need(look + d.id + "prop", () => HumanDesign.PropData(d, a));
+            }
+            Need(look + "hair", () => HumanDesign.HairCapData(a));
+            if (missing == null) return ready;
+            var list = missing;
+            var job = System.Threading.Tasks.Task.Run(() =>
+            {
+                var made = new Dictionary<string, MadMax.Voxel.VoxelMesher.MeshData>();
+                foreach (var (key, make) in list) made[key] = make();
+                return made;
+            });
+            foreach (var (key, _) in list) warming[key] = job;
+            return false;
         }
 
         public Transform Eye { get; private set; }
@@ -57,7 +103,7 @@ namespace MadMax.Game
                 if (saved.TryGetValue(b.part, out var r)) t.localRotation = r;
                 bones[b.part] = t;
                 var part = b.part;
-                AddMesh(t, Cached("body" + part, () => HumanDesign.BodyMesh(part, appearance)), b.part == BodyPart.Head);
+                AddMesh(t, Cached("body" + part, "Body_" + part, () => HumanDesign.BodyMesh(part, appearance)), b.part == BodyPart.Head);
             }
             // garments, ordered by layer so outer shells win
             var defs = new List<ClothingDef>();
@@ -70,11 +116,11 @@ namespace MadMax.Game
                 foreach (var part in d.coverage.Keys)
                 {
                     var pp = part;
-                    AddMesh(bones[part], Cached(d.id + part + (torn ? "t" : ""), () => HumanDesign.GarmentMesh(dd, pp, appearance, torn)), part == BodyPart.Head);
+                    AddMesh(bones[part], Cached(d.id + part + (torn ? "t" : ""), d.id + "_" + part, () => HumanDesign.GarmentMesh(dd, pp, appearance, torn)), part == BodyPart.Head);
                 }
-                if (d.prop != null) AddMesh(bones[d.propBone], Cached(d.id + "prop", () => HumanDesign.PropMesh(dd, appearance)), d.propBone == BodyPart.Head);
+                if (d.prop != null) AddMesh(bones[d.propBone], Cached(d.id + "prop", d.id + "_prop", () => HumanDesign.PropMesh(dd, appearance)), d.propBone == BodyPart.Head);
             }
-            AddMesh(bones[BodyPart.Head], Cached("hair", () => HumanDesign.HairCap(appearance)), true);
+            AddMesh(bones[BodyPart.Head], Cached("hair", "HairCap", () => HumanDesign.HairCap(appearance)), true);
 
             Eye = new GameObject("DriverEye").transform;
             Eye.SetParent(bones[BodyPart.Head], false);

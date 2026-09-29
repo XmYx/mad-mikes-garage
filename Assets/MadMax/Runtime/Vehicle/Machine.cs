@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MadMax.Building;
 using MadMax.Items;
 using MadMax.World;
@@ -74,7 +75,16 @@ namespace MadMax.Vehicles
 
         Transform Tool => toolSocket && toolSocket.Current ? toolSocket.Current.transform : null;
         Transform Rear => rearSocket && rearSocket.Current ? rearSocket.Current.transform : null;
-        static Transform Seg(Transform root, string name) => root ? FindDeep(root, name) : null;
+        readonly Dictionary<(Transform, string), Transform> segs = new Dictionary<(Transform, string), Transform>();
+
+        /// <summary>A named hinge segment under the tool (cached: every machine poses its arm every frame).</summary>
+        Transform Seg(Transform root, string name)
+        {
+            if (!root) return null;
+            var key = (root, name);
+            if (segs.TryGetValue(key, out var t) && (t || (object)t == null)) return t;      // cached, "none" included; destroyed → look again
+            return segs[key] = FindDeep(root, name);
+        }
         static Transform FindDeep(Transform t, string name)
         {
             if (t.name == name) return t;

@@ -170,7 +170,7 @@ namespace MadMax.Game
         }
 
         // ------------------------------------------------------------------ meshes
-        static Mesh Build(BodyPart part, Appearance a, float inflate, Func<Vector3Int, Vector3, float, Color32> paint, Vector2? range, string name)
+        static VoxelMesher.MeshData Build(BodyPart part, Appearance a, float inflate, Func<Vector3Int, Vector3, float, Color32> paint, Vector2? range)
         {
             var g = new VoxelGrid();
             var b = PartBounds(part, a);
@@ -191,10 +191,18 @@ namespace MadMax.Game
             }
             if (g.Count == 0) return null;
             g.Bevel(0.12f, 0.18f);
-            return VoxelMesher.Build(g, name, S);
+            return VoxelMesher.BuildData(g, S);
         }
 
-        public static Mesh BodyMesh(BodyPart part, Appearance a)
+        static Mesh Upload(VoxelMesher.MeshData md, string name) => md == null ? null : VoxelMesher.ToMesh(md, name);
+
+        // the *Data builders are pure (worker threads: HumanRig.Prewarm); the *Mesh wrappers upload on the main thread
+        public static Mesh BodyMesh(BodyPart part, Appearance a) => Upload(BodyData(part, a), "Body_" + part);
+        public static Mesh GarmentMesh(ClothingDef def, BodyPart part, Appearance a, bool torn = false) => Upload(GarmentData(def, part, a, torn), def.id + "_" + part + (torn ? "_torn" : ""));
+        public static Mesh PropMesh(ClothingDef def, Appearance a) => Upload(PropData(def, a), def.id + "_prop");
+        public static Mesh HairCap(Appearance a) => Upload(HairCapData(a), "HairCap");
+
+        public static VoxelMesher.MeshData BodyData(BodyPart part, Appearance a)
         {
             var tone = SkinTones[Mathf.Clamp(a.skinTone, 0, 3)];
             var hair = HairColors[Mathf.Clamp(a.hairColor, 0, HairColors.Length - 1)];
@@ -218,28 +226,28 @@ namespace MadMax.Game
                 }
                 if (part == BodyPart.Pelvis) c = Pal.Hex("3a3634");                  // underwear
                 return c;
-            }, null, "Body_" + part);
+            }, null);
         }
 
-        public static Mesh GarmentMesh(ClothingDef def, BodyPart part, Appearance a, bool torn = false)
+        public static VoxelMesher.MeshData GarmentData(ClothingDef def, BodyPart part, Appearance a, bool torn = false)
         {
             if (!def.coverage.TryGetValue(part, out var range)) return null;
             // worn-out garments get ragged holes
-            return Build(part, a, def.inflate, (v, p, t) => torn && Pal.Hash(v, 97) < 0.16f ? default : def.paint(v, part, t), range, def.id + "_" + part + (torn ? "_torn" : ""));
+            return Build(part, a, def.inflate, (v, p, t) => torn && Pal.Hash(v, 97) < 0.16f ? default : def.paint(v, part, t), range);
         }
 
-        /// <summary>A garment's rigid extra (hat brim, backpack) as a mesh in the bone's space.</summary>
-        public static Mesh PropMesh(ClothingDef def, Appearance a)
+        /// <summary>A garment's rigid extra (hat brim, backpack) in the bone's space.</summary>
+        public static VoxelMesher.MeshData PropData(ClothingDef def, Appearance a)
         {
             if (def.prop == null) return null;
             var g = def.prop(a);
             if (g == null || g.Count == 0) return null;
             g.Bevel(0.12f, 0.18f);
-            return VoxelMesher.Build(g, def.id + "_prop", S);
+            return VoxelMesher.BuildData(g, S);
         }
 
         /// <summary>Static hair cap on the head (dynamic strands are added by HairStrands).</summary>
-        public static Mesh HairCap(Appearance a)
+        public static VoxelMesher.MeshData HairCapData(Appearance a)
         {
             if (a.hair == HairStyle.Bald) return null;
             var col = HairColors[Mathf.Clamp(a.hairColor, 0, HairColors.Length - 1)];
@@ -266,7 +274,7 @@ namespace MadMax.Game
                 for (int z = -4; z <= 3; z++) for (int y = 0; y < 3; y++) g.Set(0, Mathf.RoundToInt(0.31f * h / S) + y - Mathf.Abs(z) / 3, z, Pal.Solid(col));
             if (g.Count == 0) return null;
             g.Bevel(0.15f, 0.2f);
-            return VoxelMesher.Build(g, "HairCap", S);
+            return VoxelMesher.BuildData(g, S);
         }
 
         public static Mesh HairStrandMesh(Color32 col, float length)

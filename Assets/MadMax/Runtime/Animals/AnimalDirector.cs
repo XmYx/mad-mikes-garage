@@ -50,7 +50,14 @@ namespace MadMax.Animals
         int herdIds = 1, nextKey, lastDay = -1;
         float tickT, vultureT;
 
-        public void Init(WastelandGame g) { game = g; Instance = this; }
+        public void Init(WastelandGame g)
+        {
+            game = g; Instance = this;
+            // every species' meshes now, behind the loading screen: built on first sight they cost a 40 ms hitch each
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.AnimalModels.Prewarm");
+            foreach (var d in AnimalLibrary.All) AnimalModels.For(d);
+            UnityEngine.Profiling.Profiler.EndSample();
+        }
         void OnDestroy() { if (Instance == this) Instance = null; }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
@@ -91,7 +98,7 @@ namespace MadMax.Animals
                 {
                     float x = c.x * Cell + 15f + (float)rnd.NextDouble() * (Cell - 30f), z = c.y * Cell + 15f + (float)rnd.NextDouble() * (Cell - 30f);
                     if (new Vector2(x, z).magnitude < 70f) continue;                                  // the start stays quiet
-                    if (t && t.WaterDepth(x, z) > 0.1f) continue;
+                    if (t && t.WaterDepthNoLoad(x, z) > 0.1f) continue;
                     if (System.Array.IndexOf(d.biomes, w.BiomeAt(x, z)) < 0) continue;               // herbivores out of towns, rats and strays in them
                     l.Add(new Herd { key = "w:" + c.x + ":" + c.y + ":" + i, def = d, at = new Vector3(x, 0f, z), count = rnd.Next(d.herdMin, d.herdMax + 1) });
                     break;
@@ -143,7 +150,7 @@ namespace MadMax.Animals
             {
                 float r = 2f + (float)rnd.NextDouble() * (3f + n), a = (float)rnd.NextDouble() * 6.283f;
                 var p = h.at + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-                if (t) { if (t.WaterDepth(p.x, p.z) > 0.2f) p = h.at; p.y = t.Height(p.x, p.z); }
+                if (t) { if (t.WaterDepthNoLoad(p.x, p.z) > 0.2f) p = h.at; p.y = t.HeightNoLoad(p.x, p.z); }
                 var an = Animal.Spawn(h.def, p, (float)rnd.NextDouble() * 360f, game.propMaterial, h.key + ":" + i);
                 an.herd = h.id;
                 h.members.Add(an);
@@ -179,7 +186,7 @@ namespace MadMax.Animals
                         {
                             float r = st.radius * (0.2f + 0.5f * (float)rnd.NextDouble()), a = (float)rnd.NextDouble() * 6.283f;
                             var p = new Vector3(st.pos.x + Mathf.Cos(a) * r, 0f, st.pos.y + Mathf.Sin(a) * r);
-                            if (t) { if (t.WaterDepth(p.x, p.z) > 0.1f) continue; p.y = t.Height(p.x, p.z); }
+                            if (t) { if (t.WaterDepthNoLoad(p.x, p.z) > 0.1f) continue; p.y = t.HeightNoLoad(p.x, p.z); }
                             if (Physics.CheckSphere(p + Vector3.up * 0.9f, 0.45f, ~0, QueryTriggerInteraction.Ignore)) continue;   // not inside a house
                             var an = Animal.Spawn(def, p, (float)rnd.NextDouble() * 360f, game.propMaterial, "v:" + i + ":" + j);
                             an.town = i;
@@ -246,7 +253,7 @@ namespace MadMax.Animals
             if (d == null || g.Current || !g.Inventory.TakeItem(item)) return;
             var p = g.Player.transform.position + g.Player.transform.forward * 1.2f;
             var t = DeformableTerrain.Instance;
-            if (t) p.y = t.Height(p.x, p.z);
+            if (t) p.y = t.HeightNoLoad(p.x, p.z);
             var a = Keep(d, p, g.Player.transform.eulerAngles.y + 180f, DayNight.Day);
             a.fedDay = DayNight.Day;
             g.Toast("THE " + a.Label + " MAKES ITS HOME HERE - KEEP A TROUGH FILLED NEARBY ([T] LEADS IT)");
@@ -328,7 +335,7 @@ namespace MadMax.Animals
                 foreach (var a in kept) if (a && a.Def == d && (a.home - parent.home).sqrMagnitude < 15f * 15f) local++;
                 if (pair < 2 || local >= 10 || Random.value > (d.id == "chicken" ? 0.5f : 0.3f)) continue;
                 var p = parent.transform.position + parent.transform.right * 0.8f;
-                if (t) p.y = t.Height(p.x, p.z);
+                if (t) p.y = t.HeightNoLoad(p.x, p.z);
                 var young = Keep(d, p, Random.value * 360f, day);
                 young.home = parent.home; young.fedDay = day;
                 game.Toast("A NEW " + (d.id == "chicken" ? "CHICK" : d.id == "cow" ? "CALF" : d.id == "goat" ? "KID" : d.id == "pig" ? "PIGLET" : d.id == "horse" ? "FOAL" : "PUP") + " IN THE PEN");

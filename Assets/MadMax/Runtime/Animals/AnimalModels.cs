@@ -24,7 +24,7 @@ namespace MadMax.Animals
 
         public static AnimalMeshes For(AnimalDef d)
         {
-            if (cache.TryGetValue(d.id, out var m) && m.body) return m;       // meshes die with play mode
+            if (cache.TryGetValue(d.id, out var m) && (m.body || m.segment)) return m;   // meshes die with play mode (snakes have no body)
             m = d.plan == BodyPlan.Bird ? Bird(d) : d.plan == BodyPlan.Snake ? Snake(d) : Quadruped(d);
             cache[d.id] = m;
             return m;

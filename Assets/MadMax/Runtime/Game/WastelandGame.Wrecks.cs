@@ -15,6 +15,7 @@ namespace MadMax.Game
             var rnd = new System.Random(seed * 31 + 7);
             var prefabs = new List<GameObject>(vehiclePrefabs);
             prefabs.AddRange(trailerPrefabs);
+            prefabs.RemoveAll(pf => !pf || pf.GetComponent<FlightModel>());       // aircraft turn up at airfields, not by the road
             var roads = World.roads.roads;
             for (int i = 0; i < wreckCount; i++)
             {

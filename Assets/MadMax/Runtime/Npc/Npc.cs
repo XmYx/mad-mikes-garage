@@ -224,7 +224,7 @@ namespace MadMax.Npc
                 if (terrain)
                 {
                     var p = transform.position;
-                    float h = terrain.Height(p.x, p.z);
+                    float h = terrain.HeightNoLoad(p.x, p.z);
                     if (p.y < h - 0.3f) { p.y = h + 0.05f; transform.position = p; }
                 }
                 lastVelocity = (transform.position - lastPos) / Mathf.Max(dt, 1e-4f);
@@ -272,7 +272,7 @@ namespace MadMax.Npc
             {
                 var c = Random.insideUnitCircle * homeRadius;
                 var p = home + new Vector3(c.x, 0f, c.y);
-                if (terrain && terrain.WaterDepth(p.x, p.z) > 0.3f) continue;
+                if (terrain && terrain.WaterDepthNoLoad(p.x, p.z) > 0.3f) continue;
                 goal = p; hasGoal = true; repath = Time.time + 20f;
                 return;
             }
@@ -284,8 +284,8 @@ namespace MadMax.Npc
         {
             if (!terrain) return false;
             var ahead = me + dir.normalized * 0.8f;
-            if (terrain.WaterDepth(ahead.x, ahead.z) > 0.6f && mode != Mode.Fight) return true;
-            return terrain.Height(ahead.x, ahead.z) - me.y > 1.2f;
+            if (terrain.WaterDepthNoLoad(ahead.x, ahead.z) > 0.6f && mode != Mode.Fight) return true;
+            return terrain.HeightNoLoad(ahead.x, ahead.z) - me.y > 1.2f;
         }
 
         // ------------------------------------------------------------------ routine (roadmap 20 schedules)
@@ -349,7 +349,7 @@ namespace MadMax.Npc
             seated = false;
             var p = transform.position;
             var t = DeformableTerrain.Instance;
-            if (t) p.y = t.Height(p.x, p.z) + 0.05f;
+            if (t) p.y = t.HeightNoLoad(p.x, p.z) + 0.05f;
             transform.position = p;
             cc.enabled = !asleep;
         }
@@ -401,7 +401,7 @@ namespace MadMax.Npc
             var pt = g.Player.transform;
             var p = car ? car.transform.position - car.transform.forward * 9f : pt.position - pt.forward * 4f;
             var t = DeformableTerrain.Instance;
-            if (t) p.y = t.Height(p.x, p.z) + 0.1f;
+            if (t) p.y = t.HeightNoLoad(p.x, p.z) + 0.1f;
             cc.enabled = false; transform.position = p; cc.enabled = true;
         }
 
@@ -420,7 +420,7 @@ namespace MadMax.Npc
             if (!rideSeat) return;
             var exit = rideSeat.transform.position;                                          // the passenger door
             var t = DeformableTerrain.Instance;
-            if (t) exit.y = t.Height(exit.x, exit.z) + 0.05f;
+            if (t) exit.y = t.HeightNoLoad(exit.x, exit.z) + 0.05f;
             rideSeat.Occupant = null; rideSeat = null;
             transform.SetPositionAndRotation(exit, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
             cc.enabled = true;
@@ -460,7 +460,7 @@ namespace MadMax.Npc
             if (v.TryGetComponent<AiDriver>(out var ai) && ai.enabled) ai.Release();
             var p = v.transform.position - v.transform.right * 2.2f;
             var t = DeformableTerrain.Instance;
-            if (t) p.y = t.Height(p.x, p.z) + 0.05f;
+            if (t) p.y = t.HeightNoLoad(p.x, p.z) + 0.05f;
             transform.position = p;
             SetVisible(true); cc.enabled = true;
         }
@@ -535,7 +535,7 @@ namespace MadMax.Npc
             for (int i = 0; i < 10; i++)
             {
                 var p = me + Quaternion.Euler(0f, i * 36f + (Profile.seed & 31), 0f) * Vector3.forward * (2.5f + (i % 3) * 1.6f);
-                if (t) { if (t.WaterDepth(p.x, p.z) > 0.3f) continue; p.y = t.Height(p.x, p.z); }
+                if (t) { if (t.WaterDepthNoLoad(p.x, p.z) > 0.3f) continue; p.y = t.HeightNoLoad(p.x, p.z); }
                 if (Flat(p - threat).magnitude < 6f) continue;
                 if (!Physics.Linecast(threat + Vector3.up * 1.3f, p + Vector3.up * 1.1f, out var hit, ~0, QueryTriggerInteraction.Ignore)) continue;
                 if (hit.collider.GetComponentInParent<Npc>() || hit.collider.GetComponentInParent<PlayerCharacter>()) continue;
@@ -737,6 +737,13 @@ namespace MadMax.Npc
             return k;
         }
 
+        /// <summary>A dropped tool falls (it may already carry a body from an earlier drop).</summary>
+        static void DropPhysics(GameObject go)
+        {
+            if (!go.TryGetComponent<Rigidbody>(out var rb)) rb = go.AddComponent<Rigidbody>();
+            rb.isKinematic = false; rb.mass = 2f;
+        }
+
         /// <summary>Drop the weapon, hands up: out of the fight. [E] decides what happens to them.</summary>
         void Surrender(WastelandGame g)
         {
@@ -745,7 +752,7 @@ namespace MadMax.Npc
             if (tool && !(tool is LightTool))
             {
                 tool.transform.SetParent(null, true);
-                var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f;
+                DropPhysics(tool.gameObject);
                 Destroy(tool.gameObject, 60f);
                 tool = null;
             }
@@ -792,7 +799,7 @@ namespace MadMax.Npc
             else if (byPlayer && Profile.Raider) Factions.Shift(side, -6);
             if (byPlayer) Contracts.ReportKill(this);                                        // bounties
             cc.enabled = false;
-            if (tool) { tool.transform.SetParent(null, true); var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f; Destroy(tool.gameObject, 60f); }
+            if (tool) { tool.transform.SetParent(null, true); DropPhysics(tool.gameObject); Destroy(tool.gameObject, 60f); }
             // go limp: a physics ragdoll takes the blow and falls where it may; the body is searchable at the pelvis
             var push = lastBlow.sqrMagnitude > 0.01f ? lastBlow : -transform.forward * 60f;
             Ragdoll.For(rig).Go(push, transform.position + Vector3.up * 1.1f, lastVelocity);
