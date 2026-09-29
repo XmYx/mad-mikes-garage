@@ -165,6 +165,7 @@ namespace MadMax.World
                 terrain.DestructionState, p.id, p.size, p.id);
             if (!d) return;
             if (p.site.kind != SiteKind.Airfield) d.gameObject.AddComponent<Subterranean>();
+            else RunwayLights.For(p.site, parent, mat);                                      // edge and threshold lights for night landings
             if (p.extras == null) return;
             var q = Quaternion.Euler(0f, p.yaw, 0f);
             int n = 0;

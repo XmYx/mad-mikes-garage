@@ -8,7 +8,7 @@ namespace MadMax.World
 {
     /// <summary>Biome vegetation (pines, palms, bushes, cacti, logs, waste barrels) and settlement buildings
     /// (farmhouses, fences, haystacks, brick houses, ruined city towers). All destructible voxels.</summary>
-    public static class BiomeProps
+    public static partial class BiomeProps
     {
         public class Template
         {
@@ -59,6 +59,7 @@ namespace MadMax.World
             Add(T("Streetlight0", Streetlight(), 0.08f));
             Add(T("GasPump0", GasPumpGrid(), 0.08f));
             foreach (var ore in OreRamps.Keys) for (int v = 0; v < 2; v++) Add(T("Ore_" + ore + v, OreRock(ore, v), 0.12f));
+            AddLandmarkTemplates(Add);
             var meshes = new List<Mesh>(); foreach (var t in templates.Values) meshes.Add(t.mesh);
             PropRemesher.Prebake(meshes);                                                   // colliders cooked now, not at the first house
         }
@@ -603,6 +604,8 @@ namespace MadMax.World
                 }
             }
 
+            PopulateLandmarks(terrain, c, parent, mat, legacy);
+
             // ---- settlement pieces whose anchor is in this chunk
             foreach (var st in world.settlements)
             {
@@ -664,7 +667,8 @@ namespace MadMax.World
         }
 
         static bool IsBuilding(string id) => id.StartsWith("Farmhouse") || id.StartsWith("BrickHouse") || id.StartsWith("Tower") || id.StartsWith("Shop")
-                                             || id.StartsWith("Shack") || id.StartsWith("Haystack") || id.StartsWith("GasPump") || id.StartsWith("Fence");
+                                             || id.StartsWith("Shack") || id.StartsWith("Haystack") || id.StartsWith("GasPump") || id.StartsWith("Fence")
+                                             || id.StartsWith("GuardHut") || id.StartsWith("Tank") || id.StartsWith("Column") || id.StartsWith("CarStack");
 
         static DestructibleVoxels SpawnById(DeformableTerrain terrain, string id, string name, Transform parent, Material mat, Vector3 pos, float yaw, bool dyn, Dictionary<string, VoxelGrid> store, string key, Lookup legacy)
         {

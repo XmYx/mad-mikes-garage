@@ -58,6 +58,7 @@ namespace MadMax.World
             }
             roads.SpawnPoint(out yardP, out yardDir);
             yardSide = Vector3.Cross(Vector3.up, yardDir);
+            BuildRivers(new System.Random(seed * 31 + 7));
         }
 
         // ------------------------------------------------------------------ the start yard
@@ -233,6 +234,7 @@ namespace MadMax.World
             float h = BaseHeight(x, z);
             float wet = BaseWetness(x, z);
             s.water = float.NaN;
+            float ford = 0f;
             var settle = SettlementAt(x, z);
             // jittered lookup dithers biome borders instead of drawing straight seams
             float jx = (P(x, z, 0.12f, 1) - 0.5f) * 10f + (Hash01(x, z) - 0.5f) * 3f;
@@ -262,6 +264,7 @@ namespace MadMax.World
                     wet = Mathf.Max(wet, Mathf.Clamp01(1.3f - t) * 0.9f);
                 }
                 if (s.biome == Biome.Tropical) wet = Mathf.Clamp01(wet + 0.15f);
+                if (rivers.Count > 0) ford = ShapeRiver(x, z, ref h, ref s, ref wet);
                 var site = SiteAt(x, z);
                 if (site != null) h = ShapeSite(site, x, z, h, ref s, ref wet);
             }
@@ -288,6 +291,8 @@ namespace MadMax.World
                     }
                 }
                 if (wSum > 0f) h = Mathf.Lerp(h, hSum / wSum, blend);
+                // dirt tracks ford rivers (the road dips into the water); highways keep their graded causeway
+                if (ford > 0f && !s.paved && !float.IsNaN(s.water)) h = Mathf.Lerp(h, Mathf.Min(h, s.water - 0.35f), ford * blend);
                 s.road = roadMax;
                 wet *= 1f - s.road * 0.85f;
             }

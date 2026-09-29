@@ -147,6 +147,7 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.World.Atmosphere>();
             gameObject.AddComponent<MadMax.World.WindDust>();
             gameObject.AddComponent<MadMax.World.Storms>();
+            gameObject.AddComponent<Racing>();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             gameObject.AddComponent<MadMax.Animals.AnimalDirector>().Init(this);

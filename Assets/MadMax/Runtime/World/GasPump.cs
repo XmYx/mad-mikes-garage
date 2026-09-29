@@ -28,6 +28,9 @@ namespace MadMax.World
         }
         public Vector3 nozzle = new Vector3(0.3f, 1.1f, 0.25f);
 
+        /// <summary>Fix what a world pump sells (the refinery's diesel) instead of rolling it from the key.</summary>
+        public void SetKind(ResourceType k) { kind = k; kindSet = true; }
+
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 

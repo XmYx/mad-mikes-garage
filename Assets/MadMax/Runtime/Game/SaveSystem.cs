@@ -90,6 +90,7 @@ namespace MadMax.Game
         public List<FireSave> fires = new List<FireSave>();
         public int starter = -1;                                        // FIRST STEPS step (-1 = off)
         public List<string> lastEngine = new List<string>();            // LastEngine flags
+        public List<string> records = new List<string>();               // Racing best times, "hang"
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;

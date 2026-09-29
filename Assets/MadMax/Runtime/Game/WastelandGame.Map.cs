@@ -18,16 +18,17 @@ namespace MadMax.Game
         public struct Pin { public string label; public Vector3 pos; public Color32 color; }
 
         float mapCheck;
+        bool waypointQuiet;                 // set by races and guides: no toasts
         readonly List<Site> nearSites = new List<Site>();
 
         Vector3 FocusPos => Current ? Current.transform.position : Player ? Player.transform.position : Vector3.zero;
 
-        public void SetWaypoint(Vector3 p, string what = null)
+        public void SetWaypoint(Vector3 p, string what = null, bool silent = false)
         {
             p.y = terrain ? terrain.HeightNoLoad(p.x, p.z) : p.y;
-            Waypoint = p; HasWaypoint = true;
+            Waypoint = p; HasWaypoint = true; waypointQuiet = silent;
             RecomputeRoute();
-            Toast("WAYPOINT" + (what != null ? ": " + what : "") + "  " + Mathf.RoundToInt(Flat(p - FocusPos)) + " M");
+            if (!silent) Toast("WAYPOINT" + (what != null ? ": " + what : "") + "  " + Mathf.RoundToInt(Flat(p - FocusPos)) + " M");
         }
 
         public void ClearWaypoint() { HasWaypoint = false; Route.Clear(); }
@@ -58,10 +59,13 @@ namespace MadMax.Game
                 if (seen && Discovered.Add(s.Key)) { Journal.Add("FOUND", SiteName(s) + " AT " + Mathf.RoundToInt(s.pos.x) + "," + Mathf.RoundToInt(s.pos.y)); Toast("FOUND: " + SiteName(s) + " (ON THE MAP)"); }
             }
             foreach (var k in Scouted) Discovered.Add(k);
+            foreach (var m in BiomeProps.Landmarks(World))
+                if (Vector2.Distance(m.pos, new Vector2(at.x, at.z)) < 90f && Discovered.Add("lm:" + m.index))
+                    Journal.Add("FOUND", m.Name + " AT " + Mathf.RoundToInt(m.pos.x) + "," + Mathf.RoundToInt(m.pos.y));
             // the waypoint: arrive, or re-route when far off the line
             if (HasWaypoint)
             {
-                if (Flat(Waypoint - at) < 18f) { ClearWaypoint(); Toast("WAYPOINT REACHED"); return; }
+                if (Flat(Waypoint - at) < 18f) { ClearWaypoint(); if (!waypointQuiet) Toast("WAYPOINT REACHED"); return; }
                 float off = float.MaxValue;
                 foreach (var p in Route) off = Mathf.Min(off, Flat(p - at));
                 if (Route.Count == 0 || off > 70f) RecomputeRoute();
@@ -104,6 +108,7 @@ namespace MadMax.Game
             d.journal = Journal.Save();
             d.starter = StarterStep;
             d.lastEngine = LastEngine.Save();
+            d.records = Racing.Save();
         }
 
         void LoadMap(SaveData d)
@@ -113,6 +118,7 @@ namespace MadMax.Game
             Journal.Load(d.journal);
             StarterStep = d.starter;
             LastEngine.Load(d.lastEngine);
+            Racing.Load(d.records);
             if (d.hasWaypoint) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }
         }
     }

@@ -150,6 +150,7 @@ namespace MadMax.World
                 float a = i * Mathf.PI * 2f / 8f;
                 var q = i == 8 ? p : p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * s.reach;
                 if (LakeAt(q.x, q.y, out float t) != null && t < 1.8f) return null;
+                if (RiverAt(q.x, q.y, out _, out _, out _)) return null;
                 roads.QueryAll(q.x, q.y, hits);
                 if (hits.Count > 0) return null;
             }
@@ -158,6 +159,7 @@ namespace MadMax.World
                 {
                     var q = s.ToWorld(0f, z);
                     if (LakeAt(q.x, q.y, out float t) != null && t < 1.8f) return null;
+                    if (RiverAt(q.x, q.y, out _, out _, out _)) return null;
                     roads.QueryAll(q.x, q.y, hits);
                     if (hits.Count > 0) return null;
                 }

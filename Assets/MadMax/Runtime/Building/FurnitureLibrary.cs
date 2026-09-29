@@ -70,6 +70,7 @@ namespace MadMax.Building
                 D("door_metal", "METAL DOOR", B, BuildPieces.Door(true), 25, false, go => go.AddComponent<Door>(), (Fe, 4), (S, 2)).Snap("doorway"),
                 D("floor_wood", "WOOD FLOOR", B, BuildPieces.Floor(WS, 710), 8, true, null, (W, 4)).Deck(1f, 1f, 0.12f, 0.12f),
                 D("floor_concrete", "CONCRETE FLOOR", B, BuildPieces.Floor(CS, 711), 40, true, null, (Co, 4)).Deck(1f, 1f, 0.12f, 0.12f),
+                D("jump_ramp", "JUMP RAMP", B, JumpRamp(), 12, true, null, (W, 12), (S, 6)).Deck(1.4f, 2.4f, 0.04f, 1.28f),
                 D("stairs", "STAIRS", B, BuildPieces.Stairs(), 8, true, null, (W, 8)),
                 D("ladder", "LADDER", B, BuildPieces.Ladder(), 4, false, go => { var l = go.AddComponent<Ladder>(); l.localBounds = go.GetComponent<MeshFilter>().sharedMesh.bounds; }, (W, 3)),
                 D("roof_flat", "ROOF", B, BuildPieces.Roof(false), 8, true, null, (S, 4)),
@@ -370,6 +371,27 @@ namespace MadMax.Building
             g.Mat(Glass);
             g.Box(-5, 2, -1, -5, 4, -1, Pal.Ramp(Pal.Glass, 3)); g.Box(-3, 2, 0, -3, 3, 0, Pal.Ramp(Pal.Glass, 2));
             g.Mat(Scrap); g.Box(2, 2, -2, 4, 3, 0, Pal.Ramp(Pal.Rust, 2)); g.Box(5, 2, 1, 6, 4, 2, Pal.Ramp(Pal.Metal, 2));
+            return g;
+        }
+
+        /// <summary>A plank jump ramp: 2.9 m wide, 4.8 m long, rising to 1.3 m at the lip (+Z), on scrap trestles.</summary>
+        static VoxelGrid JumpRamp()
+        {
+            var g = new VoxelGrid();
+            g.Mat((byte)ResourceType.Wood);
+            for (int z = -30; z <= 30; z++)
+            {
+                int top = Mathf.RoundToInt((z + 30) / 60f * 16f);
+                g.Box(-18, top, z, 18, top, z, (z & 3) == 0 ? Pal.Ramp(Pal.Wood, 1, 1701) : Pal.Ramp(Pal.Wood, 2, 1702));   // planks
+                if ((z + 30) % 15 == 0 && top > 1)
+                {
+                    g.Mat((byte)ResourceType.Scrap);
+                    foreach (int x in new[] { -17, 17 }) g.Box(x, 0, z, x, top - 1, z, Pal.Weathered(Pal.Metal, 0.5f, 1703 + z, 1, 0));   // trestle legs
+                    g.Box(-17, top - 1, z, 17, top - 1, z, Pal.Ramp(Pal.Rust, 1, 1704));
+                    g.Mat((byte)ResourceType.Wood);
+                }
+            }
+            g.Box(-18, 16, 30, 18, 16, 30, Pal.Stripe(Pal.Solid(Pal.Ochre[3]), Pal.Solid(Pal.Black[1]), 0, 3));   // hazard-striped lip
             return g;
         }
 

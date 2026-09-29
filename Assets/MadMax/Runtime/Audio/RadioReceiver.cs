@@ -12,6 +12,9 @@ namespace MadMax.Audio
 
         public bool on;
         public int station;
+        /// <summary>0..1 reception here (distance to the nearest radio mast).</summary>
+        public float Signal { get; private set; } = 1f;
+        float signalCheck;
         [Range(0f, 1f)] public float volume = 0.7f;
         public float range = 30f;
         public float lowPass = 7000f;       // speaker bandwidth
@@ -96,7 +99,7 @@ namespace MadMax.Audio
             var net = RadioNetwork.Instance;
             if (!net || net.StationCount == 0) return "NO SIGNAL";
             var s = net.Station(station);
-            return s.freq + " " + s.name.ToUpperInvariant();
+            return s.freq + " " + s.name.ToUpperInvariant() + (Signal < 0.5f ? " (WEAK SIGNAL)" : "");
         }
 
         void Changed() { ChangedAt = Time.unscaledTime; }
@@ -140,12 +143,18 @@ namespace MadMax.Audio
                 src.time = Mathf.Clamp(offset, 0f, src.clip.length - 0.05f);   // resync after a hitch or a pause
                 if (!src.isPlaying) src.Play();
             }
-            src.volume = gain;
+            if ((signalCheck -= Time.unscaledDeltaTime) <= 0f)
+            {
+                signalCheck = 1f;
+                var w = MadMax.World.DeformableTerrain.Instance ? MadMax.World.DeformableTerrain.Instance.World : null;
+                Signal = w != null ? MadMax.World.BiomeProps.Signal(w, transform.position) : 1f;
+            }
+            src.volume = gain * (0.35f + 0.65f * Signal);                                         // far from a mast the station fades into hiss
 
             bool tuning = Time.unscaledTime < staticUntil || (file != null && playingFile != file);
             if (hiss.clip)
             {
-                hiss.volume = gain * (tuning ? 0.35f : 0.015f);
+                hiss.volume = gain * (tuning ? 0.35f : 0.015f + (1f - Signal) * 0.22f);
                 if (!hiss.isPlaying) { hiss.time = Random.Range(0f, hiss.clip.length * 0.8f); hiss.Play(); }
             }
         }

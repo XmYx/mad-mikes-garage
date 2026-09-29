@@ -196,6 +196,7 @@ namespace MadMax.Npc
         public void Horn(Vector3 at, MadMax.Vehicles.VehicleDriver car)
         {
             MadMax.Animals.AnimalDirector.Instance?.Horn(at);
+            MadMax.World.Checkpoint.Horn(at, car);                                             // pay the toll at a checkpoint
             foreach (var n in Npc.All)
             {
                 if (!n || !n.Alive) continue;

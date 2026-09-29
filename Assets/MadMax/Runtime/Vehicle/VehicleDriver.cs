@@ -128,6 +128,9 @@ namespace MadMax.Vehicles
         EngineStats engine;
         float steer, massPerWheel, k, c, restComp, shiftTimer, restTimer;
 
+        /// <summary>Wheels touching the ground last step (0 = airborne: jumps, hang time).</summary>
+        public int WheelsDown { get { int n = 0; foreach (var w in wheels) if (w.part && w.grounded) n++; return n; } }
+
         bool AllGroundedLastStep()
         {
             foreach (var w in wheels) if (w.part && !w.grounded) return false;

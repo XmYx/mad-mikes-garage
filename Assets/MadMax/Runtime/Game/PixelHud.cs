@@ -221,6 +221,14 @@ namespace MadMax.Game
             if (game.RadiationLevel > 0.02f && (Time.time * (2f + game.RadiationLevel * 6f)) % 1f > 0.35f)
                 canvas.Text(canvas.w / 2 - 20, 34, "RADIATION " + Mathf.RoundToInt(game.RadiationLevel * 100), new Color32(156, 255, 58, 255));
             if (!car && game.Player.Swimming) canvas.Text(canvas.w / 2 - 16, 26, "SWIMMING", new Color32(150, 190, 255, 255));
+            var race = Racing.Instance ? Racing.Instance.Status : null;
+            if (race != null)
+            {
+                int rw = PixelCanvas.TextWidth(race) + 8;
+                canvas.Panel((canvas.w - rw) / 2, 24, rw, 11);
+                canvas.Text((canvas.w - rw) / 2 + 4, 27, race, Amber);
+                if (Racing.Instance.NextGatePos(out var gp)) DrawGate(gp);
+            }
             var starter = game.StarterLine;
             if (starter != null && !(game.Menus && game.Menus.IsOpen))
             {
@@ -262,6 +270,7 @@ namespace MadMax.Game
             {
                 DrawFlight(car, flight, 6, canvas.h - 52);
                 DrawAerial(flight);
+                DrawApproach(flight);
             }
 
             // bleed-out warning and the context hint, above the prompt
@@ -470,6 +479,39 @@ namespace MadMax.Game
 
         /// <summary>From the air (above 25 m) sites, towns, convoys and herds show up to a range that grows with
         /// altitude; the first sight of a site is noted.</summary>
+        /// <summary>Approach aid near an airfield: the threshold you are lined up on (marker), runway heading, distance,
+        /// left/right of the centreline and a 4° glide slope readout (HIGH / LOW / ON GLIDE).</summary>
+        void DrawApproach(MadMax.Vehicles.FlightModel f)
+        {
+            var me = f.transform.position;
+            var near = new System.Collections.Generic.List<MadMax.World.Site>();
+            game.World.SitesNear(me, 3000f, near);
+            MadMax.World.Site af = null; float bd = 3000f;
+            foreach (var s in near) if (s.kind == MadMax.World.SiteKind.Airfield) { float d = Vector2.Distance(s.pos, new Vector2(me.x, me.z)); if (d < bd) { bd = d; af = s; } }
+            if (af == null) return;
+            MadMax.World.RunwayLights.Thresholds(af, out var a, out var b);
+            if ((Flat(b - me)) < Flat(a - me)) { var t = a; a = b; b = t; }                    // land over the nearer end
+            var dir = b - a; dir.y = 0f; dir.Normalize();
+            var rel = me - a;
+            float along = Vector3.Dot(new Vector3(rel.x, 0f, rel.z), dir), side = Vector3.Dot(new Vector3(rel.x, 0f, rel.z), Vector3.Cross(Vector3.up, dir));
+            float dist = Flat(rel), above = me.y - a.y, ideal = Mathf.Max(0f, -along) * Mathf.Tan(4f * Mathf.Deg2Rad);
+            int hdg = Mathf.RoundToInt(Mathf.Repeat(Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, 360f) / 10f);
+            if (hdg == 0) hdg = 36;
+            string glide = along > 0f ? "OVER THE RUNWAY" : above > ideal + 15f ? "HIGH" : above < ideal - 10f ? "LOW" : "ON GLIDE";
+            string lr = Mathf.Abs(side) < 8f ? "CENTRE" : side > 0f ? Mathf.RoundToInt(side) + "M RIGHT" : Mathf.RoundToInt(-side) + "M LEFT";
+            string line = "RWY " + hdg.ToString("00") + "  " + (dist >= 1000f ? (dist / 1000f).ToString("0.0") + " KM" : Mathf.RoundToInt(dist) + " M") + "  " + lr + "  " + glide;
+            canvas.Text((canvas.w - PixelCanvas.TextWidth(line)) / 2, canvas.h - 64, line, glide == "ON GLIDE" ? Green : Amber);
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam) return;
+            var sp = cam.WorldToViewportPoint(a + Vector3.up);
+            if (sp.z <= 0f || sp.x < 0f || sp.x > 1f || sp.y < 0f || sp.y > 1f) return;
+            int px = Mathf.RoundToInt(sp.x * canvas.w), py = Mathf.RoundToInt((1f - sp.y) * canvas.h);
+            canvas.Rect(px - 4, py, 9, 1, Green); canvas.Rect(px, py - 4, 1, 9, Green);
+            canvas.Text(px - PixelCanvas.TextWidth("RWY") / 2, py - 11, "RWY", Green);
+        }
+
+        static float Flat(Vector3 v) { v.y = 0f; return v.magnitude; }
+
         void DrawAerial(MadMax.Vehicles.FlightModel f)
         {
             if (f.Altitude < 25f) return;
@@ -951,6 +993,21 @@ namespace MadMax.Game
             int ly = y + 15;
             if (Storms.Name != null) { canvas.Text(x, ly, Storms.Name, (Time.unscaledTime % 1f) < 0.6f ? Red : Amber); ly += 7; }
             if (Weather.Ice > 0.3f) canvas.Text(x, ly, "ICE", new Color32(150, 190, 255, 255));
+        }
+
+        /// <summary>The next race gate: a diamond with the distance at its screen position (an arrow at the edge when behind).</summary>
+        void DrawGate(Vector3 world)
+        {
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam) return;
+            var sp = cam.WorldToViewportPoint(world + Vector3.up * 2f);
+            var col = new Color32(255, 210, 60, 255);
+            if (sp.z <= 0f) { sp.x = 1f - sp.x; sp.y = 0.1f; }
+            int px = Mathf.Clamp(Mathf.RoundToInt(sp.x * canvas.w), 6, canvas.w - 6), py = Mathf.Clamp(Mathf.RoundToInt((1f - sp.y) * canvas.h), 12, canvas.h - 12);
+            for (int i = 0; i < 4; i++) { canvas.Rect(px - i, py - 3 + i, 1 + i * 2, 1, col); canvas.Rect(px - i, py + 3 - i, 1 + i * 2, 1, col); }
+            var me = game.Current ? game.Current.transform.position : game.Player.transform.position;
+            string d = Mathf.RoundToInt(Vector3.Distance(me, world)) + "M";
+            canvas.Text(px - PixelCanvas.TextWidth(d) / 2, py + 5, d, col);
         }
 
         /// <summary>Build mode: a hammer mark on every piece nearby that is below full condition (weather, raids), amber when

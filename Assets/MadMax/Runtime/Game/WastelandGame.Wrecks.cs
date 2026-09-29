@@ -68,6 +68,34 @@ namespace MadMax.Game
                 }
                 v.Body.isKinematic = true;
             }
+            SpawnScrapyardWrecks(rnd, prefabs);
+        }
+
+        /// <summary>A few wrecks in every scrapyard lot (landmarks): cars to strip, parts lying about.</summary>
+        void SpawnScrapyardWrecks(System.Random rnd, List<GameObject> prefabs)
+        {
+            var yards = new List<(Vector3 pos, float yaw)>();
+            MadMax.World.BiomeProps.Scrapyards(World, yards);
+            foreach (var (c, yaw) in yards)
+            {
+                var q = Quaternion.Euler(0f, yaw, 0f);
+                for (int i = 0; i < 4; i++)
+                {
+                    var prefab = prefabs[rnd.Next(prefabs.Count)];
+                    if (!prefab.GetComponent<VehicleDriver>().driveable) continue;
+                    var pos = c + q * new Vector3(-6f + (i % 2) * 11f, 0f, -3f + (i / 2) * 9f);
+                    pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
+                    var go = Instantiate(prefab, pos, q * Quaternion.Euler(0f, 80f + (float)rnd.NextDouble() * 20f, 0f));
+                    go.name = "Wreck " + prefab.name;
+                    var v = go.GetComponent<VehicleDriver>();
+                    if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = false;
+                    Register(v, wrecks);
+                    Ruin(v, rnd);
+                    if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
+                    if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = 0f; sys.oil *= 0.3f; }
+                    v.Body.isKinematic = true;
+                }
+            }
         }
 
         void Ruin(VehicleDriver v, System.Random rnd)

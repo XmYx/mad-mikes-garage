@@ -549,9 +549,10 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       faction vaults), faction endgames (the Guild's pipeline, the Church's pilgrimage), or a convoy run to the
       map edge.
       *Done:* THE LAST ENGINE (`Game/LastEngine`): four relics — the block in the second-nearest bunker, the heads in the nearest airfield hangar, the crank on the boss of the gang with the longest road, the twin blowers from the Church at FRIENDLY standing; rumours name and pin them; the garage assembles `engine_v12_last` (1050 Nm V12 with its own engine sound); a car running it that reaches the world's edge makes THE LAST RUN (journal, standing). Faction endgames are left for later.
-- [ ] **No racing or arena activity in a driving game.** Suggest: point-to-point races between towns against
+- [x] **No racing or arena activity in a driving game.** Suggest: point-to-point races between towns against
       rival drivers (entry fee and purse, tuning matters), bike trials on the mesas, air races between airfields,
       a scrap-metal arena with bets, and jump ramps with a hang-time score.
+      *Done:* `Game/Racing`: one event a day per town board ([T]): ROAD RACE to the nearest town against three AI rivals (fee, purse, places), BIKE TRIAL through off-road gates round the town, AIR RACE through gates in the sky round the nearest airfield, city ARENA (bet, outlast three armoured wreckers); countdown at the start, gate marker + waypoint, HUD line with gate/time/place, best times saved; JUMP RAMP build piece (sloped deck) and hang-time scores (best saved).
 - [x] **Raids by territory** (from base building): the raiding gang should be the one whose road stretch is
       nearest; recruited or bribed gangs skip the base; wiping a raid party dents its next convoy generation.
       *Done:* `NpcDirector.RaidersByRoad` picks the gang whose road passes nearest (base raids and town raids); `Convoy.SparesBases` (recruited, allied, or a toll paid: `ConvoySave.spareUntil`, 3 days paid / 1 day scared or fooled); a party wiped out adds `ConvoySave.losses` (fewer cars in the gang's next generation, smaller raids; heals one per generation).
@@ -588,7 +589,8 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       limiter; the gyro has rate-commanded disc tilt. Suggest a SIM FLIGHT setting (raw weight shift, stalls and
       spins, crosswind landings), plus instruments for it (slip ball, stall horn).
       *Done:* setting FLIGHT MODEL: SIMULATION (raw weight shift / disc tilt, no auto-level, bank or AoA limits, no turn coordinator); slip ball and STALL WARN on the flight panel, a stall horn.
-- [ ] **No runway lights or night flying aids**: airfields are unlit, and a night landing means aiming at the dark.
+- [x] **No runway lights or night flying aids**: airfields are unlit, and a night landing means aiming at the dark.
+      *Done:* `World/RunwayLights` (with the hangar piece): amber edge lamps every 30 m that glow after dusk, green threshold lights; the flight HUD adds an approach aid near airfields (threshold marker, runway heading, distance, left/right of the centreline, 4° glide slope HIGH / LOW / ON GLIDE).
 - [x] **Start line-up**: the starting fleet parks on the road through the start town, and wrecks can spawn on road
       surfaces (a parked ambulance across the lane). Park the fleet on a yard beside the road; keep wrecks on the
       verge.
@@ -598,9 +600,10 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       *Done:* the three scavenge wrecks sit at the back of the yard, cold (no fuel), and every spawned or woken wreck gets a settling grace (`VehicleDamage.graceUntil`) so drops and depenetration never damage them.
 
 ### World
-- [ ] **Thin variety for driving.** There are no rivers, fords or bridges, scrapyards, military checkpoints,
+- [x] **Thin variety for driving.** There are no rivers, fords or bridges, scrapyards, military checkpoints,
       refineries or radio masts (the radio has stations but no towers). Scrapyards would give parts hunting, fords
       would make snorkels matter, and checkpoints would carry faction tolls; each feeds an existing system.
+      *Done:* `WorldGen.Rivers`: three rivers per world walk downhill from high ground into lakes or basins (carved beds and banks, water stepping down the course, dry wadis in the desert); dirt tracks cross at fords (the road dips 0.35 m under the water), highways on graded causeways. `BiomeProps.Landmarks`: radio masts outside towns and cities (blinking lamp; `RadioReceiver.Signal` fades stations into hiss away from masts, WEAK SIGNAL), Remnant checkpoints on long highways (`World/Checkpoint`: boom across the road, honk or [E] to pay 10 scrap, free for friends, ram it and lose standing), scrapyards beside every third town (fenced lot, crushed-car stacks, parts locker, four wrecks), a refinery on the richest oil near a road (column, tank farm, 900 L diesel pump, fuel store). Landmarks enter the journal when found.
 - [x] **The start town is cramped**: sheds, the fleet and props leave little room to turn a truck. The autotest
       pilot got stuck there repeatedly and now starts outside town.
       *Done:* the start yard keeps a 90 x 76 m lot clear of buildings and props.
