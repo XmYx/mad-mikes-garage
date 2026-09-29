@@ -61,7 +61,7 @@ namespace MadMax.Game
         public BuildCategory Category { get; private set; }
         public List<FurnitureDef> Pieces => FurnitureLibrary.InCategory(Category);
         public FurnitureDef Current { get { var p = Pieces; return p[Mathf.Clamp(Selected, 0, p.Count - 1)]; } }
-        public static readonly BuildCategory[] Categories = { BuildCategory.Structure, BuildCategory.Furniture, BuildCategory.Utility, BuildCategory.Garden, BuildCategory.Industry, BuildCategory.Decor };
+        public static readonly BuildCategory[] Categories = { BuildCategory.Structure, BuildCategory.Furniture, BuildCategory.Utility, BuildCategory.Garden, BuildCategory.Industry, BuildCategory.Defence, BuildCategory.Decor };
         public int RadialCategory { get; private set; }
         UtilityNode linkStart;
         public UtilityNode LinkStart => linkStart;
@@ -158,7 +158,11 @@ namespace MadMax.Game
             // dismantle what the crosshair / cursor is on
             var targetPiece = hit.collider.GetComponentInParent<Placeable>();
             if (def.link != UtilityKind.None) { LinkTick(def, targetPiece, kb, mouse); return; }
+            if (def.plan == -2) { CaptureTick(targetPiece, kb, mouse); return; }
             if (targetPiece && kb != null && kb.xKey.wasPressedThisFrame) { Dismantle(targetPiece); return; }
+            if (!targetPiece && def.plan >= 0 && kb != null && kb.xKey.wasPressedThisFrame) { StructurePlans.Forget(def.plan); Selected = Mathf.Max(0, Selected - 1); game.Toast("PLAN FORGOTTEN"); return; }
+            if (targetPiece && kb != null && kb.uKey.wasPressedThisFrame) { Upgrade(targetPiece); return; }
+            if (targetPiece && kb != null && kb.rKey.wasPressedThisFrame) { Repair(targetPiece); return; }
 
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
             Transform parent = chassis ? chassis.transform : structures;
@@ -182,23 +186,32 @@ namespace MadMax.Game
                 if (an.z < 0.9f) localPos.z = Mathf.Round(localPos.z / grid) * grid;
             }
 
+            string blocked = null;
+            if (def.foundation || def.plan >= 0)
+            {
+                // level on the ground, yawed square to the world (or tiled against the foundation under the cursor)
+                parent = structures;
+                if (chassis) blocked = "BUILD IT ON THE GROUND";
+                else if (def.foundation && targetPiece && FurnitureLibrary.Get(targetPiece.id) is FurnitureDef td && td.foundation) NextTo(targetPiece, hit.point, out localPos, out localRot);
+                else if (!LevelSpot(def, hit.point, rot, out localPos, out localRot)) blocked = "TOO STEEP FOR THE LEGS";
+            }
             ghost.SetActive(true);
             ghostMesh.sharedMesh = def.mesh;
             ghost.transform.SetPositionAndRotation(parent.TransformPoint(localPos), parent.rotation * localRot);
 
             bool affordable = Affordable(def);
-            bool free = IsFree(def, hit.collider);
+            bool free = blocked == null && IsFree(def, hit.collider);
             Valid = affordable && free;
-            Status = !affordable ? "NOT ENOUGH MATERIALS" : !free ? "BLOCKED" : targetPiece ? "[LMB] PLACE  [X] DISMANTLE  [Y] ROTATE" : "[LMB] PLACE  [Y] ROTATE  [B] EXIT";
+            Status = blocked ?? (!affordable ? "NOT ENOUGH MATERIALS" : !free ? "BLOCKED" : targetPiece ? "[LMB] PLACE  [Y] ROTATE" + PieceHint(targetPiece) : def.plan >= 0 ? "[LMB] BUILD PLAN  [Y] ROTATE  [X] FORGET PLAN" : "[LMB] PLACE  [Y] ROTATE  [B] EXIT");
             mpb.SetColor("_Tint", Valid ? new Color(0.7f, 1.3f, 0.7f) : new Color(1.4f, 0.5f, 0.45f));
             ghostRenderer.SetPropertyBlock(mpb);
 
-            // doors snap into doorways
-            if (def.id.StartsWith("door_") && targetPiece && targetPiece.id.StartsWith("doorway"))
+            // doors snap into doorways, garage doors into their frames, shutters over windows
+            if (def.snapTo != null && targetPiece && targetPiece.id.Contains(def.snapTo))
             {
                 parent = targetPiece.transform.parent; localPos = targetPiece.transform.localPosition; localRot = targetPiece.transform.localRotation;
                 ghost.transform.SetPositionAndRotation(parent.TransformPoint(localPos), parent.rotation * localRot);
-                Valid = affordable; Status = affordable ? "[LMB] HANG DOOR" : "NOT ENOUGH MATERIALS";
+                Valid = affordable; Status = affordable ? "[LMB] FIT " + def.name : "NOT ENOUGH MATERIALS";
             }
             aimParent = parent; aimPos = localPos; aimRot = localRot;
             bool place = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
@@ -210,6 +223,7 @@ namespace MadMax.Game
         {
             if (!Valid || !aimParent) return null;
             var def = Current;
+            if (def.plan >= 0) return PlacePlan(def);
             if (def.kit != null) game.Inventory.TakeItem(def.kit);
             else foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
             if (def.needsItem != null) game.Inventory.TakeItem(def.needsItem);
@@ -319,7 +333,142 @@ namespace MadMax.Game
             MadMax.Net.NetSession.Instance?.SendPlaceBroken(p);
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 3f);
             game.Toast("DISMANTLED " + (def != null ? def.name : p.id));
+            StructureSupport.Removed(p, p.transform.position, p.transform.parent);
             Destroy(p.gameObject);
+        }
+
+        // ------------------------------------------------------------------ foundations, plans, upgrades, repairs
+
+        /// <summary>Foundation / plan spot: upright, yaw snapped to 90°, origin on the highest ground under the
+        /// footprint (legs reach 1.8 m down). False when the slope is too steep.</summary>
+        bool LevelSpot(FurnitureDef def, Vector3 at, Quaternion aim, out Vector3 localPos, out Quaternion localRot)
+        {
+            float yaw = Mathf.Round(aim.eulerAngles.y / 90f) * 90f;
+            if (Mathf.Abs(Vector3.Dot(aim * Vector3.up, Vector3.up)) < 0.7f) yaw = Mathf.Round(Quaternion.LookRotation(-rig.pixel.transform.forward).eulerAngles.y / 90f) * 90f + yawSteps * 90f;
+            localRot = Quaternion.Euler(0f, yaw, 0f);
+            at.x = Mathf.Round(at.x / grid) * grid; at.z = Mathf.Round(at.z / grid) * grid;
+            var t = DeformableTerrain.Instance;
+            var b = def.mesh.bounds;
+            float hi = at.y, lo = at.y;
+            if (t && t.World != null)
+            {
+                hi = float.MinValue; lo = float.MaxValue;
+                for (int k = 0; k < 5; k++)
+                {
+                    var o = k == 4 ? b.center : new Vector3((k & 1) == 0 ? b.min.x : b.max.x, 0f, (k & 2) == 0 ? b.min.z : b.max.z);
+                    var w = at + localRot * new Vector3(o.x, 0f, o.z);
+                    float h = t.Height(w.x, w.z);
+                    hi = Mathf.Max(hi, h); lo = Mathf.Min(lo, h);
+                }
+                bool legs = def.foundation || (def.plan >= 0 && StructurePlans.Get(def.plan).pieces.Exists(e => FurnitureLibrary.Get(e.id)?.foundation == true));
+                at.y = legs && hi - lo <= 1.8f ? hi : lo;
+            }
+            localPos = structures.InverseTransformPoint(at);
+            localRot = Quaternion.Inverse(structures.rotation) * localRot;
+            return !def.foundation || hi - lo <= 1.8f;
+        }
+
+        /// <summary>Tile a foundation against the one under the cursor, on the side the cursor is nearest.</summary>
+        void NextTo(Placeable f, Vector3 point, out Vector3 localPos, out Quaternion localRot)
+        {
+            var l = f.transform.InverseTransformPoint(point);
+            var step = Mathf.Abs(l.x) > Mathf.Abs(l.z) ? new Vector3(Mathf.Sign(l.x) * 2f, 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(l.z) * 2f);
+            localPos = structures.InverseTransformPoint(f.transform.TransformPoint(step));
+            localRot = Quaternion.Inverse(structures.rotation) * f.transform.rotation;
+        }
+
+        /// <summary>Status suffix for the piece under the cursor: condition, dismantle, upgrade.</summary>
+        string PieceHint(Placeable p)
+        {
+            var def = FurnitureLibrary.Get(p.id);
+            if (def == null || !game.OwnsPiece(p)) return "";
+            string s = "  [X] DISMANTLE";
+            if (p.hits < def.hits) s += "  [R] REPAIR " + p.hits + "/" + def.hits;
+            var up = def.upgrade != null ? FurnitureLibrary.Get(def.upgrade) : null;
+            if (up != null) s += "  [U] " + up.name;
+            return s;
+        }
+
+        /// <summary>Rebuild a piece as its better version in place (pays the new cost, gets half the old back).</summary>
+        void Upgrade(Placeable p)
+        {
+            var def = FurnitureLibrary.Get(p.id);
+            var up = def != null && def.upgrade != null ? FurnitureLibrary.Get(def.upgrade) : null;
+            if (up == null) { game.Toast("NOTHING TO UPGRADE IT TO"); return; }
+            if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
+            if (!Affordable(up)) { game.Toast("UPGRADE NEEDS " + CostText(up)); return; }
+            foreach (var (t, c) in up.cost) game.Inventory.TrySpend(t, Cost(c));
+            foreach (var (t, n) in def.cost) if (n / 2 > 0) game.Inventory.Add(t, n / 2);
+            var parent = p.transform.parent; var lp = p.transform.localPosition; var lr = p.transform.localRotation;
+            string owner = p.owner; byte dye = p.dye;
+            MadMax.Net.NetSession.Instance?.SendPlaceBroken(p);
+            Destroy(p.gameObject);
+            var placed = FurnitureLibrary.Spawn(up.id, parent, lp, lr, material);
+            if (placed) { placed.owner = owner; _ = placed.Id; if (dye != 0) placed.SetDye(dye); placed.Dirty(); MadMax.Net.NetSession.Instance?.SendPlaced(placed); }
+            game.Stats.Practice(MadMax.RPG.Skill.Construction, 8f);
+            MadMax.Audio.Sfx.Play("hammer", lp, 0.8f);
+            game.Toast("UPGRADED TO " + up.name);
+        }
+
+        /// <summary>Hammer a damaged piece back to full: a share of its cost for the missing condition.</summary>
+        void Repair(Placeable p)
+        {
+            var def = FurnitureLibrary.Get(p.id);
+            if (def == null || p.hits >= def.hits) { game.Toast("NOTHING TO REPAIR"); return; }
+            float missing = 1f - p.hits / (float)def.hits;
+            var need = new List<(ResourceType, int)>();
+            foreach (var (t, n) in def.cost) need.Add((t, Mathf.Max(1, Mathf.CeilToInt(n * missing * 0.5f))));
+            foreach (var (t, n) in need) if (game.Inventory.Get(t) < n) { game.Toast("REPAIR NEEDS " + n + " " + ResourceInfo.Name(t)); return; }
+            foreach (var (t, n) in need) game.Inventory.TrySpend(t, n);
+            p.hits = def.hits; p.Dirty();
+            game.Stats.Practice(MadMax.RPG.Skill.Construction, 2f);
+            MadMax.Audio.Sfx.Play("hammer", p.transform.position, 0.7f);
+            game.Toast("REPAIRED " + def.name);
+        }
+
+        string CostText(FurnitureDef d)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var (t, n) in d.cost) { if (sb.Length > 0) sb.Append(", "); sb.Append(Cost(n)).Append(' ').Append(ResourceInfo.Name(t)); }
+            return sb.ToString();
+        }
+
+        /// <summary>Plan capture tool: LMB on one of your pieces saves the whole connected structure.</summary>
+        void CaptureTick(Placeable target, Keyboard kb, Mouse mouse)
+        {
+            ghost.SetActive(false);
+            bool ok = target && game.OwnsPiece(target) && !target.GetComponentInParent<Rigidbody>();
+            Valid = ok;
+            Status = ok ? "[LMB] SAVE THIS STRUCTURE AS A PLAN (" + StructurePlans.Count + "/" + StructurePlans.Max + ")" : "AIM AT A STRUCTURE YOU BUILT";
+            if (!ok || mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
+            int n = StructurePlans.Capture(target, out int skipped);
+            game.Toast(n > 0 ? "PLAN SAVED: " + n + " PIECES" + (skipped > 0 ? " (" + skipped + " KIT PIECES LEFT OUT)" : "") : "NOTHING TO SAVE");
+            MadMax.Audio.Sfx.Play("scratch", target.transform.position, 0.5f);
+        }
+
+        /// <summary>Build a whole plan at the ghost (pays the summed cost).</summary>
+        Placeable PlacePlan(FurnitureDef def)
+        {
+            var plan = StructurePlans.Get(def.plan);
+            if (plan == null) return null;
+            foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
+            var o = ghost.transform;
+            Placeable first = null;
+            foreach (var e in plan.pieces)
+            {
+                var wp = o.TransformPoint(e.pos); var wr = o.rotation * e.rot;
+                var placed = FurnitureLibrary.Spawn(e.id, structures, structures.InverseTransformPoint(wp), Quaternion.Inverse(structures.rotation) * wr, material);
+                if (!placed) continue;
+                placed.owner = game.Stats.name; _ = placed.Id;
+                if (e.dye != 0) placed.SetDye(e.dye);
+                placed.Dirty();
+                MadMax.Net.NetSession.Instance?.SendPlaced(placed);
+                if (!first) first = placed;
+            }
+            game.Stats.Practice(MadMax.RPG.Skill.Construction, 4f * plan.pieces.Count);
+            MadMax.Audio.Sfx.Play("hammer", o.position, 0.9f);
+            game.Toast("BUILT " + def.name);
+            return first;
         }
 
         bool IsFree(FurnitureDef def, Collider surface)

@@ -294,6 +294,7 @@ namespace MadMax.Game
             if (game) speed *= game.InjurySpeed;
             if (Carried) speed *= 0.6f;
             if (terrain) speed *= Mathf.Lerp(1f, 0.6f, terrain.SurfaceAt(transform.position.x, transform.position.z).mud);
+            if (MadMax.Building.DefenceHazard.All.Count > 0) speed *= MadMax.Building.DefenceHazard.SlowAt(transform.position);   // barbed wire
             // water: wade (slower), swim (float at the surface, costs stamina), drown when exhausted
             float waterLvl = terrain ? terrain.WaterLevel(transform.position.x, transform.position.z) : float.NaN;
             float waterDepth = float.IsNaN(waterLvl) ? 0f : waterLvl - transform.position.y;

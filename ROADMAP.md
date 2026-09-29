@@ -347,13 +347,37 @@ decorative turret.
 ## 18. Base building `T2–T3`
 *Exists:* walls, doors, floors, roofs, stairs, utility grid, lockable doors, pieces on vehicles.
 
-- [ ] **Foundations** on slopes, **ramps**
-- [ ] **Garage door** (wide, powered), shutters
-- [ ] **Structural support**: unsupported pieces collapse
-- [ ] **Blueprints**: save a structure and place it again
-- [ ] **Defences**: spike wall, barbed wire, powered auto-turret, alarm bell, floodlights
-- [ ] **Claim flag**: your territory; raiders may raid it
-- [ ] **Upgrade in place** (wood → brick → concrete) and **repair** with the hammer
+- [x] **Foundations** on slopes, **ramps**
+- [x] **Garage door** (wide, powered), shutters
+- [x] **Structural support**: unsupported pieces collapse
+- [x] **Blueprints**: save a structure and place it again
+- [x] **Defences**: spike wall, barbed wire, powered auto-turret, alarm bell, floodlights
+- [x] **Claim flag**: your territory; raiders may raid it
+- [x] **Upgrade in place** (wood → brick → concrete) and **repair** with the hammer
+      *Done:* timber and stone **foundations** (2 × 2 m deck on 1.9 m stilts / a stone plinth) stand level on slopes
+      (origin on the highest ground under the footprint, refused past 1.8 m of fall) and tile against the foundation
+      under the cursor; wood / concrete **ramps** (5.9 m, rising 1 m under 10°). Floors, foundations, ramps and the
+      garage slab are drivable: `StructureGround` adds upright decks to the wheels' analytic ground (firm, no ruts),
+      and a carried body ignores the deck colliders so it never snags on lips and seams. **Garage doorway** (4 m
+      concrete frame) + **garage door** (`RollerDoor`, rolls up into the drum: 3.5 s on its 400 W motor, 11 s cranked
+      by hand without power, lockable) and **window shutters** (snap over window walls; `FurnitureDef.snapTo`
+      generalises the door → doorway snap). `StructureSupport`: a piece stands if touching pieces lead down to the
+      ground (terrain, rock, a world building); breaking or dismantling a piece brings down whatever it held up,
+      lowest first (a quarter of the cost survives). **Structure plans** (`StructurePlans`, the NEW STRUCTURE PLAN
+      tool in the Structure category): LMB on your building saves every connected piece (kits left out, 6 plans,
+      saved); each plan shows as a piece with the whole structure as its ghost and the summed cost, X forgets it. New
+      **Defence** category: spike wall and barbed wire (`DefenceHazard`: stakes wound walkers and gouge / puncture
+      rammers, wire snags walkers to 30 % speed and wraps axles; both wear as they work), **auto-turret** (powered, MG
+      belts in its own ammo box, tracks hostiles within 30 m and sight, never the player), **alarm bell** (rings by
+      itself at hostiles within 35 m, [E] by hand); floodlights were already a kit. **Claim flag** (40 m, shows pieces
+      and a defence score, [T] respawn here). `Npc/BaseRaid` sends a gang at the most built-up claim every
+      1.5 / 3 / 6 days (new game: RAIDS ON BASES): live when the player is within 250 m (they gather 75 m out at dusk,
+      batter the nearest pieces, fight the player when close; repelled = +2 reputation, else they loot a container and
+      leave after 7 min), off-screen otherwise (defence score vs strength → wrecked outer pieces + looted stores,
+      reported on return); sleeping at the claim on a raid night wakes you at 2:00 to the bell. Build mode: [U]
+      upgrade in place (wood → brick → concrete walls / doorways, floors, foundations, ramps, doors, fences; pays the
+      new cost, half the old back), [R] repair (a share of the cost for the missing condition); the status line shows
+      condition and the upgrade.
 
 *Ties:* factions (raids), economy, gardening, irrigation, power.
 
@@ -436,3 +460,26 @@ rumours, errands, haggling, parley, combat, ragdolls.
 ## Gaps & suggestions
 
 *(written after the full review at the end of the roadmap work)*
+
+Found while testing base building (Roadmap 18):
+- [ ] **Burning wrecks near the start**: a wreck spawned on fire ~17 m from the starting fleet; the fleet caught
+      (Interceptor, Excavator: OnFire + Seized). Keep ignition-prone wrecks away from the spawn, or spawn them cold.
+- [ ] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle (1st gear at
+      ~1500 rpm gives ~430 N per wheel); add launch torque / clutch slip so ramps and hills don't need a run-up.
+- [ ] **Stall overheating**: a car pinned against an obstacle at full throttle cooks its engine and catches fire in
+      well under a minute; slow the heat build-up or cut the throttle with a rev limiter warning.
+
+Ties that would pull the loop together:
+- [ ] **Raids by territory**: the raiding gang is the one whose road stretch is nearest (`Convoy` gangs); recruited
+      or bribed gangs skip the base, wiping a gang's raid party dents its next convoy generation.
+- [ ] **Radio warns of raids**: WasteTalk FM names settlements (and your claim) on a gang's warpath an hour ahead.
+- [ ] **Motion-sensor floodlights**: [T] on lights: SENSOR (on when someone moves within 15 m); raiders avoid lit
+      approaches.
+- [ ] **Base upkeep**: pieces weather slowly (rain on wood, sand on everything) unless roofed or repaired; a claim
+      shows what needs the hammer.
+- [ ] **Garage as the fleet's home**: vehicles parked on a claim's decks repair slowly with a garage piece, refuel
+      from its tanks, and are what Tab (fleet) cycles first; raiders go for parked vehicles.
+- [ ] **Map markers**: claims, raided pieces, plans' outlines on the minimap; a claim is a fast respawn (done) and a
+      waypoint.
+- [ ] **Companions guard the base** (Roadmap 20): recruited NPCs posted at a claim man turrets and sound the bell.
+

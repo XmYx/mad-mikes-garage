@@ -104,6 +104,7 @@ namespace MadMax.Game
         /// healing; 3+ wakes you WELL RESTED for 4..16 game hours (faster learning, more stamina).</summary>
         public void Sleep(float comfort = 3f, string note = null)
         {
+            if (MadMax.Npc.BaseRaid.Instance && MadMax.Npc.BaseRaid.Instance.WakeFor(this)) { Stats.stamina = Stats.MaxStamina * 0.6f; return; }
             if (DayNight.Darkness > 0.2f || DayNight.Hours > 20f || DayNight.Hours < 5f)
             {
                 float slept = Mathf.Repeat(7f - DayNight.Hours, 24f);

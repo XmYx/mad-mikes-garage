@@ -283,6 +283,7 @@ namespace MadMax.Game
                     R("WEATHER", () => GameRules.WeatherNames[r.weather], d => r.weather = Mathf.Clamp(r.weather + d, 0, 3));
                     R("SEASON", () => GameRules.SeasonNames[r.season], d => r.season = (r.season + d + 4) % 4);
                     R("SEASONS TURN", () => GameRules.SeasonLengthNames[r.seasonLength], d => r.seasonLength = (r.seasonLength + d + GameRules.SeasonLengths.Length) % GameRules.SeasonLengths.Length);
+                    R("RAIDS ON BASES", () => GameRules.RaidNames[r.raids], d => r.raids = (r.raids + d + GameRules.RaidNames.Length) % GameRules.RaidNames.Length);
                     R("SNOW AND ICE", () => r.snow ? "ON" : "OFF", d => r.snow = !r.snow);
                     R("BIOME SIZE", () => "X" + r.biomeScale.ToString("0.0"), d => r.biomeScale = Mathf.Clamp(r.biomeScale + d * 0.25f, 0.5f, 2.5f));
                     R("PERMADEATH", () => r.permadeath ? "ON" : "OFF", d => r.permadeath = !r.permadeath);

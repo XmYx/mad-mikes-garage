@@ -108,6 +108,7 @@ namespace MadMax.Vehicles
             public Vector3 contact, fwd, side;
             public float maxF, drive, diffSpin, vf, vs, spring;
             public bool broken;          // tyre broke traction last step (kinetic friction is lower)
+            public bool deck;            // on a built deck (floor, foundation, ramp): firm, no ruts
             public Surface surf;
         }
 
@@ -270,14 +271,18 @@ namespace MadMax.Vehicles
                 Vector3 anchor = w.socket.transform.position + outward * (w.width * 0.5f) + up * (travel - restComp + rideHeight);
                 float rayLen = travel + w.radius * (w.stats && w.stats.Popped ? 0.78f : 1f);
                 if (up.y < 0.25f) { w.comp = 0; continue; }
-                float t = (anchor.y - terrain.Height(anchor.x, anchor.z)) / up.y;
+                float gh = terrain.Height(anchor.x, anchor.z);
+                Vector3 deckN = Vector3.up;
+                w.deck = MadMax.Building.StructureGround.Count > 0 && MadMax.Building.StructureGround.Top(anchor, ref gh, out deckN, rb);
+                float t = (anchor.y - gh) / up.y;
                 if (t > rayLen) { w.comp = 0; continue; }
 
                 w.grounded = true;
                 w.comp = Mathf.Min(rayLen - t, travel + 0.15f);
                 w.contact = anchor - up * t;
-                Vector3 n = terrain.Normal(w.contact.x, w.contact.z);
+                Vector3 n = w.deck ? deckN : terrain.Normal(w.contact.x, w.contact.z);
                 w.surf = terrain.SurfaceAt(w.contact.x, w.contact.z);
+                if (w.deck) w.surf = new Surface { road = 1f, wet = w.surf.wet * 0.5f, ice = w.surf.ice };
 
                 float spring = k * w.comp + c * (w.comp - w.prevComp) / dt;
                 if (w.comp > travel) spring += (w.comp - travel) * k * 6f;
@@ -360,7 +365,7 @@ namespace MadMax.Vehicles
                 rb.AddForceAtPosition(w.fwd * lng + w.side * lat, w.contact);
 
                 float spinSlip = isDriven ? Mathf.Max((w.broken ? Mathf.Clamp01(slip * 5f) : slip) * driveCmd, w.diffSpin * driveCmd) : 0f;   // broken-loose tyres spin up
-                if (Mathf.Abs(w.vf) > 0.3f || spinSlip > 0.05f)
+                if ((Mathf.Abs(w.vf) > 0.3f || spinSlip > 0.05f) && !w.deck)
                     terrain.Deform(w.contact, w.fwd, w.side, w.width, w.spring * press, spinSlip * Mathf.Min(1f, press), dt);
 
                 w.spin += (w.vf / w.radius + spinSlip * 30f * (Reversing ? -1f : 1f)) * dt * Mathf.Rad2Deg;
@@ -424,7 +429,7 @@ namespace MadMax.Vehicles
             MadMax.World.Fx.Skid(key, w.contact, w.side, w.width, mark > 0.15f ? mark : 0f);
             // tracks in snow, sand and mud (fade in a minute and a half); dust clouds behind on dry loose ground
             float speed = Mathf.Abs(w.vf);
-            if (speed > 0.5f) MadMax.World.Fx.Track(key + 1, w.contact, w.side, w.width * 0.9f);
+            if (speed > 0.5f && !w.deck) MadMax.World.Fx.Track(key + 1, w.contact, w.side, w.width * 0.9f);
             float dry = (1f - w.surf.wet) * (1f - w.surf.road) * Mathf.Clamp01(w.surf.softness * 1.5f + 0.3f) * (MadMax.World.Weather.Raining ? 0.2f : 1f);
             if (speed > 6f && dry > 0.35f && Random.value < dt * speed * 0.35f * dry)
             {

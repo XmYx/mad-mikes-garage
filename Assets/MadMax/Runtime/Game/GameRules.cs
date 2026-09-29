@@ -27,10 +27,12 @@ namespace MadMax.Game
         public float hungerRate = 1f;       // hunger / thirst / hygiene drain multiplier
         public bool survival = true;        // hunger, thirst, hygiene on/off
         public int loot = 1;                // 0 scarce, 1 normal, 2 plenty
+        public int raids = 2;               // raids on claimed bases: 0 never, 1 rare, 2 normal, 3 often (BaseRaid.Intervals)
 
         public static readonly float[] DayLengths = { 0f, 12f, 24f, 48f, 96f };
         public static readonly string[] DayLengthNames = { "ENDLESS DAY", "12 MIN", "24 MIN", "48 MIN", "96 MIN" };
         public static readonly string[] LootNames = { "SCARCE", "NORMAL", "PLENTY" };
+        public static readonly string[] RaidNames = { "NEVER", "RARE (6 DAYS)", "NORMAL (3 DAYS)", "OFTEN (1.5 DAYS)" };
 
         public static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD", "BRUTAL" };
         public static readonly string[] KitNames = { "NOTHING", "BASIC", "FULL WORKSHOP" };

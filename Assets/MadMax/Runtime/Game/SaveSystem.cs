@@ -70,6 +70,8 @@ namespace MadMax.Game
         public string market;
         public List<MadMax.Npc.Contract> contracts = new List<MadMax.Npc.Contract>();
         public List<string> contractsTaken = new List<string>();
+        public float raidNext = -1f; public string raidReport;
+        public string plans;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

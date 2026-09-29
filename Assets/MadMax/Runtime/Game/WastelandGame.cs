@@ -527,7 +527,7 @@ namespace MadMax.Game
             if (ShowHelp && Time.time > helpUntil) ShowHelp = false;
             UpdateAim(mouse, pad);
             if (Pressed(Key.R) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
-            else if (Pressed(Key.R) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
+            else if (Pressed(Key.R) && !Build.Active && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
             if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame)) && fleet.Count > 0)
             {
                 int i = fleet.IndexOf(Current);

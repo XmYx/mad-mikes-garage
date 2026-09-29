@@ -71,6 +71,8 @@ namespace MadMax.Game
             SaveCrafting(d);
             SaveFishing(d);
             d.market = MadMax.Npc.Market.Save();
+            d.raidNext = MadMax.Npc.BaseRaid.NextDay; d.raidReport = MadMax.Npc.BaseRaid.Report;
+            d.plans = StructurePlans.Save();
             MadMax.Npc.Contracts.Save(d);
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
@@ -242,6 +244,8 @@ namespace MadMax.Game
             RestoreCrafting(d);
             RestoreFishing(d);
             MadMax.Npc.Market.Load(d.market);
+            MadMax.Npc.BaseRaid.NextDay = d.raidNext; MadMax.Npc.BaseRaid.Report = d.raidReport;
+            StructurePlans.Load(d.plans);
             MadMax.Npc.Contracts.Load(d);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);

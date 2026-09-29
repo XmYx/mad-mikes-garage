@@ -228,7 +228,7 @@ namespace MadMax.Game
 
             string towPrompt = FootTow(J);
             string fluidText = FluidInteraction(G, K);
-            string armourText = ArmourInteraction(KeyDown(kb, Key.U));
+            string armourText = ArmourInteraction(KeyDown(kb, Key.U) && !Build.Active);
             Prompt = Join(partText, enterText, towPrompt, fluidText, armourText);
         }
 

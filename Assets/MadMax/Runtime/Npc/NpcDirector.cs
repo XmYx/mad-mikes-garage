@@ -35,6 +35,7 @@ namespace MadMax.Npc
         public void Init(WastelandGame g)
         {
             game = g; Instance = this;
+            if (!GetComponent<BaseRaid>()) gameObject.AddComponent<BaseRaid>();
             NpcRegistry.Load(null, 0);                                       // a fresh world; a loaded game restores after this
             var world = g.World;
             var r = new System.Random(world.seed * 101 + 5);

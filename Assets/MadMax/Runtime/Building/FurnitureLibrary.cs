@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    public enum BuildCategory { Structure, Furniture, Utility, Garden, Industry, Decor, Hidden }
+    public enum BuildCategory { Structure, Furniture, Utility, Garden, Industry, Decor, Hidden, Defence }
 
     public class FurnitureDef
     {
@@ -20,6 +20,11 @@ namespace MadMax.Building
         public UtilityKind link;         // pseudo pieces: cable / pipe tools (no mesh placed)
         public System.Action<GameObject> setup;
         public string needsItem;         // also consumes one of this item (e.g. a flower for the pot)
+        public string snapTo;            // hangs in a piece whose id contains this (door → doorway, shutter → window wall)
+        public string upgrade;           // upgrade in place to this piece (wood → brick → concrete)
+        public bool foundation;          // stands level on the ground (legs reach down), tiles with its neighbours
+        public Vector4 deck;             // drivable top: half width, half length, top at the back / front edge (m, local)
+        public int plan = -1;            // structure plan pseudo piece: index into StructurePlans (-2 = the capture tool)
     }
 
     /// <summary>Placeable furniture and building pieces. Origin = mounting point on the surface, +Y = away from the
@@ -60,10 +65,10 @@ namespace MadMax.Building
                 D("doorway_brick", "BRICK DOORWAY", B, BuildPieces.Wall(BS, 2, 706), 20, true, null, (St, 8), (ResourceType.Lime, 1)),
                 D("wall_concrete", "CONCRETE WALL", B, BuildPieces.Wall(CS, 0, 707), 40, true, null, (Co, 6), (Fe, 1)),
                 D("doorway_concrete", "CONCRETE DOORWAY", B, BuildPieces.Wall(CS, 2, 708), 40, true, null, (Co, 5), (Fe, 1)),
-                D("door_wood", "WOOD DOOR", B, BuildPieces.Door(false), 6, false, go => go.AddComponent<Door>(), (W, 4), (S, 1)),
-                D("door_metal", "METAL DOOR", B, BuildPieces.Door(true), 25, false, go => go.AddComponent<Door>(), (Fe, 4), (S, 2)),
-                D("floor_wood", "WOOD FLOOR", B, BuildPieces.Floor(WS, 710), 8, true, null, (W, 4)),
-                D("floor_concrete", "CONCRETE FLOOR", B, BuildPieces.Floor(CS, 711), 40, true, null, (Co, 4)),
+                D("door_wood", "WOOD DOOR", B, BuildPieces.Door(false), 6, false, go => go.AddComponent<Door>(), (W, 4), (S, 1)).Snap("doorway"),
+                D("door_metal", "METAL DOOR", B, BuildPieces.Door(true), 25, false, go => go.AddComponent<Door>(), (Fe, 4), (S, 2)).Snap("doorway"),
+                D("floor_wood", "WOOD FLOOR", B, BuildPieces.Floor(WS, 710), 8, true, null, (W, 4)).Deck(1f, 1f, 0.12f, 0.12f),
+                D("floor_concrete", "CONCRETE FLOOR", B, BuildPieces.Floor(CS, 711), 40, true, null, (Co, 4)).Deck(1f, 1f, 0.12f, 0.12f),
                 D("stairs", "STAIRS", B, BuildPieces.Stairs(), 8, true, null, (W, 8)),
                 D("ladder", "LADDER", B, BuildPieces.Ladder(), 4, false, go => { var l = go.AddComponent<Ladder>(); l.localBounds = go.GetComponent<MeshFilter>().sharedMesh.bounds; }, (W, 3)),
                 D("roof_flat", "ROOF", B, BuildPieces.Roof(false), 8, true, null, (S, 4)),
@@ -134,7 +139,7 @@ namespace MadMax.Building
                 D("washplant", "WASH PLANT", In, BuildPieces.WashPlant(), 12, false, go => Station(go, "washplant", "REFINE SOIL (WASH PLANT)", 0f), (Fe, 6), (S, 8)),
                 D("mixer", "CEMENT MIXER", In, BuildPieces.Mixer(), 10, false, go => Station(go, "mixer", "MIX (CEMENT MIXER)", 0f), (Fe, 6), (S, 4)),
                 D("still", "DISTILLERY", In, BuildPieces.Still(), 8, false, go => Station(go, "still", "DISTIL (STILL)", 0f), (Cu, 8), (G, 2)),
-                D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; go.AddComponent<TuningBench>(); }, (Co, 20), (Fe, 16), (S, 20)),
+                D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; go.AddComponent<TuningBench>(); }, (Co, 20), (Fe, 16), (S, 20)).Deck(2f, 3f, 0.04f, 0.04f),
                 D("tuning_bench", "TUNING BENCH", In, BuildPieces.TuningBench(), 8, false, go => go.AddComponent<TuningBench>(), (Fe, 6), (Cu, 2), (G, 1)),
                 D("player_stall", "MARKET STALL", Fu, MarketStall(), 6, false, go => { Box(go, "STALL GOODS", 80f, false); go.AddComponent<PlayerStall>(); }, (W, 8), (C, 4)),
 
@@ -154,6 +159,8 @@ namespace MadMax.Building
             defs.AddRange(Home());
             defs.AddRange(Workshops());
             defs.AddRange(Refining());
+            defs.AddRange(BaseDefs());
+            Upgrades();
         }
 
         static FurnitureDef D(string id, string name, BuildCategory cat, VoxelGrid g, int hits, bool meshCollider, System.Action<GameObject> setup, params (ResourceType, int)[] cost)
@@ -166,6 +173,8 @@ namespace MadMax.Building
         static FurnitureDef In(this FurnitureDef d, BuildCategory c) { d.category = c; return d; }
         static FurnitureDef With(this FurnitureDef d, System.Action<GameObject> s) { d.setup = s; d.hits = 4; return d; }
         static FurnitureDef Needs(this FurnitureDef d, string item) { d.needsItem = item; return d; }
+        static FurnitureDef Snap(this FurnitureDef d, string into) { d.snapTo = into; return d; }
+        static FurnitureDef Deck(this FurnitureDef d, float halfX, float halfZ, float back, float front) { d.deck = new Vector4(halfX, halfZ, back, front); return d; }
 
         static UtilityNode Node(GameObject go, UtilityKind k, float portY)
         {
@@ -260,6 +269,7 @@ namespace MadMax.Building
         {
             var l = new List<FurnitureDef>();
             foreach (var d in All) if (d.category == c) l.Add(d);
+            if (c == BuildCategory.Structure) StructurePlans.AddDefs(l);      // saved plans + the capture tool
             return l;
         }
 

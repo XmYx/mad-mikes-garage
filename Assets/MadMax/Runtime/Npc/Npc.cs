@@ -27,6 +27,12 @@ namespace MadMax.Npc
         /// <summary>Raiders of a convoy that is attacking.</summary>
         public bool aggro;
         public Convoy convoy;
+        /// <summary>Raiding a claimed base (<see cref="BaseRaid"/>): batter the nearest built piece around
+        /// <see cref="raidAt"/> unless the player is close enough to fight.</summary>
+        public bool raiding;
+        public Vector3 raidAt;
+        Placeable siegeTarget;
+        float siegeRepick;
         public bool Hostile => mode != Mode.Dead && (State.Has(NpcSave.Hostile) || (Profile.Raider && aggro));
         public bool Alive => mode != Mode.Dead;
         public float Health => health;
@@ -114,7 +120,9 @@ namespace MadMax.Npc
             else if (mode == Mode.Fight) mode = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper ? Mode.Stand : Mode.Wander;
             if (mode == Mode.Flee && Time.time > fleeUntil) mode = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper ? Mode.Stand : Mode.Wander;
 
-            switch (mode)
+            bool sieging = raiding && (dPlayer > 22f || g.Vitals.Dead);
+            if (sieging) Siege(dt, ref move, ref speed);
+            else switch (mode)
             {
                 case Mode.Stand:
                     if ((me - home).sqrMagnitude > 0.25f) { move = Toward(home); speed = (me - home).sqrMagnitude > 16f ? 2.4f : 1.2f; }
@@ -139,6 +147,7 @@ namespace MadMax.Npc
                     break;
             }
             if (mode != Mode.Fight && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
+            if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
 
             // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal
             if (Time.time < detourUntil && move.sqrMagnitude > 0.001f) move = detour;
@@ -226,6 +235,31 @@ namespace MadMax.Npc
             if ((attackCd -= dt) > 0f || swing >= 0f) return;
             if (Ranged && dist < 18f) { Shoot(g, target, dist); attackCd = Random.Range(1.8f, 2.8f); }
             else if (!Ranged && dist < want + 0.5f) { swing = 0f; attackCd = 1.3f; Invoke(nameof(MeleeHit), (tool ? tool.swingDuration * tool.strikeAt : 0.3f)); }
+        }
+
+        /// <summary>Raid: walk to the nearest built piece of the claim and smash it.</summary>
+        void Siege(float dt, ref Vector3 move, ref float speed)
+        {
+            if (!siegeTarget || Time.time > siegeRepick)
+            {
+                siegeRepick = Time.time + 3f;
+                siegeTarget = null; float bd = float.MaxValue;
+                foreach (var p in Placeable.All)
+                {
+                    if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>()) continue;
+                    float d = (p.transform.position - transform.position).sqrMagnitude;
+                    if (d < bd) { bd = d; siegeTarget = p; }
+                }
+            }
+            if (!siegeTarget) { move = Toward(raidAt); speed = Flat(raidAt - transform.position).magnitude > 2f ? 2.6f : 0f; return; }
+            var col = siegeTarget.GetComponent<Collider>();
+            var cp = col ? col.bounds.ClosestPoint(transform.position + Vector3.up) : siegeTarget.transform.position;
+            if (Flat(cp - transform.position).magnitude > 1.2f) { move = Toward(cp); speed = 2.8f; return; }
+            faceTarget = cp; faceUntil = Time.time + 0.5f;
+            if ((attackCd -= dt) > 0f || swing >= 0f) return;
+            swing = 0f; attackCd = 1.4f;
+            siegeTarget.ApplyHit(cp, transform.forward, Profile.role == NpcRole.RaiderBoss ? 2f : 1f, 0.2f, gameObject);
+            MadMax.Audio.Sfx.Play(siegeTarget.id.Contains("wood") ? "hit_wood" : "hit_metal", cp, 0.7f);
         }
 
         void MeleeHit()

@@ -83,20 +83,44 @@ namespace MadMax.Building
         }
         static readonly List<DebrisSystem.Chunk> chunks = new List<DebrisSystem.Chunk>();
 
-        void Start() => Changed?.Invoke();
-        void OnDestroy() => Changed?.Invoke();
+        void Start()
+        {
+            Changed?.Invoke();
+            var def = FurnitureLibrary.Get(id);
+            if (def != null && def.deck != Vector4.zero) StructureGround.Add(this, def.deck);
+        }
+        void OnDestroy() { Changed?.Invoke(); StructureGround.Remove(this); }
+
+        /// <summary>Full condition of this piece (its definition's hit count).</summary>
+        public int MaxHits { get { var def = FurnitureLibrary.Get(id); return def != null ? def.hits : Mathf.Max(1, hits); } }
+
+        /// <summary>Losing its support: comes down after <paramref name="delay"/> seconds (a quarter of the cost survives).</summary>
+        public bool Collapsing { get; private set; }
+        public void Collapse(float delay) { if (Collapsing) return; Collapsing = true; Invoke(nameof(CollapseNow), delay); }
+        void CollapseNow() { Emit(30, Vector3.down); Break(4); }
 
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
+            if (Collapsing) return;
             hits -= Mathf.Max(1, Mathf.RoundToInt(power));
             Emit(hits > 0 ? 6 : 40, direction);
             if (hits > 0) return;
+            Break(2);
+        }
+
+        /// <summary>Destroyed: spills its container, drops 1/<paramref name="refundDiv"/> of the cost, and whatever it
+        /// held up collapses.</summary>
+        void Break(int refundDiv)
+        {
             MadMax.Net.NetSession.Instance?.SendPlaceBroken(this);
             var def = FurnitureLibrary.Get(id);
             if (TryGetComponent<Container>(out var box)) box.Spill();
+            if (TryGetComponent<UtilityNode>(out var un)) un.Unlink();
             if (def != null && PickupSystem.Instance)
                 foreach (var (type, amount) in def.cost)
-                    if (amount / 2 > 0) PickupSystem.Instance.Spawn(type, amount / 2, transform.position + Vector3.up * 0.3f, UnityEngine.Random.insideUnitSphere * 1.5f + Vector3.up * 2f);
+                    if (amount / refundDiv > 0) PickupSystem.Instance.Spawn(type, amount / refundDiv, transform.position + Vector3.up * 0.3f, UnityEngine.Random.insideUnitSphere * 1.5f + Vector3.up * 2f);
+            Collapsing = true;
+            StructureSupport.Removed(this, transform.position, transform.parent);
             Destroy(gameObject);
         }
 
