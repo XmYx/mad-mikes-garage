@@ -46,6 +46,20 @@ namespace MadMax.Audio
                 p.firing = Even(6);
                 p.pulseMs = 0.85f; p.pipeLength = 2.4f; p.mufflerHz = 800f; p.rasp = 0.25f; p.crackle = 0.2f; p.roughness = 0.06f;
             }
+            else if (engineId.Contains("single"))
+            {
+                // four-stroke thumper: one bang every two turns, short pipe, open rasp
+                p.firing = new[] { 0f };
+                p.pulseMs = 0.55f; p.pipeLength = 1.3f; p.reflection = -0.6f; p.mufflerHz = 1500f; p.rasp = 0.5f;
+                p.crackle = 0.45f; p.roughness = 0.12f; p.gain = 0.8f;
+            }
+            else if (engineId.Contains("vtwin"))
+            {
+                // 45° V-twin: two bangs close together, then a long gap (the potato-potato)
+                p.firing = new[] { 0f, 0.5625f };
+                p.pulseMs = 1.25f; p.pipeLength = 1.9f; p.mufflerHz = 700f; p.rasp = 0.32f;
+                p.crackle = 0.6f; p.roughness = 0.16f; p.gain = 1.05f;
+            }
             else if (engineId.Contains("2stroke") || engineId.Contains("two"))
             {
                 p.twoStroke = true; p.firing = new[] { 0f, 0.5f };

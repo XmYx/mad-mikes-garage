@@ -71,6 +71,9 @@ namespace MadMax.Designs
         public InteriorDesign interior;
         public string machine;                 // construction machine behaviour (MadMax.Vehicles.Machine.Kind name)
         public bool crawler;                   // tracked: wheels hide inside the tracks (no arch carving)
+        public bool bike, sidecar;             // two-wheeler (BikeBalance leans it); sidecar outfit: three wheels, no lean
+        public float comX;                     // centre of mass offset (m) to the right (sidecar outfits)
+        public Vector3Int? passenger;          // pillion / chair passenger eye (voxel coords); null = beside the driver
         public Vector3Int eye;       // driver eye, voxel coordinates
         public VoxelGrid body;
         public VoxelGrid glass;
@@ -96,7 +99,7 @@ namespace MadMax.Designs
         /// and the arch rim is darkened like an inner fender. Keeps any design free of tyres poking through panels.</summary>
         public void CarveWheelArches(System.Func<string, PartDesign> part)
         {
-            if (body == null || crawler) return;
+            if (body == null || crawler || bike) return;                                   // bikes: fenders sit above the travel by design
             float travelVox = Mathf.Ceil(travel / VoxelMesher.DefaultSize);
             foreach (var s in sockets)
             {

@@ -494,12 +494,15 @@ rumours, errands, haggling, parley, combat, ragdolls.
 
 
 ## 24. Two-wheel vehicles `T3`
-- [ ] **Bike physics**: two wheels, lean into turns (counter-steer), wheelies, crashes throw the rider (ragdoll)
-- [ ] **Dirt bike, chopper, bicycle** (pedal power = stamina, silent), **sidecar** outfit
-- [ ] Same part system (engines, wheels); rider lean pose
-- [ ] **Raider bikers** flanking in convoys
+- [x] **Bike physics**: two wheels, lean into turns (counter-steer), wheelies, crashes throw the rider (ragdoll)
+- [x] **Dirt bike, chopper, bicycle** (pedal power = stamina, silent), **sidecar** outfit
+- [x] Same part system (engines, wheels); rider lean pose
+- [x] **Raider bikers** flanking in convoys
 
 *Ties:* vehicles, ragdolls, raiders, tuning.
+
+*Done:* `BikeBalance` on designs with `bike` (added by the builder): A/D asks for a lean (up to 34–44° by bike, scaled in from 2.5 m/s); the front wheel gets a counter-steer flick towards it and then the angle that balances the current lean at this speed (`VehicleDriver.steerOverride`); a roll PD holds it (weak in the air). Slow = feet down, direct steering; parked = on the kickstand. Shift at speed on the throttle lifts a wheelie balanced at 25°. Falling past 60°, looping a wheelie (> 65°) or hitting something hard at > 7 m/s throws the rider: `WastelandGame.ThrowRider` exits, ragdolls the player with the bike's velocity, hurts by speed (CRASH) and gets you up where you landed 2.6 s later; a downed bike is picked up when you get back on. Parts (`PartLibrary.Bikes`): spoked `wheel_bike` (knobby), `wheel_bike_street` (chrome, whitewall), `wheel_bicycle`; `engine_single` (thumper voice), `engine_vtwin` (45° potato-potato), `engine_pedals` (silent; power from stamina, practises Athletics; no fuel/oil/heat). Designs: `DirtBike`, `Chopper` (raked fork, ape hangers, forward controls, sissy bar), `Bicycle` (rack and crate), `SidecarOutfit` (3 wheels, no lean, CoM offset `comX`, idler `wheel_side` neither driven nor steered — lifts the chair on hard right-handers; gun socket on the chair's nose). Riders sit astride (`HumanAnimator.State.riding`, pedalling legs on bicycles) and lean with the bike; pillion / chair passengers via `PassengerEye`. Raider convoys bring 0–3 outriders (dirt bikes, choppers, sidecar gunners) that ride the target's flanks (`AiDriver.Goal.Flank`) and shoot from there; a downed biker counts as disabled (the crew fights on foot).
+
 
 ## 25. Aviation `T3`
 - [ ] **Flight model**: lift / drag / thrust / control torques per surface; stall; crash damage

@@ -643,6 +643,7 @@ namespace MadMax.Game
                 Current.throttleInput = throttle;
                 Current.brakeInput = brake;
                 Current.handbrake = space;
+                if (Current.TryGetComponent<BikeBalance>(out var bikeLean)) bikeLean.leanBack = shift;          // wheelie
             }
             else
             {

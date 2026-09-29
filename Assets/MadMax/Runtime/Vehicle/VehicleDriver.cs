@@ -57,6 +57,9 @@ namespace MadMax.Vehicles
         public bool handbrake;
         [Tooltip("Steering offset (deg) from a bent frame; set by VehicleDamage.")]
         public float steerPull;
+        /// <summary>Front-wheel angle (deg) set each step by <see cref="BikeBalance"/>; NaN = from <see cref="steerInput"/>.</summary>
+        [System.NonSerialized] public float steerOverride = float.NaN;
+        [Tooltip("Centre of mass offset to the right (m): sidecar outfits.")] public float comOffsetX;
 
         public int Gear { get; private set; } = 1;
         public float DriveCommand { get; private set; }
@@ -103,7 +106,7 @@ namespace MadMax.Vehicles
             public MountSocket socket;
             public VehiclePart part;
             public WheelStats stats;
-            public bool front, left, grounded;
+            public bool front, left, grounded, idler;   // idler: a sidecar wheel (neither driven nor steered)
             public float radius, width, comp, prevComp, spin;
             public Vector3 contact, fwd, side;
             public float maxF, drive, diffSpin, vf, vs, spring;
@@ -151,7 +154,8 @@ namespace MadMax.Vehicles
             {
                 if (s.accepts == PartCategory.Wheel)
                 {
-                    var w = new Wheel { socket = s, part = s.Current, front = s.transform.localPosition.z > 0f, left = s.Mirrored };
+                    var w = new Wheel { socket = s, part = s.Current, front = s.transform.localPosition.z > 0f, left = s.Mirrored, idler = s.name.StartsWith("wheel_side") };
+                    if (w.idler) w.front = false;
                     if (w.part)
                     {
                         w.stats = w.part.GetComponent<WheelStats>();
@@ -172,11 +176,11 @@ namespace MadMax.Vehicles
             if (body && body.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
             {
                 var b = mf.sharedMesh.bounds;
-                rb.centerOfMass = new Vector3(0, b.min.y + 0.25f, b.center.z);
+                rb.centerOfMass = new Vector3(comOffsetX, b.min.y + 0.25f, b.center.z);
             }
         }
 
-        bool IsDriven(Wheel w) => drive == Drive.All || (drive == Drive.Front) == w.front;
+        bool IsDriven(Wheel w) => !w.idler && (drive == Drive.All || (drive == Drive.Front) == w.front);
 
         float DrivenRadius()
         {
@@ -206,7 +210,8 @@ namespace MadMax.Vehicles
             ForwardSpeed = Vector3.Dot(vel, transform.forward);
 
             float speedFactor = Mathf.Lerp(1f, 0.3f, Mathf.Abs(ForwardSpeed) / 40f);
-            steer = Mathf.MoveTowards(steer, steerInput * maxSteer * speedFactor + steerPull, maxSteer * steerSpeed * dt);
+            float wantSteer = float.IsNaN(steerOverride) ? steerInput * maxSteer * speedFactor : steerOverride;
+            steer = Mathf.MoveTowards(steer, wantSteer + steerPull, maxSteer * steerSpeed * dt);
 
             // ---- transmission: automatic (brake at standstill = reverse) or manual (R N 1..n via ShiftUp/ShiftDown)
             float driveCmd, brakeCmd;

@@ -24,19 +24,22 @@ namespace MadMax.Vehicles
             var eye = v.transform.Find("DriverEye");
             if (!eye) return null;
             var e = eye.localPosition;
-            float side = e.x < 0f ? 1f : -1f;                                                    // the other side of the cab
+            var pillion = v.transform.Find("PassengerEye");                                      // bikes: behind the rider / in the chair
+            if (!pillion && v.GetComponent<BikeBalance>()) return null;                          // a bicycle carries one
+            var pe = pillion ? pillion.localPosition : new Vector3(-e.x, e.y, e.z);
+            float side = pillion ? (pe.x > 0.3f ? 1f : -1f) : e.x < 0f ? 1f : -1f;               // the other side of the cab
             float half = 1f;
             var body = v.transform.Find("Body");
             var mf = body ? body.GetComponent<MeshFilter>() : null;
             if (mf && mf.sharedMesh) half = Mathf.Max(-mf.sharedMesh.bounds.min.x, mf.sharedMesh.bounds.max.x);
             var door = new GameObject("PassengerDoor").transform;
             door.SetParent(v.transform, false);
-            door.localPosition = new Vector3(side * (half + 0.45f), 0f, e.z);
+            door.localPosition = new Vector3(side * (half + 0.45f), 0f, pe.z);
             var ps = door.gameObject.AddComponent<PassengerSeat>();
             ps.Vehicle = v;
             var spot = new GameObject("PassengerSeat").transform;
             spot.SetParent(v.transform, false);
-            spot.localPosition = new Vector3(-e.x, e.y - 0.62f, e.z - 0.06f);                   // hips on the cushion beside the driver
+            spot.localPosition = new Vector3(pe.x, pe.y - 0.62f, pe.z - 0.06f);                 // hips on the cushion beside the driver
             var seat = spot.gameObject.AddComponent<Seat>();
             seat.hidden = true; seat.rest = 1.2f; seat.reading = 1f;
             seat.hasExit = true;

@@ -65,6 +65,9 @@ namespace MadMax.Npc
                 int n = 2 + r.Next(3);
                 string[] pool = { "Interceptor", "Scavenger", "Coupe", "Pickup", "Sedan", "Scavenger" };
                 for (int i = 0; i < n; i++) designs.Add(pool[r.Next(pool.Length)]);
+                int bikers = r.Next(0, 4);                                                       // outriders (roadmap 24)
+                string[] bikes = { "DirtBike", "DirtBike", "Chopper", "SidecarOutfit" };
+                for (int i = 0; i < bikers; i++) designs.Add(bikes[r.Next(bikes.Length)]);
                 for (int i = 0; i < designs.Count; i++) crew.Add(NpcProfile.Make(cid + ":" + i, i == 0 ? NpcRole.RaiderBoss : NpcRole.Raider, r.Next()));
                 speed = 13f;
             }
@@ -426,19 +429,23 @@ namespace MadMax.Npc
                 var c = cars[i];
                 if (!c || !c.enabled) continue;
                 c.target = target;
-                // alternate ramming runs and circling so they don't pile into each other
-                if (i > 0) c.goal = ((int)(modeT / 6f) + i) % 3 == 0 ? AiDriver.Goal.Circle : AiDriver.Goal.Chase;
+                // alternate ramming runs and circling so they don't pile into each other; bikers ride the flanks
+                if (IsBike(c)) { c.goal = AiDriver.Goal.Flank; c.flankSide = i % 2 == 0 ? 1f : -1f; c.chaseSpeed = 30f; }
+                else if (i > 0) c.goal = ((int)(modeT / 6f) + i) % 3 == 0 ? AiDriver.Goal.Circle : AiDriver.Goal.Chase;
             }
             if ((fireCd -= dt) > 0f) return;
             int armed = 0; foreach (var c in cars) if (c && c.enabled) armed++;
             fireCd = Mathf.Max(1.6f, 7f / Mathf.Max(1, armed));
             var shooter = cars[UnityEngine.Random.Range(0, cars.Count)];
+            foreach (var c in cars) if (c && c.enabled && IsBike(c) && UnityEngine.Random.value < 0.5f) { shooter = c; break; }   // outriders shoot from the flank
             if (!shooter || !shooter.enabled) return;
             var from = shooter.transform.position + Vector3.up * 1.6f;
             float d = Vector3.Distance(from, target.position);
             if (d < 26f && UnityEngine.Random.value < 0.18f && d > 7f) ThrowBottle(g, from, target);
             else if (d < 22f) Npc.Blast(shooter.gameObject, from, target.position + Vector3.up * 0.8f, d, HasTurret(shooter) ? 1.8f : 1f);
         }
+
+        static bool IsBike(AiDriver c) => c && c.GetComponent<BikeBalance>();
 
         static bool HasTurret(AiDriver c)
         {

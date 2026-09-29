@@ -43,7 +43,7 @@ namespace MadMax.Audio
             fitted = key;
 
             uint seed = (uint)GetHashCode();
-            engine = engineId == null ? null : new EngineSynth(EngineProfile.For(engineId, exhaustId, exhaustSocket), seed);
+            engine = engineId == null || engineId == "engine_pedals" ? null : new EngineSynth(EngineProfile.For(engineId, exhaustId, exhaustSocket), seed);   // pedals: silent
             Transform at = exhaust ? exhaust : eng ? eng.transform : transform;
             var local = transform.InverseTransformPoint(at.position);
             if (!engineVoice) engineVoice = SynthVoice.Create(transform, "EngineAudio", local, engine, 120f);

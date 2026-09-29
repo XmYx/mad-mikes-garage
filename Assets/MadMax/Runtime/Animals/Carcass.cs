@@ -20,7 +20,7 @@ namespace MadMax.Animals
 
         static readonly string[] Blades = { "tool_knife", "tool_machete", "tool_leaf_blade", "tool_axe", "tool_spear" };
 
-        public AnimalDef def;
+        [System.NonSerialized] public AnimalDef def;
         public float diedAt, size = 1f;
         public bool butchered;
         float checkT;

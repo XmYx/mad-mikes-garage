@@ -400,7 +400,8 @@ namespace MadMax.Game
         void UpdateSeated(float dt)
         {
             Velocity = SeatedIn.Body ? SeatedIn.Body.linearVelocity : Vector3.zero;
-            anim.Tick(dt, new HumanAnimator.State { sitting = true, steer = SeatedIn.steerInput, lookPitch = lookPitch, grounded = true });
+            var bike = SeatedIn.GetComponent<BikeBalance>();                                   // astride a bike: legs down, pedalling a bicycle
+            anim.Tick(dt, new HumanAnimator.State { sitting = true, riding = bike, pedaling = bike && bike.Pedals, pedal = bike ? bike.PedalPhase : 0f, steer = SeatedIn.steerInput, lookPitch = lookPitch, grounded = true });
         }
 
         /// <summary>Dead and limp (physics ragdoll): no control, no animation.</summary>

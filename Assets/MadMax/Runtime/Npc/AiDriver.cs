@@ -12,7 +12,7 @@ namespace MadMax.Npc
     [DefaultExecutionOrder(-20)]
     public class AiDriver : MonoBehaviour
     {
-        public enum Goal { Park, Path, Chase, Follow, Circle, Escort }
+        public enum Goal { Park, Path, Chase, Follow, Circle, Escort, Flank }
         public Goal goal = Goal.Park;
         public List<Vector3> path;
         public int index, dir = 1;
@@ -21,6 +21,7 @@ namespace MadMax.Npc
         public Vector3 slot = new Vector3(0f, 0f, -12f);   // formation offset in the leader's frame
         public float cruise = 12f, chaseSpeed = 28f, circleRadius = 20f;
         public bool avoidTarget;                             // chase without ramming
+        public float flankSide = 1f;                         // Flank: ride alongside the target on this side (+1 right)
 
         VehicleDriver v;
         float stuckT, reverseT, flipT, circleSide = 1f;
@@ -33,6 +34,7 @@ namespace MadMax.Npc
             get
             {
                 if (!v || Flipped) return true;
+                if (v.TryGetComponent<BikeBalance>(out var bike) && bike.Crashed) return true;   // the biker went down
                 foreach (var p in v.GetComponentsInChildren<VehiclePart>())
                     if (p.category == PartCategory.Engine && p.Socket) return p.damage >= 0.98f;
                 return true;                                         // no engine left
@@ -131,6 +133,19 @@ namespace MadMax.Npc
                     float gap = Flat(aim - pos).magnitude;
                     desired = Mathf.Clamp(tv.magnitude + (gap - 2f) * 0.5f, 0f, chaseSpeed);
                     if (Flat(target.position - pos).magnitude < 9f) desired = Mathf.Min(desired, 1.5f);
+                    break;
+                }
+                case Goal.Flank:
+                {
+                    // bikers: ride alongside the target, 5 m off its flank, matching its pace (and a bit ahead)
+                    if (!target) break;
+                    var tb = target.GetComponentInParent<Rigidbody>();
+                    var tv = tb && !tb.isKinematic ? tb.linearVelocity : Vector3.zero;
+                    var heading = tv.sqrMagnitude > 4f ? tv.normalized : target.forward;
+                    var right = Vector3.Cross(Vector3.up, heading);
+                    aim = target.position + right * flankSide * 5f + heading * (4f + tv.magnitude * 0.4f);
+                    float along = Vector3.Dot(aim - pos, heading);
+                    desired = Mathf.Clamp(tv.magnitude + along * 0.6f, 0f, chaseSpeed);
                     break;
                 }
                 case Goal.Circle:

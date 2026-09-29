@@ -122,7 +122,8 @@ namespace MadMax.EditorTools
             game.vehiclePrefabs = new[] { vehicles["Interceptor"], vehicles["Scavenger"], vehicles["Trabant"], vehicles["Hauler"],
                                           vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"],
                                           vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"],
-                                          vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"] };
+                                          vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
+                                          vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
             game.cameraRig = rig;
@@ -203,7 +204,8 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Wrecker(), VehicleDesigns.CarTrailer(), VehicleDesigns.CarTrailerDouble(),
                                       VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck(),
                                       VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
-                                      VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy() })
+                                      VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy(),
+                                      VehicleDesigns.DirtBike(), VehicleDesigns.Chopper(), VehicleDesigns.Bicycle(), VehicleDesigns.SidecarOutfit() })
             {
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
                 d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
@@ -324,6 +326,7 @@ namespace MadMax.EditorTools
             if (d.hitch.HasValue) AddPoint(root.transform, "Hitch", d.hitch.Value);
             if (d.coupler.HasValue) AddPoint(root.transform, "Coupler", d.coupler.Value);
 
+            if (d.passenger.HasValue) AddPoint(root.transform, "PassengerEye", d.passenger.Value);
             var eye = new GameObject("DriverEye").transform;
             eye.SetParent(root.transform, false);
             eye.localPosition = (Vector3)d.eye * S;
@@ -368,6 +371,8 @@ namespace MadMax.EditorTools
             driver.frequency = d.frequency; driver.brakeForce = d.brakeForce; driver.maxSteer = d.maxSteer; driver.driveable = d.driveable;
             if (d.gears != null) driver.gears = d.gears;
             driver.awdSelectable = d.awdSelectable; driver.hasDiffLock = d.diffLock;
+            driver.comOffsetX = d.comX;
+            if (d.bike) { var bb = root.AddComponent<BikeBalance>(); bb.sidecar = d.sidecar; bb.maxLean = d.name == "Chopper" ? 36f : d.name == "Bicycle" ? 34f : 44f; }
             var sys = root.AddComponent<VehicleSystems>();
             sys.fuelCapacity = d.fuelL; sys.oilCapacity = d.oilL; sys.coolantCapacity = d.coolantL;
             sys.usesCoolant = d.usesCoolant; sys.oilInFuel = d.oilInFuel;

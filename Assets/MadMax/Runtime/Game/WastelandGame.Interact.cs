@@ -18,7 +18,7 @@ namespace MadMax.Game
         /// <summary>Take the wheel. Online this asks for ownership first (the server may refuse an occupied vehicle).</summary>
         public void Enter(VehicleDriver car)
         {
-            if (car && car != Current) MadMax.Audio.Sfx.Play("car_door", car.transform.position, 0.6f, 1f, 25f, 0.3f);
+            if (car && car != Current && !car.GetComponent<BikeBalance>()) MadMax.Audio.Sfx.Play("car_door", car.transform.position, 0.6f, 1f, 25f, 0.3f);
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.Online && !net.Simulates(car) && car.owner != net.LocalId)
             {
@@ -36,6 +36,7 @@ namespace MadMax.Game
             if (Build) Build.SetActive(false);
             Current = car;
             car.Occupied = true;
+            if (car.TryGetComponent<BikeBalance>(out var bike)) bike.Remount();                // pick it up if it went down
             if (car.TryGetComponent<VehicleDamage>(out var d)) { d.Impact -= OnImpact; d.Impact += OnImpact; }
             Player.gameObject.SetActive(true);
             Player.SitIn(car);
@@ -52,7 +53,7 @@ namespace MadMax.Game
         public void Exit()
         {
             var car = Current;
-            if (car) MadMax.Audio.Sfx.Play("car_door", car.transform.position, 0.6f, 0.95f, 25f, 0.3f);
+            if (car && !car.GetComponent<BikeBalance>()) MadMax.Audio.Sfx.Play("car_door", car.transform.position, 0.6f, 0.95f, 25f, 0.3f);
             if (!car) return;
             MadMax.Net.NetSession.Instance?.RequestVehicle(car, false);
             Current = null;
@@ -65,6 +66,35 @@ namespace MadMax.Game
             else Player.Teleport(ExitPoint(car), car.transform.eulerAngles.y + 90f);
             terrain.focus = Player.transform;
             if (cameraRig) cameraRig.SetTarget(Player.transform);
+        }
+
+        /// <summary>A bike crash (roadmap 24): off the seat and limp through the air, hurt by the speed; back on your feet
+        /// a few seconds later where you landed (unless it killed you).</summary>
+        public void ThrowRider(VehicleDriver bike, Vector3 velocity, float severity, string why)
+        {
+            if (Current != bike || !Player) return;
+            var at = Player.transform.position;
+            Exit();
+            var cc = Player.GetComponent<CharacterController>();
+            if (cc) cc.enabled = false;
+            Player.transform.position = at;
+            Toast(why + "!");
+            Ragdoll.For(Player.Rig).Go(velocity * 60f + Vector3.up * 50f, at + Vector3.up * 1.1f, velocity);
+            if (cameraRig) cameraRig.Shake(Mathf.Min(8f, severity * 0.3f));
+            Vitals.Hurt(severity, "CRASH");
+            if (!Vitals.Dead) { CancelInvoke(nameof(GetUp)); Invoke(nameof(GetUp), 2.6f); }
+        }
+
+        void GetUp()
+        {
+            if (dying || Vitals.Dead || !Player) return;
+            var rd = Player.GetComponent<Ragdoll>();
+            var at = Player.Rig.Bone(BodyPart.Pelvis).position;
+            if (rd) rd.Restore();
+            var cc = Player.GetComponent<CharacterController>();
+            if (cc) cc.enabled = true;
+            if (terrain) at.y = Mathf.Max(at.y - 0.9f, terrain.Height(at.x, at.z) + 0.05f);
+            Player.Teleport(at, Player.transform.eulerAngles.y);
         }
 
         void EnterInterior(InteriorSpace space, int door)

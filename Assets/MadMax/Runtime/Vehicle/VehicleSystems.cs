@@ -114,6 +114,20 @@ namespace MadMax.Vehicles
             if (fuel < 0.5f) tankKind = ResourceType.None;
             else if (tankKind == ResourceType.None && engine) tankKind = FuelKind;      // factory fill matches the engine
             if (!engine) { Faults = f | Fault.NoEngine; PowerFactor = 0f; Cool(dt, speed); return; }
+            if (ep && ep.partId == "engine_pedals")
+            {
+                // a bicycle: no fuel, no oil, no heat — the rider's stamina (NPCs never tire)
+                float legs = driver.Occupied ? 1f : 0f;
+                var game = MadMax.Game.WastelandGame.Instance;
+                if (legs > 0f && game && game.Current == driver && game.Vitals)
+                {
+                    game.Vitals.Spend(driver.DriveCommand * 7f * dt);
+                    game.Stats?.Practice(MadMax.RPG.Skill.Athletics, driver.DriveCommand * dt * 0.05f);
+                    if (game.Vitals.Exhausted) legs = 0.3f;
+                }
+                PowerFactor = legs; Faults = f & (Fault.FuelLeak | Fault.OnFire); Cool(dt, speed);
+                return;
+            }
             bool seized = engineDamage >= 1f;
             bool wrong = WrongFuel;
             if (wrong) f |= Fault.WrongFuel;
