@@ -136,6 +136,7 @@ namespace MadMax.Building
                 D("still", "DISTILLERY", In, BuildPieces.Still(), 8, false, go => Station(go, "still", "DISTIL (STILL)", 0f), (Cu, 8), (G, 2)),
                 D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; go.AddComponent<TuningBench>(); }, (Co, 20), (Fe, 16), (S, 20)),
                 D("tuning_bench", "TUNING BENCH", In, BuildPieces.TuningBench(), 8, false, go => go.AddComponent<TuningBench>(), (Fe, 6), (Cu, 2), (G, 1)),
+                D("player_stall", "MARKET STALL", Fu, MarketStall(), 6, false, go => { Box(go, "STALL GOODS", 80f, false); go.AddComponent<PlayerStall>(); }, (W, 8), (C, 4)),
 
                 // decor
                 D("rug", "RUG", De, BuildPieces.Rug(), 1, false, null, (C, 3)),
@@ -214,6 +215,21 @@ namespace MadMax.Building
             g.CylX(3, 0, 3f, -2, 2, cable ? Pal.Ramp(Pal.Bronze, 2) : Pal.Ramp(Pal.Metal, 2));
             g.Bevel();
             return VoxelMesher.Build(g, cable ? "Furniture_cable" : "Furniture_pipe");
+        }
+
+        /// <summary>Market stall: a plank counter under a striped awning on four poles, goods crates underneath.</summary>
+        static VoxelGrid MarketStall()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            foreach (int x in new[] { -12, 12 }) foreach (int z in new[] { -6, 6 }) g.Box(x, 0, z, x, 26, z, Pal.Ramp(Pal.Wood, 1, 1611));
+            g.Box(-12, 10, 4, 12, 11, 7, Pal.Ramp(Pal.Wood, 2, 1612));                                                     // counter
+            g.Box(-12, 0, 5, 12, 9, 7, p => p.x % 4 == 0 ? Pal.Wood[1] : Pal.Wood[2]);                                     // front boards
+            g.Mat(Cloth);
+            for (int z = -8; z <= 8; z++) g.Box(-13, 27 - Mathf.Abs(z) / 4, z, 13, 27 - Mathf.Abs(z) / 4, z, p => (p.x / 3 & 1) == 0 ? Pal.Crimson[3] : Pal.Cream[3]);   // awning
+            g.Mat(Wood);
+            g.Box(-9, 1, -4, -4, 5, 1, Pal.Ramp(Pal.Wood, 3, 1613)); g.Box(3, 1, -4, 9, 6, 1, Pal.Ramp(Pal.Wood, 2, 1614)); // crates
+            g.Box(-3, 12, 5, -1, 13, 6, Pal.Solid(Pal.Ochre[3])); g.Box(2, 12, 5, 4, 12, 6, Pal.Ramp(Pal.Crimson, 2));   // wares on the counter
+            return g;
         }
 
         static VoxelGrid Oven()

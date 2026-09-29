@@ -251,7 +251,8 @@ namespace MadMax.Npc
             Settlement town = null; float td = float.MaxValue;
             var here = g.World.SettlementAt(at.x, at.z);
             foreach (var st in g.World.settlements) { if (st == here) continue; float d = Vector2.Distance(st.pos, new Vector2(at.x, at.z)); if (d < td) { td = d; town = st; } }
-            if (town != null) facts.Add("NEAREST " + (town.kind == Biome.City ? "CITY" : town.kind == Biome.Town ? "TOWN" : "VILLAGE") + " IS " + NpcLore.Compass(town.pos.x - at.x, town.pos.y - at.z) + ", " + NpcLore.Distance(td) + ".");
+            if (town != null) facts.Add("NEAREST " + (town.kind == Biome.City ? "CITY" : town.kind == Biome.Town ? "TOWN" : "VILLAGE") + " IS " + Market.TownName(town) + ", " + NpcLore.Compass(town.pos.x - at.x, town.pos.y - at.z) + ", " + NpcLore.Distance(td) + ".");
+            if (town != null) facts.Add("IN " + Market.TownName(town) + " " + Market.Hint(town) + ".");                  // prices travel by word of mouth
             GasPump pump = null; float pd = float.MaxValue;
             foreach (var gp in GasPump.All) { if (!gp || gp.stock < 20f) continue; float d = Vector3.Distance(gp.transform.position, at); if (d < pd) { pd = d; pump = gp; } }
             if (pump != null && pd < 1500f) facts.Add("THE OLD PUMP " + NpcLore.Compass(pump.transform.position.x - at.x, pump.transform.position.z - at.z) + " STILL GIVES FUEL.");

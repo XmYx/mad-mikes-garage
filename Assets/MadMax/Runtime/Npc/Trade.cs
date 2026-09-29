@@ -33,6 +33,7 @@ namespace MadMax.Npc
                 return d.category == MadMax.Vehicles.PartCategory.Engine ? v * 1.8f : v;
             }
             if (id.StartsWith("tool_")) return id == "tool_bolt_rifle" ? 120f : id == "tool_revolver" ? 90f : id == "tool_crossbow" ? 60f : id == "tool_pipe_pistol" ? 45f : id == "tool_flare_gun" ? 35f : id == "tool_bow" || id == "tool_leaf_blade" ? 30f : id.Contains("shotgun") ? 70f : id.Contains("gas_torch") || id.Contains("cutter") ? 45f : id.Contains("wrench") ? 30f : id.Contains("lantern") ? 18f : id.Contains("torch") ? 6f : 22f;
+            if (id == Contracts.Chit) return ChitValue;
             if (id.StartsWith("ammo_")) return id == "ammo_flare" ? 8f : id == "ammo_rifle" ? 4f : id == "ammo_cartridge" ? 3f : id == "ammo_arrow" ? 1f : 2f;
             if (id.StartsWith("bait_")) return 1f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
@@ -74,8 +75,13 @@ namespace MadMax.Npc
             return Mathf.Clamp(b, -0.1f, 0.45f);
         }
 
-        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * (1.45f - bargain)));
-        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * (0.45f + bargain * 0.8f)));
+        /// <summary>The market being traded in (set when a trade page opens; null: the road).</summary>
+        public static MadMax.World.Settlement Town;
+        /// <summary>Fuel Guild chits count for this much scrap at fuel vendors.</summary>
+        public const int ChitValue = 6;
+
+        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain)));
+        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f)));
 
         // ------------------------------------------------------------------ stock
 
@@ -134,7 +140,9 @@ namespace MadMax.Npc
             n = Mathf.Min(n, o.count);
             if (n <= 0) return false;
             int cost = o.price * n;
-            if (g.Inventory.Get(ResourceType.Scrap) < cost) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); return false; }
+            // the Fuel Guild's chits pay at fuel vendors, worth a little more than their scrap
+            int chits = vendor.Profile.kind == "fuel" ? Mathf.Min(g.Inventory.GetItem(Contracts.Chit), cost / ChitValue) : 0;
+            if (g.Inventory.Get(ResourceType.Scrap) < cost - chits * ChitValue) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); return false; }
             if (o.id.StartsWith("part:"))
             {
                 var at = vendor.transform.position + vendor.transform.right * 1.2f + Vector3.up * 0.6f;
@@ -145,7 +153,9 @@ namespace MadMax.Npc
             }
             else if (o.id.StartsWith("res:")) g.Inventory.Add((ResourceType)int.Parse(o.id.Substring(4)), n);
             else { g.Inventory.AddItem(o.id, n); if (o.id.StartsWith("tool_")) g.UpdateHotbarNow(); }
-            g.Inventory.TrySpend(ResourceType.Scrap, cost);
+            if (chits > 0) g.Inventory.TakeItem(Contracts.Chit, chits);
+            g.Inventory.TrySpend(ResourceType.Scrap, cost - chits * ChitValue);
+            Market.Bought(Town, o.id, n);
             vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.5f * n);
@@ -163,6 +173,7 @@ namespace MadMax.Npc
             if (!ok) return false;
             if (id.StartsWith("tool_")) g.UpdateHotbarNow();
             g.Inventory.Add(ResourceType.Scrap, price * n);
+            Market.Sold(Town, id, n);                                                          // selling floods the market
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.3f * n);
             MadMax.Audio.Sfx.Play2D("cash", 0.5f);
             return true;

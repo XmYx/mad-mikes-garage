@@ -355,6 +355,7 @@ namespace MadMax.Npc
             State.dead = true;
             if (byPlayer && !Profile.Raider && !State.Has(NpcSave.Hostile)) NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 15);
             if (byPlayer && Profile.Raider) NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
+            if (byPlayer) Contracts.ReportKill(this);                                        // bounties
             cc.enabled = false;
             if (tool) { tool.transform.SetParent(null, true); var trb = tool.gameObject.AddComponent<Rigidbody>(); trb.mass = 2f; Destroy(tool.gameObject, 60f); }
             // go limp: a physics ragdoll takes the blow and falls where it may; the body is searchable at the pelvis

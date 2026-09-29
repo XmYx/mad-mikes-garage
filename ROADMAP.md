@@ -283,11 +283,20 @@ decorative turret.
 ## 15. Economy `T2`
 *Exists:* scrap as money, vendors with daily stock, barter bonuses.
 
-- [ ] **Regional prices**: each town has supply and demand per good; prices drift; selling floods a market
-- [ ] **Bounty board**: raider bosses, pests, wanted people → scrap and reputation
-- [ ] **Delivery contracts**: haul crates between towns (truck bed / trailer), deadline, raider risk
-- [ ] **Player stall**: sell goods to passers-by (passive income)
-- [ ] **Guild chits**: light second currency from the Fuel Guild
+- [x] **Regional prices**: each town has supply and demand per good; prices drift; selling floods a market
+- [x] **Bounty board**: raider bosses, pests, wanted people → scrap and reputation
+- [x] **Delivery contracts**: haul crates between towns (truck bed / trailer), deadline, raider risk
+- [x] **Player stall**: sell goods to passers-by (passive income)
+- [x] **Guild chits**: light second currency from the Fuel Guild
+      *Done:* `Market`: 11 goods, a standing price per town from the world (village / town / city, oil fields, ore
+      deposits, nuclear and desert ground) × pressure (selling floods, buying drains; −15 % a day back to normal) ×
+      a daily wobble; roadside vendors +10 % / −10 %; towns got names; the trade page and NPC rumours say what is cheap
+      and dear where. `Contracts` + a `BountyBoard` in every settlement (NpcDirector): today's wanted raider boss (per
+      convoy), gang culls, pests (reported by animals), and Fuel Guild hauls — `cargo_crate` parts to strap into any
+      cargo socket or load loose, a deadline in days, raiders spot you 40 % farther while hauling; claims at any board,
+      crates handed in at the destination's; pay in scrap, chits and reputation; saved. `coin_chit`: fuel vendors take
+      them at 6 scrap. `player_stall` piece (`PlayerStall`): stock it, passers-by buy at 80 % of the local price
+      (towns > roads > wilds, more people = more sales), takings in its cash box.
 
 *Ties:* NPCs, factions, vehicles, farming, mining, refining.
 

@@ -67,6 +67,9 @@ namespace MadMax.Game
         public List<string> itemQualityIds = new List<string>(); public List<float> itemQuality = new List<float>();
         public List<string> fishRecordIds = new List<string>(); public List<float> fishRecordKg = new List<float>();
         public List<string> gunRoundIds = new List<string>(); public List<int> gunRounds = new List<int>();
+        public string market;
+        public List<MadMax.Npc.Contract> contracts = new List<MadMax.Npc.Contract>();
+        public List<string> contractsTaken = new List<string>();
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

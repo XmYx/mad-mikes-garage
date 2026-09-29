@@ -422,6 +422,7 @@ namespace MadMax.Game
                 }
             }
             foreach (var p in GasPump.All) Consider(p, ref pick, ref best, eye);
+            foreach (var b in BountyBoard.All) Consider(b, ref pick, ref best, eye);
             foreach (var m in PartFunctions.Interactables) Consider(m, ref pick, ref best, eye);          // water tanks, generators, roof steps
             foreach (var n in MadMax.Npc.Npc.All) if (n.Alive) Consider(n, ref pick, ref best, eye);
             if (!pick) return LakeInteraction(E, T);

@@ -27,6 +27,20 @@ namespace MadMax.Designs
             yield return RearDropper();
             yield return SmokeLauncher();
             yield return ExcavatorDrill();
+            yield return CargoCrate();
+        }
+
+        /// <summary>Fuel Guild haulage crate (roadmap 15): a nailed plywood crate with the guild's ochre band and stencil;
+        /// strapped into any cargo socket, or carried loose on a bed or trailer deck, to a town's bounty board.</summary>
+        public static PartDesign CargoCrate()
+        {
+            var g = new VoxelGrid();
+            g.Mat((byte)MadMax.Items.ResourceType.Wood);
+            g.Box(-4, 0, -4, 4, 7, 4, p => (p.x == -4 || p.x == 4 || p.z == -4 || p.z == 4) && (p.y == 0 || p.y == 7) ? Pal.Wood[1]
+                : (Mathf.Abs(p.x) == 4 && Mathf.Abs(p.z) == 4) ? Pal.Wood[0] : Pal.Pick(Pal.Wood, p, 1601, 3));   // frame and boards
+            g.Box(-4, 3, -4, 4, 4, 4, p => (Mathf.Abs(p.x) == 4 || Mathf.Abs(p.z) == 4) ? Pal.Ochre[3] : Pal.Wood[2]);   // guild band
+            foreach (var z in new[] { -4, 4 }) { g.Set(-1, 5, z, Pal.Solid(Pal.Black[1])); g.Set(0, 6, z, Pal.Solid(Pal.Black[1])); g.Set(1, 5, z, Pal.Solid(Pal.Black[1])); }   // stencil
+            return Make("cargo_crate", PartCategory.Cargo, g, 35, 1);
         }
 
         /// <summary>Rock drill for the excavator (roadmap 7): the arm's boom and stick with a hydraulic auger ("bit",

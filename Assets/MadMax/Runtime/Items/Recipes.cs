@@ -51,6 +51,7 @@ namespace MadMax.Items
             { "tool_bow", "BOW" }, { "tool_crossbow", "CROSSBOW" }, { "tool_pipe_pistol", "PIPE PISTOL" }, { "tool_revolver", "REVOLVER" }, { "tool_bolt_rifle", "BOLT RIFLE" }, { "tool_flare_gun", "FLARE GUN" },
             { "ammo_arrow", "ARROW" }, { "ammo_bolt", "CROSSBOW BOLT" }, { "ammo_cartridge", "PISTOL ROUND" }, { "ammo_rifle", "RIFLE ROUND" }, { "ammo_flare", "FLARE" },
             { "throw_smoke", "SMOKE BOMB" }, { "throw_rock", "ROCK" },
+            { "coin_chit", "GUILD CHIT" }, { "part:cargo_crate", "GUILD CRATE" },
             { "kit_turbo", "TURBO KIT" }, { "kit_supercharger", "SUPERCHARGER KIT" }, { "use_nitrous", "NITROUS BOTTLE" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };

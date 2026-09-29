@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -103,6 +103,10 @@ namespace MadMax.Game
         Container container;
         bool containerSide;              // false = player's items, true = container's
         public void OpenContainer(Container c) { container = c; containerSide = false; Open(Page.Container); }
+
+        MadMax.Building.BountyBoard boardTarget;
+        /// <summary>A town's bounty board: jobs to take, to claim, crates to hand in.</summary>
+        public void OpenBoard(MadMax.Building.BountyBoard b) { boardTarget = b; Open(Page.Board); }
 
         MadMax.Vehicles.VehicleTuning tuneTarget;
         /// <summary>Tuning page (tuning bench / garage) for a vehicle.</summary>
@@ -471,6 +475,44 @@ namespace MadMax.Game
                     Add("BACK", () => Open(Page.Crafting));
                     break;
                 }
+                case Page.Board:
+                {
+                    var b = boardTarget;
+                    if (!b) { Close(); break; }
+                    var st = b.Settlement;
+                    items.Add(new Item { label = MadMax.Npc.Market.Hint(st), enabled = () => false });
+                    // yours: claim, hand in, or see progress
+                    foreach (var job in new List<MadMax.Npc.Contract>(MadMax.Npc.Contracts.Active))
+                    {
+                        var c = job;
+                        bool here = c.Delivery && c.dest == b.town;
+                        items.Add(new Item
+                        {
+                            label = c.title,
+                            value = () => c.failed ? "FAILED" : c.completed ? "CLAIM " + c.reward : here ? "HAND IN " + c.done + "/" + c.need : c.Delivery ? "DUE DAY " + (c.deadline + 1) : c.done + "/" + c.need,
+                            confirm = () =>
+                            {
+                                if (c.failed) { MadMax.Npc.Contracts.Active.Remove(c); Rebuild(); return; }
+                                if (c.completed) MadMax.Npc.Contracts.Pay(game, c);
+                                else if (here) MadMax.Npc.Contracts.Deliver(game, c, b.transform.position);
+                                Rebuild();
+                            },
+                            hint = c.failed ? "E: STRIKE IT OFF" : c.completed ? "E: TAKE THE PAY" : here ? "E: HAND IN THE CRATES WITHIN 15 M" : "IN PROGRESS",
+                        });
+                    }
+                    items.Add(new Item { label = "- TODAY'S JOBS -", enabled = () => false });
+                    foreach (var job in MadMax.Npc.Contracts.Offers(st))
+                    {
+                        var c = job;
+                        items.Add(new Item
+                        {
+                            label = c.title, value = () => c.reward + " SCRAP" + (c.chits > 0 ? " +" + c.chits + " CHITS" : ""),
+                            confirm = () => { MadMax.Npc.Contracts.Accept(game, c, b.transform.position); Rebuild(); },
+                            hint = c.Delivery ? "E: TAKE THE HAUL (CRATES APPEAR BY THE BOARD; RAIDERS SMELL CARGO)" : "E: TAKE THE JOB",
+                        });
+                    }
+                    break;
+                }
                 case Page.Tuning:
                 {
                     var t = tuneTarget;
@@ -589,7 +631,10 @@ namespace MadMax.Game
                 {
                     if (!talkNpc) { Close(); break; }
                     var npc = talkNpc; var p = npc.Profile; var inv = game.Inventory;
+                    MadMax.Npc.Trade.Town = MadMax.Npc.Market.Near(npc.transform.position);
                     float bargain = MadMax.Npc.Trade.Bargain(game, npc.State);
+                    items.Add(new Item { label = MadMax.Npc.Market.TownName(MadMax.Npc.Trade.Town) + ": " + MadMax.Npc.Market.Hint(MadMax.Npc.Trade.Town), enabled = () => false });
+                    if (p.kind == "fuel" && inv.GetItem(MadMax.Npc.Contracts.Chit) > 0) items.Add(new Item { label = "GUILD CHITS", value = () => inv.GetItem(MadMax.Npc.Contracts.Chit) + " (" + MadMax.Npc.Trade.ChitValue + " SCRAP EACH HERE)", enabled = () => false });
                     items.Add(new Item { label = "- " + MadMax.Npc.NpcLore.TradeTitle(p.kind) + " SELLS -", enabled = () => false });
                     foreach (var o in MadMax.Npc.Trade.Stock(p, npc.State, bargain))
                     {
@@ -600,7 +645,7 @@ namespace MadMax.Game
                             label = MadMax.Npc.Trade.Name(o.id), value = () => "X" + offer.count + (fluid ? "L" : "") + "  " + offer.price + " SCRAP",
                             confirm = () => { MadMax.Npc.Trade.Buy(game, npc, offer, 1); Rebuild(); },
                             adjust = d => { MadMax.Npc.Trade.Buy(game, npc, offer, d > 0 ? 10 : 5); Rebuild(); },
-                            enabled = () => inv.Get(ResourceType.Scrap) >= offer.price, hint = "ENTER BUY 1   A BUY 5   D BUY 10"
+                            enabled = () => inv.Get(ResourceType.Scrap) + (p.kind == "fuel" ? inv.GetItem(MadMax.Npc.Contracts.Chit) * MadMax.Npc.Trade.ChitValue : 0) >= offer.price, hint = "ENTER BUY 1   A BUY 5   D BUY 10"
                         });
                     }
                     items.Add(new Item { label = "- YOU SELL -", enabled = () => false });
@@ -848,6 +893,7 @@ namespace MadMax.Game
                 case Page.Salvage: DrawList(c, "SALVAGE", 250); DrawHint(c); break;
                 case Page.Armour: DrawList(c, "ARMOUR", 320); DrawHint(c); break;
                 case Page.Tuning: DrawTuning(c); DrawHint(c); break;
+                case Page.Board: DrawList(c, "BOUNTY BOARD - " + (boardTarget ? MadMax.Npc.Market.TownName(boardTarget.Settlement) : ""), 380); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);

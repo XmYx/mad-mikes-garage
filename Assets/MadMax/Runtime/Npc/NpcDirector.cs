@@ -86,6 +86,74 @@ namespace MadMax.Npc
 
         public List<ConvoySave> SaveConvoys() => convoys.ConvertAll(c => c.save);
 
+        /// <summary>Raider gangs on the roads right now (convoy id, gang name): bounty targets.</summary>
+        public List<(string id, string gang)> RaiderGangs()
+        {
+            var l = new List<(string, string)>();
+            foreach (var c in convoys) if (c.raiders && c.save.deadDay < 0) l.Add((c.id, c.Gang));
+            return l;
+        }
+
+        // ------------------------------------------------------------------ bounty boards
+        readonly Dictionary<int, GameObject> boards = new Dictionary<int, GameObject>();
+        static Mesh boardMesh;
+
+        void UpdateBoards(Vector3 focus)
+        {
+            var world = game.World;
+            foreach (var st in world.settlements)
+            {
+                float d = Vector2.Distance(st.pos, new Vector2(focus.x, focus.z)) - st.radius;
+                bool near = d < SpawnRange;
+                boards.TryGetValue(st.index, out var go);
+                if (near && !go)
+                {
+                    // near the middle, off the road and clear of buildings (the last try stands anyway)
+                    var rnd = new System.Random(world.seed ^ st.index * 911);
+                    for (int k = 0; k < 16; k++)
+                    {
+                        float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
+                        var p = st.pos + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (6f + (float)rnd.NextDouble() * 10f);
+                        var s = world.Sample(p.x, p.y);
+                        bool last = k == 15;
+                        if (!last && (s.roadDist < 3f || Physics.CheckSphere(Ground(p) + Vector3.up * 1.2f, 1.1f, ~0, QueryTriggerInteraction.Ignore))) continue;
+                        boards[st.index] = SpawnBoard(st.index, Ground(p), Mathf.Atan2(st.pos.x - p.x, st.pos.y - p.y) * Mathf.Rad2Deg);
+                        break;
+                    }
+                }
+                else if (!near && go && d > KeepRange) { Destroy(go); boards.Remove(st.index); }
+            }
+        }
+
+        GameObject SpawnBoard(int town, Vector3 pos, float yaw)
+        {
+            if (!boardMesh)
+            {
+                var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Wood);
+                foreach (int x in new[] { -9, 9 }) g.Box(x, 0, 0, x, 26, 0, Pal.Ramp(Pal.Wood, 1, 1501));
+                g.Box(-10, 12, 0, 10, 25, 0, Pal.Ramp(Pal.Wood, 2, 1502));                                         // board
+                g.Box(-11, 26, -1, 11, 27, 1, Pal.Ramp(Pal.Rust, 2, 1503));                                        // tin roof
+                var rr = new System.Random(1504);
+                for (int i = 0; i < 7; i++)
+                {
+                    int x0 = rr.Next(-8, 5), y0 = rr.Next(13, 21);
+                    var paper = i % 3 == 0 ? Pal.Ochre[4] : Pal.Cream[3];
+                    g.Box(x0, y0, 1, x0 + 3, y0 + 3, 1, p => (p.y - y0) % 2 == 1 && p.x > x0 && p.x < x0 + 3 ? Pal.Black[2] : paper);   // notices
+                }
+                g.Set(-2, 24, 1, Pal.Solid(Pal.Crimson[3])); g.Set(2, 24, 1, Pal.Solid(Pal.Crimson[3]));        // tacks
+                g.Bevel();
+                boardMesh = VoxelMesher.Build(g, "BountyBoard");
+            }
+            var go = new GameObject("BountyBoard", typeof(MeshFilter), typeof(MeshRenderer), typeof(BoxCollider));
+            go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+            go.GetComponent<MeshFilter>().sharedMesh = boardMesh;
+            go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
+            var box = go.GetComponent<BoxCollider>(); box.center = boardMesh.bounds.center; box.size = boardMesh.bounds.size;
+            go.AddComponent<MadMax.Building.BountyBoard>().town = town;
+            FloraBlocker.Add(go);
+            return go;
+        }
+
         public void LoadConvoys(List<ConvoySave> list)
         {
             pendingConvoys = list;
@@ -155,7 +223,7 @@ namespace MadMax.Npc
             foreach (var c in convoys) c.Tick(game, focus, dt);
             if (game.Menus.IsOpen && game.Menus.TalkingTo) game.Menus.TalkingTo.Attend(game.Player.transform.position);
 
-            if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); }
+            if (Time.time >= scanAt) { scanAt = Time.time + 0.5f; Scan(focus); UpdateBoards(focus); Contracts.Tick(); }
             // spawn at most one person per frame (body meshes are built on first use)
             for (int i = 0; i < wanted.Count; i++)
             {
