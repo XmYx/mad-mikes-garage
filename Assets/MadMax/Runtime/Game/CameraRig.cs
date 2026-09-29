@@ -185,8 +185,10 @@ namespace MadMax.Game
             RenderSettings.fogColor = sky;
             if (perspectiveFog)
             {
-                RenderSettings.fogStartDistance = Mathf.Lerp(fogStart, 1f, mistAmount);
-                RenderSettings.fogEndDistance = Mathf.Lerp(fogEnd, 18f, mistAmount * 0.85f);
+                // up in an aircraft the far terrain carries the view out to the horizon haze
+                float air = MadMax.World.FarTerrain.Aerial;
+                RenderSettings.fogStartDistance = Mathf.Lerp(Mathf.Lerp(fogStart, 260f, air), 1f, mistAmount);
+                RenderSettings.fogEndDistance = Mathf.Lerp(Mathf.Lerp(fogEnd, 620f, air), 18f, mistAmount * 0.85f);
             }
             else
             {
@@ -244,7 +246,7 @@ namespace MadMax.Game
                     cam.orthographic = false;
                     bool aim = player && WastelandGame.Instance && WastelandGame.Instance.Aiming;
                     cam.fieldOfView = BinocularsTool.Looking ? 14f : aim ? thirdFov * 0.75f : thirdFov;
-                    cam.nearClipPlane = 0.1f; cam.farClipPlane = Mathf.Max(fogEnd + 10f, 120f);   // sky clouds sit up to ~100 m out
+                    cam.nearClipPlane = 0.1f; cam.farClipPlane = Mathf.Max(Mathf.Lerp(fogEnd, 640f, MadMax.World.FarTerrain.Aerial) + 10f, 120f);   // sky clouds sit up to ~100 m out
                     float heading = player ? 0f : Quaternion.LookRotation(Vector3.ProjectOnPlane(target.forward, Vector3.up).normalized + Vector3.forward * 1e-4f).eulerAngles.y;
                     // on foot: over-the-shoulder at ~3.5 m, like most third-person games; vehicles: chase cam
                     float dist = player ? Mathf.Min(thirdDistance, interior ? 3f : 3.6f) * (aim ? 0.6f : 1f) : thirdDistance * targetScale;   // aiming: close over the shoulder
@@ -269,7 +271,7 @@ namespace MadMax.Game
                     var gg = WastelandGame.Instance;
                     float aimZoom = player && gg && gg.Aiming && gg.Player.Tool is RangedTool rt ? rt.aimZoom : 1f;   // down the sights
                     cam.fieldOfView = BinocularsTool.Looking ? 12f : fpsFov * aimZoom;
-                    cam.nearClipPlane = 0.03f; cam.farClipPlane = Mathf.Max(fogEnd + 10f, 120f);   // sky clouds sit up to ~100 m out
+                    cam.nearClipPlane = 0.03f; cam.farClipPlane = Mathf.Max(Mathf.Lerp(fogEnd, 640f, MadMax.World.FarTerrain.Aerial) + 10f, 120f);   // sky clouds sit up to ~100 m out
                     var e = eye ? eye : target;
                     var rot = player ? Quaternion.Euler(lookPitch, lookYaw, 0f) : e.rotation * Quaternion.Euler(lookPitch, lookYaw, 0f);
                     ct.SetPositionAndRotation(e.position, rot);

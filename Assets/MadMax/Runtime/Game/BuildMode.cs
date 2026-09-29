@@ -43,6 +43,7 @@ namespace MadMax.Game
         {
             game = g; rig = r; material = mat;
             structures = new GameObject("Structures").transform;
+            new GameObject("StructureBatches").AddComponent<StructureBatcher>();             // far bases drawn as merged meshes
             ghost = new GameObject("BuildGhost", typeof(MeshFilter), typeof(MeshRenderer));
             ghostMesh = ghost.GetComponent<MeshFilter>();
             ghostRenderer = ghost.GetComponent<MeshRenderer>();

@@ -132,7 +132,16 @@ namespace MadMax.World
         /// <summary>Samples the generated ground for a chunk. Pure (no terrain state), so it also runs on worker threads.</summary>
         static Chunk Generate(WorldGen world, Vector2Int c)
         {
-            var ch = new Chunk
+            Chunk ch;
+            if (recycled.TryTake(out var old))
+            {
+                // the arrays of a chunk dropped earlier: sampled fields are overwritten below, edit layers cleared
+                ch = new Chunk { c = c, h = old.h, d = old.d, wet = old.wet, road = old.road, dist = old.dist, along = old.along, paved = old.paved,
+                                 water = old.water, shore = old.shore, biome = old.biome, feature = old.feature, pave = old.pave, compact = old.compact, cure = old.cure };
+                System.Array.Clear(ch.d, 0, ch.d.Length); System.Array.Clear(ch.pave, 0, ch.pave.Length);
+                System.Array.Clear(ch.compact, 0, ch.compact.Length); System.Array.Clear(ch.cure, 0, ch.cure.Length);
+            }
+            else ch = new Chunk
             {
                 c = c, h = new float[V * V], d = new float[V * V], wet = new float[V * V], road = new float[V * V],
                 dist = new float[V * V], along = new float[V * V], paved = new bool[V * V],
@@ -149,6 +158,16 @@ namespace MadMax.World
                 ch.water[k] = s.water; ch.shore[k] = s.shore; ch.biome[k] = (byte)s.biome; ch.feature[k] = s.feature;
             }
             return ch;
+        }
+
+        /// <summary>Arrays of dropped chunks, reused by <see cref="Generate"/> on any thread (GC pressure near towns).</summary>
+        static readonly System.Collections.Concurrent.ConcurrentBag<Chunk> recycled = new System.Collections.Concurrent.ConcurrentBag<Chunk>();
+
+        static void Recycle(Chunk ch)
+        {
+            if (ch == null || ch.go || recycled.Count >= 96) return;
+            recycled.Add(new Chunk { h = ch.h, d = ch.d, wet = ch.wet, road = ch.road, dist = ch.dist, along = ch.along, paved = ch.paved,
+                                     water = ch.water, shore = ch.shore, biome = ch.biome, feature = ch.feature, pave = ch.pave, compact = ch.compact, cure = ch.cure });
         }
 
         Chunk Insert(Chunk ch)
@@ -455,7 +474,7 @@ namespace MadMax.World
                     foreach (var c in focusChunks) if (Mathf.Max(Mathf.Abs(kv.Key.x - c.x), Mathf.Abs(kv.Key.y - c.y)) <= R + 2) { near = true; break; }
                     if (!near) drop.Add(kv.Key);
                 }
-                foreach (var k in drop) chunks.Remove(k);
+                foreach (var k in drop) { if (chunks.TryGetValue(k, out var gone)) { chunks.Remove(k); if (!rutted.Contains(gone) && !curing.Contains(gone)) Recycle(gone); } }
             }
         }
 
@@ -862,6 +881,35 @@ namespace MadMax.World
                 h = (h ^ (h >> 13)) * 1274126177u; h ^= h >> 16;
                 return (h & 0xFFFFFF) / 16777215f;
             }
+        }
+
+        /// <summary>A coarse ground colour for the far terrain seen from the air (<see cref="FarTerrain"/>): roads, water,
+        /// biome ramps with the same large-scale tone, snow. Thread-safe.</summary>
+        public static Color32 FarColor(GroundSample s, float x, float z, bool wet, float snow)
+        {
+            Color32 col;
+            if (wet) col = Water;
+            else if (s.road > 0.5f) col = s.paved ? Asphalt[1] : Dirt[1];
+            else if (s.feature == 1) col = Sandstone[2];
+            else if (s.feature == 4 || s.feature == 2) col = Concrete[2];
+            else
+            {
+                float tone = Mathf.PerlinNoise(x * 0.03f + 5f, z * 0.03f + 9f);
+                int bi = tone > 0.62f ? 3 : tone > 0.42f ? 2 : 1;
+                switch (s.biome)
+                {
+                    case Biome.Forest: col = ForestG[bi]; break;
+                    case Biome.Tropical: col = TropicG[bi]; break;
+                    case Biome.Nuclear: col = NukeG[bi]; break;
+                    case Biome.Village: col = MeadowG[bi]; break;
+                    case Biome.Town: col = Gravel[bi]; break;
+                    case Biome.City: col = Concrete[bi]; break;
+                    default: col = Sand[bi]; break;
+                }
+                if (s.shore > 0.45f) col = Sand[3];
+            }
+            if (snow > 0.3f && !wet) col = Color32.Lerp(col, SnowCol, Mathf.Clamp01((snow - 0.3f) * 1.5f));
+            return col;
         }
 
         Color32 CellColor(Chunk ch, int i, int j)

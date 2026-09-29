@@ -687,9 +687,10 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       *Done:* pistols, the rifle and machine guns have their own synthesised reports, the bow twangs; crickets on warm dry nights; structures creak before they give and rumble when they collapse; the gyro's rotor slaps.
 
 ### Visuals
-- [ ] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
+- [x] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
       around the aircraft, so at 60 m+ the ground ends in fog close by. A far-terrain impostor ring (heights and
       biome colours only, no props) would sell altitude and help navigation.
+      *Done:* `World/FarTerrain`: while an aircraft is more than 20 m up, a 1.1 km sheet of coarse terrain (12 m steps, heights, water, roads and biome colours from `DeformableTerrain.FarColor`, no props or colliders) is sampled on a worker around it and rebuilt as it travels, sunk 1.5 m under the streamed chunks; `FarTerrain.Aerial` pushes the perspective fog and far clip out to ~620 m.
 - [x] The TowTruck showed its lights on while parked (seen during roadmap 14).
 
 ### UI / HUD
@@ -707,19 +708,21 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       parallelising), 36 wrecks (0.9 s), template baking and the scene switch. The spinner freezes during
       it. Suggest a loading coroutine with a progress bar, and wrecks spawned lazily as their chunks stream in.
       *Done:* `WastelandGame.Start` is a coroutine: world/terrain, vehicles and HUD are built over separate frames behind the fader, the wheel keeps turning and a progress bar fills (`ScreenFader.Progress`); Update and the directors wait for `Ready`. Wrecks are planned up front and spawned as a player comes within 220 m (`wrecksPending`, saved; scrapyard wrecks too).
-- [ ] **GC near towns**: the allocation rate triples entering a settlement (chunk arrays, prop spawns, carve
+- [x] **GC near towns**: the allocation rate triples entering a settlement (chunk arrays, prop spawns, carve
       snapshots), and an incremental GC slice sometimes takes 30+ ms. Pool chunk arrays and debris lists, and try
       IL2CPP for release builds.
+      *Done:* dropped chunks hand their arrays back to a pool (`DeformableTerrain.Recycle`, up to 96 sets) that `Generate` reuses on any thread (≈50 KB per chunk no longer garbage). IL2CPP is not switched on: the Linux IL2CPP module is not installed in this editor (add it in Unity Hub, then set the backend in `CiBuild` for release builds).
 - [x] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
       spread `SiteBuilder.Populate` over frames.
       *Done:* `SiteBuilder`: the piece's collider is cooked on a worker (`Physics.BakeMesh`) once its mesh is uploaded, and pieces spawn through `SitePending`, one per frame across all sites.
 - [x] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
       before the async remesh. Dent mesh updates could batch per frame.
       *Done:* `DeformableMesh.Dent` only moves the vertex targets; one snap + upload + normals per mesh in `LateUpdate`, however many contacts and hits landed that frame.
-- [ ] **Big bases**: every built piece is its own GameObject and collider (mesh colliders for walls and floors).
+- [x] **Big bases**: every built piece is its own GameObject and collider (mesh colliders for walls and floors).
       Merge static pieces per structure cell into combined meshes, rebuilt when a piece changes.
 
 ### Balance / tech notes
+      *Done:* `Building/StructureBatcher`: Structure pieces (walls, floors, roofs, foundations) in every 16 m cell beyond ~28 m from the player are merged into one mesh per cell (their renderers off, colliders and logic untouched); cells near the player draw piece by piece for cutaways and build highlights; a cell re-merges when its pieces change, one merge per frame.
 - [x] `Fire.Burn` heats vehicles once per overlapping collider (`VehicleSystems.Heat`), so vehicles with many part
       colliders cook faster than simple ones. The player-damage half of this bug was fixed in roadmap 17.
       *Done:* fires heat each vehicle (and try to ignite each piece) once per tick.
