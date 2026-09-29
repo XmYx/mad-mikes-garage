@@ -16,10 +16,14 @@ namespace MadMax.Rendering
         [Tooltip("Optional post pass applied to the low-res image (e.g. tilt-shift). Null = none.")]
         public Material postMaterial;
 
+        /// <summary>Always-on last pass (colour grade, heat haze, lightning flash; set by World.Atmosphere in play mode).</summary>
+        public static Material Grade;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => Grade = null;
+
         public RenderTexture Target { get; private set; }
-        /// <summary>The texture actually shown on screen (post-processed when a post material is active).</summary>
-        public RenderTexture Output => postMaterial && post ? post : Target;
-        RenderTexture post;
+        /// <summary>The texture actually shown on screen (post-processed when a post material is active, then graded).</summary>
+        public RenderTexture Output => Grade && graded && Application.isPlaying ? graded : postMaterial && post ? post : Target;
+        RenderTexture post, graded;
 
         Camera cam;
         GameObject display;
@@ -39,21 +43,34 @@ namespace MadMax.Rendering
 
         void OnEndCamera(ScriptableRenderContext ctx, Camera c)
         {
-            if (c != cam || !postMaterial || !Target) return;
-            if (!post || post.width != Target.width || post.height != Target.height)
+            if (c != cam || !Target) return;
+            var src = Target;
+            if (postMaterial)
             {
-                if (post) { post.Release(); DestroyImmediate(post); }
-                post = new RenderTexture(Target.width, Target.height, 0, RenderTextureFormat.ARGB32)
-                { filterMode = FilterMode.Point, hideFlags = HideFlags.HideAndDontSave };
-                post.Create();
+                Ensure(ref post);
+                Graphics.Blit(Target, post, postMaterial);
+                src = post;
             }
-            Graphics.Blit(Target, post, postMaterial);
+            if (Grade && Application.isPlaying)
+            {
+                Ensure(ref graded);
+                Graphics.Blit(src, graded, Grade);
+            }
+        }
+
+        void Ensure(ref RenderTexture rt)
+        {
+            if (rt && rt.width == Target.width && rt.height == Target.height) return;
+            if (rt) { rt.Release(); DestroyImmediate(rt); }
+            rt = new RenderTexture(Target.width, Target.height, 0, RenderTextureFormat.ARGB32) { filterMode = FilterMode.Point, hideFlags = HideFlags.HideAndDontSave };
+            rt.Create();
         }
 
         void OnDisable()
         {
             RenderPipelineManager.endCameraRendering -= OnEndCamera;
             if (post) { post.Release(); DestroyImmediate(post); post = null; }
+            if (graded) { graded.Release(); DestroyImmediate(graded); graded = null; }
             if (cam) cam.targetTexture = null;
             if (Target) { Target.Release(); DestroyImmediate(Target); Target = null; }
             if (display) DestroyImmediate(display);
@@ -109,7 +126,7 @@ namespace MadMax.Rendering
             }
             cam.targetTexture = Target;
             cam.allowMSAA = false;
-            if (image) image.texture = postMaterial && post ? post : Target;
+            if (image) image.texture = Output;
 
             if (snapToTexels && cam.orthographic && Application.isPlaying) Snap();
         }

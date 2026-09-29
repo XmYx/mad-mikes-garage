@@ -301,13 +301,21 @@ decorative turret.
 *Ties:* NPCs, factions, vehicles, farming, mining, refining.
 
 ## 16. Visuals `T2`
-- [ ] Heat haze over hot desert ground
-- [ ] Night sky: stars, moon; lightning flashes
-- [ ] Dust trails behind vehicles (speed × dryness); **mud on vehicles** that rain washes off
-- [ ] Headlight beams in dust and rain
-- [ ] Muzzle flashes, spent casings, explosion shockwave rings
-- [ ] Colour grading per biome and weather
-- [ ] Footprints and tyre tracks in snow and sand that fade
+- [x] Heat haze over hot desert ground
+- [x] Night sky: stars, moon; lightning flashes
+- [x] Dust trails behind vehicles (speed × dryness); **mud on vehicles** that rain washes off
+- [x] Headlight beams in dust and rain
+- [x] Muzzle flashes, spent casings, explosion shockwave rings
+- [x] Colour grading per biome and weather
+- [x] Footprints and tyre tracks in snow and sand that fade
+      *Done:* a grade pass (`Hidden/MadMax/Grade`, material in Resources, last blit of `PixelArtCamera`): tint,
+      saturation and contrast per biome (warm desert, lush tropics, sickly nuclear zone) and weather / night, heat
+      haze (whole-pixel shimmer low on screen when it is hot, dry and bright), lightning flash. `Atmosphere`: star dome
+      and moon (rises at dusk) in the perspective views, lightning bolts with a double flash on each thunderclap.
+      Tyres throw dust on dry loose ground (biome colour); `VehicleGrime` cakes mud splatters on vehicles in mud and wet
+      ground (shader `_Dirt` / `_DirtTop`), rain rinses and fording washes it. Headlight beam cones show in rain, fog
+      and dust. Guns flash (pooled `Fx.Flash` lights) and eject brass; blasts send a shockwave ring and a dust ring.
+      `Fx.Track` / `Fx.Footprint`: tyre tracks and footprints in snow, sand and mud, fading over 90 s.
 
 *Ties:* weather, environment, vehicles, weapons.
 

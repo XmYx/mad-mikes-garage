@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace MadMax.World
 {
-    /// <summary>Shared world effects: pooled smoke/dust/steam particles and a ring-buffer skidmark mesh.</summary>
+    /// <summary>Shared world effects: pooled smoke/dust/steam particles, a ring-buffer skidmark mesh, fading tracks and
+    /// footprints in snow, sand and mud, flash lights (muzzle flashes) and blast shockwave rings (roadmap 16).</summary>
     public class Fx : MonoBehaviour
     {
         static Fx instance;
@@ -19,6 +20,26 @@ namespace MadMax.World
         int skidHead;
         bool skidDirty;
         readonly Dictionary<int, (Vector3 p, Vector3 side, float t)> lastSkid = new Dictionary<int, (Vector3, Vector3, float)>();
+
+        // tracks and footprints: their own ring buffer, each quad fading out over TrackLife seconds
+        Mesh trackMesh;
+        const int MaxTracks = 2400;
+        const float TrackLife = 90f;
+        readonly Vector3[] tv = new Vector3[MaxTracks * 4];
+        readonly Color32[] tc = new Color32[MaxTracks * 4];
+        readonly float[] tBorn = new float[MaxTracks];
+        readonly byte[] tAlpha = new byte[MaxTracks];
+        int trackHead;
+        bool trackDirty;
+        float fadeTimer;
+        readonly Dictionary<int, (Vector3 p, Vector3 side, float t)> lastTrack = new Dictionary<int, (Vector3, Vector3, float)>();
+
+        // flash lights (muzzle flashes, sparks) and shockwave rings
+        readonly Light[] flashes = new Light[4];
+        readonly float[] flashUntil = new float[4];
+        int flashHead;
+        readonly List<(Transform t, float born, float radius, Material m)> rings = new List<(Transform, float, float, Material)>();
+        static Mesh ringMesh;
 
         static Fx I
         {
@@ -98,6 +119,120 @@ namespace MadMax.World
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = TransparentMaterial(null);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            trackMesh = new Mesh { name = "Tracks" };
+            trackMesh.MarkDynamic();
+            trackMesh.vertices = tv; trackMesh.colors32 = tc;
+            var tidx = new int[MaxTracks * 6];
+            for (int i = 0; i < MaxTracks; i++) { int v = i * 4, t = i * 6; tidx[t] = v; tidx[t + 1] = v + 2; tidx[t + 2] = v + 1; tidx[t + 3] = v + 1; tidx[t + 4] = v + 2; tidx[t + 5] = v + 3; }
+            trackMesh.triangles = tidx;
+            trackMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 100000f);
+            var tg = new GameObject("Tracks", typeof(MeshFilter), typeof(MeshRenderer));
+            tg.transform.SetParent(transform, false);
+            tg.GetComponent<MeshFilter>().sharedMesh = trackMesh;
+            var tmr = tg.GetComponent<MeshRenderer>();
+            tmr.sharedMaterial = TransparentMaterial(null);
+            tmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>Ground colour of a fresh track: snow, sand or mud (null alpha = leave none).</summary>
+        public static Color32 TrackColor(Vector3 p, out bool any)
+        {
+            any = false;
+            var t = DeformableTerrain.Instance;
+            if (!t) return default;
+            var s = t.SurfaceAt(p.x, p.z);
+            if (Weather.Snow > 0.3f && s.road < 0.5f) { any = true; return new Color32(120, 128, 150, 150); }                  // pressed snow
+            if (s.mud > 0.35f) { any = true; return new Color32(40, 26, 16, 150); }
+            if (s.softness > 0.35f && t.BiomeAt(p.x, p.z) == Biome.Desert) { any = true; return new Color32(120, 70, 36, 120); } // churned sand
+            return default;
+        }
+
+        /// <summary>Continue a tyre track (one key per wheel) in soft ground; it fades out over a minute and a half.</summary>
+        public static void Track(int key, Vector3 p, Vector3 side, float width)
+        {
+            var fx = I;
+            var col = TrackColor(p, out bool any);
+            if (!any) { fx.lastTrack.Remove(key); return; }
+            p += Vector3.up * 0.02f;
+            if (fx.lastTrack.TryGetValue(key, out var last) && Time.time - last.t < 0.3f)
+            {
+                if ((p - last.p).sqrMagnitude < 0.2f * 0.2f) return;
+                Vector3 h0 = last.side * (width * 0.5f), h1 = side * (width * 0.5f);
+                fx.AddQuad(last.p - h0, last.p + h0, p - h1, p + h1, col);
+            }
+            fx.lastTrack[key] = (p, side, Time.time);
+        }
+
+        /// <summary>One footprint (a little offset to the side of the walking line).</summary>
+        public static void Footprint(Vector3 p, Vector3 fwd, bool left)
+        {
+            var col = TrackColor(p, out bool any);
+            if (!any) return;
+            fwd.y = 0f; fwd.Normalize();
+            var side = Vector3.Cross(Vector3.up, fwd);
+            p += side * (left ? -0.1f : 0.1f) + Vector3.up * 0.02f;
+            Vector3 f = fwd * 0.13f, s = side * 0.05f;
+            I.AddQuad(p - f - s, p - f + s, p + f - s, p + f + s, col);
+        }
+
+        void AddQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color32 col)
+        {
+            int v = trackHead * 4;
+            tv[v] = a; tv[v + 1] = b; tv[v + 2] = c; tv[v + 3] = d;
+            tc[v] = tc[v + 1] = tc[v + 2] = tc[v + 3] = col;
+            tBorn[trackHead] = Time.time; tAlpha[trackHead] = col.a;
+            trackHead = (trackHead + 1) % MaxTracks;
+            trackDirty = true;
+        }
+
+        /// <summary>A short burst of light (muzzle flash, blast): one of four pooled point lights.</summary>
+        public static void Flash(Vector3 p, Color c, float range, float intensity, float duration)
+        {
+            var fx = I;
+            int i = fx.flashHead; fx.flashHead = (fx.flashHead + 1) % fx.flashes.Length;
+            if (!fx.flashes[i])
+            {
+                fx.flashes[i] = new GameObject("Flash").AddComponent<Light>();
+                fx.flashes[i].transform.SetParent(fx.transform, false);
+                fx.flashes[i].type = LightType.Point; fx.flashes[i].shadows = LightShadows.None;
+            }
+            var l = fx.flashes[i];
+            l.transform.position = p; l.color = c; l.range = range; l.intensity = intensity; l.enabled = true;
+            fx.flashUntil[i] = Time.time + duration;
+        }
+
+        /// <summary>An expanding ring of dust and air along the ground from a blast.</summary>
+        public static void Shockwave(Vector3 p, float radius)
+        {
+            var fx = I;
+            if (!ringMesh)
+            {
+                // flat ring, 32 segments: inner edge clear, outer edge opaque (vertex alpha)
+                ringMesh = new Mesh { name = "Shockwave" };
+                var v = new List<Vector3>(); var c = new List<Color32>(); var tris = new List<int>();
+                for (int k = 0; k <= 32; k++)
+                {
+                    float a = k / 32f * Mathf.PI * 2f;
+                    var d = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                    v.Add(d * 0.8f); v.Add(d);
+                    c.Add(new Color32(230, 215, 190, 0)); c.Add(new Color32(230, 215, 190, 200));
+                    if (k < 32) { int b = k * 2; tris.AddRange(new[] { b, b + 1, b + 2, b + 1, b + 3, b + 2 }); }
+                }
+                ringMesh.SetVertices(v); ringMesh.SetColors(c); ringMesh.SetTriangles(tris, 0); ringMesh.RecalculateBounds();
+            }
+            var go = new GameObject("Shockwave", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(fx.transform, false);
+            go.transform.position = p + Vector3.up * 0.15f;
+            go.GetComponent<MeshFilter>().sharedMesh = ringMesh;
+            var m = TransparentMaterial(null);
+            var mr = go.GetComponent<MeshRenderer>(); mr.sharedMaterial = m; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fx.rings.Add((go.transform, Time.time, radius, m));
+            for (int i = 0; i < 16; i++)
+            {
+                var d = Quaternion.Euler(0f, i * 22.5f, 0f) * Vector3.forward;
+                Smoke(p + d * 0.5f + Vector3.up * 0.2f, d * radius * 2.5f + Vector3.up * 0.4f, 0.6f, new Color(0.75f, 0.65f, 0.52f, 0.7f), 1.2f);
+            }
         }
 
         ParticleSystem MakeSystem(string name, int max, Texture tex)
@@ -156,9 +291,35 @@ namespace MadMax.World
 
         void LateUpdate()
         {
-            if (!skidDirty) return;
-            skidDirty = false;
-            skidMesh.vertices = sv; skidMesh.colors32 = sc;
+            if (skidDirty) { skidDirty = false; skidMesh.vertices = sv; skidMesh.colors32 = sc; }
+            // tracks fade with age (colours rewritten twice a second)
+            if ((fadeTimer -= Time.deltaTime) <= 0f)
+            {
+                fadeTimer = 0.5f;
+                float now = Time.time;
+                for (int i = 0; i < MaxTracks; i++)
+                {
+                    if (tAlpha[i] == 0) continue;
+                    float k = 1f - (now - tBorn[i]) / TrackLife;
+                    byte a = (byte)(k <= 0f ? 0 : Mathf.RoundToInt(tAlpha[i] * k));
+                    int v = i * 4;
+                    if (tc[v].a == a) continue;
+                    tc[v].a = tc[v + 1].a = tc[v + 2].a = tc[v + 3].a = a;
+                    if (a == 0) tAlpha[i] = 0;
+                    trackDirty = true;
+                }
+            }
+            if (trackDirty) { trackDirty = false; trackMesh.vertices = tv; trackMesh.colors32 = tc; }
+            for (int i = 0; i < flashes.Length; i++)
+                if (flashes[i] && flashes[i].enabled && Time.time > flashUntil[i]) flashes[i].enabled = false;
+            for (int i = rings.Count - 1; i >= 0; i--)
+            {
+                var (t, born, radius, m) = rings[i];
+                float u = (Time.time - born) / 0.45f;
+                if (u >= 1f || !t) { if (t) Destroy(t.gameObject); if (m) Destroy(m); rings.RemoveAt(i); continue; }
+                t.localScale = Vector3.one * Mathf.Lerp(0.3f, radius * 2.2f, Mathf.Sqrt(u));
+                m.SetColor("_BaseColor", new Color(1f, 1f, 1f, 1f - u));
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ namespace MadMax.Audio
             {
                 nextThunder = Time.time + Random.Range(25f, 70f);
                 var cam = Camera.main;
+                MadMax.World.Atmosphere.Lightning();                                         // the flash comes first
                 if (cam) Sfx.Play("thunder", cam.transform.position + Random.onUnitSphere * 20f, Random.Range(0.4f, 0.8f), Random.Range(0.85f, 1.05f), 200f, 5f);
             }
         }

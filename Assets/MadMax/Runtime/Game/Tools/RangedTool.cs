@@ -29,6 +29,7 @@ namespace MadMax.Game
         public Transform muzzle;
 
         public bool Jammed { get; private set; }
+        static readonly System.Collections.Generic.List<DebrisSystem.Chunk> casing = new System.Collections.Generic.List<DebrisSystem.Chunk>();
         public bool Reloading => Time.time < reloadUntil;
         float reloadUntil;
         int reloadTo = -1;
@@ -134,8 +135,15 @@ namespace MadMax.Game
                     if (fx) fx.EmitPuff(hit.point, new Color32(190, 150, 110, 255), 0.06f, hit.normal * 0.8f + Vector3.up * 0.5f, 0.5f);
                 }
                 if (fx)
+                {
                     for (int i = 0; i < 5; i++)
                         fx.EmitPuff(origin + aim * 0.1f, i < 2 ? new Color32(255, 240, 180, 255) : new Color32(255, 170, 60, 255), 0.07f, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
+                    // the spent casing tumbles out to the right
+                    casing.Clear();
+                    casing.Add(new DebrisSystem.Chunk { position = origin - aim * 0.25f + user.transform.right * 0.1f, color = new Color32(196, 150, 60, 255) });
+                    fx.Emit(casing, 0.025f, user.transform.right * 2.2f + Vector3.up * 2.5f);
+                }
+                Fx.Flash(origin + aim * 0.3f, new Color(1f, 0.78f, 0.4f), 7f, 5f, 0.05f);         // muzzle flash lights the scene
             }
             if (noise > 0f) MadMax.Npc.NpcDirector.Instance?.Noise(origin, noise);
             if (anyHit) stats?.Practice(MadMax.RPG.Skill.Firearms, 2f);

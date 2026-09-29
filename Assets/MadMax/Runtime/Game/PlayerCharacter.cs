@@ -410,6 +410,7 @@ namespace MadMax.Game
 
         void OnFootstep(bool left)
         {
+            if (!SeatedIn && !Swimming && !Interior) MadMax.World.Fx.Footprint(transform.position, transform.forward, left);   // prints in snow, sand, mud
             var terrain = DeformableTerrain.Instance;
             if (!terrain || Interior || SeatedIn) return;
             var foot = transform.position + transform.right * (left ? -0.1f : 0.1f);

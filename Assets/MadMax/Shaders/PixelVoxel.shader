@@ -15,6 +15,8 @@ Shader "MadMax/PixelVoxel"
         _Sway ("Wind Sway by Height (trees)", Float) = 0
         _SwayTip ("Wind Sway by Vertex Alpha (grass)", Float) = 0
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
+        _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
+        _DirtTop ("Mud Line (world Y)", Float) = -100000
     }
     SubShader
     {
@@ -36,6 +38,8 @@ Shader "MadMax/PixelVoxel"
             half _Sway;
             half _SwayTip;
             half _WorldCut;
+            half _Dirt;
+            float _DirtTop;
         CBUFFER_END
         // global settings (0 = default look)
         float _MadMaxOutlineDelta;
@@ -108,11 +112,12 @@ Shader "MadMax/PixelVoxel"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1; half4 color : COLOR; half fog : TEXCOORD2; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1; half4 color : COLOR; half fog : TEXCOORD2; float3 positionOS : TEXCOORD3; };
 
             Varyings vert (Attributes i)
             {
                 Varyings o;
+                o.positionOS = i.positionOS.xyz;
                 o.positionWS = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS = TransformObjectToWorldNormal(i.normalOS);
@@ -134,6 +139,14 @@ Shader "MadMax/PixelVoxel"
                 albedo = SRGBToLinear(albedo);                             // vertex colours are authored in sRGB
                 #endif
                 albedo *= _Tint.rgb;
+                // mud on vehicles (VehicleGrime): voxel splatters, thick low on the body, thinning out up to the mud line
+                if (_Dirt > 0.001h)
+                {
+                    float3 cd = floor(i.positionOS * 12.5 + 0.37);
+                    half hd = frac(sin(dot(cd, float3(41.13, 17.71, 93.37))) * 24634.63);
+                    half low = saturate((_DirtTop - i.positionWS.y) / 0.9);
+                    if (hd < _Dirt * low * 0.75h) albedo = lerp(albedo, half3(0.075h, 0.045h, 0.025h), 0.8h);
+                }
                 // light snow dusting: a scatter of voxels on upward faces
                 half3 nW = normalize(i.normalWS);
                 if (_MadMaxSnow > 0.001h && nW.y > 0.55h)

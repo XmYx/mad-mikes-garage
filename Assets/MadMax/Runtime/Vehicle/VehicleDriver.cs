@@ -422,6 +422,17 @@ namespace MadMax.Vehicles
             int key = w.GetHashCode();
             float mark = scrub * hard;
             MadMax.World.Fx.Skid(key, w.contact, w.side, w.width, mark > 0.15f ? mark : 0f);
+            // tracks in snow, sand and mud (fade in a minute and a half); dust clouds behind on dry loose ground
+            float speed = Mathf.Abs(w.vf);
+            if (speed > 0.5f) MadMax.World.Fx.Track(key + 1, w.contact, w.side, w.width * 0.9f);
+            float dry = (1f - w.surf.wet) * (1f - w.surf.road) * Mathf.Clamp01(w.surf.softness * 1.5f + 0.3f) * (MadMax.World.Weather.Raining ? 0.2f : 1f);
+            if (speed > 6f && dry > 0.35f && Random.value < dt * speed * 0.35f * dry)
+            {
+                var biome = MadMax.World.DeformableTerrain.Instance ? MadMax.World.DeformableTerrain.Instance.BiomeAt(w.contact.x, w.contact.z) : MadMax.World.Biome.Desert;
+                var dust = biome == MadMax.World.Biome.Desert ? new Color(0.78f, 0.55f, 0.36f, 0.55f) : biome == MadMax.World.Biome.Nuclear ? new Color(0.55f, 0.58f, 0.46f, 0.5f)
+                         : biome == MadMax.World.Biome.Forest || biome == MadMax.World.Biome.Tropical ? new Color(0.5f, 0.4f, 0.3f, 0.4f) : new Color(0.68f, 0.52f, 0.38f, 0.5f);
+                MadMax.World.Fx.Smoke(w.contact + Vector3.up * 0.3f, -w.fwd * Mathf.Sign(w.vf) * speed * 0.15f + Vector3.up * 0.8f + Random.insideUnitSphere * 0.5f, 0.9f + speed * 0.03f, dust, 2.2f);
+            }
             if (scrub > 0.25f && Random.value < scrub * dt * 30f)
             {
                 var soil = new Color(0.62f, 0.45f, 0.3f, 0.6f);

@@ -13,6 +13,12 @@ namespace MadMax.Vehicles
         public bool On { get; private set; }
         Light[] heads, tails;
         VehicleDriver driver;
+        // light beams: cones you see in rain, fog and dust (one mesh per vehicle, alpha by visibility)
+        Transform[] beams;
+        Mesh beamMesh;
+        Color32[] beamCols;
+        float beamShown = -1f;
+        static Material beamMat;
 
         void Start()
         {
@@ -32,6 +38,51 @@ namespace MadMax.Vehicles
             heads[1].enabled = false;                       // one spot per vehicle carries the beam (light budget), both tail lamps glow
             heads[0].transform.localPosition = new Vector3(0f, y, b.max.z + 0.05f);
             heads[0].spotAngle = 75f;
+            BuildBeams(body, y, hx, b.max.z);
+        }
+
+        void BuildBeams(Transform body, float y, float hx, float front)
+        {
+            const int seg = 12;
+            var v = new Vector3[(seg + 1) * 2];
+            beamCols = new Color32[v.Length];
+            var tris = new int[seg * 6];
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = i / (float)seg * Mathf.PI * 2f;
+                var d = new Vector3(Mathf.Cos(a), Mathf.Sin(a) * 0.55f, 0f);
+                v[i * 2] = d * 0.12f; v[i * 2 + 1] = d * 2.4f + Vector3.forward * 10f;
+                if (i < seg) { int t = i * 6, k = i * 2; tris[t] = k; tris[t + 1] = k + 2; tris[t + 2] = k + 1; tris[t + 3] = k + 1; tris[t + 4] = k + 2; tris[t + 5] = k + 3; }
+            }
+            beamMesh = new Mesh { name = "HeadlightBeam" };
+            beamMesh.vertices = v; beamMesh.triangles = tris; beamMesh.colors32 = beamCols; beamMesh.RecalculateBounds();
+            if (!beamMat) { beamMat = MadMax.World.Fx.TransparentMaterial(null); beamMat.SetFloat("_Cull", 0f); }
+            beams = new Transform[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var go = new GameObject("Beam", typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(body, false);
+                go.transform.localPosition = new Vector3(i == 0 ? -hx : hx, y, front + 0.1f);
+                go.transform.localRotation = Quaternion.Euler(7f, 0f, 0f);
+                go.GetComponent<MeshFilter>().sharedMesh = beamMesh;
+                var mr = go.GetComponent<MeshRenderer>(); mr.sharedMaterial = beamMat; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+                go.SetActive(false);
+                beams[i] = go.transform;
+            }
+        }
+
+        /// <summary>How visible the beams are: rain, fog and the dust thrown up on dry ground, more so in the dark.</summary>
+        void UpdateBeams(bool on)
+        {
+            if (beams == null) return;
+            float dust = Mathf.Clamp01((Mathf.Abs(driver.ForwardSpeed) - 5f) / 15f) * (Weather.Raining ? 0f : 0.6f);
+            float vis = on ? Mathf.Clamp01(Mathf.Max(Weather.Raining ? 0.8f : 0f, Mathf.Max(Atmosphere.Fog * 0.9f, dust)) * (0.35f + 0.65f * DayNight.Darkness)) : 0f;
+            bool show = vis > 0.05f;
+            foreach (var b in beams) if (b.gameObject.activeSelf != show) b.gameObject.SetActive(show);
+            if (!show || Mathf.Abs(vis - beamShown) < 0.04f) return;
+            beamShown = vis;
+            for (int i = 0; i < beamCols.Length; i++) beamCols[i] = new Color32(255, 238, 200, (byte)(i % 2 == 0 ? 38 * vis : 0));
+            beamMesh.colors32 = beamCols;
         }
 
         static Light Make(string name, Transform parent, Vector3 pos, Quaternion rot, LightType type, Color c, float range, float intensity)
@@ -50,6 +101,7 @@ namespace MadMax.Vehicles
             bool on = mode == 1 || (mode == 0 && driver.Occupied && DayNight.Darkness > 0.3f);
             On = on;
             heads[0].enabled = on && LightBudget.Allowed(heads[0], true);
+            UpdateBeams(on);
             float brake = driver.brakeInput > 0.1f || driver.handbrake && driver.Occupied ? 1f : 0f;
             foreach (var t in tails)
             {

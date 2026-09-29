@@ -7,14 +7,16 @@ namespace MadMax.World
     /// <summary>Fog and clouds. <see cref="Fog"/> (0..1) rises for morning mist, evening haze, rain/snow and damp places
     /// (lakes, forest, tropics); CameraRig turns it into render fog per view. Clouds: drifting cloud shadows on everything
     /// (PixelVoxel globals <c>_MadMaxClouds</c>/<c>_MadMaxCloudOffset</c>) — sparse fair-weather cover or a heavy dark deck
-    /// when it rains — plus voxel cloud puffs in the sky for the perspective views.</summary>
+    /// when it rains — plus voxel cloud puffs in the sky for the perspective views. Visuals (roadmap 16): the night sky
+    /// (a dome of stars and the moon, perspective views), lightning (flash + bolt, see <see cref="Lightning"/>), and the
+    /// grade pass (PixelArtCamera.Grade): colour per biome, weather and night, heat haze over hot ground by day.</summary>
     public class Atmosphere : MonoBehaviour
     {
         public static float Fog { get; private set; }
         public static float CloudCover { get; private set; }
         public static bool SkyVisible;             // set by CameraRig: perspective views show the puffs
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Fog = 0f; CloudCover = 0f; SkyVisible = false; }
+        static void ResetStatics() { Fog = 0f; CloudCover = 0f; SkyVisible = false; flash = 0f; bolts = 0; }
 
         static readonly int CloudsId = Shader.PropertyToID("_MadMaxClouds"), OffsetId = Shader.PropertyToID("_MadMaxCloudOffset");
         const float CloudScale = 1f / 70f;         // noise cells per metre
@@ -67,6 +69,180 @@ namespace MadMax.World
             Shader.SetGlobalVector(OffsetId, new Vector4(-offset.x, -offset.y, 0f, 0f));
 
             UpdatePuffs(cam, dt);
+            UpdateGrade(at, dt);
+            UpdateNightSky(cam);
+            UpdateLightning(cam, dt);
+        }
+
+        // ------------------------------------------------------------------ grade: biome / weather / night colour, heat haze
+        Material grade;
+        Vector3 gTint = Vector3.one; float gSat = 1f, gContrast = 1f, haze;
+        static float flash; static int bolts;
+
+        void UpdateGrade(Vector3 at, float dt)
+        {
+            if (Application.isBatchMode) return;
+            if (!grade)
+            {
+                var src = Resources.Load<Material>("RuntimeMaterials/Grade");
+                if (!src) return;
+                grade = new Material(src);
+                MadMax.Rendering.PixelArtCamera.Grade = grade;
+            }
+            var t = DeformableTerrain.Instance;
+            var b = t ? t.BiomeAt(at.x, at.z) : Biome.Desert;
+            Vector3 tint; float sat, con;
+            switch (b)
+            {
+                case Biome.Desert: tint = new Vector3(1.05f, 1.0f, 0.92f); sat = 1.1f; con = 1.05f; break;
+                case Biome.Forest: tint = new Vector3(0.96f, 1.02f, 0.98f); sat = 1.05f; con = 1f; break;
+                case Biome.Tropical: tint = new Vector3(0.97f, 1.03f, 1f); sat = 1.15f; con = 1.02f; break;
+                case Biome.Nuclear: tint = new Vector3(0.95f, 1.06f, 0.86f); sat = 0.85f; con = 1.08f; break;
+                default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 1f; con = 1.03f; break;
+            }
+            float rain = Weather.Raining ? 1f : 0f, snow = Weather.Snowing ? 1f : 0f, night = DayNight.Darkness;
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.95f, 0.98f, 1.04f), rain));
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.0f, 1.02f, 1.06f), snow));
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 0.95f, 1.1f), night));
+            sat *= (1f - 0.2f * rain) * (1f - 0.12f * snow) * (1f - 0.2f * night);
+            con *= (1f - 0.05f * rain) * (1f - 0.1f * Fog);
+            float k = 1f - Mathf.Exp(-0.8f * dt);                                                    // eases across a biome edge
+            gTint = Vector3.Lerp(gTint, tint, k); gSat = Mathf.Lerp(gSat, sat, k); gContrast = Mathf.Lerp(gContrast, con, k);
+            // heat haze over hot, dry ground in the day
+            float hot = Mathf.Clamp01((Weather.Temperature - 27f) / 10f) * (1f - night) * (1f - rain) * (b == Biome.Desert ? 1f : b == Biome.Nuclear ? 0.7f : b == Biome.Town || b == Biome.City || b == Biome.Village ? 0.5f : 0.2f);
+            haze = Mathf.MoveTowards(haze, hot, dt * 0.2f);
+            flash = Mathf.Max(0f, flash - dt * 4f);
+            grade.SetColor("_GradeTint", new Color(gTint.x, gTint.y, gTint.z, 1f));
+            grade.SetFloat("_Saturation", gSat);
+            grade.SetFloat("_Contrast", gContrast);
+            grade.SetFloat("_Haze", haze);
+            grade.SetFloat("_Flash", flash);
+        }
+
+        // ------------------------------------------------------------------ lightning
+        Transform bolt;
+        float boltUntil, secondFlash = -1f;
+
+        /// <summary>A lightning strike: the scene flashes (twice), and in the perspective views a bolt stands in the sky.</summary>
+        public static void Lightning() { flash = 1f; bolts++; }
+
+        void UpdateLightning(Camera cam, float dt)
+        {
+            if (bolts > 0)
+            {
+                bolts = 0;
+                secondFlash = Time.time + Random.Range(0.08f, 0.16f);
+                if (cam && SkyVisible)
+                {
+                    if (!bolt) bolt = BuildBolt();
+                    var dir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+                    var ground = cam.transform.position + dir * Random.Range(55f, 95f);
+                    var tt = DeformableTerrain.Instance;
+                    if (tt) ground.y = tt.Height(ground.x, ground.z);
+                    bolt.position = ground;
+                    bolt.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                    bolt.gameObject.SetActive(true);
+                    boltUntil = Time.time + 0.22f;
+                }
+            }
+            if (secondFlash > 0f && Time.time > secondFlash) { flash = Mathf.Max(flash, 0.7f); secondFlash = -1f; }
+            if (bolt && bolt.gameObject.activeSelf && Time.time > boltUntil) bolt.gameObject.SetActive(false);
+        }
+
+        Transform BuildBolt()
+        {
+            var g = new VoxelGrid();
+            var rr = new System.Random(707);
+            float x = 0f, z = 0f;
+            for (int y = 0; y < 80; y++)
+            {
+                if (rr.NextDouble() < 0.25) x += (float)(rr.NextDouble() * 2 - 1) * 2f;
+                if (rr.NextDouble() < 0.25) z += (float)(rr.NextDouble() * 2 - 1) * 2f;
+                g.Set(Mathf.RoundToInt(x), y, Mathf.RoundToInt(z), Pal.Solid(y % 7 == 0 ? Pal.PaleBlue[4] : Pal.Cream[4]));
+                if (y > 20 && y % 17 == 0) for (int k = 1; k < 8; k++) g.Set(Mathf.RoundToInt(x) + k, y - k, Mathf.RoundToInt(z), Pal.Solid(Pal.PaleBlue[3]));   // a fork
+            }
+            var go = new GameObject("Lightning", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(transform, false);
+            go.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(g, "LightningBolt", 1.1f);
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = SkyMaterial();
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            go.SetActive(false);
+            return go.transform;
+        }
+
+        // ------------------------------------------------------------------ night sky
+        Material skyMat;
+        Transform stars, moon;
+
+        Material SkyMaterial()
+        {
+            if (skyMat) return skyMat;
+            var game = MadMax.Game.WastelandGame.Instance;
+            if (!game || !game.propMaterial) return null;
+            skyMat = new Material(game.propMaterial);
+            skyMat.SetFloat("_Unlit", 1f); skyMat.SetFloat("_OutlinePx", 0f); skyMat.SetFloat("_NoFog", 1f); skyMat.SetFloat("_SnowMask", 0f);
+            return skyMat;
+        }
+
+        void UpdateNightSky(Camera cam)
+        {
+            if (!cam || Application.isBatchMode) return;
+            float dark = DayNight.Darkness;
+            bool show = SkyVisible && dark > 0.35f && !OccluderFadeUnderground;
+            if (show && !stars) BuildSky();
+            if (!stars) return;
+            bool starsOn = show && CloudCover < 0.75f;
+            if (stars.gameObject.activeSelf != starsOn) stars.gameObject.SetActive(starsOn);
+            if (moon.gameObject.activeSelf != show) moon.gameObject.SetActive(show);
+            if (!show) return;
+            var c = cam.transform.position;
+            stars.position = c;
+            // the moon rises in the east at dusk and sets in the west at dawn
+            float h = DayNight.Hours, a = ((h + 24f - 18f) % 24f) / 12f * Mathf.PI;
+            var dir = new Vector3(Mathf.Cos(a), Mathf.Sin(a) * 0.8f + 0.12f, 0.35f).normalized;
+            moon.position = c + dir * 100f;
+            moon.rotation = Quaternion.LookRotation(-dir);
+        }
+
+        static bool OccluderFadeUnderground => MadMax.Game.OccluderFade.Underground;
+
+        void BuildSky()
+        {
+            var mat = SkyMaterial();
+            if (!mat) return;
+            // stars: tiny voxels scattered over the upper dome (one mesh)
+            var g = new VoxelGrid();
+            var rr = new System.Random(9001);
+            for (int i = 0; i < 420; i++)
+            {
+                float az = (float)rr.NextDouble() * Mathf.PI * 2f, el = Mathf.Asin((float)rr.NextDouble() * 0.95f + 0.05f);
+                var d = new Vector3(Mathf.Cos(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Sin(az) * Mathf.Cos(el)) * 110f / 0.35f;
+                double t = rr.NextDouble();
+                var col = t < 0.1 ? Pal.PaleBlue[4] : t < 0.18 ? Pal.Ochre[4] : Pal.Cream[t < 0.6 ? 3 : 4];
+                g.Set(Mathf.RoundToInt(d.x), Mathf.RoundToInt(d.y), Mathf.RoundToInt(d.z), Pal.Solid(col));
+            }
+            var sg = new GameObject("Stars", typeof(MeshFilter), typeof(MeshRenderer));
+            sg.transform.SetParent(transform, false);
+            sg.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(g, "Stars", 0.35f);
+            var smr = sg.GetComponent<MeshRenderer>(); smr.sharedMaterial = mat;
+            smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; smr.receiveShadows = false;
+            stars = sg.transform;
+            // the moon: a pale disc with dark maria
+            var mg = new VoxelGrid();
+            for (int x = -6; x <= 6; x++)
+            for (int y = -6; y <= 6; y++)
+            {
+                if (x * x + y * y > 36) continue;
+                bool mare = (x - 2) * (x - 2) + (y - 1) * (y - 1) < 5 || (x + 2) * (x + 2) + (y + 3) * (y + 3) < 3 || (x + 1) * (x + 1) + (y - 3) * (y - 3) < 2;
+                mg.Set(x, y, 0, Pal.Solid(mare ? Pal.Cream[1] : Pal.Cream[4]));
+            }
+            var mo = new GameObject("Moon", typeof(MeshFilter), typeof(MeshRenderer));
+            mo.transform.SetParent(transform, false);
+            mo.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(mg, "Moon", 0.5f);
+            var mmr = mo.GetComponent<MeshRenderer>(); mmr.sharedMaterial = mat;
+            mmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mmr.receiveShadows = false;
+            moon = mo.transform;
         }
 
         static float Bell(float x, float centre, float width) { float d = (x - centre) / width; return Mathf.Exp(-d * d); }
@@ -138,6 +314,8 @@ namespace MadMax.World
         void OnDestroy()
         {
             if (puffMat) Destroy(puffMat);
+            if (skyMat) Destroy(skyMat);
+            if (grade) { if (MadMax.Rendering.PixelArtCamera.Grade == grade) MadMax.Rendering.PixelArtCamera.Grade = null; Destroy(grade); }
             foreach (var m in puffMeshes) if (m) Destroy(m);
             Shader.SetGlobalVector(CloudsId, Vector4.zero);
         }

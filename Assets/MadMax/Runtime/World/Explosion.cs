@@ -20,6 +20,8 @@ namespace MadMax.World
             var fx = DebrisSystem.Instance;
             for (int i = 0; i < 18; i++) Fx.Smoke(at + Random.insideUnitSphere * radius * 0.4f, Random.insideUnitSphere * 3f + Vector3.up * 3f, 0.9f, new Color(0.3f, 0.28f, 0.26f, 0.8f), 3.5f);
             Fx.Sparks(at, Vector3.up, 30, new Color(1f, 0.75f, 0.35f));
+            Fx.Shockwave(at, radius);                                                          // the ring of air and dust
+            Fx.Flash(at + Vector3.up, new Color(1f, 0.65f, 0.3f), radius * 5f, 8f, 0.15f);
             if (fx) for (int i = 0; i < 20; i++) fx.EmitPuff(at, new Color32(255, 200, 90, 255), 0.08f, Random.insideUnitSphere * 9f + Vector3.up * 4f, 0.25f);
             var game = MadMax.Game.WastelandGame.Instance;
             if (game)
