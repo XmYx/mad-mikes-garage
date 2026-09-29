@@ -65,6 +65,9 @@ namespace MadMax.Items
                 F("food_pie", "PUMPKIN PIE", 55, 0, 40, H("d09040")),
                 F("food_jam", "APPLE JAM", 30, 0, 0, H("8a2030")),
                 F("food_rotten", "ROTTEN FOOD", 2, 0, 0, H("4a4a2a"), 0.8f),
+                F("food_salad", "GARDEN SALAD", 30, 8, 20, H("6a9a3a"), 0f, 4f),
+                F("food_fruit", "FRUIT BOWL", 24, 10, 20, H("c04a3a"), 0f, 3f),
+                F("food_trailmix", "TRAIL MIX", 18, -3, 0, H("6a4a2a")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>

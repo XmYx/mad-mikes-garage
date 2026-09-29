@@ -65,6 +65,9 @@ namespace MadMax.RPG
         public float hunger = 80f, thirst = 80f, hygiene = 90f;      // 100 = full / clean
         public float sick;                                         // seconds of food poisoning left
         public float bodyTemp = 37f;                                 // core °C
+        public float restedUntil, fedUntil;                          // buff ends, in game hours (DayNight.TotalDays * 24)
+        public float waste;                                          // 0..140: meals eaten since the last latrine visit
+        [NonSerialized] public bool rested, fed;                     // WELL RESTED (XP, stamina), WELL FED (slower hunger)
         public List<Injury> injuries = new List<Injury>();
 
         /// <summary>Old saves carry shorter skill arrays.</summary>
@@ -121,7 +124,7 @@ namespace MadMax.RPG
         /// <summary>Gain experience by doing. Intelligence and traits speed learning up.</summary>
         public void Practice(Skill s, float amount)
         {
-            float mult = learningSpeed * (0.8f + Attribute(Attr.Intelligence) * 0.04f);
+            float mult = learningSpeed * (0.8f + Attribute(Attr.Intelligence) * 0.04f) * (rested ? 1.15f : 1f);
             foreach (var id in traits) { var t = Traits.Get(id); if (t != null && t.learn.TryGetValue(s, out var m)) mult *= m; }
             int before = Level(s);
             skillXp[(int)s] += amount * mult;
@@ -141,7 +144,7 @@ namespace MadMax.RPG
 
         // ---- derived values used by gameplay
         public float MaxHealth => 70f + Attribute(Attr.Endurance) * 6f;
-        public float MaxStamina => (60f + Attribute(Attr.Endurance) * 8f) * (1f - 0.35f * TorsoPain);
+        public float MaxStamina => (60f + Attribute(Attr.Endurance) * 8f) * (1f - 0.35f * TorsoPain) * (rested ? 1.1f : 1f);
         /// <summary>0..1 from torso wounds (cracked ribs, deep cuts): less breath for running and swinging.</summary>
         public float TorsoPain
         {

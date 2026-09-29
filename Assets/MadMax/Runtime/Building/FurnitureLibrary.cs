@@ -87,9 +87,9 @@ namespace MadMax.Building
                 Kit("chest", "CHEST", Chest(), ItemIds.ChestKit, Fu).With(go => { Box(go, "CHEST", 120f, false); go.AddComponent<Door>().enabled = false; }),
                 D("stove", "WOOD STOVE", Fu, Stove(), 4, false, go => { Station(go, "stove", "COOK (WOOD STOVE)", 0f).output = new Vector3(0, 0.9f, 0); Glow(go, new Vector3(0, 0.35f, 0.35f), new Color(1f, 0.55f, 0.25f), 2.5f, 1.4f, false, 0f); var cl = go.AddComponent<Climate>(); cl.burnsWood = true; cl.heat = 12f; cl.on = false; }, (S, 6), (St, 2)),
                 D("oven", "ELECTRIC OVEN", Fu, Oven(), 5, false, go => { Node(go, UtilityKind.Power, 0.6f); Station(go, "oven", "COOK (ELECTRIC OVEN)", 2000f); }, (Fe, 4), (Cu, 2), (G, 1)),
-                D("chair", "CHAIR", Fu, BuildPieces.Chair(), 2, false, null, (W, 2)),
-                D("table", "TABLE", Fu, BuildPieces.Table(), 3, false, null, (W, 4)),
-                D("sofa", "SOFA", Fu, BuildPieces.Sofa(), 3, false, null, (W, 3), (C, 5)),
+                D("chair", "CHAIR", Fu, BuildPieces.Chair(), 2, false, go => Sit(go, 1.4f, 1.1f, new Vector3(0f, 0.6f, -0.04f)), (W, 2)),
+                D("table", "TABLE", Fu, BuildPieces.Table(), 3, false, go => go.AddComponent<DiningTable>().hours = 3f, (W, 4)),
+                D("sofa", "SOFA", Fu, BuildPieces.Sofa(), 3, false, go => Sit(go, 2f, 1.3f, new Vector3(-0.44f, 0.6f, 0f), new Vector3(0.44f, 0.6f, 0f)), (W, 3), (C, 5)),
                 Kit("tv", "TV", Tv(), ItemIds.TvKit, Fu).With(go => { Node(go, UtilityKind.Power, 0.4f); go.AddComponent<TvSet>(); }),
                 D("radio", "RADIO", Fu, Radio(), 2, false, go => go.AddComponent<RadioSet>(), (S, 3), (Cu, 2), (G, 1)),
                 D("lamp", "OIL LAMP", Fu, Lamp(), 2, false, go => Glow(go, new Vector3(0, 0.4f, 0), new Color(1f, 0.82f, 0.55f), 6f, 2.2f, false, 0f), (S, 2), (G, 1)),
@@ -143,6 +143,7 @@ namespace MadMax.Building
                 // planted trees (placed with saplings, not from the build menu)
                 new FurnitureDef { id = "tree_planted", name = "TREE", category = BuildCategory.Hidden, cost = new[] { (W, 10) }, hits = 6, mesh = Spool(false), setup = go => go.AddComponent<PlantedTree>() },
             };
+            defs.AddRange(Home());
         }
 
         static FurnitureDef D(string id, string name, BuildCategory cat, VoxelGrid g, int hits, bool meshCollider, System.Action<GameObject> setup, params (ResourceType, int)[] cost)

@@ -236,6 +236,7 @@ namespace MadMax.Game
             Toast("YOU DIED: " + cause);
             if (Current) Exit();
             if (Player.Carried) Player.DropCarried();
+            Player.StandUp();
             // go limp where you fell; the camera stays on the body for a moment
             var cc = Player.GetComponent<CharacterController>();
             if (cc) cc.enabled = false;

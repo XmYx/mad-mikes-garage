@@ -233,7 +233,7 @@ namespace MadMax.Game
                 foreach (var r in MediaLibrary.Research) if (r.id == LearningId) research = r;
                 if (research == null || !researchBench) { StopLearning(null); return; }
                 if (Vector3.Distance(pos, researchBench.transform.position) > 3f) return;          // paused away from the bench
-                duration = research.seconds; rate = Stats.ReadingSpeed;
+                duration = research.seconds; rate = Stats.ReadingSpeed * MadMax.Building.Bookshelf.ReadingBonus(pos);
             }
             else
             {
@@ -242,12 +242,13 @@ namespace MadMax.Game
                 if (media.kind == MediaKind.Tape)
                 {
                     if (!watchingTv || Vector3.Distance(pos, watchingTv.transform.position) > 6f) { StopLearning("TAPE STOPPED"); return; }
-                    rate = 1f;
+                    rate = Player.Sitting ? 1.15f : 1f;
                 }
                 else
                 {
                     if ((pos - learnStart).sqrMagnitude > 0.8f * 0.8f) { StopLearning("STOPPED READING"); return; }
-                    rate = Stats.ReadingSpeed;
+                    // a good chair and a full bookshelf make for faster study
+                    rate = Stats.ReadingSpeed * (Player.Sitting && Player.SeatedOn ? Player.SeatedOn.reading : 1f) * MadMax.Building.Bookshelf.ReadingBonus(pos);
                 }
                 duration = media.seconds;
             }

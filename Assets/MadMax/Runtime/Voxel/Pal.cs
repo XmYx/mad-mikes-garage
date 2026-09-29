@@ -27,6 +27,13 @@ namespace MadMax.Voxel
         public static readonly Color32[] PaleBlue = R("4c7c96", "6ea4c0", "8cbcd6", "aad2e6", "c4e2f0");
         public static readonly Color32[] RigGreen = R("141a17", "1e2824", "2a3832", "3a4c44", "4e6458");
         public static readonly Color32[] Skin = R("8a5a3a", "b07a52");
+        // dye ramps (furniture paint, later clothing)
+        public static readonly Color32[] Crimson = R("3a0c10", "5a141a", "7c1c22", "a02a2c", "c44038");
+        public static readonly Color32[] Navy = R("0e1630", "18244a", "243866", "34508a", "4a6aa8");
+        public static readonly Color32[] Moss = R("142410", "20381a", "2e5024", "40682e", "58843c");
+        public static readonly Color32[] Ochre = R("5a3a0c", "7c5214", "a06e1e", "c48c2a", "e0ac40");
+        /// <summary>Ramp of a dye (1 red, 2 blue, 3 green, 4 yellow, 5 black, 6 white); null = undyed.</summary>
+        public static Color32[] DyeRamp(int dye) => dye switch { 1 => Crimson, 2 => Navy, 3 => Moss, 4 => Ochre, 5 => Black, 6 => Cream, _ => null };
         public static readonly Color32 Void = Hex("07070a");
         public static readonly Color32 LightY = Hex("ffd15a");
         public static readonly Color32 LightW = Hex("fff3c0");

@@ -54,6 +54,28 @@ namespace MadMax.Items
                     else if (id == ItemIds.Sponge) { g.Box(-3, 0, -2, 3, 3, 2, Pal.Solid(Pal.Hex("e8c848"))); g.Box(-3, 3, -2, 3, 3, 2, Pal.Solid(Pal.Hex("5aa050"))); g.Set(-1, 1, 2, Pal.Solid(Pal.Hex("b89830"))); g.Set(2, 2, 2, Pal.Solid(Pal.Hex("b89830"))); }
                     else if (id == ItemIds.Pills) { g.CylY(0, 0, 1.6f, 0, 4, Pal.Solid(Pal.Cream[3])); g.Box(-1, 5, -1, 1, 5, 1, Pal.Solid(Pal.TailR)); }
                     else if (id == ItemIds.Fertilizer) { g.Box(-3, 0, -2, 3, 5, 2, Pal.Ramp(Pal.Sand, 1)); g.Box(-1, 3, 3, 1, 4, 3, Pal.Solid(Pal.Hex("46862c"))); }
+                    else if (id.StartsWith("dye_"))
+                    {
+                        var ramp = Pal.DyeRamp(System.Array.IndexOf(ItemIds.Dyes, id)) ?? Pal.Cream;
+                        g.CylY(0, 0, 2.2f, 0, 4, Pal.Ramp(Pal.Glass, 3)); g.CylY(0, 0, 1.6f, 1, 3, Pal.Ramp(ramp, 2));
+                        g.Box(-1, 5, -1, 1, 5, 1, Pal.Ramp(Pal.Wood, 1));
+                    }
+                    else if (id == "trophy_plate")
+                    {
+                        g.Box(-6, 0, 0, 6, 5, 0, p => p.y == 0 || p.y == 5 || p.x == -6 || p.x == 6 ? Pal.Chrome[1] : (p.y == 2 || p.y == 3) && p.x % 2 != 0 && System.Math.Abs(p.x) < 5 ? Pal.Black[1] : Pal.Ochre[3]);
+                    }
+                    else if (id == "trophy_ornament")
+                    {
+                        g.Box(0, 0, -1, 0, 6, 1, Pal.Ramp(Pal.Chrome, 2));
+                        for (int i = 1; i <= 4; i++) { g.Box(-i, 3 + i / 2, -1, -i, 5, -1, Pal.Ramp(Pal.Chrome, 3)); g.Box(i, 3 + i / 2, -1, i, 5, -1, Pal.Ramp(Pal.Chrome, 3)); }
+                    }
+                    else if (id == "trophy_hubcap") { g.CylZ(0, 4, 4.4f, 0, 0, p => (p.x * p.x + (p.y - 4) * (p.y - 4)) < 3 ? Pal.Chrome[3] : Pal.Chrome[1 + ((p.x + p.y) & 1)]); g.CylZ(0, 4, 1.4f, 1, 1, Pal.Ramp(Pal.Chrome, 2)); }
+                    else if (id == "trophy_skull")
+                    {
+                        g.Box(-2, 0, -1, 2, 5, 1, Pal.Ramp(Pal.Cream, 2)); g.Box(-1, -2, 0, 1, 0, 1, Pal.Ramp(Pal.Cream, 1));
+                        g.Set(-1, 3, 2, Pal.Solid(Pal.Black[0])); g.Set(1, 3, 2, Pal.Solid(Pal.Black[0]));
+                        g.Tube(new Vector3(-2, 5, 0), new Vector3(-6, 7, 0), 0.5f, Pal.Ramp(Pal.Cream, 3)); g.Tube(new Vector3(2, 5, 0), new Vector3(6, 7, 0), 0.5f, Pal.Ramp(Pal.Cream, 3));
+                    }
                     else { g.Box(-3, 0, -2, 3, 1, 2, Pal.Ramp(Pal.Cream, 3)); }
                     break;
             }

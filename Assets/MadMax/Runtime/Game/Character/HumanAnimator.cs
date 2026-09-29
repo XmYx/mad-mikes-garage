@@ -12,6 +12,7 @@ namespace MadMax.Game
         {
             public float speed, verticalSpeed, lookPitch, steer, turnRate;
             public bool grounded, sitting, carrying, twoHanded, aiming;
+            public bool lounging;            // sitting on furniture: hands in the lap instead of on a wheel
             public float limpL, limpR, armHurtL, armHurtR;   // 0..1 injuries: a limping leg swings less, a hurt arm is held in
             public ToolPose? tool;           // pose of an action in progress / held stance (null = none)
         }
@@ -126,6 +127,16 @@ namespace MadMax.Game
             Set(BodyPart.FootR, 10f, 0, 0, k);
             Set(BodyPart.Chest, -6f + Mathf.Sin(time * 1.6f) * 0.8f, s.steer * 4f, 0, k);
             Set(BodyPart.Head, Mathf.Clamp(s.lookPitch * 0.5f, -25f, 30f), s.steer * 8f, 0, k);
+            if (s.lounging)
+            {
+                // leaning back a little, hands resting on the thighs
+                Set(BodyPart.Chest, 6f + Mathf.Sin(time * 1.4f) * 0.8f, 0, 0, k);
+                Set(BodyPart.UpperArmL, -26f, 0, -10f, k);
+                Set(BodyPart.UpperArmR, -26f, 0, 10f, k);
+                Set(BodyPart.ForearmL, -58f, 0, 0, k);
+                Set(BodyPart.ForearmR, -58f, 0, 0, k);
+                return;
+            }
             // hands on the wheel, rotated with the steering
             Set(BodyPart.UpperArmL, -72f + s.steer * 10f, 0, -6f + s.steer * 12f, k);
             Set(BodyPart.UpperArmR, -72f - s.steer * 10f, 0, 6f + s.steer * 12f, k);

@@ -119,6 +119,15 @@ namespace MadMax.World
             I.Place(pos + new Vector3(Random.Range(-0.15f, 0.15f), 0f, Random.Range(-0.15f, 0.15f)), Random.Range(0.1f, 0.2f));
         }
 
+        /// <summary>Visible stains within the radius.</summary>
+        public static int Count(Vector3 pos, float radius)
+        {
+            if (!instance) return 0;
+            int n = 0;
+            foreach (var s in instance.stains) if (s.t.gameObject.activeSelf && (s.t.position - pos).sqrMagnitude < radius * radius) n++;
+            return n;
+        }
+
         /// <summary>Scrubs stains within the radius; returns how many were removed.</summary>
         public static int Clean(Vector3 pos, float radius)
         {

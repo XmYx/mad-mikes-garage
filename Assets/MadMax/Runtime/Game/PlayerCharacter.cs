@@ -25,6 +25,11 @@ namespace MadMax.Game
         public InteriorSpace Interior { get; private set; }
         public VehiclePart Carried { get; private set; }
         public VehicleDriver SeatedIn { get; private set; }
+        /// <summary>Furniture seat the player sits on (chair, sofa, bench); see <see cref="Sitting"/>.</summary>
+        public MadMax.Building.Seat SeatedOn { get; private set; }
+        public bool Sitting { get; private set; }
+        Vector3 seatSpot;
+        InteriorSpace seatInterior;
         public HumanRig Rig { get; private set; }
         public Transform Eye => Rig ? Rig.Eye : transform;
         public bool Swinging => swingT >= 0f;
@@ -114,7 +119,7 @@ namespace MadMax.Game
         /// <summary>Swing / fire the equipped tool (faces the view direction first in first/third person).</summary>
         public void Attack(bool faceViewYaw)
         {
-            if (!Tool || swingT >= 0f || Carried || SeatedIn || Ragdolled) return;
+            if (!Tool || swingT >= 0f || Carried || SeatedIn || Sitting || Ragdolled) return;
             var g = WastelandGame.Instance;
             if (g && Tool.TwoHanded && g.ArmBroken) { g.Toast("BROKEN ARM: CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
@@ -189,6 +194,50 @@ namespace MadMax.Game
             Rig.ResetHair();
         }
 
+        /// <summary>Sit on a piece of furniture: hips at <paramref name="spot"/> (seat-local), facing the seat's front.
+        /// Follows the seat every frame (seats on vehicles ride along); the seat breaking stands the player up.</summary>
+        public void SitOn(MadMax.Building.Seat seat, Vector3 spot)
+        {
+            if (!seat || Ragdolled) return;
+            if (Carried) DropCarried();
+            Unseat();
+            seatInterior = Interior;
+            Interior = null;
+            transform.SetParent(null, true);
+            cc.enabled = false;
+            SeatedOn = seat; seatSpot = spot; Sitting = true;
+            swingT = -1f; vy = 0f; Velocity = Vector3.zero;
+            FollowSeat();
+            Rig.ResetHair();
+        }
+
+        void FollowSeat()
+        {
+            var t = SeatedOn.transform;
+            transform.SetPositionAndRotation(t.TransformPoint(seatSpot + Vector3.down * (0.94f * Rig.appearance.height)), t.rotation);
+        }
+
+        public void StandUp()
+        {
+            if (!Sitting) return;
+            Sitting = false;
+            var seat = SeatedOn; SeatedOn = null;
+            float yaw = transform.eulerAngles.y;
+            var at = transform.position + Vector3.up * 0.3f;
+            if (seat)
+            {
+                at = seat.StandPoint(seatSpot, 0);
+                for (int i = 0; i < 4; i++)
+                {
+                    var c = seat.StandPoint(seatSpot, i);
+                    if (!Physics.CheckCapsule(c + Vector3.up * 0.4f, c + Vector3.up * 1.5f, 0.26f, ~0, QueryTriggerInteraction.Ignore)) { at = c; break; }
+                }
+            }
+            var space = seatInterior; seatInterior = null;
+            if (space) EnterInterior(space, space.transform.InverseTransformPoint(at));
+            else Teleport(at, yaw);
+        }
+
         public void Unseat()
         {
             if (!SeatedIn) return;
@@ -222,6 +271,7 @@ namespace MadMax.Game
             float dt = Time.deltaTime;
             if (dt <= 0f || anim == null) return;          // anim is rebuilt with the body (lost on a domain reload)
             if (Ragdolled) return;
+            if (Sitting) { UpdateSitting(dt); return; }
             if (SeatedIn) { UpdateSeated(dt); return; }
             if (Interior) { UpdateInterior(dt); return; }
 
@@ -305,6 +355,14 @@ namespace MadMax.Game
             jump = false;
             Velocity = moved;
             Animate(dt, moved.magnitude, true, 0f);
+        }
+
+        void UpdateSitting(float dt)
+        {
+            if (!SeatedOn || moveInput.sqrMagnitude > 0.25f || jump) { jump = false; StandUp(); return; }
+            FollowSeat();
+            Velocity = Vector3.zero;
+            anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, lookPitch = lookPitch, grounded = true });
         }
 
         void UpdateSeated(float dt)

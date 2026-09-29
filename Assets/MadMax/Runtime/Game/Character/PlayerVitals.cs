@@ -55,7 +55,8 @@ namespace MadMax.Game
             float dt = Time.deltaTime;
             bool running = player && player.run && player.Velocity.sqrMagnitude > 4f && !player.SeatedIn;
             if (running) Spend(14f * dt);
-            float regenMult = (stats.bodyTemp < 36f ? 0.6f : 1f) * (stats.hunger < 20f || stats.thirst < 20f ? 0.5f : 1f);
+            float regenMult = (stats.bodyTemp < 36f ? 0.6f : 1f) * (stats.hunger < 20f || stats.thirst < 20f ? 0.5f : 1f)
+                * (stats.fed ? 1.2f : 1f) * (player && player.Sitting && player.SeatedOn ? player.SeatedOn.rest : 1f);
             if (Time.time - lastSpend > 1.2f) stats.stamina = Mathf.Min(stats.MaxStamina, stats.stamina + (10f + stats.Attribute(Attr.Endurance) * 1.5f) * dt * regenMult);
             if (Exhausted && stats.stamina > stats.MaxStamina * 0.3f) Exhausted = false;
             bool bleeding = false; foreach (var inj in stats.injuries) if (inj.Bleeding) { bleeding = true; break; }

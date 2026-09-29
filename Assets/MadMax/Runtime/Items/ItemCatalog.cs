@@ -14,7 +14,7 @@ namespace MadMax.Items
             if (id.StartsWith("ammo_")) return ItemCategory.Ammo;
             if (id.StartsWith("throw_")) return ItemCategory.Throwable;
             if (id.StartsWith("food_") || id.StartsWith("drink_")) return ItemCategory.Food;
-            if (id.StartsWith("use_") || id.StartsWith("med_") || id.StartsWith("farm_")) return ItemCategory.Consumable;
+            if (id.StartsWith("use_") || id.StartsWith("med_") || id.StartsWith("farm_") || id.StartsWith("dye_")) return ItemCategory.Consumable;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return ItemCategory.Seed;
             if (id.StartsWith("crop_")) return ItemCategory.Crop;
             if (id.StartsWith("cloth_")) return ItemCategory.Clothing;

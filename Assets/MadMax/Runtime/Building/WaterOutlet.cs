@@ -7,7 +7,7 @@ namespace MadMax.Building
     /// (or the piece's own storage). Dirty water can make you sick.</summary>
     public class WaterOutlet : MonoBehaviour, IInteractable
     {
-        public enum Kind { Sink, Shower, Barrel }
+        public enum Kind { Sink, Shower, Barrel, Bath }
         public Kind kind;
         UtilityNode node;
         void Awake() => node = GetComponent<UtilityNode>();
@@ -19,6 +19,7 @@ namespace MadMax.Building
             return kind switch
             {
                 Kind.Shower => w < 10f ? "SHOWER: " + q : "[E] SHOWER  " + q,
+                Kind.Bath => w < 40f ? "BATHTUB (NEEDS 40L): " + q : "[E] TAKE A BATH  " + q,
                 Kind.Sink => w < 0.5f ? "SINK: " + q : "[E] DRINK  [T] WASH HANDS / FILL  " + q,
                 _ => w < 0.5f ? "BARREL: " + q : "[E] DRINK  [T] FILL CANTEEN  " + q,
             };
@@ -26,6 +27,15 @@ namespace MadMax.Building
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
+            if (kind == Kind.Bath)
+            {
+                if (secondary) return;
+                float got = UtilityGrid.Draw(node, 40f, out bool clean);
+                if (got < 39.9f) { g.Toast("NOT ENOUGH WATER (40L)"); return; }
+                MadMax.Audio.Sfx.Play("splash", transform.position, 0.8f, 0.8f);
+                MadMax.Game.ScreenFader.FadeThrough(() => g.Bathe(clean), 1f);
+                return;
+            }
             if (kind == Kind.Shower)
             {
                 float got = UtilityGrid.Draw(node, 10f, out bool clean);

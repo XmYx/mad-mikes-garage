@@ -22,6 +22,7 @@ namespace MadMax.Building
         public int hits = 3;
         [System.NonSerialized] public uint netId;
         public string owner;             // builder's name (locks)
+        public byte dye;                 // paint (Pal.DyeRamp index), 0 = as built
 
         public static event Action Changed;
         public static readonly List<Placeable> All = new List<Placeable>();
@@ -34,13 +35,23 @@ namespace MadMax.Building
 
         public static Placeable ById(uint id) { if (id == 0) return null; foreach (var p in All) if (p && p.netId == id) return p; return null; }
 
-        const char Sep = '\u001e';
+        const char Sep = '\u001e', DyeMark = '\u001f';
 
+        /// <summary>Repaint the piece (dye items): swaps in a recoloured copy of its mesh.</summary>
+        public void SetDye(int d)
+        {
+            dye = (byte)Mathf.Clamp(d, 0, 6);
+            var def = FurnitureLibrary.Get(id);
+            if (def != null && TryGetComponent<MeshFilter>(out var mf)) mf.sharedMesh = Dyes.MeshFor(def, dye);
+        }
+
+        /// <summary>Functional state of the piece's components (+ its paint, as a leading "\u001f n \u001f" block).</summary>
         public string SaveState()
         {
             var parts = GetComponents<IPlaceState>();
-            if (parts.Length == 0) return null;
+            if (parts.Length == 0 && dye == 0) return null;
             var sb = new System.Text.StringBuilder();
+            if (dye != 0) sb.Append(DyeMark).Append(dye).Append(DyeMark);
             for (int i = 0; i < parts.Length; i++) { if (i > 0) sb.Append(Sep); sb.Append(parts[i].SaveState() ?? ""); }
             return sb.ToString();
         }
@@ -48,6 +59,13 @@ namespace MadMax.Building
         public void LoadState(string state)
         {
             if (string.IsNullOrEmpty(state)) return;
+            if (state[0] == DyeMark)
+            {
+                int end = state.IndexOf(DyeMark, 1);
+                if (end > 1 && int.TryParse(state.Substring(1, end - 1), out int d)) SetDye(d);
+                state = end > 0 ? state.Substring(end + 1) : "";
+            }
+            else if (dye != 0) SetDye(0);
             var parts = GetComponents<IPlaceState>();
             var chunks = state.Split(Sep);
             for (int i = 0; i < parts.Length && i < chunks.Length; i++) parts[i].LoadState(chunks[i]);

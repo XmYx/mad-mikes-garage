@@ -49,13 +49,16 @@ lantern, pipe shotgun, molotov.
 ## 2. Furniture `T1`
 *Exists:* beds, storage, stoves, ovens, lights, radio, TV, workbenches, crafting stations, climate pieces.
 
-- [ ] **Comfort**: a room's furniture (sheltered, enclosed) gives a comfort score → better sleep (rest regen,
+- [x] **Comfort**: a room's furniture (sheltered, enclosed) gives a comfort score → better sleep (rest regen,
       "WELL RESTED" buff for XP / stamina)
-- [ ] **Sit** on chairs, sofas and benches (rest, reading bonus)
-- [ ] New pieces: sofa, armchair, wardrobe (outfit storage), bookshelf (media storage, reading speed), weapon rack,
+- [x] **Sit** on chairs, sofas and benches (rest, reading bonus)
+- [x] New pieces: sofa, armchair, wardrobe (outfit storage), bookshelf (media storage, reading speed), weapon rack,
       trophy mount (animal heads), rug, wall clock, mirror (change hair / beard), shower + bathtub (hygiene,
       needs water), latrine (makes compost), sink + kitchen counter (water), dining table (meal buff)
-- [ ] **Dyes**: repaint pieces with dye items
+- [x] **Dyes**: repaint pieces with dye items
+      *Done:* `Comfort` (roof + structure walls + distinct pieces, halved outdoors; blood/bodies subtract), `Seat`
+      (player sits, lounging pose), WELL RESTED / WELL FED in `CharacterStats`, latrine need (`waste`), trophies are
+      loot for now (plates, hubcaps, ornaments, bull skulls; animal heads come with system 23), 6 dyes (stove).
 
 *Ties:* survival (sleep, hygiene), irrigation (water pieces), gardening (compost), animals (trophies), media.
 

@@ -48,6 +48,7 @@ namespace MadMax.Game
 
         public void Open(Page p)
         {
+            if (p != Page.Character) mirror = false;
             if (p == Page.Settings) settingsFrom = Current;
             Current = p;
             cursor = 0; scroll = 0;
@@ -57,6 +58,10 @@ namespace MadMax.Game
         }
 
         public void OpenCrafting(CraftingStation s) { station = s; category = 0; Open(Page.Crafting); }
+
+        /// <summary>The character page at a mirror: hair and beard can be changed there (not from the pack).</summary>
+        public void OpenMirror() { Open(Page.Character); mirror = true; Rebuild(); }
+        bool mirror;
 
         // ---- conversations and trade with NPCs
         MadMax.Npc.Dialogue talk;
@@ -167,7 +172,7 @@ namespace MadMax.Game
                     break;
                 case Page.Pause:
                     Add("RESUME", Close);
-                    Add("CHARACTER", () => Open(Page.Character));
+                    Add("OUTFIT", () => Open(Page.Character));
                     {
                         bool solo = MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online;
                         items.Add(new Item { label = "CLOCK", value = () => Mathf.FloorToInt(MadMax.World.DayNight.Hours).ToString("00") + ":" + Mathf.FloorToInt(MadMax.World.DayNight.Hours % 1f * 60f).ToString("00"),
@@ -211,12 +216,13 @@ namespace MadMax.Game
                     var a = rig.appearance;
                     void Look(string label, System.Func<string> v, System.Action<int> change) =>
                         items.Add(new Item { label = label, value = v, adjust = d => { change(d); game.Player.RebuildBody(); }, confirm = () => { change(1); game.Player.RebuildBody(); } });
-                    Look("SKIN", () => (a.skinTone + 1).ToString(), d => a.skinTone = (a.skinTone + d + 4) % 4);
-                    Look("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + 6) % 6));
-                    Look("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);
-                    Look("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3);
-                    Look("HEIGHT", () => Mathf.RoundToInt(a.height * 180) + " CM", d => a.height = Mathf.Clamp(a.height + d * 0.02f, 0.9f, 1.1f));
-                    Look("BUILD", () => Mathf.RoundToInt(a.build * 100) + "%", d => a.build = Mathf.Clamp(a.build + d * 0.05f, 0.85f, 1.2f));
+                    // skin, height and build are chosen at character creation; a mirror allows a haircut or a shave
+                    if (mirror)
+                    {
+                        Look("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + 6) % 6));
+                        Look("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);
+                        Look("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3);
+                    }
                     foreach (ClothingSlot slot in System.Enum.GetValues(typeof(ClothingSlot)))
                     {
                         var sl = slot;
@@ -657,7 +663,7 @@ namespace MadMax.Game
             {
                 case Page.Main: DrawMain(c); break;
                 case Page.Crafting: DrawCrafting(c); break;
-                case Page.Character: DrawList(c, "CHARACTER", 200); break;
+                case Page.Character: DrawList(c, mirror ? "MIRROR" : "OUTFIT", 200); break;
                 case Page.NewGame: DrawList(c, hostNew ? "NEW HOSTED GAME" : "NEW GAME", 240); break;
                 case Page.Inventory: DrawList(c, "INVENTORY   " + game.CarriedWeight.ToString("0.0") + "/" + game.Stats.CarryCapacity.ToString("0") + " KG" + (game.CarriedWeight > game.Stats.CarryCapacity ? "  OVERLOADED" : ""), 250); DrawHint(c); break;
                 case Page.Skills: DrawList(c, "SURVIVOR", 230); DrawHint(c); break;

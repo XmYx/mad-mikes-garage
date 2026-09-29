@@ -133,6 +133,16 @@ namespace MadMax.Game
                 return;
             }
 
+            // ---- sitting on furniture: stand up, use what is in reach
+            if (Player.Sitting)
+            {
+                bool T0 = KeyDown(kb, Key.T) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
+                string near = PieceInteraction(E, T0);
+                Prompt = "[F] STAND UP" + (near != null ? "   " + near : "");
+                if (F) Player.StandUp();
+                return;
+            }
+
             bool G = KeyDown(kb, Key.G);
             bool K = KeyDown(kb, Key.K);
 

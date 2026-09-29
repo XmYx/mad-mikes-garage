@@ -28,9 +28,21 @@ namespace MadMax.Game
         {
             UtilityGrid.Tick(dt);
             if ((spoilTimer += dt) > 10f) { Spoil(spoilTimer); spoilTimer = 0f; }
-            if (!Rules.survival || Vitals == null || Vitals.Dead) return;
             var s = Stats;
-            float rate = Rules.hungerRate * (s.sick > 0f ? 1.5f : 1f);
+            float now = DayNight.TotalDays * 24f;
+            if (s.rested && now >= s.restedUntil) Toast("NO LONGER WELL RESTED");
+            if (s.fed && now >= s.fedUntil) Toast("NO LONGER WELL FED");
+            s.rested = now < s.restedUntil; s.fed = now < s.fedUntil;
+            if (!Rules.survival || Vitals == null || Vitals.Dead) return;
+            if (s.waste >= 100f && !wasteWarned) { wasteWarned = true; Toast("YOU NEED A LATRINE"); }
+            if (s.waste >= 140f)
+            {
+                // nature calls: behind the nearest bush, with the hygiene that goes with it
+                s.waste = 0f; wasteWarned = false;
+                s.hygiene = Mathf.Max(0f, s.hygiene - 15f);
+                Toast("YOU WENT BEHIND A BUSH");
+            }
+            float rate = Rules.hungerRate * (s.sick > 0f ? 1.5f : 1f) * (s.fed ? 0.7f : 1f);
             bool active = Player && Player.run && Player.Velocity.sqrMagnitude > 4f;
             s.hunger = Mathf.Max(0f, s.hunger - dt * 100f / (45f * 60f) * rate * (active ? 1.4f : 1f));
             s.thirst = Mathf.Max(0f, s.thirst - dt * 100f / (28f * 60f) * rate * (Weather.Temperature > 30f ? 1.4f : 1f) * (active ? 1.3f : 1f));
@@ -56,8 +68,16 @@ namespace MadMax.Game
             Stats.hunger = Mathf.Clamp(Stats.hunger + f.hunger, 0f, 100f);
             Stats.thirst = Mathf.Clamp(Stats.thirst + f.thirst, 0f, 100f);
             Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + f.heal);
+            if (Rules.survival) Stats.waste += Mathf.Max(0f, f.hunger) * 0.5f;
             float sick = f.sickChance + (Stats.hygiene < 30f ? 0.15f : 0f) - Stats.Level(Skill.Survival) * 0.01f;
+            float table = f.hunger >= 15f && !Current ? DiningTable.Near(Player.transform.position) : 0f;
             if (Random.value < sick) Poison("FOOD POISONING");
+            else if (table > 0f)
+            {
+                // a meal at the table: longer when sitting down to it
+                Stats.fedUntil = Mathf.Max(Stats.fedUntil, DayNight.TotalDays * 24f + table * (Player.Sitting ? 1.5f : 1f));
+                Toast("ATE " + f.name + " AT THE TABLE: WELL FED");
+            }
             else Toast("ATE " + f.name);
             Stats.Practice(Skill.Survival, 1f);
         }
@@ -69,26 +89,47 @@ namespace MadMax.Game
             else Toast(dirty ? "DRANK DIRTY WATER" : "DRANK");
         }
 
+        bool wasteWarned;
+
         void Poison(string why) { Stats.sick = Mathf.Max(Stats.sick, 120f); Toast(why + "!"); }
 
         public void Wash(float amount, string msg) { Stats.hygiene = Mathf.Min(100f, Stats.hygiene + amount); Toast(msg); }
 
         public void SetSpawn(Vector3 p) { spawnPoint = p; Toast("SPAWN POINT SET"); }
 
-        public void Sleep()
+        /// <summary>Sleep until morning (or rest by day). <paramref name="comfort"/> (0..10, the bed's room) scales the
+        /// healing; 3+ wakes you WELL RESTED for 4..16 game hours (faster learning, more stamina).</summary>
+        public void Sleep(float comfort = 3f, string note = null)
         {
             if (DayNight.Darkness > 0.2f || DayNight.Hours > 20f || DayNight.Hours < 5f)
             {
                 float slept = Mathf.Repeat(7f - DayNight.Hours, 24f);
+                if (DayNight.Hours > 7f) DayNight.SetDay(DayNight.Day + 1);        // slept past midnight
                 DayNight.SetHours(7f);
                 Stats.hunger = Mathf.Max(5f, Stats.hunger - slept * 2f);
                 Stats.thirst = Mathf.Max(5f, Stats.thirst - slept * 3f);
-                Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + Stats.MaxHealth * 0.35f);
-                Toast("SLEPT UNTIL MORNING");
+                Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + Stats.MaxHealth * (0.2f + comfort * 0.03f));
+                if (comfort >= 3f)
+                {
+                    Stats.restedUntil = DayNight.TotalDays * 24f + 4f + comfort * 1.2f;
+                    Stats.rested = true;
+                    Toast("SLEPT UNTIL MORNING: WELL RESTED (" + Comfort.Word(comfort) + ")");
+                }
+                else Toast("SLEPT BADLY: " + Comfort.Word(comfort) + (note != null ? " (" + note + ")" : ""));
                 MadMax.Net.NetSession.Instance?.SendWeather();
             }
             else Toast("RESTED");
             Stats.stamina = Stats.MaxStamina;
+        }
+
+        /// <summary>A long soak in the tub: clean, warm, rested for a while.</summary>
+        public void Bathe(bool clean)
+        {
+            Stats.hygiene = clean ? 100f : Mathf.Max(Stats.hygiene, 70f);
+            Stats.stamina = Stats.MaxStamina;
+            Stats.bodyTemp = Mathf.Max(Stats.bodyTemp, 36.9f);
+            Stats.restedUntil = Mathf.Max(Stats.restedUntil, DayNight.TotalDays * 24f + 2f);
+            Toast(clean ? "A LONG HOT SOAK: CLEAN AND RELAXED" : "A MURKY BATH: CLEANER, AT LEAST");
         }
 
         /// <summary>A shovel stab into bare ground: a small dig, soil into the pack.</summary>
@@ -197,6 +238,53 @@ namespace MadMax.Game
             }
             if (id == ItemIds.Pills && Inventory.TakeItem(id)) { Stats.sick = 0f; Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + 10f); Toast("FEELING BETTER"); return; }
             if (id == ItemIds.Fertilizer) Toast("USE ON A GARDEN PLOT [T]");
+            if (id.StartsWith("dye_")) DyePiece(id);
+        }
+
+        /// <summary>Paint the built piece in front of you with a dye item (pieces you own).</summary>
+        void DyePiece(string id)
+        {
+            if (Current) return;
+            var p = PieceInFront(2.6f);
+            if (!p) { Toast("LOOK AT A BUILT PIECE TO PAINT IT"); return; }
+            if (!OwnsPiece(p)) { Toast("NOT YOUR PIECE"); return; }
+            int dye = Dyes.IndexOf(id);
+            if (p.dye == dye) { Toast("ALREADY THAT COLOUR"); return; }
+            if (!Inventory.TakeItem(id)) return;
+            p.SetDye(dye);
+            p.Dirty();
+            Stats.Practice(Skill.Construction, 1f);
+            MadMax.Audio.Sfx.Play("pour", p.transform.position, 0.6f, 1.2f);
+            var def = FurnitureLibrary.Get(p.id);
+            Toast("PAINTED " + (def != null ? def.name : "PIECE") + " " + ItemCatalog.Name(id).Replace(" DYE", ""));
+        }
+
+        /// <summary>Built piece under the crosshair (first / third person) or nearest in front of the player.</summary>
+        Placeable PieceInFront(float reach)
+        {
+            if (cameraRig && cameraRig.pixel && (cameraRig.mode == ViewMode.FirstPerson || cameraRig.mode == ViewMode.ThirdPerson))
+            {
+                var cam = cameraRig.pixel.transform;
+                if (Physics.Raycast(cam.position, cam.forward, out var hit, reach + 4f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    var pl = hit.collider.GetComponentInParent<Placeable>();
+                    if (pl && Vector3.Distance(hit.point, Player.Eye.position) < reach + 0.5f) return pl;
+                }
+            }
+            var eye = Player.Eye.position;
+            Placeable best = null; float bd = reach;
+            foreach (var pl in Placeable.All)
+            {
+                if (!pl || !pl.TryGetComponent<Collider>(out var col)) continue;
+                bool closest = !(col is MeshCollider mc) || mc.convex;
+                var q = closest ? col.ClosestPoint(eye) : col.bounds.ClosestPoint(eye);
+                float d = Vector3.Distance(q, eye);
+                if (d > bd) continue;
+                var toward = q - eye; toward.y = 0f;
+                if (toward.sqrMagnitude > 0.04f && Vector3.Dot(toward.normalized, Player.transform.forward) < 0.2f) continue;
+                bd = d; best = pl;
+            }
+            return best;
         }
 
         /// <summary>Food rots over time (much slower in a powered fridge).</summary>

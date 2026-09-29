@@ -34,7 +34,7 @@ namespace MadMax.Net
     public class NetSession : MonoBehaviour
     {
         public static NetSession Instance { get; private set; }
-        public const int ProtocolVersion = 1;
+        public const int ProtocolVersion = 2;
         public const ushort DefaultPort = 7777;
         public const ushort HostPlayerId = 1;
 
@@ -813,7 +813,7 @@ namespace MadMax.Net
         public void SendWeather()
         {
             if (!ShouldSend || !IsServer) return;
-            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); });
+            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); });
         }
 
         public void SendAppearance()
@@ -1019,7 +1019,8 @@ namespace MadMax.Net
                     case Msg.Weather:
                     {
                         bool rain = r.Bool(); float wet = r.Float(), snow = r.Float(), temp = r.Float(), rise = r.Float(), hours = r.Float();
-                        if (IsClient) { Weather.Restore(rain, wet, snow, temp, rise); DayNight.SetHours(hours); }
+                        int day = r.Int();
+                        if (IsClient) { Weather.Restore(rain, wet, snow, temp, rise); DayNight.SetHours(hours); DayNight.SetDay(day); }
                         break;
                     }
                 }

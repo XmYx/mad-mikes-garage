@@ -34,10 +34,20 @@ namespace MadMax.Items
             WallKit = "kit_wall_scrap", BarricadeKit = "kit_barricade", ChestKit = "kit_chest", FloodlightKit = "kit_floodlight", TvKit = "kit_tv", Molotov = "throw_molotov",
             Canteen = "use_canteen", Sponge = "use_sponge", Fertilizer = "farm_fertilizer", Pills = "med_pills", Paper = "misc_paper";
 
+        /// <summary>Dye items by index (see <c>Pal.DyeRamp</c>); 0 = none.</summary>
+        public static readonly string[] Dyes = { null, "dye_red", "dye_blue", "dye_green", "dye_yellow", "dye_black", "dye_white" };
+
+        static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
+        {
+            { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
+            { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
+        };
+
         public static string Name(string id)
         {
             var food = FoodLibrary.Get(id);
             if (food != null) return food.name;
+            if (extraNames.TryGetValue(id, out var extra)) return extra;
             var seed = FoodLibrary.SeedName(id);
             if (seed != null) return seed;
             foreach (var r in RecipeLibrary.All) if (r.output == id && r.amount == 1) return r.name;
