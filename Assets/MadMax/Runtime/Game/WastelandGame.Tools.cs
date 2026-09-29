@@ -22,7 +22,7 @@ namespace MadMax.Game
         {
             if (string.IsNullOrEmpty(id) || Inventory.GetItem(id) <= 0) return;
             ToolWear.TryGetValue(id, out var w);
-            w += amount * Mathf.Max(0.5f, 1f - Stats.Level(Skill.Crafting) * 0.04f) * GameRules.Current.DamageTaken;
+            w += amount * Mathf.Max(0.5f, 1f - Stats.Level(Skill.Crafting) * 0.04f) * GameRules.Current.DamageTaken * QualityWear(id);
             if (w < 1f) { ToolWear[id] = w; return; }
             ToolWear[id] = 0f;
             Inventory.TakeItem(id);

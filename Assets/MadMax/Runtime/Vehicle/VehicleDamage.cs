@@ -70,7 +70,7 @@ namespace MadMax.Vehicles
             var shield = ShieldAt(point, out var armor);
             if (shield)
             {
-                shield.damage += s * partDamagePerMs * 0.5f / shield.sizeClass;
+                shield.damage += s * partDamagePerMs * 0.5f / shield.sizeClass * shield.Toughness;
                 s *= 1f - armor.absorb;
                 if (c.rigidbody && (armor.spikes > 0f || armor.ram > 0f) && c.rigidbody.TryGetComponent<VehicleDamage>(out var victim))
                     victim.ApplyHit(point, -normal, (armor.spikes * 1.5f + armor.ram) * dv * 0.15f, 0.5f, gameObject);
@@ -99,12 +99,12 @@ namespace MadMax.Vehicles
                 if (part.category == PartCategory.Wheel)
                 {
                     if (Vector3.Distance(r.bounds.center, point) > part.radius + 0.3f) continue;
-                    part.damage += s * wheelDamagePerMs;           // bent rim / rubbing tyre: drag + wobble
+                    part.damage += s * wheelDamagePerMs * part.Toughness;           // bent rim / rubbing tyre: drag + wobble
                 }
                 else
                 {
                     if (d > radius) continue;
-                    part.damage += s * partDamagePerMs * (1f - d / radius) / part.sizeClass;
+                    part.damage += s * partDamagePerMs * (1f - d / radius) / part.sizeClass * part.Toughness;
                 }
                 if (part.damage >= 1f && part.category != PartCategory.Engine) Break(socket, normal);
             }
@@ -153,7 +153,7 @@ namespace MadMax.Vehicles
                 var part = socket.Current;
                 if (!part || !part.TryGetComponent<Renderer>(out var r)) continue;
                 if (Mathf.Sqrt(r.bounds.SqrDistance(point)) > radius + 0.1f) continue;
-                part.damage += 0.2f * power / part.sizeClass;
+                part.damage += 0.2f * power / part.sizeClass * part.Toughness;
                 if (part.damage >= 1f && part.category != PartCategory.Engine) Break(socket, -direction);
             }
             Impact?.Invoke(power, point);

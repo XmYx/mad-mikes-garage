@@ -17,6 +17,11 @@ namespace MadMax.Vehicles
         [Tooltip("0 = pristine, 1 = destroyed (loose parts fall off). Travels with the part.")]
         public float damage;
         [System.NonSerialized] public uint netId;   // loose parts only (network identity)
+        /// <summary>Make: 0 crude, 1 sturdy (found parts), 2 fine (skilled crafting at the garage).</summary>
+        public int quality = 1;
+        /// <summary>Damage taken multiplier from the make.</summary>
+        public float Toughness => quality <= 0 ? 1.25f : quality >= 2 ? 0.8f : 1f;
+        public static readonly string[] QualityNames = { "CRUDE", "STURDY", "FINE" };
 
         MountSocket socket;
         public MountSocket Socket

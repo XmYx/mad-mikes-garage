@@ -20,6 +20,8 @@ namespace MadMax.Vehicles
     {
         public float fuelCapacity = 60f, oilCapacity = 5f, coolantCapacity = 8f;
         public float fuel = 40f, oil = 5f, coolant = 8f;
+        /// <summary>Litres of fuel treated with additive still in the tank (burns 25 % leaner).</summary>
+        public float additive;
         public bool usesCoolant = true;
         [Tooltip("Two-stroke: oil is mixed into the fuel, no separate oil system.")]
         public bool oilInFuel;
@@ -98,7 +100,9 @@ namespace MadMax.Vehicles
             {
                 float load = driver.DriveCommand;
                 float rpmFrac = driver.Rpm / engine.maxRpm;
-                fuel = Mathf.Max(0f, fuel - consumption * fuelMultiplier * (0.12f + 0.88f * load) * (0.3f + rpmFrac) * engine.maxTorque / 500f * 0.004f * dt);
+                float burn = consumption * fuelMultiplier * (0.12f + 0.88f * load) * (0.3f + rpmFrac) * engine.maxTorque / 500f * 0.004f * dt;
+                if (additive > 0f) { burn *= 0.75f; additive = Mathf.Max(0f, additive - burn); }
+                fuel = Mathf.Max(0f, fuel - burn);
                 if (!oilInFuel) oil = Mathf.Max(0f, oil - 0.00008f * load * dt);
 
                 // heat in, heat out

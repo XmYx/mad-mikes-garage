@@ -57,7 +57,7 @@ namespace MadMax.Game
                 var d = ClothingLibrary.Get(id);
                 ClothWear.TryGetValue(id, out var w);
                 float before = w;
-                w += amount / Mathf.Max(0.2f, d.durability) * GameRules.Current.DamageTaken;
+                w += amount / Mathf.Max(0.2f, d.durability) * GameRules.Current.DamageTaken * QualityWear(ClothingLibrary.ItemId(d));
                 if (w >= 1f) { FallApart(d); rebuild = true; continue; }
                 ClothWear[id] = w;
                 if (before < 0.65f && w >= 0.65f) { rebuild = true; Toast("YOUR " + d.name + " IS TORN"); }

@@ -55,7 +55,10 @@ namespace MadMax.Npc
             ResourceType.IronOre or ResourceType.CopperOre or ResourceType.TinOre or ResourceType.Bauxite or ResourceType.Silica => 1.5f,
             ResourceType.Iron => 4f, ResourceType.Copper => 5f, ResourceType.Bronze => 6f, ResourceType.Aluminium => 6f, ResourceType.Charcoal => 1.5f,
             ResourceType.Asphalt => 2f, ResourceType.Concrete => 2.5f, ResourceType.Lime => 1.5f, ResourceType.Water => 0.8f, ResourceType.Ethanol => 3f,
-            ResourceType.DirtyWater => 0.1f, _ => 0.5f
+            ResourceType.DirtyWater => 0.1f,
+            ResourceType.Hide => 2f, ResourceType.Leather => 4f, ResourceType.Gunpowder => 6f, ResourceType.Sulfur => 3f, ResourceType.CrudeOil => 1.5f,
+            ResourceType.Diesel => 2.2f, ResourceType.Tar => 1f, ResourceType.SeedOil => 2f, ResourceType.Coal => 1.2f, ResourceType.LeadOre => 1.5f,
+            ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f, _ => 0.5f
         };
 
         public static string Name(string id) => id.StartsWith("res:") ? ResourceInfo.Name((ResourceType)int.Parse(id.Substring(4)))

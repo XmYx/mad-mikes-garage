@@ -68,6 +68,14 @@ namespace MadMax.Items
                 F("food_salad", "GARDEN SALAD", 30, 8, 20, H("6a9a3a"), 0f, 4f),
                 F("food_fruit", "FRUIT BOWL", 24, 10, 20, H("c04a3a"), 0f, 3f),
                 F("food_trailmix", "TRAIL MIX", 18, -3, 0, H("6a4a2a")),
+                F("food_meat_raw", "RAW MEAT", 10, 0, 20, H("a83a3a"), 0.35f),
+                F("food_meat_cooked", "COOKED MEAT", 38, 0, 30, H("8a4a2a"), 0f, 4f),
+                F("food_meat_smoked", "SMOKED MEAT", 32, -3, 0, H("6a3a24"), 0f, 3f),
+                F("food_jerky", "JERKY", 20, -5, 0, H("5a2a1a")),
+                F("food_fish_raw", "RAW FISH", 8, 2, 15, H("9ab0b8"), 0.3f),
+                F("food_fish_cooked", "GRILLED FISH", 30, 2, 25, H("c09060"), 0f, 3f),
+                F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
+                F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>
@@ -80,6 +88,7 @@ namespace MadMax.Items
                 Crop("seed_pumpkin", "PUMPKIN", 10, 5, H("3a6a20"), H("e08020"), ("food_pumpkin", 1, 2)),
                 Crop("seed_sunflower", "SUNFLOWER", 8, 16, H("4a7a24"), H("f0c020"), ("food_sunseeds", 2, 4), ("crop_flower", 1, 1)),
                 Crop("seed_cotton", "COTTON", 9, 9, H("4a6a2a"), H("eeeadc"), ("crop_cotton", 2, 4)),
+                Crop("seed_hemp", "HEMP", 8, 16, H("3a6a24"), H("6a8a3a"), ("crop_hemp", 2, 4), ("food_hempseed", 1, 2)),
                 Crop("seed_herbs", "HERBS", 4, 4, H("4a8030"), H("6aa040"), ("food_herbs", 2, 3)),
                 Crop("seed_flower", "FLOWERS", 5, 6, H("3a7024"), H("d04070"), ("crop_flower", 1, 3)),
                 Crop("seed_berries", "BERRY BUSH", 9, 7, H("2a5a24"), H("6a1c50"), ("food_berries", 3, 6)),

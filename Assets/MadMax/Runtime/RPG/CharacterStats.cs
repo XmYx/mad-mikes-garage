@@ -69,6 +69,8 @@ namespace MadMax.RPG
         public float waste;                                          // 0..140: meals eaten since the last latrine visit
         public float wetness;                                        // 0..1 soaked clothes (rain, swimming)
         [NonSerialized] public float carryBonus;                     // backpacks (kg)
+        public float painkillerUntil;                                // game hours: wounds hamper less while it lasts
+        [NonSerialized] public bool painkilled;
         [NonSerialized] public bool rested, fed;                     // WELL RESTED (XP, stamina), WELL FED (slower hunger)
         public List<Injury> injuries = new List<Injury>();
 
@@ -156,7 +158,7 @@ namespace MadMax.RPG
                 if (injuries != null)
                     foreach (var i in injuries)
                         if (i.zone == BodyZone.Torso) m = Mathf.Max(m, (i.type == Wound.Fracture || i.type == Wound.DeepWound ? 0.8f : i.type == Wound.Laceration ? 0.4f : 0.15f) * i.severity);
-                return m;
+                return painkilled ? m * 0.5f : m;
             }
         }
         public float MoveSpeed => 0.9f + Attribute(Attr.Agility) * 0.02f;

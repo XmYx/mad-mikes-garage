@@ -308,10 +308,13 @@ namespace MadMax.Game
         void PayFrom(List<Inventory> src, ResourceType t, int n) { foreach (var i in src) { int take = Mathf.Min(n, i.Get(t)); if (take > 0) { i.TrySpend(t, take); n -= take; } if (n <= 0) return; } }
         void TakeFrom(List<Inventory> src, string id, int n) { foreach (var i in src) { int take = Mathf.Min(n, i.GetItem(id)); if (take > 0) { i.TakeItem(id, take); n -= take; } if (n <= 0) return; } }
 
+        /// <summary>Pay a recipe's inputs and queue it at the station (worked off over time), or make it on the spot
+        /// when crafted without a station.</summary>
         public void Craft(Recipe r, CraftingStation station)
         {
-            if (!Stats.Knows(RecipeLibrary.KnowledgeFor(r))) { Toast("UNKNOWN RECIPE: READ, WATCH OR RESEARCH"); return; }
+            if (!Stats.Knows(RecipeLibrary.KnowledgeFor(r))) { Toast("UNKNOWN RECIPE: READ, WATCH, RESEARCH OR FIND A BLUEPRINT"); return; }
             if (station && !station.Powered) { Toast("NO POWER"); return; }
+            if (station && station.queue.Count >= CraftingStation.MaxQueue) { Toast("THE QUEUE IS FULL"); return; }
             if (!CanCraft(r, station)) { Toast("MISSING MATERIALS"); return; }
             var src = CraftSources(station);
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) PayFrom(src, t, RecipeLibrary.Amount(n));
@@ -321,34 +324,10 @@ namespace MadMax.Game
                 if (CountRes(src, r.fuel) >= r.fuelAmount) PayFrom(src, r.fuel, r.fuelAmount);
                 else PayFrom(src, ResourceType.Charcoal, r.fuelAmount);
             }
-            switch (r.kind)
-            {
-                case OutputKind.Item: Inventory.AddItem(r.output, r.amount); break;
-                case OutputKind.Resource: Inventory.Add(r.outputResource, r.amount); break;
-                case OutputKind.Part:
-                {
-                    var at = station ? station.OutputPoint : Player.transform.position + Vector3.up;
-                    var part = SpawnPart(r.output, at, station ? station.transform.rotation : Quaternion.identity);
-                    if (part) { var rb = part.gameObject.AddComponent<Rigidbody>(); rb.mass = part.mass; MadMax.Net.NetSession.Instance?.SendLooseSpawn(part); }
-                    break;
-                }
-                case OutputKind.Vehicle:
-                {
-                    var prefab = PrefabFor(r.output);
-                    if (!prefab) break;
-                    var at = station ? station.OutputPoint : Player.transform.position + Player.transform.forward * 5f;
-                    var v = Instantiate(prefab, at + Vector3.up * 0.6f, station ? station.transform.rotation : Quaternion.identity).GetComponent<VehicleDriver>();
-                    Register(v, fleet);
-                    if (v.TryGetComponent<VehicleSystems>(out var vs)) { vs.fuel = 5f; vs.oil = vs.oil * 0.5f; }
-                    MadMax.Net.NetSession.Instance?.SendVehicleSpawn(v, r.output);
-                    break;
-                }
-            }
-            if (r.byproducts != null) foreach (var (t, n) in r.byproducts) Inventory.Add(t, n);
-            if (DebrisSystem.Instance && station)
-                for (int i = 0; i < 6; i++) DebrisSystem.Instance.EmitPuff(station.OutputPoint, new Color32(255, 220, 120, 255), 0.03f, Random.insideUnitSphere * 2f + Vector3.up, 0.3f);
-            Stats.Practice(r.category == RecipeCategory.Cooking || r.category == RecipeCategory.Farming ? Skill.Farming : Skill.Crafting, 4f + r.resources.Length * 1.5f);
-            Toast("CRAFTED " + r.name);
+            if (!station) { Produce(r, null); return; }
+            station.Enqueue(r, CraftSpeed(r));
+            MadMax.Audio.Sfx.Play2D("click", 0.5f);
+            Toast("QUEUED " + r.name + " (" + Mathf.CeilToInt(RecipeLibrary.Seconds(r) / CraftSpeed(r)) + " S)");
         }
 
         // ------------------------------------------------------------------ network

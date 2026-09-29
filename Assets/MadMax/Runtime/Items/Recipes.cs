@@ -40,6 +40,9 @@ namespace MadMax.Items
         static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
         {
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
+            { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
+            { "bp_cargo_generator", "BLUEPRINT: ONBOARD GENERATOR" }, { "bp_lights_search", "BLUEPRINT: SEARCHLIGHT" }, { "bp_framepack", "BLUEPRINT: FRAME PACK" },
+            { "med_antibiotics", "ANTIBIOTICS" }, { "med_painkillers", "PAINKILLERS" }, { "use_fuel_additive", "FUEL ADDITIVE" }, { "use_sewing_kit", "SEWING KIT" },
             { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
@@ -107,7 +110,7 @@ namespace MadMax.Items
                 {
                     id = "part_" + id, name = id.Replace('_', ' ').ToUpperInvariant(), category = RecipeCategory.Vehicles, kind = OutputKind.Part,
                     output = id, description = cat.ToString().ToUpperInvariant() + " PART, SIZE " + size, resources = res.ToArray(), station = "garage",
-                    knowledge = id == "weapon_mg" || id == "weapon_flamer" ? "read_book_gunsmith" : null
+                    knowledge = id == "weapon_mg" || id == "weapon_flamer" || id == "weapon_harpoon" || id == "cargo_generator" || id == "lights_search" ? "bp_" + id : null
                 });
             }
         }
@@ -179,7 +182,12 @@ namespace MadMax.Items
             };
             list.AddRange(Extra());
             list.AddRange(Roadmap());
-            foreach (var r in list) if (r.category == RecipeCategory.Clothing) r.station = "sewing";    // all clothes at the sewing table
+            foreach (var r in list)
+            {
+                if (r.category == RecipeCategory.Clothing) r.station = "sewing";                        // all clothes at the sewing table
+                // firearms and their ammunition at the gunsmith bench (melee and caltrops stay at the workbench)
+                if (r.category == RecipeCategory.Weapons && r.output != null && (r.output == ItemIds.Shotgun || (r.output.StartsWith("ammo_") && r.output != "ammo_caltrops"))) r.station = "gunsmith";
+            }
             return list;
         }
 
@@ -320,6 +328,37 @@ namespace MadMax.Items
             { "shotgun", "k_firearms" }, { "shells", "k_firearms" }, { "turret", "k_weapon_mounts" }, { "wall", "k_walls" }, { "floodlight", "k_electric" },
             { "tv", "k_electric" }, { "coolant", "k_coolant" }, { "molotov", "k_molotov" },
         };
+
+        public static Recipe Get(string id) { foreach (var r in All) if (r.id == id) return r; return null; }
+
+        /// <summary>Working time at a station (seconds at skill 0): explicit per recipe, else by category.</summary>
+        public static float Seconds(Recipe r)
+        {
+            if (r.seconds > 2.01f) return r.seconds;
+            switch (r.kind)
+            {
+                case OutputKind.Vehicle: return 150f;
+                case OutputKind.Part: return 45f;
+            }
+            switch (r.category)
+            {
+                case RecipeCategory.Tools: return 20f;
+                case RecipeCategory.Weapons: return 25f;
+                case RecipeCategory.Building: return 15f;
+                case RecipeCategory.Clothing: return 20f;
+                case RecipeCategory.Cooking: return 12f;
+                case RecipeCategory.Farming: return 15f;
+                case RecipeCategory.Media: return 30f;
+                case RecipeCategory.Refining: return 25f;
+                case RecipeCategory.Smelting: return 30f;
+                case RecipeCategory.Fuel: return 25f;
+                default: return 10f;
+            }
+        }
+
+        /// <summary>Crafted things whose make matters (crude / sturdy / fine): tools, weapons, clothes, parts.</summary>
+        public static bool HasQuality(Recipe r) => r.kind == OutputKind.Part ||
+            (r.kind == OutputKind.Item && (r.category == RecipeCategory.Tools || r.category == RecipeCategory.Weapons || r.category == RecipeCategory.Clothing) && !r.output.StartsWith("ammo_"));
 
         public static string KnowledgeFor(Recipe r) => r.knowledge ?? (Gates.TryGetValue(r.id, out var k) ? k : null);
 

@@ -52,12 +52,46 @@ namespace MadMax.Items
             yield return Sew("hikingpack", "HIKING PACK", "+18 KG CARRY", null, (C, 8), (Rb, 1));
             yield return Sew("framepack", "FRAME PACK", "+28 KG CARRY", null, (C, 8), (ResourceType.Aluminium, 2));
             // ---- 4. vehicle attachments: ammunition for mounted weapons
-            var mg = Itm("ammo_mg", "MG BELT X2", RecipeCategory.Weapons, "workbench", "ammo_mg", 2, "20 ROUNDS EACH FOR A ROOF MG", null, (Cu, 1), (S, 2));
+            var mg = Itm("ammo_mg", "MG BELT X2", RecipeCategory.Weapons, "gunsmith", "ammo_mg", 2, "20 ROUNDS EACH FOR A ROOF MG", null, (Cu, 1), (S, 1), (ResourceType.Gunpowder, 1));
             mg.knowledge = "read_book_gunsmith";
             yield return mg;
             yield return Itm("ammo_harpoon", "HARPOON BOLTS X2", RecipeCategory.Weapons, "workbench", "ammo_harpoon", 2, "BARBED BOLTS FOR THE HARPOON", null, (Fe, 2));
             yield return Itm("ammo_caltrops", "CALTROP BAG", RecipeCategory.Weapons, "workbench", "ammo_caltrops", 1, "FOR THE REAR DROPPER", null, (S, 3));
             yield return Itm("ammo_smoke", "SMOKE GRENADES X2", RecipeCategory.Weapons, "workbench", "ammo_smoke", 2, "FOR SMOKE DISCHARGERS", null, (ResourceType.Charcoal, 2), (ResourceType.Cloth, 1));
+
+            // ---- 5. crafting: chemistry lab, tanning rack, smokehouse, loom
+            var Eth = ResourceType.Ethanol; var Ch = ResourceType.Charcoal;
+            var gp = Res("gunpowder", "GUNPOWDER X4", RecipeCategory.Supplies, "chemlab", ResourceType.Gunpowder, 4, "CHARCOAL, SULFUR, AND NITRE FROM COMPOST", (Ch, 2), (ResourceType.Sulfur, 1));
+            gp.items = new[] { (ItemIds.Fertilizer, 1) };
+            yield return gp;
+            yield return Itm("antibiotics", "ANTIBIOTICS X2", RecipeCategory.Supplies, "chemlab", "med_antibiotics", 2, "CURES INFECTION AND FEVER", new[] { ("food_herbs", 2) }, (Eth, 1), (G, 1));
+            yield return Itm("painkillers", "PAINKILLERS X3", RecipeCategory.Supplies, "chemlab", "med_painkillers", 3, "WOUNDS HAMPER LESS FOR 3 HOURS", new[] { ("food_herbs", 1) }, (Eth, 1));
+            yield return Itm("fuel_additive", "FUEL ADDITIVE", RecipeCategory.Supplies, "chemlab", "use_fuel_additive", 1, "A TANK BURNS 25% LEANER", null, (Eth, 2), (Oil, 1));
+            yield return Res("acid", "BATTERY ACID 2L", RecipeCategory.Supplies, "chemlab", ResourceType.Acid, 2, "SULFUR IN WATER", (ResourceType.Sulfur, 1), (ResourceType.Water, 2));
+            var tan = Res("leather", "LEATHER X2", RecipeCategory.Supplies, "tanning", ResourceType.Leather, 2, "SCRAPED, LIMED AND CURED HIDE", (ResourceType.Hide, 2), (ResourceType.Lime, 1));
+            tan.seconds = 60f;
+            yield return tan;
+            foreach (var (raw, done, name) in new[] { ("food_meat_raw", "food_meat_smoked", "SMOKED MEAT"), ("food_fish_raw", "food_fish_smoked", "SMOKED FISH") })
+            {
+                var sm = Itm("smoke_" + done, name + " X2", RecipeCategory.Cooking, "smokehouse", done, 2, "KEEPS FOREVER", new[] { (raw, 2) });
+                sm.fuel = ResourceType.Wood; sm.fuelAmount = 1; sm.seconds = 45f;
+                yield return sm;
+            }
+            var jerky = Itm("smoke_jerky", "JERKY X4", RecipeCategory.Cooking, "smokehouse", "food_jerky", 4, "DRY, SALTY, KEEPS FOREVER", new[] { ("food_meat_raw", 3) });
+            jerky.fuel = ResourceType.Wood; jerky.fuelAmount = 1; jerky.seconds = 60f;
+            yield return jerky;
+            foreach (var st in new[] { "stove", "oven" })
+            {
+                var fuel = st == "stove" ? ResourceType.Wood : ResourceType.None;
+                yield return Cook(st, "meat", "COOKED MEAT", "food_meat_cooked", 1, fuel, ("food_meat_raw", 1));
+                yield return Cook(st, "fish", "GRILLED FISH", "food_fish_cooked", 1, fuel, ("food_fish_raw", 1));
+            }
+            foreach (var (fibre, name) in new[] { ("crop_cotton", "COTTON"), ("crop_hemp", "HEMP") })
+            {
+                var weave = Res("loom_" + fibre, "WEAVE CLOTH X3 (" + name + ")", RecipeCategory.Supplies, "loom", ResourceType.Cloth, 3, "FROM " + name + " FIBRE");
+                weave.items = new[] { (fibre, 3) };
+                yield return weave;
+            }
 
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }

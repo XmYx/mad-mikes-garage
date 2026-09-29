@@ -102,12 +102,16 @@ decorative turret.
 ## 5. Crafting `T1–T2`
 *Exists:* recipe library per station, research, knowledge gates, crafting from nearby containers.
 
-- [ ] **Crafting time & queue**: stations work over time, the player can walk away
-- [ ] **Quality**: crude / sturdy / fine from skill and station → durability and stats
-- [ ] **Salvage & repair** items back into materials / condition
-- [ ] New stations: sewing table, chemistry lab (gunpowder, medicine, fuel additives), tanning rack (hide → leather),
+- [x] **Crafting time & queue**: stations work over time, the player can walk away
+- [x] **Quality**: crude / sturdy / fine from skill and station → durability and stats
+- [x] **Salvage & repair** items back into materials / condition
+- [x] New stations: sewing table, chemistry lab (gunpowder, medicine, fuel additives), tanning rack (hide → leather),
       smokehouse (preserves meat and fish), loom (cotton / hemp → cloth), gunsmith bench
-- [ ] **Blueprints** found in bunkers unlock recipes
+- [x] **Blueprints** found in bunkers unlock recipes
+      *Done:* `CraftingStation` queue (8 jobs, paid up front, X cancels, finished goods to the crafter within 6 m or
+      the tray: [T] collect), `RecipeLibrary.Seconds`, make rolls (`WastelandGame.Crafting`: item make per id, part
+      `quality` saved per socket), Y salvage page, 13 new resources (hide … uranium ore), hemp crop, meat / fish foods,
+      antibiotics, painkillers, fuel additive, blueprints for the MG, flamer, harpoon, generator, searchlight, frame pack.
 
 *Ties:* every system that produces or consumes items.
 

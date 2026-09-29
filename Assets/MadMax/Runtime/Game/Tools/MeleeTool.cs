@@ -30,7 +30,7 @@ namespace MadMax.Game
             var chest = user.transform.position + Vector3.up * 1.2f;
             var dir = (user.transform.forward + Vector3.down * 0.5f).normalized;
             var stats = WastelandGame.Instance ? WastelandGame.Instance.Stats : null;
-            float pw = power * (stats == null ? 1f : style == ToolStyle.Overhead ? stats.DemolitionPower : stats.MeleePower);
+            float pw = power * (stats == null ? 1f : style == ToolStyle.Overhead ? stats.DemolitionPower : stats.MeleePower) * (WastelandGame.Instance ? WastelandGame.Instance.QualityPower(id) : 1f);
             float salvageMult = stats != null ? stats.SalvageYield * GameRules.Current.yield : 1f;
             done.Clear();
             bool hitSomething = false;

@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -151,6 +151,7 @@ namespace MadMax.Game
                 case Page.Creation: Open(Page.NewGame); break;
                 case Page.Research: Open(Page.Crafting); break;
                 case Page.Repair: Open(Page.Crafting); break;
+                case Page.Salvage: Open(Page.Crafting); break;
                 case Page.Trade: if (talk != null && !talk.Ended) Open(Page.Talk); else Close(); break;
                 default: Close(); break;
             }
@@ -308,7 +309,7 @@ namespace MadMax.Game
                             var id = kv.Key;
                             items.Add(new Item
                             {
-                                id = id, label = MadMax.Items.ItemCatalog.Name(id),
+                                id = id, label = MadMax.Items.ItemCatalog.Name(id) + (game.HasMake(id) ? " (" + game.QualityName(id) + ")" : ""),
                                 value = () => { int slot = System.Array.IndexOf(game.Hotbar, id); return (slot >= 0 ? "[" + (slot + 1) + "] " : "") + "X" + inv.GetItem(id) + "  " + (inv.GetItem(id) * MadMax.Items.ItemCatalog.Weight(id)).ToString("0.0") + "KG"; },
                                 confirm = () => game.UseItem(id),
                                 hint = MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR"
@@ -386,6 +387,32 @@ namespace MadMax.Game
                         items.Add(new Item { label = MadMax.RPG.Injury.ZoneNames[(int)inj.zone] + ": " + MadMax.RPG.Injury.WoundNames[(int)inj.type], value = () => i2.Status, confirm = () => { game.Treat(i2); Rebuild(); }, hint = "ENTER TREAT (SPLINT / DISINFECT / BANDAGE)" });
                     }
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
+                    break;
+                }
+                case Page.Salvage:
+                {
+                    // break items down into half their materials
+                    var ids = new List<string>();
+                    foreach (var kv in game.Inventory.Items) if (kv.Value > 0 && game.SalvageRecipe(kv.Key) != null) ids.Add(kv.Key);
+                    foreach (var id in ids)
+                    {
+                        var sid = id;
+                        items.Add(new Item
+                        {
+                            label = ItemCatalog.Name(sid) + " X" + game.Inventory.GetItem(sid),
+                            value = () =>
+                            {
+                                var sb = new System.Text.StringBuilder();
+                                foreach (var (t, n) in game.SalvageYield(sid)) sb.Append('+').Append(n).Append(' ').Append(ResourceInfo.Name(t)).Append(' ');
+                                return sb.ToString();
+                            },
+                            enabled = () => game.Inventory.GetItem(sid) > 0,
+                            confirm = () => { game.Salvage(sid); Rebuild(); },
+                            hint = "ENTER BREAK ONE DOWN INTO MATERIALS"
+                        });
+                    }
+                    if (ids.Count == 0) items.Add(new Item { label = "NOTHING TO SALVAGE", enabled = () => false });
+                    Add("BACK", () => Open(Page.Crafting));
                     break;
                 }
                 case Page.Repair when station && station.type == "sewing":
@@ -625,6 +652,8 @@ namespace MadMax.Game
             if (Current == Page.Crafting && ((kb != null && kb.eKey.wasPressedThisFrame) || (kb != null && kb.tabKey.wasPressedThisFrame))) { Close(); return; }
             if (Current == Page.Crafting && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
             if (Current == Page.Crafting && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
+            if (Current == Page.Crafting && kb != null && kb.yKey.wasPressedThisFrame) { Open(Page.Salvage); return; }
+            if (Current == Page.Crafting && kb != null && kb.xKey.wasPressedThisFrame) { game.CancelLastJob(station); return; }
             if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
                 for (int i = 0; i < WastelandGame.HotbarSize; i++) if (kb[Key.Digit1 + i].wasPressedThisFrame) game.AssignHotbar(i, items[cursor].id);
@@ -698,6 +727,7 @@ namespace MadMax.Game
                 case Page.Health: DrawHealth(c); break;
                 case Page.Talk: DrawTalk(c); break;
                 case Page.Repair: DrawList(c, station && station.type == "sewing" ? "MEND CLOTHES" : "REPAIR TOOLS", 250); DrawHint(c); break;
+                case Page.Salvage: DrawList(c, "SALVAGE", 250); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);
@@ -878,7 +908,7 @@ namespace MadMax.Game
 
         void DrawCrafting(PixelCanvas c)
         {
-            c.Text(6, c.h - 10, station && station.type == "sewing" ? "T MEND CLOTHES" : "R RESEARCH   T REPAIR TOOLS", Dim);
+            c.Text(6, c.h - 10, (station && station.type == "sewing" ? "T MEND CLOTHES" : "R RESEARCH   T REPAIR TOOLS") + "   Y SALVAGE   X CANCEL LAST", Dim);
             int w = Mathf.Min(c.w - 12, 300), h = Mathf.Min(c.h - 20, 170);
             int x = (c.w - w) / 2, y = (c.h - h) / 2;
             c.Panel(x, y, w, h);
@@ -939,10 +969,26 @@ namespace MadMax.Game
                 string owned = r.kind == OutputKind.Item ? $"OWNED {game.Inventory.GetItem(r.output)}" : r.kind == OutputKind.Resource ? $"HAVE {game.Inventory.Get(r.outputResource)} L" : "SPAWNS ON THE BENCH";
                 c.Text(dx, ry, owned, Dim);
                 bool can = game.CanCraft(r, station);
-                c.Text(dx, y + h - 10, can ? "[ENTER] CRAFT" : "MISSING MATERIALS", can ? Green : Red);
+                c.Text(dx, y + h - 10, can ? "[ENTER] QUEUE (" + Mathf.CeilToInt(RecipeLibrary.Seconds(r)) + " S)" : "MISSING MATERIALS", can ? Green : Red);
             }
             else c.Text(dx, dy, "NOTHING HERE", Dim);
             c.Text(x + 6, y + h - 10, "A/D TAB  W/S SELECT  ESC CLOSE", Dim);
+            // the station's queue, under the panel
+            if (station && station.queue.Count > 0)
+            {
+                int qy = y + h + 3, qx = x;
+                for (int i = 0; i < station.queue.Count && qx < x + w - 40; i++)
+                {
+                    var job = station.queue[i];
+                    var jr = RecipeLibrary.Get(job.recipe);
+                    string label = (jr != null ? jr.name : "?") + (i == 0 ? " " + Mathf.RoundToInt(job.progress * 100f) + "%" : "");
+                    int tw = PixelCanvas.TextWidth(label) + 6;
+                    c.Panel(qx, qy, tw, 11);
+                    if (i == 0) c.Rect(qx + 1, qy + 9, Mathf.RoundToInt((tw - 2) * Mathf.Clamp01(job.progress)), 1, Green);
+                    c.Text(qx + 3, qy + 2, label, i == 0 ? Amber : Dim);
+                    qx += tw + 2;
+                }
+            }
         }
     }
 }

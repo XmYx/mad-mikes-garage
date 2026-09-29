@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MadMax.Game
 {
-    [Serializable] public class SocketSave { public string socket, part, state; public float damage, wear; }
+    [Serializable] public class SocketSave { public string socket, part, state; public float damage, wear; public int q; }   // q = make + 1 (0: unknown, sturdy)
 
     [Serializable]
     public class VehicleSave
@@ -16,14 +16,14 @@ namespace MadMax.Game
         public Quaternion rotation;
         public bool fleet, wreck;
         public List<SocketSave> sockets = new List<SocketSave>();
-        public float fuel, oil, coolant, frame, salvage = -1f;
+        public float fuel, oil, coolant, frame, salvage = -1f, additive;
         public bool fourWheel, diffLocked;
         public int towedBy = -1;
         public string cargo;               // machine bed / hopper contents
         public string radio;               // RadioReceiver state (on, station, volume)
     }
 
-    [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; }
+    [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; public int q; }
     [Serializable] public class PlacedSave { public string id; public int vehicle = -1; public Vector3 localPosition; public Quaternion localRotation; public int hits; public uint netId; public string state, owner; }
     [Serializable] public class DestroyedSave { public string key, template; public bool all; public List<Vector3Int> removed = new List<Vector3Int>(); }
     [Serializable] public class ItemSave { public string id; public int count; }
@@ -61,6 +61,7 @@ namespace MadMax.Game
         public int reputation;
         public List<string> toolWearIds = new List<string>(); public List<float> toolWear = new List<float>();
         public List<string> clothWearIds = new List<string>(); public List<float> clothWear = new List<float>();
+        public List<string> itemQualityIds = new List<string>(); public List<float> itemQuality = new List<float>();
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

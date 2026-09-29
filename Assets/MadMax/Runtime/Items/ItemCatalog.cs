@@ -14,7 +14,7 @@ namespace MadMax.Items
             if (id.StartsWith("ammo_")) return ItemCategory.Ammo;
             if (id.StartsWith("throw_")) return ItemCategory.Throwable;
             if (id.StartsWith("food_") || id.StartsWith("drink_")) return ItemCategory.Food;
-            if (id.StartsWith("use_") || id.StartsWith("med_") || id.StartsWith("farm_") || id.StartsWith("dye_")) return ItemCategory.Consumable;
+            if (id.StartsWith("use_") || id.StartsWith("med_") || id.StartsWith("farm_") || id.StartsWith("dye_") || id.StartsWith("bp_")) return ItemCategory.Consumable;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return ItemCategory.Seed;
             if (id.StartsWith("crop_")) return ItemCategory.Crop;
             if (id.StartsWith("cloth_")) return ItemCategory.Clothing;
@@ -46,7 +46,10 @@ namespace MadMax.Items
             ResourceType.Water => 1f, ResourceType.DirtyWater => 1f, ResourceType.Ethanol => 0.8f,
             ResourceType.Sand or ResourceType.Clay or ResourceType.Laterite or ResourceType.Rubble or ResourceType.Slag => 1.2f,
             ResourceType.Iron or ResourceType.Copper or ResourceType.Bronze => 0.8f, ResourceType.Aluminium => 0.3f,
-            ResourceType.Asphalt or ResourceType.Concrete => 1.5f, _ => 0.6f
+            ResourceType.Asphalt or ResourceType.Concrete => 1.5f,
+            ResourceType.Hide => 1.5f, ResourceType.Leather => 0.5f, ResourceType.Gunpowder => 0.3f, ResourceType.Sulfur => 0.8f,
+            ResourceType.CrudeOil or ResourceType.SeedOil => 0.9f, ResourceType.Diesel => 0.85f, ResourceType.Tar => 1.2f, ResourceType.Coal => 0.9f,
+            ResourceType.LeadOre => 1.8f, ResourceType.Lead => 1.2f, ResourceType.Acid => 1.2f, ResourceType.UraniumOre => 2f, _ => 0.6f
         };
 
         public static Color32 Color(string id) => Category(id) switch

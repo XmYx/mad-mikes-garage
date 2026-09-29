@@ -33,6 +33,8 @@ namespace MadMax.Game
             if (s.rested && now >= s.restedUntil) Toast("NO LONGER WELL RESTED");
             if (s.fed && now >= s.fedUntil) Toast("NO LONGER WELL FED");
             s.rested = now < s.restedUntil; s.fed = now < s.fedUntil;
+            if (s.painkilled && now >= s.painkillerUntil) Toast("THE PAINKILLERS WEAR OFF");
+            s.painkilled = now < s.painkillerUntil;
             if (!Rules.survival || Vitals == null || Vitals.Dead) return;
             if (s.waste >= 100f && !wasteWarned) { wasteWarned = true; Toast("YOU NEED A LATRINE"); }
             if (s.waste >= 140f)
@@ -227,6 +229,36 @@ namespace MadMax.Game
             if (id == "use_repair_kit")
             {
                 if (UseRepairKit()) Inventory.TakeItem(id);
+                return;
+            }
+            if (id == "med_antibiotics" && Inventory.TakeItem(id))
+            {
+                int n = 0;
+                foreach (var inj in Stats.injuries) if (inj.infection > 0f) { inj.infection = 0f; n++; }
+                Stats.sick = Mathf.Min(Stats.sick, 5f);
+                Toast(n > 0 ? "ANTIBIOTICS: INFECTION CLEARED" : "ANTIBIOTICS: YOU FEEL CLEANER INSIDE");
+                return;
+            }
+            if (id == "med_painkillers" && Inventory.TakeItem(id))
+            {
+                Stats.painkillerUntil = DayNight.TotalDays * 24f + 3f;
+                Stats.painkilled = true;
+                Toast("PAINKILLERS: THE WOUNDS DULL FOR A WHILE");
+                return;
+            }
+            if (id == "use_fuel_additive")
+            {
+                var v = Current ? Current : FindNearby(4f);
+                var sys = v ? v.GetComponent<VehicleSystems>() : null;
+                if (!sys) { Toast("GET IN OR NEXT TO A VEHICLE"); return; }
+                if (!Inventory.TakeItem(id)) return;
+                sys.additive = sys.fuelCapacity;
+                Toast("FUEL ADDITIVE: THIS TANK GOES FURTHER");
+                return;
+            }
+            if (id.StartsWith("bp_"))
+            {
+                if (UseBlueprint(id)) Inventory.TakeItem(id);
                 return;
             }
             if (id == "use_sewing_kit")

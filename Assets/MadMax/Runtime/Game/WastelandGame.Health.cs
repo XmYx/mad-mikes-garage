@@ -105,7 +105,7 @@ namespace MadMax.Game
         {
             float m = 0f;
             foreach (var i in Stats.injuries) if (System.Array.IndexOf(zones, i.zone) >= 0) m = Mathf.Max(m, Hamper(i));
-            return m;
+            return Stats.painkilled ? m * 0.45f : m;
         }
 
         /// <summary>Per-side limp (legs, feet) and arm impairment (arms, hands), 0..1: drive the gait and the actions.</summary>
