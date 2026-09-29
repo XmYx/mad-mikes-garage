@@ -79,6 +79,9 @@ namespace MadMax.Vehicles
             WaterAt = t.WaterLevel(mid.x, mid.z);
             int wet = 0; float sub = 0f;
             float cap = hull.y + (kind == Kind.Submarine ? 0f : 0.15f);                         // above the gunwale it can't displace more
+            // a submerged hull has no waterplane to right it: its buoyancy acts at the hull's middle, above the heavy
+            // keel (pushing at the keel points would stand it on its side)
+            var buoy = kind == Kind.Submarine ? transform.up * (Mathf.Max(0f, rb.centerOfMass.y - keelY) + 0.6f) : Vector3.zero;
             foreach (var lp in points)
             {
                 var p = transform.TransformPoint(lp);
@@ -90,7 +93,7 @@ namespace MadMax.Vehicles
                 float d = Mathf.Min(depth, cap);
                 sub += d / Mathf.Max(0.05f, hull.y);
                 var pv = rb.GetPointVelocity(p);
-                rb.AddForceAtPosition(Vector3.up * (k * d * lift - pv.y * rb.mass * 0.9f / points.Length), p);
+                rb.AddForceAtPosition(Vector3.up * (k * d * lift - pv.y * rb.mass * 0.9f / points.Length), p + buoy);
             }
             Afloat = wet > 0;
             Submersion = points.Length > 0 ? Mathf.Clamp01(sub / points.Length) : 0f;

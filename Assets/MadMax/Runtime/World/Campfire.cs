@@ -10,7 +10,7 @@ namespace MadMax.World
     public class Campfire : MonoBehaviour
     {
         public static readonly List<Campfire> All = new List<Campfire>();
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { All.Clear(); logMeshes.Clear(); }
 
         public const float BenchHeight = 0.36f;
         public int seats = 6;
@@ -19,6 +19,7 @@ namespace MadMax.World
         Light glow;
         float fxT;
         static Mesh mesh;
+        static readonly Dictionary<int, Mesh> logMeshes = new Dictionary<int, Mesh>();         // log rings by seat count (unrotated fires)
 
         public bool Lit => DayNight.Hours >= 18f || DayNight.Hours < 6.5f;
 
@@ -61,14 +62,9 @@ namespace MadMax.World
             // a log to sit on at each place round the fire
             var logs = new GameObject("Logs", typeof(MeshFilter), typeof(MeshRenderer));
             logs.transform.SetParent(transform, false);
-            var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Wood);
-            for (int i = 0; i < seats; i++)
-            {
-                var s = transform.InverseTransformPoint(Seat(i)) / VoxelMesher.DefaultSize;
-                var side = Quaternion.Euler(0f, i * 360f / seats, 0f) * Vector3.right * 5f;
-                g.Tube(new Vector3(s.x, 2, s.z) - side, new Vector3(s.x, 2, s.z) + side, 2.2f, Pal.Ramp(Pal.Wood, 1, 2020 + i));
-            }
-            logs.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(g, "CampfireLogs");
+            // shared per seat count: voxel-meshing six logs cost ~25 ms per fire spawned
+            if (!logMeshes.TryGetValue(seats, out var logMesh) || !logMesh) logMeshes[seats] = logMesh = BuildLogs(seats, ring);
+            logs.GetComponent<MeshFilter>().sharedMesh = logMesh;
             logs.GetComponent<MeshRenderer>().sharedMaterial = GetComponent<MeshRenderer>().sharedMaterial;
             glow = new GameObject("Glow").AddComponent<Light>();
             glow.transform.SetParent(transform, false);
@@ -76,10 +72,17 @@ namespace MadMax.World
             glow.type = LightType.Point; glow.color = new Color(1f, 0.55f, 0.22f); glow.range = 7f; glow.shadows = LightShadows.None;
         }
 
-        void OnDestroy()
+        static Mesh BuildLogs(int seats, float ring)
         {
-            var logs = transform.Find("Logs");
-            if (logs && logs.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh) Destroy(mf.sharedMesh);
+            var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Wood);
+            for (int i = 0; i < seats; i++)
+            {
+                float a = i * Mathf.PI * 2f / Mathf.Max(1, seats);
+                var s = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (ring / VoxelMesher.DefaultSize);
+                var side = Quaternion.Euler(0f, i * 360f / seats, 0f) * Vector3.right * 5f;
+                g.Tube(new Vector3(s.x, 2, s.z) - side, new Vector3(s.x, 2, s.z) + side, 2.2f, Pal.Ramp(Pal.Wood, 1, 2020 + i));
+            }
+            return VoxelMesher.Build(g, "CampfireLogs" + seats);
         }
 
         void Update()

@@ -32,13 +32,13 @@ namespace MadMax.Game
 
         void Moor(WorldGen w, Vector2 c, string key, string design, float reach)
         {
-            // the nearest water 1.4-3.5 m deep, bow pointing out to sea
+            // the nearest clean water 1.4-3.5 m deep, bow pointing out to sea
             for (float r = 20f; r <= reach; r += 12f)
             for (int a = 0; a < 36; a++)
             {
                 float ang = a * Mathf.PI * 2f / 36f;
                 var p = c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
-                if (!w.Ocean(p.x, p.y)) continue;
+                if (!w.Ocean(p.x, p.y) || w.NaturalBiome(p.x, p.y) == Biome.Nuclear) continue;   // never moored in fallout
                 float depth = WorldGen.SeaLevel - w.BaseHeight(p.x, p.y);
                 if (depth < 1.4f || depth > 3.5f) continue;
                 boatPlans.Add(new BoatPlan { key = key, design = design, pos = new Vector3(p.x, WorldGen.SeaLevel + 0.4f, p.y), yaw = ang * Mathf.Rad2Deg * -1f + 90f });

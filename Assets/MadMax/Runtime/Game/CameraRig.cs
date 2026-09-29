@@ -385,7 +385,8 @@ namespace MadMax.Game
             var p = ct.position;
             float wl = t.WaterLevel(p.x, p.z);
             bool dry = (player && player.Interior && player.Interior.airtight) || MadMax.Building.AirPocket.Contains(p);
-            if (!float.IsNaN(wl) && p.y < wl - 0.05f && !dry)
+            bool cameraUnder = !float.IsNaN(wl) && p.y < wl - 0.05f && !dry;
+            if (cameraUnder)
             {
                 float depth = wl - p.y;
                 var murk = Color.Lerp(new Color(0.08f, 0.26f, 0.3f), new Color(0.01f, 0.05f, 0.08f), Mathf.Clamp01(depth / 35f)) * Mathf.Lerp(1f, 0.25f, MadMax.World.DayNight.Darkness);
@@ -393,10 +394,21 @@ namespace MadMax.Game
                 RenderSettings.fogStartDistance = 0.3f; RenderSettings.fogEndDistance = Mathf.Lerp(24f, 12f, Mathf.Clamp01(depth / 30f));
                 cam.backgroundColor = murk;
             }
-            // the window: only looking down from above at someone under the surface
+            // the window: only looking down from above at someone under the surface, cut where the line of sight to them
+            // crosses the surface (the camera looks down at an angle: straight above them it would miss)
             var f = target ? target.position : p;
-            bool under = TopDownView && ((player && player.HeadUnder) || (vehicle && vehicle.TryGetComponent<MadMax.Vehicles.BoatModel>(out var bm) && bm.Submersion > 0.9f));
-            Shader.SetGlobalVector(HoleId, under ? new Vector4(f.x, f.z, 11f, 0.12f) : Vector4.zero);
+            bool inBase = player && !vehicle && MadMax.Building.AirPocket.Contains(player.transform.position + Vector3.up * 1.5f)
+                          && player.transform.position.y < MadMax.World.WorldGen.SeaLevel + MadMax.World.Weather.LakeRise;   // dry in a sea base
+            bool under = TopDownView && ((player && player.HeadUnder) || inBase || (vehicle && vehicle.TryGetComponent<MadMax.Vehicles.BoatModel>(out var bm) && bm.Submersion > 0.9f));
+            if (under)
+            {
+                float surface = MadMax.World.WorldGen.SeaLevel + MadMax.World.Weather.LakeRise;
+                float fl = t.WaterLevel(f.x, f.z); if (!float.IsNaN(fl)) surface = fl;
+                var toCam = cam.orthographic ? -ct.forward : (ct.position - f).normalized;
+                if (toCam.y > 0.05f && f.y < surface) f += toCam * ((surface - f.y) / toCam.y);
+            }
+            // the window also switches on the water's colour loss on everything below the surface (seen from inside it too)
+            Shader.SetGlobalVector(HoleId, under || cameraUnder ? new Vector4(f.x, f.z, 11f, 0.12f) : Vector4.zero);
         }
 
         Vector3 ClampAboveGround(Vector3 p)

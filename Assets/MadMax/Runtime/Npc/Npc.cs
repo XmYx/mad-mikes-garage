@@ -123,7 +123,9 @@ namespace MadMax.Npc
         void SetTool(string id, Material mat)
         {
             if (tool) Destroy(tool.gameObject);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.SetTool");
             tool = id != null ? ToolLibrary.Create(id, mat) : null;
+            UnityEngine.Profiling.Profiler.EndSample();
             if (!tool) return;
             tool.transform.SetParent(rig.RightHand, false);
             tool.transform.localPosition = new Vector3(0f, -0.055f, 0.01f);
@@ -219,12 +221,14 @@ namespace MadMax.Npc
             var playerPos = g.Current ? g.Current.transform.position : g.Player.transform.position;
             float dPlayer = Vector3.Distance(me, playerPos);
             if (leaving && dPlayer > 170f) { Destroy(gameObject); return; }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.RunOver");
             RunOver(g);
+            UnityEngine.Profiling.Profiler.EndSample();
 
             Vector3 move = Vector3.zero;
             float speed = 0f;
             // who to fight: companions pick the nearest threat, anyone hits back at a person who hurt them
-            if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; foe = PickFoe(g); }
+            if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.PickFoe"); foe = PickFoe(g); UnityEngine.Profiling.Profiler.EndSample(); }
             if (Surrendered) mode = Mode.Surrender;
             else if (foe) mode = Mode.Fight;
             else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching: harder to spot
@@ -340,8 +344,10 @@ namespace MadMax.Npc
             {
                 routeCheck = Time.time + 0.8f + Random.value * 0.6f;                              // staggered across people
                 routeGoal = p; routeIndex = 0;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Path");
                 routing = !NpcPath.Clear(me, p, transform);
                 if (routing && !NpcPath.Find(me, p, route, transform)) { routing = false; routeCheck = Time.time + 0.25f; }   // out of budget: soon again
+                UnityEngine.Profiling.Profiler.EndSample();
             }
             if (!routing) return direct;
             while (routeIndex < route.Count - 1 && Flat(route[routeIndex] - me).sqrMagnitude < 0.45f * 0.45f) routeIndex++;

@@ -259,6 +259,7 @@ namespace MadMax.Game
         {
             Unseat();
             cc.enabled = false;
+            Interior = null;                                                   // out of any walk-in space (its moves are cabin-local)
             transform.SetParent(null, true);
             transform.SetPositionAndRotation(pos, Quaternion.Euler(0, yaw, 0));
             cc.enabled = true;

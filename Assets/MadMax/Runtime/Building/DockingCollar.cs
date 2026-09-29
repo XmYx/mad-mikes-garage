@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    /// <summary>A docking collar on a sea dome or tunnel (user additions): a submarine that brings its sail hatch within
-    /// 3.5 m of the collar's mouth is docked — the base's power charges its battery and the base air tops up its cabin.
+    /// <summary>A docking collar on a sea dome or tunnel (user additions): a submarine that settles its belly hatch (the
+    /// middle of its keel) within 3.5 m of the collar's mouth is docked — the base's power charges its battery and the base air tops up its cabin.
     /// [E] at the collar climbs into the docked submarine; leaving the submarine through its hatch while docked comes
     /// back down into the base (see <see cref="WastelandGame"/>).</summary>
     public class DockingCollar : MonoBehaviour, IInteractable
@@ -35,9 +35,9 @@ namespace MadMax.Building
             if (!g) return;
             foreach (var v in g.AllVehicles)
             {
-                if (!v || !v.TryGetComponent<Submarine>(out var sub)) continue;
-                var hatch = v.transform.Find("Snorkel");
-                if (hatch && (hatch.position - m).sqrMagnitude < 3.5f * 3.5f) { Docked = sub; break; }
+                if (!v || !v.TryGetComponent<Submarine>(out var sub) || !v.TryGetComponent<BoatModel>(out var hull)) continue;
+                var belly = v.transform.TransformPoint(new Vector3(0f, hull.keelY, 0f));
+                if ((belly - m).sqrMagnitude < 3.5f * 3.5f) { Docked = sub; break; }
             }
             if (Docked)
             {

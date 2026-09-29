@@ -203,11 +203,11 @@ Shader "MadMax/PixelVoxel"
                 #endif
                 c = lerp(c, albedo, _Unlit);
                 c *= 1.0h + _MadMaxBrightnessDelta;
-                // under the sea, seen through the window around a diver: blue-green, darker with depth
-                if (_MadMaxWaterHole.z > 0.0 && i.positionWS.y < _MadMaxSeaLevel && distance(i.positionWS.xz, _MadMaxWaterHole.xy) < _MadMaxWaterHole.z * 1.2)
+                // under the sea while a diver's window is open: blue-green, darker with depth
+                if (_MadMaxWaterHole.z > 0.0 && i.positionWS.y < _MadMaxSeaLevel)
                 {
-                    half dpt = saturate((_MadMaxSeaLevel - i.positionWS.y) / 12.0);
-                    c = lerp(c, c * half3(0.35h, 0.62h, 0.7h) + half3(0.0h, 0.02h, 0.03h), 0.45h + dpt * 0.45h);
+                    half dpt = saturate((_MadMaxSeaLevel - i.positionWS.y) / 20.0);
+                    c = lerp(c, c * half3(0.6h, 0.85h, 0.9h) + half3(0.01h, 0.045h, 0.055h), 0.4h + dpt * 0.4h);
                 }
                 c = lerp(MixFog(c, i.fog), c, _NoFog);
                 return half4(c, 1);

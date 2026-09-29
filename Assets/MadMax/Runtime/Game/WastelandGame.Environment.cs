@@ -22,10 +22,14 @@ namespace MadMax.Game
                 float d = Vector3.Distance(h.transform.position, p);
                 if (d < h.radius) rad += h.radiation * (1f - d / h.radius);
             }
+            // a submarine's pressure hull (at the helm or walking its cabin) or a sea-base air pocket keeps the sea out
+            bool pressureHull = Current ? Current.TryGetComponent<MadMax.Vehicles.VehicleSystems>(out var hull) && hull.sealedHull
+                              : (Player.Interior && Player.Interior.airtight) || MadMax.Building.AirPocket.Contains(p + Vector3.up * 1.5f);
             float lvl = terrain.WaterLevel(p.x, p.z);
-            if (!float.IsNaN(lvl) && CurrentBiome == Biome.Nuclear && p.y < lvl) rad += 0.8f;
+            if (!float.IsNaN(lvl) && CurrentBiome == Biome.Nuclear && p.y < lvl && !pressureHull) rad += 0.8f;   // contaminated water on the skin
             if (Storms.Rad > 0.01f) rad += Storms.Rad * 1.2f * (Sheltered || Player.Interior ? 0.15f : 1f);   // radiation storm: under a roof or out
-            if (Current) rad *= 0.35f;                                                 // the cab shields a little
+            if (pressureHull) rad *= 0.08f;                                            // steel and sea shield a lot
+            else if (Current) rad *= 0.35f;                                            // the cab a little
             rad *= 1f - Stats.Level(Skill.Survival) * 0.05f;
             rad *= RadiationPassed;                                                   // hazmat suit, gas mask
             RadiationLevel = rad;

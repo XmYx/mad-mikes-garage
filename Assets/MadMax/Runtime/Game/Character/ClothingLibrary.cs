@@ -106,7 +106,7 @@ namespace MadMax.Game
                     }),
                 // ---- user additions: hard-hat diving (a brass helmet on a bolted collar, a canvas suit, an air tank)
                 Def("dive_helmet", "BRASS DIVING HELMET", ClothingSlot.Head, 2.6f, (v, p, t) => Pal.Pick(Pal.Bronze, v, 890, 3), (BP.Head, Full))
-                    .Gear(waterproof: 1f, durability: 3f, style: "diver").Prop(BP.Head, a =>
+                    .Gear(waterproof: 1f, radiation: 0.3f, filter: true, durability: 3f, style: "diver").Prop(BP.Head, a =>
                     {
                         var g = new VoxelGrid();
                         float cy = 3.4f * a.height;
@@ -126,7 +126,7 @@ namespace MadMax.Game
                     }),
                 Def("dive_suit", "CANVAS DIVING SUIT", ClothingSlot.Outer, 2.0f, (v, p, t) => (p == BP.FootL || p == BP.FootR) ? Pal.Black[0] : t > 0.9f && (p == BP.ForearmL || p == BP.ForearmR) ? Pal.Black[1] : Weave(v, Pal.Cream, 892, 1),
                     (BP.Chest, Full), (BP.Pelvis, Full), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, Full), (BP.ForearmR, Full), (BP.HandL, Full), (BP.HandR, Full),
-                    (BP.ThighL, Full), (BP.ThighR, Full), (BP.ShinL, Full), (BP.ShinR, Full), (BP.FootL, Full), (BP.FootR, Full)).Gear(waterproof: 1f, durability: 1.6f, style: "diver"),
+                    (BP.ThighL, Full), (BP.ThighR, Full), (BP.ShinL, Full), (BP.ShinR, Full), (BP.FootL, Full), (BP.FootR, Full)).Gear(waterproof: 1f, radiation: 0.45f, durability: 1.6f, style: "diver"),   // keeps foul water off the skin
                 Def("air_tank", "DIVER'S AIR TANK", ClothingSlot.Pack, 0.7f, Straps(Pal.Black), (BP.Chest, new Vector2(0.3f, 0.98f))).Prop(BP.Chest, a =>
                     {
                         var g = new VoxelGrid();

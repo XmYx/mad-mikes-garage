@@ -60,7 +60,8 @@ namespace MadMax.Game
             }
             if (t - t0 < 5f) return;
             var gc = WastelandGame.Instance ? WastelandGame.Instance.Current : null;
-            Debug.Log($"[fps] t={t:0} avg {frames / (t - t0):0.0} fps, worst {worst * 1000f:0} ms, frames >33ms {spikes}, audio paused {AudioListener.pause}, gc {System.GC.CollectionCount(0)}" + (gc ? $", car {gc.SpeedKmh:0} km/h rpm {gc.Rpm:0} at {gc.transform.position}" : ""));
+            Debug.Log($"[fps] t={t:0} avg {frames / (t - t0):0.0} fps, worst {worst * 1000f:0} ms, frames >33ms {spikes}, audio paused {AudioListener.pause}, gc {System.GC.CollectionCount(0)}" + (gc ? $", car {gc.SpeedKmh:0} km/h rpm {gc.Rpm:0} at {gc.transform.position}" : "")
+                      + (autotest && testStart < 0f ? $" [waiting: started {started}, menu world {WastelandGame.Instance == menuGame}, title {TitleSequence.Playing}, fader {ScreenFader.Busy}, ready {(WastelandGame.Instance && WastelandGame.Instance.Ready)}]" : ""));
             t0 = t; frames = 0; worst = 0f; spikes = 0;
         }
 
@@ -198,6 +199,7 @@ namespace MadMax.Game
             if (!g || !g.Ready) return;
             if (!started)
             {
+                if (ScreenFader.Busy) return;                                                 // the menu's own load must finish fading in first
                 started = true;
                 menuGame = g;                                                                 // the menu's world, until the new one loads
                 if (profileFile != null && profileFrom < 0f) StartProfiler();             // -profilefrom -1: include the new-game load

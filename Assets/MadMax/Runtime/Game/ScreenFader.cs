@@ -139,8 +139,7 @@ namespace MadMax.Game
         IEnumerator Through(Action middle, float hold)
         {
             Busy = true;
-            target = 1f;
-            while (alpha < 0.999f) yield return null;
+            while (alpha < 0.999f) { target = 1f; yield return null; }                   // a fade-in still running from a load must not win
             middle?.Invoke();
             yield return new WaitForSecondsRealtime(hold);
             target = 0f;
@@ -153,8 +152,7 @@ namespace MadMax.Game
         IEnumerator Load(string scene)
         {
             Busy = true;
-            target = 1f;
-            while (alpha < 0.999f) yield return null;
+            while (alpha < 0.999f) { target = 1f; yield return null; }
             spinning = true;
             yield return null;
             var op = SceneManager.LoadSceneAsync(scene);
@@ -170,7 +168,7 @@ namespace MadMax.Game
 
         /// <summary>Fade out and quit.</summary>
         public static void Quit(Action quit) => I.StartCoroutine(I.QuitRoutine(quit));
-        IEnumerator QuitRoutine(Action quit) { target = 1f; while (alpha < 0.999f) yield return null; quit(); }
+        IEnumerator QuitRoutine(Action quit) { while (alpha < 0.999f) { target = 1f; yield return null; } quit(); }
 
         /// <summary>Start black (boot hand-over) and fade in when the game is ready.</summary>
         public static void FadeInWhenReady() => I.StartCoroutine(I.InWhenReady());
