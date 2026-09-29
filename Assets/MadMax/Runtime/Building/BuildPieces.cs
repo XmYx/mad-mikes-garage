@@ -406,6 +406,99 @@ namespace MadMax.Building
             return g;
         }
 
+        // ------------------------------------------------------------------ irrigation & gardens (roadmap 8-9)
+        /// <summary>Fieldstone well ring (dark water far below) with a cast-iron hand pump on a plank cover and a bucket.</summary>
+        public static VoxelGrid Well()
+        {
+            var g = new VoxelGrid().Mat(Stone);
+            g.CylY(0, 0, 7f, 0, 8, p => p.y % 3 == 0 ? Mortar : Pal.Pick(Conc, p, 1051, 1), 5.2f);                      // stone ring
+            g.Mat(Scrap); g.CylY(0, 0, 5.2f, 0, 0, Pal.Solid(Pal.Glass[0]));                                              // water down the shaft
+            g.Mat(Wood); g.Box(-5, 8, -5, 5, 8, 0, Planks(1052));                                                         // half cover
+            g.Mat(Iron);
+            g.CylY(0, -3, 1.3f, 9, 18, Pal.Weathered(Pal.Crimson, 0.4f, 1053, 2, 0));                                     // pump barrel
+            g.Box(0, 15, -2, 0, 15, 1, Pal.Ramp(Pal.Metal, 1)); g.Set(0, 14, 1, Pal.Solid(Pal.Metal[0]));                 // spout
+            g.Box(-1, 19, -4, 1, 19, -2, Pal.Ramp(Pal.Metal, 0));                                                         // cap
+            g.Tube(new Vector3(0, 19, -3), new Vector3(0, 23, -10), 0.5f, Pal.Ramp(Pal.Metal, 2));                        // handle
+            g.Mat(Wood); g.CylY(9, 2, 1.8f, 0, 3, p => p.y == 2 ? Pal.Metal[1] : Pal.Wood[2], 1.0f);                      // bucket
+            return g;
+        }
+
+        /// <summary>Stave tank on a 3 m timber tower with a service ladder: big storage that stands above the beds.</summary>
+        public static VoxelGrid WaterTower()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            var post = Pal.Ramp(Pal.Wood, 1, 1061);
+            foreach (int x in new[] { -10, 10 }) foreach (int z in new[] { -10, 10 }) g.Box(x - 1, 0, z - 1, x, 38, z, post);   // legs
+            g.Tube(new Vector3(-10, 4, -10), new Vector3(10, 34, -10), 0.5f, post); g.Tube(new Vector3(10, 4, 10), new Vector3(-10, 34, 10), 0.5f, post);
+            g.Tube(new Vector3(-10, 4, 10), new Vector3(-10, 34, -10), 0.5f, post); g.Tube(new Vector3(10, 4, -10), new Vector3(10, 34, 10), 0.5f, post);
+            g.Box(-12, 39, -12, 12, 39, 12, Planks(1062));                                                                  // deck
+            g.CylY(0, 0, 12f, 40, 60, p => (p.y - 40) % 7 == 3 ? Pal.Metal[1]
+                : ((int)((Mathf.Atan2(p.z, p.x) + 3.1416f) * 6f) & 1) == 0 ? Pal.Wood[2] : Pal.Pick(Pal.Wood, p, 1063, 3), 10.5f);   // staves and hoops
+            g.Mat(Scrap); for (int y = 61; y <= 66; y++) g.CylY(0, 0, 12.5f - (y - 61) * 2.3f, y, y, Pal.Ramp(Pal.Rust, 2, 1064));   // conical lid
+            g.Mat(Wood);
+            g.Box(-3, 0, -13, -3, 39, -13, post); g.Box(3, 0, -13, 3, 39, -13, post);                                      // ladder
+            for (int y = 3; y < 39; y += 3) g.Box(-2, y, -13, 2, y, -13, Pal.Ramp(Pal.Wood, 2, 1065));
+            g.Mat(Iron); g.Box(0, 1, 0, 0, 38, 0, Pal.Ramp(Pal.Metal, 1));                                               // down pipe
+            return g;
+        }
+
+        /// <summary>Timber-framed glasshouse, 3.3 × 4.1 m, gable roof to 3.2 m, a doorway at the front (+Z).</summary>
+        public static VoxelGrid Greenhouse()
+        {
+            var g = new VoxelGrid();
+            const int hx = 20, hz = 25, wall = 27, ridge = 40;
+            var frame = Pal.Ramp(Pal.Wood, 2, 1071);
+            VoxMat pane = p => Pal.Hash(p, 1072) < 0.06f ? Pal.PaleBlue[3] : Pal.Hash(p, 1073) < 0.06f ? Pal.Cream[0]           // glints, grime
+                             : ((p.x + p.y + p.z) & 7) == 0 ? Pal.PaleBlue[1] : Pal.PaleBlue[0];
+            void Put(int x, int y, int z, bool fr) { g.Mat(fr ? Wood : Glass); g.Set(x, y, z, fr ? frame : pane); }
+            for (int x = -hx; x <= hx; x++)
+            for (int z = -hz; z <= hz; z++)
+            {
+                bool sx = Mathf.Abs(x) == hx, sz = Mathf.Abs(z) == hz;
+                if (!sx && !sz) continue;
+                bool door = z == hz && Mathf.Abs(x) <= 6;
+                for (int y = 0; y <= wall; y++)
+                {
+                    if (door && y <= 25) continue;
+                    bool fr = y == 0 || y == wall || (sx && (z % 8 == 0 || sz)) || (sz && (x % 8 == 0 || sx)) || (z == hz && Mathf.Abs(x) == 7) || (door && y == 26);
+                    Put(x, y, z, fr);
+                }
+            }
+            for (int x = -hx; x <= hx; x++)
+            {
+                int top = wall + Mathf.RoundToInt((hx - Mathf.Abs(x)) * (float)(ridge - wall) / hx);
+                for (int z = -hz; z <= hz; z++) Put(x, top, z, x == 0 || Mathf.Abs(x) == hx || z % 8 == 0 || Mathf.Abs(z) == hz);   // roof, rafters
+                foreach (int z in new[] { -hz, hz })
+                    for (int y = wall + 1; y < top; y++) Put(x, y, z, x % 8 == 0);                                          // gable ends
+            }
+            return g;
+        }
+
+        /// <summary>Scarecrow on crossed poles: sack head with stitched face, straw hat, patched coat, straw hands.</summary>
+        public static VoxelGrid Scarecrow()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            var pole = Pal.Ramp(Pal.Wood, 1, 1081);
+            g.Box(0, 0, 0, 0, 20, 0, pole);
+            g.Box(-9, 16, 0, 9, 16, 0, pole);
+            g.Mat(Cloth);
+            g.Box(-4, 9, -1, 4, 17, 1, p => Pal.Hash(p, 1082) < 0.1f ? Pal.Crimson[1] : Pal.Pick(Pal.Navy, p, 1083, 1));       // patched coat
+            g.Box(-8, 15, -1, -5, 17, 1, Pal.Ramp(Pal.Navy, 1, 1084)); g.Box(5, 15, -1, 8, 17, 1, Pal.Ramp(Pal.Navy, 1, 1085));
+            g.Box(-3, 18, -2, 3, 23, 2, p => p.z == 2 && ((Mathf.Abs(p.x) == 1 && p.y == 21) || (p.y == 19 && Mathf.Abs(p.x) <= 1)) ? Pal.Black[0] : Pal.Pick(Pal.Wood, p, 1086, 3));   // sack head
+            g.Box(-5, 24, -4, 5, 24, 4, Pal.Ramp(Pal.Ochre, 3, 1087)); g.Box(-3, 25, -2, 3, 26, 2, Pal.Ramp(Pal.Ochre, 2, 1088));  // straw hat
+            foreach (int x in new[] { -10, 10 }) g.Box(x, 14, 0, x, 16, 0, Pal.Ramp(Pal.Ochre, 4));                                 // straw hands
+            return g;
+        }
+
+        /// <summary>Drip line: a hose along a bed with an emitter every 24 cm and an inlet riser with its valve.</summary>
+        public static VoxelGrid DripLine()
+        {
+            var g = new VoxelGrid().Mat((byte)ResourceType.Rubber);
+            g.Box(0, 0, -10, 0, 0, 10, p => p.z % 3 == 0 ? Pal.Moss[2] : Pal.Tire[1]);
+            g.Mat(Iron); g.Box(0, 0, -11, 0, 3, -11, Pal.Ramp(Pal.Metal, 2)); g.Set(0, 4, -11, Pal.Solid(Pal.Crimson[3]));
+            return g;
+        }
+
         public static VoxelGrid Composter()
         {
             var g = new VoxelGrid().Mat(Wood);

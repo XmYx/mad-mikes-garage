@@ -10,7 +10,7 @@ namespace MadMax.Game
     {
         // index = network tool id: append only
         public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern",
-            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector" };
+            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector", "tool_hoe", "tool_watering_can" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -116,6 +116,17 @@ namespace MadMax.Game
                     g.Box(-1, -2, 1, 1, -1, 2, Pal.Ramp(Pal.Black, 1)); g.Set(0, -1, 3, Pal.Solid(Pal.Amber));  // control box
                     g.CylZ(0, -13, 2.4f, 1, 2, Pal.Ramp(Pal.Ochre, 2, 724), 1.2f);                            // search coil
                     break;
+                case "tool_hoe":
+                    g.Box(0, -15, 0, 0, 0, 0, Pal.Ramp(Pal.Wood, 2, 725));                                    // long handle
+                    g.Box(-2, -17, 0, 2, -16, 0, Pal.Ramp(Pal.Metal, 2, 726));                                // blade across the shaft
+                    g.Box(-2, -17, 1, 2, -17, 1, Pal.Ramp(Pal.Chrome, 3));                                    // sharpened edge
+                    break;
+                case "tool_watering_can":
+                    g.Box(0, -2, 0, 0, 0, 0, Pal.Ramp(Pal.Metal, 2));                                         // handle
+                    g.CylY(0, 0, 2.2f, -7, -3, p => p.y == -5 ? Pal.Moss[1] : Pal.Moss[3]);                   // green tin can
+                    g.Tube(new Vector3(0, -6, 2), new Vector3(0, -3, 6), 0.4f, Pal.Ramp(Pal.Moss, 2));         // spout
+                    g.Box(-1, -3, 6, 1, -2, 7, Pal.Ramp(Pal.Chrome, 2));                                     // rose
+                    break;
                 case "tool_flashlight":
                     g.CylY(0, 0, 1.2f, -6, 0, Pal.Ramp(Pal.Metal, 1, 722));
                     g.CylY(0, 0, 1.7f, -8, -7, Pal.Ramp(Pal.Chrome, 2));
@@ -170,6 +181,18 @@ namespace MadMax.Game
                 var d = go.AddComponent<MetalDetectorTool>();
                 d.swingDuration = 0.4f; d.strikeAt = 0.1f; d.style = ToolStyle.Twist;
                 tool = d;
+            }
+            else if (id == "tool_hoe")
+            {
+                var h = go.AddComponent<HoeTool>();
+                h.swingDuration = 0.7f; h.strikeAt = 0.62f; h.style = ToolStyle.Overhead;
+                tool = h;
+            }
+            else if (id == "tool_watering_can")
+            {
+                var w = go.AddComponent<WateringCanTool>();
+                w.swingDuration = 0.9f; w.strikeAt = 0.45f; w.style = ToolStyle.Twist;
+                tool = w;
             }
             else if (id == "tool_geiger")
             {

@@ -40,6 +40,21 @@ namespace MadMax.World
             return fire;
         }
 
+        /// <summary>Pour water on fires within a radius (watering can, bucket): each litre knocks out ~8 s of fuel.
+        /// Returns how many fires it reached.</summary>
+        public static int Douse(Vector3 pos, float radius, float litres)
+        {
+            int n = 0;
+            foreach (var f in All)
+            {
+                if (!f || (f.transform.position - pos).sqrMagnitude > radius * radius) continue;
+                f.fuel = Mathf.Max(0f, f.fuel - litres * 8f);
+                f.intensity *= 0.5f;
+                n++;
+            }
+            return n;
+        }
+
         public static bool Flammable(GameObject go)
         {
             string n = go.name;

@@ -6,7 +6,7 @@ namespace MadMax.Building
     /// <summary>Water sources: rain collector (open sky) and electric pump (next to a lake). Filters clean network water.</summary>
     public class WaterSource : MonoBehaviour
     {
-        public enum Mode { Rain, Pump, Filter }
+        public enum Mode { Rain, Pump, Filter, Well }
         public Mode mode;
         UtilityNode node;
         void Awake() => node = GetComponent<UtilityNode>();
@@ -35,6 +35,17 @@ namespace MadMax.Building
                 case Mode.Filter:
                     node.filterRate = 0.4f;
                     break;
+                case Mode.Well:
+                {
+                    // an electric pump down the well when powered; the rate depends on how deep the water table lies
+                    var t = MadMax.World.DeformableTerrain.Instance;
+                    float depth = t && t.World != null ? t.World.WaterTable(p.x, p.z) : 10f;
+                    bool toxic = t && t.BiomeAt(p.x, p.z) == MadMax.World.Biome.Nuclear;
+                    node.demand = 300f;
+                    float rate = node.Powered ? Mathf.Clamp(1.2f / depth, 0.03f, 0.5f) : 0f;
+                    node.sourceClean = toxic ? 0f : rate; node.sourceDirty = toxic ? rate : 0f;
+                    break;
+                }
             }
         }
     }

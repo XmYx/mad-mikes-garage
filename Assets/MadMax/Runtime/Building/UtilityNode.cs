@@ -22,6 +22,7 @@ namespace MadMax.Building
         public float waterCapacity;
         public float clean, dirty;
         [System.NonSerialized] public float sourceDirty, filterRate;   // L/s supplied / converted by this node (set by its role component)
+        [System.NonSerialized] public float sourceClean;               // L/s of clean water supplied (wells)
 
         internal int powerNet = -1, waterNet = -1;
 

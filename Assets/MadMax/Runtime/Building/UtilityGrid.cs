@@ -100,7 +100,7 @@ namespace MadMax.Building
         static void SolveWater(List<UtilityNode> net, float dt)
         {
             float cap = 0f, clean = 0f, dirtyW = 0f, filter = 0f;
-            foreach (var n in net) { if (!n) continue; cap += n.waterCapacity; clean += n.clean; dirtyW += n.dirty + n.sourceDirty * dt; filter += n.filterRate; }
+            foreach (var n in net) { if (!n) continue; cap += n.waterCapacity; clean += n.clean + n.sourceClean * dt; dirtyW += n.dirty + n.sourceDirty * dt; filter += n.filterRate; }
             float conv = Mathf.Min(dirtyW, filter * dt);
             dirtyW -= conv; clean += conv;
             float total = clean + dirtyW;

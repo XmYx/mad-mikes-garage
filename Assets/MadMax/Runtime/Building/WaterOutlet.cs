@@ -7,7 +7,7 @@ namespace MadMax.Building
     /// (or the piece's own storage). Dirty water can make you sick.</summary>
     public class WaterOutlet : MonoBehaviour, IInteractable
     {
-        public enum Kind { Sink, Shower, Barrel, Bath }
+        public enum Kind { Sink, Shower, Barrel, Bath, Well }
         public Kind kind;
         UtilityNode node;
         void Awake() => node = GetComponent<UtilityNode>();
@@ -21,6 +21,7 @@ namespace MadMax.Building
                 Kind.Shower => w < 10f ? "SHOWER: " + q : "[E] SHOWER  " + q,
                 Kind.Bath => w < 40f ? "BATHTUB (NEEDS 40L): " + q : "[E] TAKE A BATH  " + q,
                 Kind.Sink => w < 0.5f ? "SINK: " + q : "[E] DRINK  [T] WASH HANDS / FILL  " + q,
+                Kind.Well => w < 0.5f ? null : "[T] FILL CANTEEN",                          // [E] belongs to the hand pump
                 _ => w < 0.5f ? "BARREL: " + q : "[E] DRINK  [T] FILL CANTEEN  " + q,
             };
         }

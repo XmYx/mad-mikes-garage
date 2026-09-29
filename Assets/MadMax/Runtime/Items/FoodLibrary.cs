@@ -24,6 +24,7 @@ namespace MadMax.Items
         public float regrowMinutes;       // trees: fruit regrow time (0 = no fruit)
         public Color32 leaf, fruit;
         public int height = 8;            // voxels at full growth
+        public bool dark;                 // grows only without daylight (mushrooms: under a roof or underground)
     }
 
     /// <summary>Food, drinks and crops (data).</summary>
@@ -76,6 +77,12 @@ namespace MadMax.Items
                 F("food_fish_cooked", "GRILLED FISH", 30, 2, 25, H("c09060"), 0f, 3f),
                 F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
                 F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),
+                F("food_mushroom", "MUSHROOMS", 6, 1, 20, H("b8a888"), 0.05f),
+                F("food_mushsoup", "MUSHROOM SOUP", 34, 16, 30, H("8a7050"), 0f, 3f),
+                F("food_beet", "SUGAR BEET", 8, 2, 70, H("7a2440")),
+                F("food_sugar", "SUGAR", 8, -3, 0, H("eeeadc")),
+                F("food_bread", "BREAD", 32, -4, 60, H("c89050")),
+                F("food_porridge", "WHEAT PORRIDGE", 28, 6, 20, H("d0b080")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>
@@ -92,6 +99,9 @@ namespace MadMax.Items
                 Crop("seed_herbs", "HERBS", 4, 4, H("4a8030"), H("6aa040"), ("food_herbs", 2, 3)),
                 Crop("seed_flower", "FLOWERS", 5, 6, H("3a7024"), H("d04070"), ("crop_flower", 1, 3)),
                 Crop("seed_berries", "BERRY BUSH", 9, 7, H("2a5a24"), H("6a1c50"), ("food_berries", 3, 6)),
+                Crop("seed_wheat", "WHEAT", 7, 10, H("8a9a3a"), H("d8b860"), ("crop_wheat", 3, 5)),
+                Crop("seed_beet", "SUGAR BEET", 8, 5, H("3a7a2a"), H("7a2440"), ("food_beet", 2, 4)),
+                Dark(Crop("seed_mushroom", "MUSHROOMS", 5, 3, H("8a7a60"), H("d8c8a8"), ("food_mushroom", 2, 4))),
                 Tree("sapling_apple", "APPLE TREE", 14, 6, H("3a6a24"), H("c02c20"), 40, ("food_apple", 3, 6)),
                 Tree("sapling_pine", "PINE", 16, 0, H("1e3020"), H("1e3020"), 40),
                 Tree("sapling_palm", "PALM", 18, 10, H("367024"), H("6a4a2a"), 44, ("food_coconut", 1, 3)),
@@ -100,6 +110,8 @@ namespace MadMax.Items
 
         static CropDef Crop(string seed, string name, float minutes, int height, Color32 leaf, Color32 fruit, params (string, int, int)[] yields) =>
             new CropDef { seed = seed, name = name, growMinutes = minutes, height = height, leaf = leaf, fruit = fruit, yields = yields };
+
+        static CropDef Dark(CropDef c) { c.dark = true; return c; }
 
         static CropDef Tree(string seed, string name, float minutes, float regrow, Color32 leaf, Color32 fruit, int height, params (string, int, int)[] fruitYield) =>
             new CropDef { seed = seed, name = name, growMinutes = minutes, regrowMinutes = regrow, tree = true, leaf = leaf, fruit = fruit, height = height, yields = fruitYield, seedChance = 0.35f };
@@ -112,7 +124,7 @@ namespace MadMax.Items
         public static string SeedName(string id)
         {
             var c = Crop(id);
-            return c == null ? null : (c.tree ? c.name + " SAPLING" : c.name + " SEEDS");
+            return c == null ? null : c.tree ? c.name + " SAPLING" : c.dark ? c.name + " SPAWN" : c.name + " SEEDS";
         }
     }
 }

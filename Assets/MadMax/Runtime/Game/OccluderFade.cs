@@ -22,7 +22,22 @@ namespace MadMax.Game
         public static bool Underground { get; private set; }
         static readonly int WorldCutId = Shader.PropertyToID("_MadMaxCut");
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Underground = false; Shader.SetGlobalVector(WorldCutId, Vector4.zero); }
+        static void ResetStatics() { Underground = false; Active = null; Shader.SetGlobalVector(WorldCutId, Vector4.zero); }
+        /// <summary>The camera's cutaway (build aiming skips roofs it has clipped away).</summary>
+        public static OccluderFade Active { get; private set; }
+        float lastCutY = float.MaxValue;
+        void OnEnable() => Active = this;
+        void OnDisable() { if (Active == this) Active = null; }
+
+        /// <summary>True when a hit lies in the clipped-away part of a cut building (the roof over the player).</summary>
+        public bool Hides(Collider c, Vector3 point)
+        {
+            if (cut.Count == 0 || point.y < lastCutY || !c) return false;
+            var d = c.GetComponentInParent<MadMax.World.DestructibleVoxels>();
+            Renderer r = d ? d.GetComponent<Renderer>() : null;
+            if (!r) { var p = c.GetComponentInParent<MadMax.Building.Placeable>(); if (p) r = p.GetComponent<Renderer>(); }
+            return r && cut.Contains(r);
+        }
         readonly HashSet<Renderer> cut = new HashSet<Renderer>(), now = new HashSet<Renderer>();
         readonly RaycastHit[] hits = new RaycastHit[32];
         readonly Collider[] around = new Collider[32];
@@ -62,6 +77,7 @@ namespace MadMax.Game
                 Underground = under;
                 if (!under) Shader.SetGlobalVector(WorldCutId, Vector4.zero);
             }
+            lastCutY = cutY;
             foreach (var r in now)
             {
                 if (!r) continue;

@@ -180,10 +180,15 @@ namespace MadMax.Game
         }
         string selectedSeed;
 
-        public void Harvest(CropDef def, Vector3 at)
+        public void Harvest(CropDef def, Vector3 at) => Harvest(def, at, 0.8f, 1f, 1f);
+
+        /// <summary>Pick a crop: more from fertile soil and healthy plants; seeds saved carry the harvest's make
+        /// (Farming skill, soil, parent seeds), and better seeds grow faster.</summary>
+        public void Harvest(CropDef def, Vector3 at, float fertility, float health, float seedQuality)
         {
             var got = new List<string>();
-            float skill = 1f + Stats.Level(Skill.Farming) * 0.08f;
+            int farm = Stats.Level(Skill.Farming);
+            float skill = (1f + farm * 0.08f) * (0.6f + 0.6f * fertility) * Mathf.Max(0.3f, health) * (0.9f + 0.1f * seedQuality);
             foreach (var (item, min, max) in def.yields)
             {
                 int n = Mathf.RoundToInt(Random.Range(min, max + 1) * skill);
@@ -191,7 +196,13 @@ namespace MadMax.Game
                 Inventory.AddItem(item, n);
                 got.Add(n + " " + ItemCatalog.Name(item));
             }
-            if (!def.tree && Random.value < def.seedChance + 0.35f) { Inventory.AddItem(def.seed, 1 + (Random.value < def.seedChance ? 1 : 0)); got.Add("SEEDS"); }
+            if (!def.tree && Random.value < def.seedChance + 0.35f + farm * 0.04f)
+            {
+                int q = Mathf.Clamp(Mathf.RoundToInt(farm / 4f + fertility + (seedQuality - 1f) * 0.5f + Random.Range(-0.6f, 0.6f)), 0, 2);
+                int n = 1 + (Random.value < def.seedChance + farm * 0.03f ? 1 : 0);
+                AddMade(def.seed, n, q);
+                got.Add(n + " " + QualityNames[q] + " SEEDS");
+            }
             if (def.tree && Random.value < def.seedChance) { Inventory.AddItem(def.seed); got.Add("SAPLING"); }
             Stats.Practice(Skill.Farming, 6f);
             Soil(2f);

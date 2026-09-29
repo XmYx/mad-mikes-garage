@@ -126,6 +126,27 @@ namespace MadMax.Items
             yield return Itm("pipebomb", "PIPE BOMB", RecipeCategory.Weapons, "gunsmith", "throw_pipebomb", 1, "3 S FUSE: SHRAPNEL", null, (ResourceType.Gunpowder, 1), (S, 2));
             yield return Itm("detector", "METAL DETECTOR", RecipeCategory.Tools, "workbench", "tool_detector", 1, "BEEPS OVER BURIED ORE", null, (Cu, 3), (G, 1), (S, 2));
 
+            // ---- 8-9. gardening and irrigation: garden tools, flour and bread, sugar, beet spirit
+            var W = ResourceType.Wood;
+            yield return Itm("hoe", "HOE", RecipeCategory.Tools, "workbench", "tool_hoe", 1, "CHOPS WEEDS, LOOSENS THE SOIL", null, (Fe, 1), (W, 2));
+            yield return Itm("watering_can", "WATERING CAN", RecipeCategory.Tools, "workbench", "tool_watering_can", 1, "WATERS BEDS, DOUSES FIRES; DIP IN A LAKE", null, (S, 3));
+            var flour = Itm("flour", "FLOUR X2", RecipeCategory.Cooking, "workbench", "crop_flour", 2, "WHEAT GROUND ON A HAND QUERN", new[] { ("crop_wheat", 3) });
+            flour.seconds = 20f;
+            yield return flour;
+            yield return FuelR("ethanol_beet", "ETHANOL 4L (BEET)", ResourceType.Ethanol, 4, new[] { ("food_beet", 4) }, (Ch, 1));
+            foreach (var st in new[] { "stove", "oven" })
+            {
+                var fuel = st == "stove" ? ResourceType.Wood : ResourceType.None;
+                var bread = Cook(st, "bread", "BREAD X2", "food_bread", 2, fuel, ("crop_flour", 2));
+                bread.resources = new[] { (Wa, 1) };
+                yield return bread;
+                yield return Cook(st, "sugar", "SUGAR X2", "food_sugar", 2, fuel, ("food_beet", 3));
+                yield return Cook(st, "mushsoup", "MUSHROOM SOUP X2", "food_mushsoup", 2, fuel, ("food_mushroom", 3), ("food_herbs", 1));
+                var porridge = Cook(st, "porridge", "WHEAT PORRIDGE X2", "food_porridge", 2, fuel, ("crop_wheat", 2));
+                porridge.resources = new[] { (Wa, 1) };
+                yield return porridge;
+            }
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

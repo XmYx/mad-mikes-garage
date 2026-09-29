@@ -2,10 +2,12 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    /// <summary>Waters every garden plot within reach from the water network.</summary>
+    /// <summary>Waters every garden plot within reach from the water network. A drip line (<see cref="drip"/>) sips a
+    /// fraction of the water and keeps its beds evenly moist, which they reward with faster growth.</summary>
     public class Sprinkler : MonoBehaviour
     {
         public float reach = 3.5f;
+        public bool drip;
         UtilityNode node;
         float tick;
         void Awake() => node = GetComponent<UtilityNode>();
@@ -16,7 +18,15 @@ namespace MadMax.Building
             tick = 5f;
             foreach (var p in FindObjectsByType<GardenPlot>())
             {
-                if (p.water > 0.6f || Vector3.Distance(p.transform.position, transform.position) > reach) continue;
+                if (Vector3.Distance(p.transform.position, transform.position) > reach) continue;
+                if (drip)
+                {
+                    if (p.water >= 0.9f) { p.Irrigate(0f); continue; }
+                    if (UtilityGrid.Draw(node, 0.05f, out _) < 0.049f) return;
+                    p.Irrigate(1f);
+                    continue;
+                }
+                if (p.water > 0.6f) continue;
                 if (UtilityGrid.Draw(node, 0.3f, out _) < 0.29f) return;
                 p.Water(1f);
                 for (int i = 0; i < 4; i++) MadMax.World.Fx.Smoke(p.transform.position + Vector3.up * 0.4f, Random.insideUnitSphere + Vector3.up, 0.15f, new Color(0.7f, 0.8f, 0.9f, 0.5f), 0.5f);

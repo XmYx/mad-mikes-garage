@@ -115,11 +115,16 @@ namespace MadMax.Building
                 D("aircon", "AIR CONDITIONER", U, BuildPieces.Heater(true), 3, false, go => { Node(go, UtilityKind.Power, 0.4f); go.AddComponent<Climate>().heat = -14f; }, (Fe, 3), (Cu, 4), (Al, 2)),
                 D("fireplace", "FIREPLACE", Fu, BuildPieces.Fireplace(), 10, false, go => { go.AddComponent<Climate>().heat = 20f; go.GetComponent<Climate>().burnsWood = true; Glow(go, new Vector3(0, 0.3f, 0.3f), new Color(1f, 0.5f, 0.2f), 5f, 3f, false, 0f); }, (St, 12)),
                 D("sprinkler", "SPRINKLER", U, BuildPieces.Sprinkler(), 3, false, go => { Node(go, UtilityKind.Water, 0.2f).waterCapacity = 2f; go.AddComponent<Sprinkler>(); }, (S, 2), (Fe, 1)),
+                D("drip_line", "DRIP LINE", U, BuildPieces.DripLine(), 2, false, go => { Node(go, UtilityKind.Water, 0.1f).waterCapacity = 1f; var d = go.AddComponent<Sprinkler>(); d.reach = 1.6f; d.drip = true; }, (ResourceType.Rubber, 1), (S, 1)),
+                D("well", "WELL", U, BuildPieces.Well(), 20, false, go => { Node(go, UtilityKind.Water | UtilityKind.Power, 0.4f).waterCapacity = 60f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Well; go.AddComponent<HandPump>(); go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Well; }, (St, 16), (Fe, 3), (W, 2)),
+                D("water_tower", "WATER TOWER", U, BuildPieces.WaterTower(), 16, false, go => Node(go, UtilityKind.Water, 0.4f).waterCapacity = 3000f, (W, 24), (Fe, 4), (S, 4)),
 
                 // garden
                 D("garden_plot", "GARDEN PLOT", Ga, BuildPieces.GardenBed(11, 6), 4, false, go => go.AddComponent<GardenPlot>(), (W, 3), (ResourceType.Clay, 4)),
                 D("planter", "PLANTER", Ga, BuildPieces.GardenBed(4, 4), 3, false, go => go.AddComponent<GardenPlot>(), (W, 2), (ResourceType.Clay, 2)),
                 D("composter", "COMPOSTER", Ga, BuildPieces.Composter(), 4, false, go => Station(go, "composter", "COMPOSTER", 0f), (W, 6)),
+                D("greenhouse", "GREENHOUSE", Ga, BuildPieces.Greenhouse(), 10, true, null, (W, 12), (G, 16)),
+                D("scarecrow", "SCARECROW", Ga, BuildPieces.Scarecrow(), 2, false, go => go.AddComponent<Scarecrow>(), (W, 3), (C, 3)),
 
                 // industry
                 D("furnace", "FURNACE", In, BuildPieces.Furnace(false), 20, false, go => { Station(go, "furnace", "SMELT (FURNACE)", 0f).output = new Vector3(0, 0.6f, 0.8f); Glow(go, new Vector3(0, 0.3f, 0.6f), new Color(1f, 0.5f, 0.2f), 4f, 2f, false, 0f); }, (St, 20), (ResourceType.Clay, 6)),

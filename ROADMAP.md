@@ -150,23 +150,35 @@ decorative turret.
 ## 8. Gardening `T2`
 *Exists:* garden plots, crops and saplings, fertilizer, composter, planted trees.
 
-- [ ] **Soil fertility** per plot, depleted by harvests, restored by compost / manure
-- [ ] **Water need**: crops wilt without water; watered / irrigated plots grow faster
-- [ ] **Seasons & frost**; greenhouse (glass roof) protects
-- [ ] **Weeds & pests**: weeds slow growth (hoe), crows peck (scarecrow)
-- [ ] **Quality & seed saving** (Farming skill)
-- [ ] New crops: wheat (flour → bread), cotton, hemp, sunflower (oil), sugar beet, herbs (medicine), mushrooms (dark)
+- [x] **Soil fertility** per plot, depleted by harvests, restored by compost / manure
+- [x] **Water need**: crops wilt without water; watered / irrigated plots grow faster
+- [x] **Seasons & frost**; greenhouse (glass roof) protects
+- [x] **Weeds & pests**: weeds slow growth (hoe), crows peck (scarecrow)
+- [x] **Quality & seed saving** (Farming skill)
+- [x] New crops: wheat (flour → bread), cotton, hemp, sunflower (oil), sugar beet, herbs (medicine), mushrooms (dark)
+      *Done:* `GardenPlot` fertility / health / weeds / seed make (saved), drought wilting, open-sky frost, winter and
+      autumn slow-down, light (a raycast up: glass `greenhouse` piece, solid roof — mushrooms need the dark), crows on
+      ripening crops (voxel crow) unless a `Scarecrow` stands within 12 m, [T] pull weeds / fertilise, `tool_hoe`,
+      `tool_watering_can` (also douses fires via `Fire.Douse`, refills from lakes); yields scale with fertility, health,
+      seed make and Farming, seeds inherit a make; wheat → flour (workbench) → bread / porridge, sugar beet → sugar
+      and beet ethanol, mushroom spawn → mushroom soup; seeds and garden tools in farm loot.
 
 *Ties:* irrigation, animals (feed, manure), cooking, refining (biodiesel), economy.
 
 ## 9. Irrigation `T2`
 *Exists:* water network (utility nodes, pipes), water source / outlet, sprinklers.
 
-- [ ] **Wells**: dig a well (water table by biome), hand pump; electric pump on the power grid
-- [ ] **Tanks & towers** store litres; **rain barrels** fill in rain
-- [ ] **Drip lines** (efficient) and **sprinklers** (radius) water plots automatically
-- [ ] **Channels**: dig a trench from a lake — water flows along it and soaks the fields beside it
-- [ ] **Water quality**: dirty water → sand + charcoal **filter** → clean
+- [x] **Wells**: dig a well (water table by biome), hand pump; electric pump on the power grid
+- [x] **Tanks & towers** store litres; **rain barrels** fill in rain
+- [x] **Drip lines** (efficient) and **sprinklers** (radius) water plots automatically
+- [x] **Channels**: dig a trench from a lake — water flows along it and soaks the fields beside it
+- [x] **Water quality**: dirty water → sand + charcoal **filter** → clean
+      *Done:* `WorldGen.WaterTable` (forest 3 m, jungle 2 m, desert 16 m, shallow by lakes), `well` piece (`HandPump`
+      [E] 1–6 L per stroke for stamina, `WaterSource.Well` pumps when powered, tainted in the nuclear zone, [T] fills
+      the canteen), `water_tower` (3000 L), `drip_line` (`Sprinkler.drip`: 0.05 L sips, irrigated beds grow 10 %
+      faster), `DeformableTerrain.Channels` floods dug trenches connected to a lake at its level (water array + mesh,
+      re-derived when chunks stream in); beds within 2.2 m of water stay wet. Build aiming passes through roofs the
+      cutaway has clipped (build inside houses and greenhouses from the isometric view).
 
 *Ties:* gardening, survival (drinking, washing), furniture, refining.
 

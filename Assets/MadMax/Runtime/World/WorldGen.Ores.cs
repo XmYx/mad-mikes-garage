@@ -38,6 +38,16 @@ namespace MadMax.World
             return new Deposit { valid = true, ore = ore, center = center, radius = 22f + 18f * (float)r.NextDouble() };
         }
 
+        /// <summary>Depth of the water table (m) under a point: shallow under forest and jungle and near lakes, deep
+        /// under the desert. Wells pump faster where it is shallow.</summary>
+        public float WaterTable(float x, float z)
+        {
+            float depth = NaturalBiome(x, z) switch { Biome.Forest => 3f, Biome.Tropical => 2f, Biome.Nuclear => 10f, _ => 16f };
+            var lake = LakeAt(x, z, out float t);
+            if (lake != null) depth = Mathf.Min(depth, 1f + Mathf.Max(0f, t - 1f) * 12f);
+            return depth * (0.8f + 0.4f * Mathf.PerlinNoise(x * 0.01f + 3f, z * 0.01f - 5f));
+        }
+
         /// <summary>Ore strength (0..1) at a point and the deposit's kind.</summary>
         public float OreAt(float x, float z, out ResourceType ore)
         {

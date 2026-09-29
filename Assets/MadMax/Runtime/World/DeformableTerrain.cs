@@ -151,9 +151,12 @@ namespace MadMax.World
 
         Chunk Insert(Chunk ch)
         {
-            if (savedEdits.TryGetValue(ch.c, out var edit)) { ApplySaved(ch, edit); savedEdits.Remove(ch.c); }
+            bool edited = false;
+            if (savedEdits.TryGetValue(ch.c, out var edit)) { ApplySaved(ch, edit); savedEdits.Remove(ch.c); edited = true; }
             ch.lastUse = Time.time;
             chunks[ch.c] = ch;
+            // channels dug earlier: flood when the trench or the lake it leads from streams in
+            if (edited || HasWater(ch)) FloodAround(new Vector3((ch.c.x + 0.5f) * ChunkWorld, 0f, (ch.c.y + 0.5f) * ChunkWorld), ChunkWorld * 0.6f);
             return ch;
         }
 
@@ -502,6 +505,7 @@ namespace MadMax.World
                 }
             }
             terraforming = false;
+            if ((TerraOp)op == TerraOp.Dig && moved > 0f) FloodAround(p, radius);   // a trench from a lake fills up
             return moved;
         }
 

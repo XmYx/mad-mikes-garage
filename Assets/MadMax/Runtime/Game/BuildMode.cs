@@ -240,6 +240,7 @@ namespace MadMax.Game
             {
                 var h = hits[i];
                 if (h.collider.transform.IsChildOf(player) || h.collider.attachedRigidbody && h.collider.GetComponent<VehiclePart>() && !h.collider.GetComponentInParent<VehicleChassis>()) continue;
+                if (OccluderFade.Active && OccluderFade.Active.Hides(h.collider, h.point)) continue;   // aim through the cut-away roof
                 if (h.distance < bd) { bd = h.distance; best = h; found = true; }
             }
             if (!found) return false;
