@@ -1,3 +1,4 @@
+using MadMax.Items;
 using UnityEngine;
 
 namespace MadMax.Vehicles
@@ -76,8 +77,13 @@ namespace MadMax.Vehicles
 
             float want = flowLps * Time.deltaTime;
             float moved;
-            if (Pumping == Mode.Fill) { moved = Mathf.Min(want, Tank.fuel, other.fuelCapacity - other.fuel); Tank.fuel -= moved; other.fuel += moved; }
-            else { moved = Mathf.Min(want, other.fuel, Tank.fuelCapacity - Tank.fuel); other.fuel -= moved; Tank.fuel += moved; }
+            // one kind of fuel per tank: the hose only runs between tanks that take what flows
+            var from = Pumping == Mode.Fill ? Tank : other; var to = Pumping == Mode.Fill ? other : Tank;
+            var kind = from.tankKind != ResourceType.None ? from.tankKind : from.FuelKind;
+            if (!to.Accepts(kind)) { Stop("WRONG FUEL: " + ResourceInfo.Name(kind) + " INTO " + ResourceInfo.Name(to.tankKind)); return; }
+            moved = Mathf.Min(want, from.fuel, to.fuelCapacity - to.fuel);
+            from.fuel -= moved;
+            if (moved > 0f) to.AddFuel(kind, moved);
             Moved += moved;
             MadMax.Audio.Sfx.Loop(this, "pour", 0.5f, 0.9f, 15f);
             DrawHose(Outlet, inlet);

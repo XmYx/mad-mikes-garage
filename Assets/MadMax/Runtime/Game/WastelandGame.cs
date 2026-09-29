@@ -215,7 +215,7 @@ namespace MadMax.Game
                 Inventory.AddItem("seed_corn", 3); Inventory.AddItem("seed_potato", 3);
                 Inventory.AddItem(ItemIds.ClawHammer);
                 Inventory.Add(ResourceType.Scrap, 20); Inventory.Add(ResourceType.Wood, 10); Inventory.Add(ResourceType.Rubber, 4);
-                Inventory.Add(ResourceType.Cloth, 2); Inventory.Add(ResourceType.Fuel, 20); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 5);
+                Inventory.Add(ResourceType.Cloth, 2); Inventory.Add(ResourceType.Fuel, 10); Inventory.Add(ResourceType.Diesel, 10); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 5);
                 Inventory.AddItem("book_mechanics_1");
             }
             if (kit >= 2)
@@ -301,8 +301,17 @@ namespace MadMax.Game
             var src = CraftSources(station);
             foreach (var (t, n) in r.resources) if (t != ResourceType.None && CountRes(src, t) < RecipeLibrary.Amount(n)) return false;
             foreach (var (i, n) in r.items) if (CountItem(src, i) < n) return false;
-            if (r.fuel != ResourceType.None && CountRes(src, r.fuel) < r.fuelAmount && !(r.fuel == ResourceType.Wood && CountRes(src, ResourceType.Charcoal) >= r.fuelAmount)) return false;
+            if (r.fuel != ResourceType.None && PickFuel(src, r) == ResourceType.None) return false;
             return true;
+        }
+
+        /// <summary>The fuel a station burns for a recipe: the asked one, else hotter stand-ins (wood → charcoal → coal).</summary>
+        ResourceType PickFuel(List<Inventory> src, Recipe r)
+        {
+            if (CountRes(src, r.fuel) >= r.fuelAmount) return r.fuel;
+            if (r.fuel == ResourceType.Wood && CountRes(src, ResourceType.Charcoal) >= r.fuelAmount) return ResourceType.Charcoal;
+            if ((r.fuel == ResourceType.Wood || r.fuel == ResourceType.Charcoal) && CountRes(src, ResourceType.Coal) >= r.fuelAmount) return ResourceType.Coal;
+            return ResourceType.None;
         }
 
         void PayFrom(List<Inventory> src, ResourceType t, int n) { foreach (var i in src) { int take = Mathf.Min(n, i.Get(t)); if (take > 0) { i.TrySpend(t, take); n -= take; } if (n <= 0) return; } }
@@ -319,11 +328,7 @@ namespace MadMax.Game
             var src = CraftSources(station);
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) PayFrom(src, t, RecipeLibrary.Amount(n));
             foreach (var (i, n) in r.items) TakeFrom(src, i, n);
-            if (r.fuel != ResourceType.None)
-            {
-                if (CountRes(src, r.fuel) >= r.fuelAmount) PayFrom(src, r.fuel, r.fuelAmount);
-                else PayFrom(src, ResourceType.Charcoal, r.fuelAmount);
-            }
+            if (r.fuel != ResourceType.None) PayFrom(src, PickFuel(src, r), r.fuelAmount);
             if (!station) { Produce(r, null); return; }
             station.Enqueue(r, CraftSpeed(r));
             MadMax.Audio.Sfx.Play2D("click", 0.5f);

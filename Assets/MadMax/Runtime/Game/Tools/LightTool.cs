@@ -47,6 +47,12 @@ namespace MadMax.Game
             // a burning torch is used up; the owner's condition bar shows it
             var game = WastelandGame.Instance;
             if (kind == Kind.Torch && game && GetComponentInParent<PlayerCharacter>() == game.Player) game.WearTool(id, Time.deltaTime / 480f);
+            if (kind == Kind.Flashlight && game && GetComponentInParent<PlayerCharacter>() == game.Player)
+            {
+                // runs down over ~40 minutes; a dead battery dims it to nothing
+                game.WearTool(id, Time.deltaTime / 2400f);
+                if (game.ToolWear.TryGetValue(id, out var charge) && charge >= 1f) lamp.intensity = 0f;
+            }
             if (kind == Kind.GasTorch) MadMax.Audio.Sfx.Loop(this, "sizzle", 0.25f, 1.6f, 12f);
             else if (kind == Kind.Torch) MadMax.Audio.Sfx.Loop(this, "fire", 0.2f, 1.3f, 10f);
             if (kind == Kind.Torch && Random.value < Time.deltaTime * 6f && tip)

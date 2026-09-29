@@ -176,6 +176,42 @@ namespace MadMax.Game
             return true;
         }
 
+        /// <summary>Loose vehicle parts a station can break down (within 5 m): tyres give rubber, engines metal and copper.</summary>
+        public List<VehiclePart> SalvageableParts(CraftingStation st)
+        {
+            var list = new List<VehiclePart>();
+            if (!st || (st.type != "garage" && st.type != "workbench")) return list;
+            foreach (var p in VehiclePart.Registry)
+                if (p && !p.Socket && p != Player.Carried && Vector3.Distance(p.transform.position, st.transform.position) < 5f) list.Add(p);
+            return list;
+        }
+
+        public List<(ResourceType, int)> PartYield(VehiclePart p)
+        {
+            var list = new List<(ResourceType, int)>();
+            float k = (0.6f + Stats.Level(Skill.Salvaging) * 0.03f) * (1f - Mathf.Clamp01(p.damage) * 0.5f);
+            int M(float x) => Mathf.Max(1, Mathf.RoundToInt(x * k));
+            switch (p.category)
+            {
+                case PartCategory.Wheel: list.Add((ResourceType.Rubber, M(p.mass / 4f))); list.Add((ResourceType.Iron, M(p.mass / 20f))); break;
+                case PartCategory.Engine: list.Add((ResourceType.Iron, M(p.mass / 10f))); list.Add((ResourceType.Aluminium, M(3f))); list.Add((ResourceType.Copper, M(4f))); break;
+                case PartCategory.Radiator: list.Add((ResourceType.Copper, M(p.mass / 8f))); list.Add((ResourceType.Scrap, M(3f))); break;
+                default: list.Add((ResourceType.Scrap, M(p.mass / 8f))); list.Add((ResourceType.Iron, M(p.mass / 25f))); break;
+            }
+            return list;
+        }
+
+        public void SalvagePart(VehiclePart p)
+        {
+            if (!p) return;
+            var sb = new StringBuilder("BROKE DOWN " + p.partId.Replace('_', ' ').ToUpperInvariant() + ":");
+            foreach (var (t, n) in PartYield(p)) { Inventory.Add(t, n); sb.Append(" +").Append(n).Append(' ').Append(ResourceInfo.Name(t)); }
+            Destroy(p.gameObject);
+            Stats.Practice(Skill.Salvaging, 4f);
+            MadMax.Audio.Sfx.Play2D("ratchet", 0.6f, 0.7f);
+            Toast(sb.ToString());
+        }
+
         // ------------------------------------------------------------------ blueprints
         /// <summary>Study a blueprint (bp_*): its recipe knowledge is learned for good.</summary>
         bool UseBlueprint(string id)

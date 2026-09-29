@@ -84,7 +84,7 @@ namespace MadMax.Game
                 };
                 foreach (var s in v.GetComponent<VehicleChassis>().Sockets)
                     vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, state = s.Current ? s.Current.SaveState() : null, q = s.Current ? s.Current.quality + 1 : 0, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f });
-                if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; vs.additive = sys.additive; }
+                if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; vs.additive = sys.additive; vs.tank = (int)sys.tankKind; }
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) vs.towedBy = saved.IndexOf(tc.Tower);
@@ -187,7 +187,7 @@ namespace MadMax.Game
                     var part = SpawnPart(saved.part, s.transform.position, s.transform.rotation);
                     if (part) { s.Attach(part); part.damage = saved.damage; part.LoadState(saved.state); if (saved.q > 0) part.quality = saved.q - 1; if (part.TryGetComponent<WheelStats>(out var ws1)) ws1.wear = saved.wear; }
                 }
-                if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; sys.additive = vs.additive; }
+                if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; sys.additive = vs.additive; sys.tankKind = (ResourceType)vs.tank; }
                 if (!string.IsNullOrEmpty(vs.cargo) && go.TryGetComponent<Container>(out var cargo)) cargo.LoadState(vs.cargo);
                 if (go.TryGetComponent<VehicleDamage>(out var dmg)) { dmg.AddFrameDamage(vs.frame, 1f); dmg.salvagePool = vs.salvage; }
                 if (vs.fourWheel != v.FourWheelDrive) v.ToggleFourWheelDrive();

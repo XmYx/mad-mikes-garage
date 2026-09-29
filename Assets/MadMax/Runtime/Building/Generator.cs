@@ -40,7 +40,7 @@ namespace MadMax.Building
         {
             int want = Mathf.FloorToInt(tankLitres - fuel);
             int n = 0;
-            foreach (var t in new[] { ResourceType.Fuel, ResourceType.Ethanol })
+            foreach (var t in new[] { ResourceType.Diesel, ResourceType.Fuel, ResourceType.Ethanol })
             {
                 int take = Mathf.Min(want - n, inv.Get(t));
                 if (take > 0 && inv.TrySpend(t, take)) n += take;

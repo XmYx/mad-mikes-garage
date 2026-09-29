@@ -104,7 +104,7 @@ namespace MadMax.Building
                 new FurnitureDef { id = "pipe", name = "WATER PIPE", category = U, cost = new[] { (S, 1) }, link = UtilityKind.Water, mesh = Spool(false) },
                 D("generator", "GENERATOR", U, BuildPieces.Generator(), 8, false, go => { Node(go, UtilityKind.Power, 0.8f); go.AddComponent<Generator>(); }, (Fe, 6), (Cu, 4), (Al, 2)),
                 D("windmill", "WIND TURBINE", U, BuildPieces.WindmillTower(), 12, false, go => { Node(go, UtilityKind.Power, 0.4f); Rotor(go); }, (Fe, 8), (Cu, 4), (Al, 4)),
-                D("battery", "BATTERY BANK", U, BuildPieces.Battery(), 5, false, go => { var n = Node(go, UtilityKind.Power, 0.7f); n.batteryWh = 3000f; }, (Cu, 4), (S, 4), (ResourceType.Oil, 2)),
+                D("battery", "BATTERY BANK", U, BuildPieces.Battery(), 5, false, go => { var n = Node(go, UtilityKind.Power, 0.7f); n.batteryWh = 3000f; go.AddComponent<BatteryRack>(); }, (Cu, 4), (S, 4), (ResourceType.Oil, 2)),
                 D("power_pole", "POWER POLE", U, BuildPieces.PowerPole(), 6, false, go => Node(go, UtilityKind.Power, 4.7f), (W, 4), (G, 1)),
                 D("rain_collector", "RAIN COLLECTOR", U, BuildPieces.RainCollector(), 5, false, go => { Node(go, UtilityKind.Water, 0.3f).waterCapacity = 200f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Rain; go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Barrel; }, (S, 6)),
                 D("water_tank", "WATER TANK", U, BuildPieces.WaterTank(), 10, false, go => Node(go, UtilityKind.Water, 1.3f).waterCapacity = 1000f, (S, 12), (Fe, 4)),
@@ -145,6 +145,7 @@ namespace MadMax.Building
             };
             defs.AddRange(Home());
             defs.AddRange(Workshops());
+            defs.AddRange(Refining());
         }
 
         static FurnitureDef D(string id, string name, BuildCategory cat, VoxelGrid g, int hits, bool meshCollider, System.Action<GameObject> setup, params (ResourceType, int)[] cost)

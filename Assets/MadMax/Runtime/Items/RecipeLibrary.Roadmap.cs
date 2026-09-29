@@ -93,6 +93,34 @@ namespace MadMax.Items
                 yield return weave;
             }
 
+            // ---- 6. refining: crude cuts, seed oil, biodiesel, scrap and lead, batteries, tar
+            var Cr = ResourceType.CrudeOil; var Tar = ResourceType.Tar; var Dsl = ResourceType.Diesel; var Fuel = ResourceType.Fuel;
+            var cut = Res("crack_petrol", "PETROL CUT 5L", RecipeCategory.Refining, "refinery", Fuel, 5, "10 L CRUDE: PETROL, SOME DIESEL, OIL AND TAR", (Cr, 10));
+            cut.byproducts = new[] { (Dsl, 2), (Oil, 1), (Tar, 1) }; cut.fuel = ResourceType.Charcoal; cut.fuelAmount = 1; cut.seconds = 40f;
+            yield return cut;
+            var dcut = Res("crack_diesel", "DIESEL CUT 5L", RecipeCategory.Refining, "refinery", Dsl, 5, "10 L CRUDE: DIESEL, SOME PETROL, OIL AND TAR", (Cr, 10));
+            dcut.byproducts = new[] { (Fuel, 2), (Oil, 1), (Tar, 1) }; dcut.fuel = ResourceType.Charcoal; dcut.fuelAmount = 1; dcut.seconds = 40f;
+            yield return dcut;
+            var lube = Res("lube_oil", "ENGINE OIL 4L", RecipeCategory.Refining, "refinery", Oil, 4, "HEAVY CUT FOR ENGINES", (Cr, 8));
+            lube.byproducts = new[] { (Tar, 2) }; lube.fuel = ResourceType.Charcoal; lube.fuelAmount = 1; lube.seconds = 35f;
+            yield return lube;
+            foreach (var (seed, name) in new[] { ("food_sunseeds", "SUNFLOWER"), ("food_hempseed", "HEMP") })
+            {
+                var press = Res("press_" + seed, "SEED OIL 2L (" + name + ")", RecipeCategory.Refining, "press", ResourceType.SeedOil, 2, "PRESSED FROM " + name + " SEEDS");
+                press.items = new[] { (seed, 4) };
+                yield return press;
+            }
+            yield return Res("biodiesel", "BIODIESEL 4L", RecipeCategory.Fuel, "chemlab", Dsl, 4, "SEED OIL + ETHANOL: RUNS ANY DIESEL", (ResourceType.SeedOil, 4), (ResourceType.Ethanol, 1));
+            yield return Res("asphalt_tar", "ASPHALT X5 (TAR)", RecipeCategory.Refining, "mixer", ResourceType.Asphalt, 5, "TAR BINDS BETTER THAN OIL", (ResourceType.Stone, 3), (ResourceType.Sand, 2), (Tar, 2));
+            var scrap = Res("s_furnace_scrap", "IRON X2 (SCRAP)", RecipeCategory.Smelting, "furnace", ResourceType.Iron, 2, "MELT DOWN SCRAP", (S, 6));
+            scrap.byproducts = new[] { (ResourceType.Slag, 1) }; scrap.fuel = ResourceType.Charcoal; scrap.fuelAmount = 1;
+            yield return scrap;
+            yield return Res("s_arc_furnace_scrap", "IRON X2 (SCRAP)", RecipeCategory.Smelting, "arc_furnace", ResourceType.Iron, 2, "MELT DOWN SCRAP (NEEDS POWER)", (S, 4));
+            var lead = Res("s_furnace_lead", "LEAD X2", RecipeCategory.Smelting, "furnace", ResourceType.Lead, 2, "GALENA MELTS EASILY", (ResourceType.LeadOre, 2));
+            lead.fuel = ResourceType.Charcoal; lead.fuelAmount = 1;
+            yield return lead;
+            yield return Itm("battery", "CAR BATTERY", RecipeCategory.Supplies, "workbench", "use_battery", 1, "LEAD-ACID: FLASHLIGHTS, BATTERY BANKS", null, (ResourceType.Lead, 2), (ResourceType.Acid, 1), (S, 1));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

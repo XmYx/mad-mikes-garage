@@ -17,6 +17,7 @@ namespace MadMax.Game
         public bool fleet, wreck;
         public List<SocketSave> sockets = new List<SocketSave>();
         public float fuel, oil, coolant, frame, salvage = -1f, additive;
+        public int tank;                   // ResourceType in the tank (0: whatever the engine burns)
         public bool fourWheel, diffLocked;
         public int towedBy = -1;
         public string cargo;               // machine bed / hopper contents

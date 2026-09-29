@@ -9,7 +9,7 @@ namespace MadMax.Vehicles
     public enum Fault
     {
         None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
-        CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192
+        CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384
     }
 
     /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
@@ -22,6 +22,31 @@ namespace MadMax.Vehicles
         public float fuel = 40f, oil = 5f, coolant = 8f;
         /// <summary>Litres of fuel treated with additive still in the tank (burns 25 % leaner).</summary>
         public float additive;
+        /// <summary>What is in the tank: petrol (Fuel) or Diesel; None while empty. Set by whatever goes in first.</summary>
+        public ResourceType tankKind = ResourceType.None;
+
+        /// <summary>The fuel the mounted engine burns: diesel engines take Diesel, the rest petrol (Fuel; Ethanol works too).</summary>
+        public ResourceType FuelKind
+        {
+            get
+            {
+                var e = driver ? driver.Engine : null;
+                var p = e ? e.GetComponent<VehiclePart>() : null;
+                return p && p.partId.Contains("diesel") ? ResourceType.Diesel : ResourceType.Fuel;
+            }
+        }
+        /// <summary>The tank holds the other kind of fuel: the engine won't run until it is siphoned out.</summary>
+        public bool WrongFuel => fuel > 0.5f && tankKind != ResourceType.None && tankKind != FuelKind && driver && driver.Engine;
+        /// <summary>Can this fuel go in (ethanol counts as petrol)? An empty tank takes anything.</summary>
+        public bool Accepts(ResourceType t) => fuel < 0.5f || tankKind == ResourceType.None || tankKind == (t == ResourceType.Ethanol ? ResourceType.Fuel : t);
+        /// <summary>Pour fuel in (litres), remembering its kind.</summary>
+        public bool AddFuel(ResourceType t, float litres)
+        {
+            if (!Accepts(t)) return false;
+            if (fuel < 0.5f || tankKind == ResourceType.None) tankKind = t == ResourceType.Ethanol ? ResourceType.Fuel : t;
+            fuel = Mathf.Min(fuelCapacity, fuel + litres);
+            return true;
+        }
         public bool usesCoolant = true;
         [Tooltip("Two-stroke: oil is mixed into the fuel, no separate oil system.")]
         public bool oilInFuel;
@@ -78,8 +103,12 @@ namespace MadMax.Vehicles
             }
             if (damage && damage.FrameDamage > 0.5f && fuel > 0f) { fuel = Mathf.Max(0f, fuel - (damage.FrameDamage - 0.5f) * 0.02f * dt); f |= Fault.FuelLeak; }
 
+            if (fuel < 0.5f) tankKind = ResourceType.None;
+            else if (tankKind == ResourceType.None && engine) tankKind = FuelKind;      // factory fill matches the engine
             if (!engine) { Faults = f | Fault.NoEngine; PowerFactor = 0f; Cool(dt, speed); return; }
             bool seized = engineDamage >= 1f;
+            bool wrong = WrongFuel;
+            if (wrong) f |= Fault.WrongFuel;
             if (seized) f |= Fault.Seized;
             if (fuel <= 0f) f |= Fault.NoFuel; else if (FuelFraction < 0.1f) f |= Fault.LowFuel;
             if (!oilInFuel) { if (oil <= 0f) f |= Fault.NoOil; else if (OilFraction < 0.25f) f |= Fault.LowOil; }
@@ -94,7 +123,7 @@ namespace MadMax.Vehicles
             bool flooded = !float.IsNaN(lvl) && intake < lvl;
             if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
             UpdateFire(dt, ePos, ref f);
-            bool running = driver.Occupied && fuel > 0f && !seized && !flooded;
+            bool running = driver.Occupied && fuel > 0f && !seized && !flooded && !wrong;
             float power = running ? 1f : 0f;
             if (running)
             {
@@ -147,7 +176,8 @@ namespace MadMax.Vehicles
         public int Service(Inventory inv)
         {
             int moved = 0;
-            moved += Fill(inv, ResourceType.Fuel, ref fuel, fuelCapacity);
+            var kind = FuelKind;
+            if (Accepts(kind)) { int n = Fill(inv, kind, ref fuel, fuelCapacity); if (n > 0) { tankKind = kind; moved += n; } }
             if (!oilInFuel) moved += Fill(inv, ResourceType.Oil, ref oil, oilCapacity);
             if (usesCoolant) moved += Fill(inv, ResourceType.Coolant, ref coolant, coolantCapacity);
             return moved;
@@ -157,14 +187,15 @@ namespace MadMax.Vehicles
         public int Siphon(Inventory inv, int maxLitres = 200)
         {
             int moved = 0;
-            moved += Drain(inv, ResourceType.Fuel, ref fuel, maxLitres);
+            moved += Drain(inv, tankKind == ResourceType.Diesel ? ResourceType.Diesel : ResourceType.Fuel, ref fuel, maxLitres);
+            if (fuel < 1f) fuel = 0f;                                                    // the dregs go on the ground
             moved += Drain(inv, ResourceType.Oil, ref oil, maxLitres);
             moved += Drain(inv, ResourceType.Coolant, ref coolant, maxLitres);
             return moved;
         }
 
         public bool NeedsService(Inventory inv) =>
-            (fuel < fuelCapacity - 1f && inv.Get(ResourceType.Fuel) > 0) ||
+            (fuel < fuelCapacity - 1f && inv.Get(FuelKind) > 0 && Accepts(FuelKind)) ||
             (!oilInFuel && oil < oilCapacity - 0.5f && inv.Get(ResourceType.Oil) > 0) ||
             (usesCoolant && coolant < coolantCapacity - 0.5f && inv.Get(ResourceType.Coolant) > 0);
 
@@ -216,6 +247,7 @@ namespace MadMax.Vehicles
             var f = Faults;
             if ((f & Fault.OnFire) != 0) return "ON FIRE!";
             if ((f & Fault.Flooded) != 0) return "ENGINE FLOODED";
+            if ((f & Fault.WrongFuel) != 0) return "WRONG FUEL IN THE TANK: SIPHON IT (K)";
             if ((f & Fault.NoEngine) != 0) return "NO ENGINE";
             if ((f & Fault.Seized) != 0) return "ENGINE SEIZED";
             if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";

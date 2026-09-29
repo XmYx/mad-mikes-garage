@@ -30,7 +30,7 @@ namespace MadMax.Items
             ItemCategory.Ammo => id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
             ItemCategory.Throwable => 0.8f,
             ItemCategory.Food => 0.4f,
-            ItemCategory.Consumable => 0.3f,
+            ItemCategory.Consumable => id == "use_battery" ? 8f : 0.3f,
             ItemCategory.Seed => 0.02f,
             ItemCategory.Crop => 0.2f,
             ItemCategory.Clothing => 0.8f,

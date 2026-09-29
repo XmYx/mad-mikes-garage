@@ -411,6 +411,26 @@ namespace MadMax.Game
                             hint = "ENTER BREAK ONE DOWN INTO MATERIALS"
                         });
                     }
+                    // loose vehicle parts by the bench: tyres to rubber, engines to metal
+                    foreach (var part in game.SalvageableParts(station))
+                    {
+                        var vp = part;
+                        items.Add(new Item
+                        {
+                            label = vp.partId.Replace('_', ' ').ToUpperInvariant() + " (PART)",
+                            value = () =>
+                            {
+                                if (!vp) return "";
+                                var sb = new System.Text.StringBuilder();
+                                foreach (var (t, n) in game.PartYield(vp)) sb.Append('+').Append(n).Append(' ').Append(ResourceInfo.Name(t)).Append(' ');
+                                return sb.ToString();
+                            },
+                            enabled = () => vp,
+                            confirm = () => { game.SalvagePart(vp); Rebuild(); },
+                            hint = "ENTER BREAK THE LOOSE PART DOWN"
+                        });
+                        ids.Add(vp.partId);
+                    }
                     if (ids.Count == 0) items.Add(new Item { label = "NOTHING TO SALVAGE", enabled = () => false });
                     Add("BACK", () => Open(Page.Crafting));
                     break;

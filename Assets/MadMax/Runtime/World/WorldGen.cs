@@ -105,6 +105,18 @@ namespace MadMax.World
             return Mathf.Clamp01((fallout - 0.73f) / 0.12f);
         }
 
+        /// <summary>0..1 crude oil under the ground: big patchy fields in the dry lands (tar-stained ground marks them;
+        /// thin under forest and jungle). A pumpjack's output scales with it.</summary>
+        public float OilAt(float x, float z)
+        {
+            float f = 0.0019f / biomeScale;
+            float n = Mathf.PerlinNoise(x * f + o[2].x + 57f, z * f + o[2].y - 131f) * 0.8f + Mathf.PerlinNoise(x * f * 4f + o[3].x - 19f, z * f * 4f + o[3].y + 71f) * 0.2f;
+            float oil = Mathf.Clamp01((n - 0.6f) / 0.15f);
+            if (oil <= 0f) return 0f;
+            var b = NaturalBiome(x, z);
+            return b == Biome.Forest || b == Biome.Tropical ? oil * 0.25f : oil;
+        }
+
         // ------------------------------------------------------------------ lakes
 
         Lake LakeIn(Vector2Int cell)

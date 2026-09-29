@@ -481,7 +481,7 @@ namespace MadMax.Game
             if (car.TryGetComponent<VehicleSystems>(out var sys))
             {
                 int fx = x + 104;
-                Gauge(fx, y - 10, "F", sys.FuelFraction, ResourceInfo.Color(ResourceType.Fuel));
+                Gauge(fx, y - 10, sys.FuelKind == ResourceType.Diesel ? "D" : "F", sys.FuelFraction, ResourceInfo.Color(sys.FuelKind));
                 Gauge(fx, y - 2, "O", sys.oilInFuel ? 1f : sys.OilFraction, ResourceInfo.Color(ResourceType.Oil));
                 Gauge(fx, y + 6, "T", Mathf.InverseLerp(25f, 130f, sys.Temperature), sys.Temperature > 110f ? Red : Amber);
                 Gauge(fx, y + 14, "C", sys.usesCoolant ? sys.CoolantFraction : 1f, ResourceInfo.Color(ResourceType.Coolant));

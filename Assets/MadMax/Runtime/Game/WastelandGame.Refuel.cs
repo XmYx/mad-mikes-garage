@@ -98,9 +98,14 @@ namespace MadMax.Game
             var sys = refuelTarget;
             if (sys.fuel < sys.fuelCapacity - 0.5f)
             {
-                float got = refuelPump ? refuelPump.Take(1f) : (Inventory.TrySpend(ResourceType.Fuel, 1) ? 1f : (Inventory.TrySpend(ResourceType.Ethanol, 1) ? 1f : 0f));
-                if (got <= 0f) { StopRefuel(refuelPump ? "PUMP RAN DRY" : "OUT OF FUEL"); return; }
-                sys.fuel = Mathf.Min(sys.fuelCapacity, sys.fuel + got);
+                // the engine's fuel only: diesel for diesel engines, petrol (or ethanol) for the rest
+                var want = sys.FuelKind;
+                if (refuelPump && refuelPump.kind != want) { StopRefuel("THIS PUMP SELLS " + ResourceInfo.Name(refuelPump.kind)); return; }
+                var kind = refuelPump ? refuelPump.kind : want == ResourceType.Diesel ? ResourceType.Diesel : Inventory.Get(ResourceType.Fuel) > 0 ? ResourceType.Fuel : ResourceType.Ethanol;
+                if (!sys.Accepts(kind)) { StopRefuel("THE TANK HOLDS " + ResourceInfo.Name(sys.tankKind) + ": SIPHON IT FIRST (K)"); return; }
+                float got = refuelPump ? refuelPump.Take(1f) : (Inventory.TrySpend(kind, 1) ? 1f : 0f);
+                if (got <= 0f) { StopRefuel(refuelPump ? "PUMP RAN DRY" : "OUT OF " + ResourceInfo.Name(want)); return; }
+                sys.AddFuel(kind, got);
                 return;
             }
             if (!refuelPump) { int n = sys.Service(Inventory); Stats.Practice(MadMax.RPG.Skill.Mechanics, 3f); StopRefuel("SERVICED " + Name(v) + (n > 0 ? ": +" + n + " L OIL/COOLANT" : "")); }

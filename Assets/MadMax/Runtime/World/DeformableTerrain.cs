@@ -432,7 +432,10 @@ namespace MadMax.World
             {
                 case Biome.Desert: return ResourceType.Sand;
                 case Biome.Tropical: return ResourceType.Laterite;
-                case Biome.Nuclear: return ResourceType.Slag;
+                case Biome.Nuclear:
+                    // crater floors: yellow sulfur crusts in the slag, richer towards the hot cores
+                    return depthBelowBase > 0.25f && Hash(Mathf.FloorToInt(x * 2f), Mathf.FloorToInt(z * 2f)) < 0.2f + (World != null ? World.Radiation(x, z) * 0.3f : 0f)
+                        ? ResourceType.Sulfur : ResourceType.Slag;
                 case Biome.Town: case Biome.City: return ResourceType.Rubble;
                 default: return ResourceType.Clay;
             }
@@ -689,7 +692,7 @@ namespace MadMax.World
         static readonly Color32[] Asphalt = { C(0x2f2a28), C(0x3a3432), C(0x443d39), C(0x4e4540) };
         static readonly Color32[] Dirt = { C(0x6b3a1e), C(0x7d4524), C(0x8f522b) };
         static readonly Color32 Mud = C(0x3e2416), MudLight = C(0x52301d), Water = C(0x6e5a52), WaterHi = C(0xa08c80);
-        static readonly Color32 Line = C(0xc49a44), Crack = C(0x221e1c);
+        static readonly Color32 Line = C(0xc49a44), Crack = C(0x221e1c), Tar = C(0x16130f), TarSheen = C(0x3a3842);
         static readonly Color32 SnowCol = C(0xe8e6ee), SnowShade = C(0xc4c6d8), IceCol = C(0x8aa0b8);
         static readonly Color32[] ForestG = { C(0x26301a), C(0x303c1e), C(0x3c4824), C(0x4a5428), C(0x5a6030) };
         static readonly Color32[] TropicG = { C(0x2a4e1e), C(0x346026), C(0x40742c), C(0x508834), C(0x649c3c) };
@@ -795,6 +798,14 @@ namespace MadMax.World
                         else if (hs > 0.965f) col = Gravel[1];
                         break;
                     default: col = Sand[bi]; break;
+                }
+                // oil fields: tar seeps stain the ground in blotches, stronger over rich oil
+                float oil = World != null ? World.OilAt(gx, gz) : 0f;
+                if (oil > 0.25f)
+                {
+                    float seep = Mathf.PerlinNoise(gx * 0.35f + 71f, gz * 0.35f - 13f);
+                    if (seep < oil * 0.75f - 0.05f) col = hs > 0.94f ? TarSheen : Color32.Lerp(col, Tar, 0.8f);
+                    else if (seep < oil * 0.75f + 0.08f) col = Color32.Lerp(col, Tar, 0.35f);
                 }
                 float sh = ch.shore[k];
                 if (sh > 0.45f && (Biome)ch.biome[k] != Biome.Nuclear) col = Sand[hs > 0.5f ? 4 : 3];

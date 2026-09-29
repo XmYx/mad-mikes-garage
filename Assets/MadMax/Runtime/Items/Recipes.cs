@@ -42,7 +42,7 @@ namespace MadMax.Items
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
             { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
             { "bp_cargo_generator", "BLUEPRINT: ONBOARD GENERATOR" }, { "bp_lights_search", "BLUEPRINT: SEARCHLIGHT" }, { "bp_framepack", "BLUEPRINT: FRAME PACK" },
-            { "med_antibiotics", "ANTIBIOTICS" }, { "med_painkillers", "PAINKILLERS" }, { "use_fuel_additive", "FUEL ADDITIVE" }, { "use_sewing_kit", "SEWING KIT" },
+            { "use_battery", "CAR BATTERY" }, { "med_antibiotics", "ANTIBIOTICS" }, { "med_painkillers", "PAINKILLERS" }, { "use_fuel_additive", "FUEL ADDITIVE" }, { "use_sewing_kit", "SEWING KIT" },
             { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };

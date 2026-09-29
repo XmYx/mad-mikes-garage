@@ -15,7 +15,7 @@ namespace MadMax.Game
         /// <summary>0 = like new .. 1 = breaks, per tool id (saved).</summary>
         public readonly Dictionary<string, float> ToolWear = new Dictionary<string, float>();
 
-        public float Condition(string id) => ToolWear.TryGetValue(id, out var w) ? 1f - w : 1f;
+        public float Condition(string id) => ToolWear.TryGetValue(id, out var w) ? Mathf.Clamp01(1f - w) : 1f;
 
         /// <summary>Wear the held tool by <paramref name="amount"/> (fraction of its life).</summary>
         public void WearTool(string id, float amount)
@@ -23,6 +23,14 @@ namespace MadMax.Game
             if (string.IsNullOrEmpty(id) || Inventory.GetItem(id) <= 0) return;
             ToolWear.TryGetValue(id, out var w);
             w += amount * Mathf.Max(0.5f, 1f - Stats.Level(Skill.Crafting) * 0.04f) * GameRules.Current.DamageTaken * QualityWear(id);
+            if (id == "tool_flashlight" && w >= 1f)
+            {
+                // a flat battery, not a broken torch: swap in a fresh one if there is one
+                if (Inventory.TakeItem("use_battery")) { w = 0f; Toast("FLASHLIGHT: FRESH BATTERY"); }
+                else { if (w < 1.5f) Toast("FLASHLIGHT: BATTERY DEAD (CRAFT A CAR BATTERY)"); w = 1.5f; }
+                ToolWear[id] = w;
+                return;
+            }
             if (w < 1f) { ToolWear[id] = w; return; }
             ToolWear[id] = 0f;
             Inventory.TakeItem(id);
@@ -46,6 +54,7 @@ namespace MadMax.Game
         public bool RepairTool(string id)
         {
             if (Condition(id) >= 0.999f) return false;
+            if (id == "tool_flashlight") { Toast("A FLASHLIGHT NEEDS A BATTERY, NOT A REPAIR"); return false; }
             var (t, n) = RepairCost(id);
             if (!Inventory.TrySpend(t, n)) { Toast("NEED " + n + " " + ResourceInfo.Name(t)); return false; }
             ToolWear[id] = 0f;

@@ -118,12 +118,16 @@ decorative turret.
 ## 6. Refining `T2`
 *Exists:* wash plant, furnace, arc furnace, kiln, mixer, still.
 
-- [ ] **Crude oil**: seeps in some regions; a pumpjack extracts `CrudeOil`
-- [ ] **Refinery**: crude → petrol, diesel, engine oil, tar (needs power and heat)
-- [ ] **Diesel** as a separate fuel for diesel engines; petrol for petrol engines
-- [ ] **Biodiesel**: seed oil (sunflower / hemp press) + ethanol → diesel
-- [ ] **Scrap smelting** & **rubber reclamation** (tyres → rubber); **sulfur** from nuclear craters / bunkers
-- [ ] **Batteries** (lead + acid) for flashlights and power storage
+- [x] **Crude oil**: seeps in some regions; a pumpjack extracts `CrudeOil`
+- [x] **Refinery**: crude → petrol, diesel, engine oil, tar (needs power and heat)
+- [x] **Diesel** as a separate fuel for diesel engines; petrol for petrol engines
+- [x] **Biodiesel**: seed oil (sunflower / hemp press) + ethanol → diesel
+- [x] **Scrap smelting** & **rubber reclamation** (tyres → rubber); **sulfur** from nuclear craters / bunkers
+- [x] **Batteries** (lead + acid) for flashlights and power storage
+      *Done:* `WorldGen.OilAt` fields with tar-stained ground, `Pumpjack` (power, rocking beam), refinery cuts with
+      byproducts, oil press, biodiesel at the chemistry lab, typed fuel tanks (`VehicleSystems.tankKind`, WRONG FUEL
+      fault, pumps sell petrol or diesel, tanker checks), coal / charcoal stand in for wood fuel, loose parts break down
+      at a garage / workbench (salvage page), sulfur crusts in nuclear digs, flashlight batteries, battery rack.
 
 *Ties:* vehicles (fuel types), mining, gardening (oil crops), economy, power grid.
 

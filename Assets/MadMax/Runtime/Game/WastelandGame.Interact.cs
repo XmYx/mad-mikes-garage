@@ -276,7 +276,7 @@ namespace MadMax.Game
             if (sys.NeedsService(Inventory))
             {
                 text = "[G] REFUEL/SERVICE";
-                if (G) { if (Refuelling) StopRefuel("STOPPED"); else if (sys.fuel < sys.fuelCapacity - 1f && (Inventory.Get(ResourceType.Fuel) > 0 || Inventory.Get(ResourceType.Ethanol) > 0)) StartRefuel(v, null); else { Stats.Practice(MadMax.RPG.Skill.Mechanics, 3f); int n = sys.Service(Inventory); Toast($"SERVICED {Name(v)}: {n} L"); MadMax.Net.NetSession.Instance?.SendVehicleMeta(v); } }
+                if (G) { if (Refuelling) StopRefuel("STOPPED"); else if (sys.fuel < sys.fuelCapacity - 1f && (Inventory.Get(sys.FuelKind) > 0 || (sys.FuelKind == ResourceType.Fuel && Inventory.Get(ResourceType.Ethanol) > 0))) StartRefuel(v, null); else { Stats.Practice(MadMax.RPG.Skill.Mechanics, 3f); int n = sys.Service(Inventory); Toast($"SERVICED {Name(v)}: {n} L"); MadMax.Net.NetSession.Instance?.SendVehicleMeta(v); } }
             }
             if (sys.TotalFluids >= 1f)
             {

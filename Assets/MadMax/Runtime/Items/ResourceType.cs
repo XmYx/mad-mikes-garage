@@ -25,7 +25,7 @@ namespace MadMax.Items
 
         static readonly string[] Names =
         {
-            "-", "SCRAP", "WOOD", "STONE", "GLASS", "RUBBER", "CLOTH", "FUEL", "OIL", "COOLANT",
+            "-", "SCRAP", "WOOD", "STONE", "GLASS", "RUBBER", "CLOTH", "PETROL", "OIL", "COOLANT",
             "SAND", "CLAY", "LATERITE", "RUBBLE", "SLAG",
             "IRON ORE", "COPPER ORE", "TIN ORE", "BAUXITE", "SILICA",
             "IRON", "COPPER", "BRONZE", "ALUMINIUM", "CHARCOAL", "ASPHALT", "CONCRETE", "LIME",
