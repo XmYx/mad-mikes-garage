@@ -10,6 +10,8 @@ namespace MadMax.Game
         public Material material;
         public Appearance appearance = new Appearance();
         public readonly List<string> outfit = new List<string>();
+        /// <summary>Garment condition by def id (1 = new); worn-out garments render ragged. Null = everything new.</summary>
+        public System.Func<string, float> condition;
 
         public readonly Dictionary<BodyPart, Transform> bones = new Dictionary<BodyPart, Transform>();
         readonly List<Renderer> headRenderers = new List<Renderer>();
@@ -62,11 +64,16 @@ namespace MadMax.Game
             foreach (var id in outfit) { var d = ClothingLibrary.Get(id); if (d != null) defs.Add(d); }
             defs.Sort((x, y) => x.inflate.CompareTo(y.inflate));
             foreach (var d in defs)
+            {
+                var dd = d;
+                bool torn = condition != null && condition(d.id) < 0.35f;
                 foreach (var part in d.coverage.Keys)
                 {
-                    var dd = d; var pp = part;
-                    AddMesh(bones[part], Cached(d.id + part, () => HumanDesign.GarmentMesh(dd, pp, appearance)), part == BodyPart.Head);
+                    var pp = part;
+                    AddMesh(bones[part], Cached(d.id + part + (torn ? "t" : ""), () => HumanDesign.GarmentMesh(dd, pp, appearance, torn)), part == BodyPart.Head);
                 }
+                if (d.prop != null) AddMesh(bones[d.propBone], Cached(d.id + "prop", () => HumanDesign.PropMesh(dd, appearance)), d.propBone == BodyPart.Head);
+            }
             AddMesh(bones[BodyPart.Head], Cached("hair", () => HumanDesign.HairCap(appearance)), true);
 
             Eye = new GameObject("DriverEye").transform;

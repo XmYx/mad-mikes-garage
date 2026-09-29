@@ -39,12 +39,25 @@ namespace MadMax.Npc
             if (P.Raider) { Parley(); return; }
             if (npc.Hostile) { Hostile(); return; }
             line = NpcLore.Greeting(P.temper, S.Has(NpcSave.Met), S.disposition);
+            if (!S.Has(NpcSave.Met)) FirstLook();
             if (S.disposition < -60) { Refuse(); return; }
             if (!S.Has(NpcSave.Met)) Opening();
             else Hub();
         }
 
         void Add(string label, Action act, string hint = null) => choices.Add(new Choice { label = label, act = act, hint = hint });
+
+        /// <summary>First impression: the outfit (raider gear, hazmat, duster and hat, rags, clean clothes), taken
+        /// according to temperament.</summary>
+        void FirstLook()
+        {
+            string style = g.OutfitStyle();
+            if (style == null) return;
+            int d = NpcLore.StyleReaction(P.temper, style);
+            if (d == 0) return;
+            S.disposition = Mathf.Clamp(S.disposition + d, -100, 100);
+            line += "  " + NpcLore.StyleNote(style, d > 0);
+        }
 
         void End(string text)
         {
@@ -93,6 +106,7 @@ namespace MadMax.Npc
             if (t == Tone.Flatter && Cha <= 3) d -= 3;                          // clumsy flattery sounds creepy
             if (t == Tone.Joke && Cha >= 7) d += 2;                             // good timing
             if (t == Tone.Threat && Str >= 8 && (P.temper == Temper.Greedy || P.temper == Temper.Gruff)) d += 3;   // they respect muscle
+            if (t == Tone.Threat && g.OutfitStyle() == "RAIDER") d += P.temper == Temper.Nervous ? 4 : 2;   // the skull mask does the talking
             int got = Change(d);
             S.Set(NpcSave.Met);
             line = NpcLore.ReactionLine(P.temper, got);
@@ -340,6 +354,12 @@ namespace MadMax.Npc
                     float d = 8f + (P.temper == Temper.Proud ? 2f : 0f) - (Str - 5) * 0.8f;
                     if (Check(d)) Finish(Convoy.Outcome.Scared, "...NOT WORTH THE AMMO. MOVE OUT!");
                     else Finish(Convoy.Outcome.Failed, "BIG TALK. LET'S SEE YOU BLEED.");
+                });
+            if (g.OutfitStyle() == "RAIDER")
+                Add("[RAIDER GEAR] WE RIDE THE SAME ROADS. TOLL'S FOR CIVILIANS.", () =>
+                {
+                    if (Check(6.5f)) Finish(Convoy.Outcome.Fooled, "...HEH. NICE MASK. RIDE ON, ROAD KIN.");
+                    else Finish(Convoy.Outcome.Failed, "NICE COSTUME. YOU'RE STILL MEAT.");
                 });
             if (Cha >= 7)
                 Add("[CHA 7] (LIE) THE FUEL GUILD PAYS MY WAY. TOUCH ME AND THEY BURN YOUR CAMP.", () =>

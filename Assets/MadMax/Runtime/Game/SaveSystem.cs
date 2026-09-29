@@ -60,6 +60,7 @@ namespace MadMax.Game
         public List<MadMax.Npc.ConvoySave> convoys = new List<MadMax.Npc.ConvoySave>();
         public int reputation;
         public List<string> toolWearIds = new List<string>(); public List<float> toolWear = new List<float>();
+        public List<string> clothWearIds = new List<string>(); public List<float> clothWear = new List<float>();
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

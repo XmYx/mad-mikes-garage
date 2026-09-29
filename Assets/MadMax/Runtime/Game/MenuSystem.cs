@@ -388,6 +388,33 @@ namespace MadMax.Game
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
                     break;
                 }
+                case Page.Repair when station && station.type == "sewing":
+                {
+                    // mend garments: the ones you wear and the spares in the pack
+                    var ids = new List<string>();
+                    foreach (var id in game.Player.Rig.outfit) ids.Add(id);
+                    foreach (var kv in game.Inventory.Items)
+                    {
+                        var cd = kv.Value > 0 ? ClothingLibrary.Get(kv.Key) : null;
+                        if (cd != null && !ids.Contains(cd.id)) ids.Add(cd.id);
+                    }
+                    foreach (var id in ids)
+                    {
+                        var gid = id; var cd = ClothingLibrary.Get(id);
+                        if (cd == null) continue;
+                        items.Add(new Item
+                        {
+                            label = cd.name + (game.Wearing(gid) ? " (WORN)" : ""),
+                            value = () => Mathf.RoundToInt(game.GarmentCondition(gid) * 100f) + "%" + (game.GarmentCondition(gid) < 0.999f ? "  " + game.MendCost(gid) + " CLOTH" : ""),
+                            enabled = () => game.GarmentCondition(gid) < 0.999f,
+                            confirm = () => { game.Mend(gid); Rebuild(); },
+                            hint = "ENTER MEND WITH CLOTH"
+                        });
+                    }
+                    if (ids.Count == 0) items.Add(new Item { label = "NO CLOTHES TO MEND", enabled = () => false });
+                    Add("BACK", () => Open(Page.Crafting));
+                    break;
+                }
                 case Page.Repair:
                 {
                     bool any = false;
@@ -670,7 +697,7 @@ namespace MadMax.Game
                 case Page.Research: DrawList(c, "RESEARCH", 280); DrawHint(c); break;
                 case Page.Health: DrawHealth(c); break;
                 case Page.Talk: DrawTalk(c); break;
-                case Page.Repair: DrawList(c, "REPAIR TOOLS", 250); DrawHint(c); break;
+                case Page.Repair: DrawList(c, station && station.type == "sewing" ? "MEND CLOTHES" : "REPAIR TOOLS", 250); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);
@@ -851,7 +878,7 @@ namespace MadMax.Game
 
         void DrawCrafting(PixelCanvas c)
         {
-            c.Text(6, c.h - 10, "R RESEARCH   T REPAIR TOOLS", Dim);
+            c.Text(6, c.h - 10, station && station.type == "sewing" ? "T MEND CLOTHES" : "R RESEARCH   T REPAIR TOOLS", Dim);
             int w = Mathf.Min(c.w - 12, 300), h = Mathf.Min(c.h - 20, 170);
             int x = (c.w - w) / 2, y = (c.h - h) / 2;
             c.Panel(x, y, w, h);

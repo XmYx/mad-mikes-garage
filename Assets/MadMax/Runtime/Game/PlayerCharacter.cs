@@ -68,6 +68,8 @@ namespace MadMax.Game
         public void RebuildBody()
         {
             if (Tool) Tool.transform.SetParent(transform, false);
+            var g = WastelandGame.Instance;
+            if (g) Rig.condition = g.GarmentCondition;
             Rig.Rebuild();
             anim = new HumanAnimator(Rig);
             anim.Footstep += OnFootstep;

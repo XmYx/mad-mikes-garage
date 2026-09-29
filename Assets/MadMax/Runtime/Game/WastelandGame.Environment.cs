@@ -26,6 +26,7 @@ namespace MadMax.Game
             if (!float.IsNaN(lvl) && CurrentBiome == Biome.Nuclear && p.y < lvl) rad += 0.8f;
             if (Current) rad *= 0.35f;                                                 // the cab shields a little
             rad *= 1f - Stats.Level(Skill.Survival) * 0.05f;
+            rad *= RadiationPassed;                                                   // hazmat suit, gas mask
             RadiationLevel = rad;
             if (rad > 0.02f && Vitals)
             {

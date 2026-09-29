@@ -30,7 +30,32 @@ namespace MadMax.Items
             yield return Itm("counter_salad", "GARDEN SALAD", RecipeCategory.Cooking, "counter", "food_salad", 1, "NO FIRE NEEDED", new[] { ("food_tomato", 1), ("food_cabbage", 1), ("food_carrot", 1) });
             yield return Itm("counter_fruit", "FRUIT BOWL", RecipeCategory.Cooking, "counter", "food_fruit", 1, "NO FIRE NEEDED", new[] { ("food_apple", 1), ("food_berries", 2) });
             yield return Itm("counter_trailmix", "TRAIL MIX", RecipeCategory.Cooking, "counter", "food_trailmix", 2, "KEEPS FOREVER", new[] { ("food_sunseeds", 2), ("food_berries", 1) });
+
+            // ---- 3. clothing (sewing table)
+            var C = ResourceType.Cloth;
+            yield return Sew("duster", "LEATHER DUSTER", "KEEPS RAIN OFF (60%), TOUGH", null, (C, 8), (Oil, 1));
+            yield return Sew("poncho", "RAIN PONCHO", "KEEPS RAIN OFF (85%)", null, (C, 4), (Rb, 2));
+            var hazmat = Sew("hazmat", "HAZMAT SUIT", "BLOCKS 60% RADIATION, WATERPROOF", null, (C, 4), (Rb, 4), (G, 1));
+            hazmat.knowledge = "read_book_chemistry";
+            yield return hazmat;
+            yield return Sew("gasmask", "GAS MASK", "FILTERS DUST AND SMOKE, 30% RADIATION", null, (Rb, 2), (G, 1), (ResourceType.Charcoal, 1));
+            yield return Sew("sweater", "WOOL SWEATER", "WARM", null, (C, 5));
+            yield return Sew("overalls", "WORK OVERALLS", "TOUGH WORKWEAR", null, (C, 6), (Fe, 1));
+            yield return Sew("cowboy", "COWBOY HAT", "SHADE FROM THE SUN", null, (C, 3));
+            yield return Sew("bomber", "BOMBER JACKET", "VERY WARM, TOUGH", null, (C, 6), (Rb, 1));
+            yield return Sew("shemagh", "SHEMAGH", "FILTERS DUST, KEEPS YOU COOL", null, (C, 2));
+            yield return Sew("fingerless", "FINGERLESS GLOVES", "WARM HANDS, FREE FINGERS", null, (C, 1), (Rb, 1));
+            yield return Sew("combat_boots", "COMBAT BOOTS", "VERY TOUGH", null, (Rb, 3), (C, 2), (Fe, 1));
+            yield return Sew("welding_mask", "WELDING MASK", "WELD WITHOUT THE ARC FLASH", null, (S, 3), (G, 1));
+            yield return Sew("skull_mask", "SKULL MASK", "RAIDERS MISTAKE YOU FOR KIN", new[] { ("trophy_skull", 1) }, (C, 1));
+            yield return Sew("schoolbag", "SCHOOL BAG", "+8 KG CARRY", null, (C, 4));
+            yield return Sew("hikingpack", "HIKING PACK", "+18 KG CARRY", null, (C, 8), (Rb, 1));
+            yield return Sew("framepack", "FRAME PACK", "+28 KG CARRY", null, (C, 8), (ResourceType.Aluminium, 2));
+            yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
+
+        static Recipe Sew(string id, string name, string desc, (string, int)[] items, params (ResourceType, int)[] res) =>
+            Itm("c_" + id, name, RecipeCategory.Clothing, "sewing", "cloth_" + id, 1, desc, items, res);
 
         static Recipe DyeR(string color, string desc, (string, int)[] items, params (ResourceType, int)[] res)
         {

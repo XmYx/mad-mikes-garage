@@ -13,8 +13,9 @@ namespace MadMax.Game
         static ScreenFader instance;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => instance = null;
 
-        RawImage black, wheel;
-        float alpha, target, spin;
+        RawImage black, wheel, flash;
+        float alpha, target, spin, flashT, flashLen = 1f;
+        Color flashColor = Color.white;
         bool spinning;
         public static bool Busy { get; private set; }
 
@@ -42,6 +43,11 @@ namespace MadMax.Game
             black.color = new Color(0, 0, 0, 0);
             var rt = black.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
             black.raycastTarget = false;
+            flash = new GameObject("Flash").AddComponent<RawImage>();
+            flash.transform.SetParent(transform, false);
+            flash.color = new Color(1, 1, 1, 0);
+            var fr = flash.rectTransform; fr.anchorMin = Vector2.zero; fr.anchorMax = Vector2.one; fr.offsetMin = fr.offsetMax = Vector2.zero;
+            flash.raycastTarget = false;
             wheel = new GameObject("LoadingWheel").AddComponent<RawImage>();
             wheel.transform.SetParent(transform, false);
             wheel.texture = WheelTexture();
@@ -93,6 +99,7 @@ namespace MadMax.Game
             float dt = Time.unscaledDeltaTime;
             alpha = Mathf.MoveTowards(alpha, target, dt * 2.2f);
             black.color = new Color(0, 0, 0, alpha);
+            if (flashT > 0f) { flashT -= Time.unscaledDeltaTime; flash.color = new Color(flashColor.r, flashColor.g, flashColor.b, Mathf.Clamp01(flashT / flashLen)); }
             wheel.enabled = spinning;
             if (spinning)
             {
@@ -103,6 +110,9 @@ namespace MadMax.Game
         }
 
         public static void Spinner(bool on) => I.spinning = on;
+
+        /// <summary>A full-screen flash that fades out over <paramref name="seconds"/> (welding arc, explosions).</summary>
+        public static void Flash(Color c, float seconds) { var f = I; f.flashColor = c; f.flashLen = f.flashT = Mathf.Max(0.05f, seconds); }
 
         /// <summary>Fade to black, run an action (e.g. start the game), fade back in.</summary>
         public static void FadeThrough(Action middle, float hold = 0.15f) => I.StartCoroutine(I.Through(middle, hold));

@@ -140,6 +140,33 @@ namespace MadMax.Npc
             : delta >= -9 ? temper switch { Temper.Proud => "WATCH HOW YOU TALK TO ME.", Temper.Pious => "THE ENGINE HEARS SUCH WORDS.", Temper.Gruff => "KEEP THAT UP AND WE'RE DONE.", _ => "THAT WASN'T VERY NICE." }
             : temper switch { Temper.Nervous => "PLEASE! I DON'T WANT TROUBLE!", Temper.Gruff => "TRY IT. SEE WHAT HAPPENS.", _ => "GET AWAY FROM ME." };
 
+        static readonly string[] Styles = { "RAIDER", "HAZMAT", "DRIFTER", "RAGGED", "CLEAN" };
+        // first impression of an outfit per temperament: Friendly, Gruff, Nervous, Greedy, Pious, Joker, Proud
+        static readonly int[,] StyleReactions =
+        {
+            { -6, 2, -12, -2, -8, 0, -4 },     // raider
+            { -2, -2, -8, -2, -4, 4, -2 },     // hazmat
+            { 2, 5, -2, 1, 0, 2, 4 },          // drifter
+            { 0, -1, -2, -6, 4, -1, -6 },      // ragged
+            { 4, 1, 3, 4, 5, 1, 4 },           // clean
+        };
+
+        /// <summary>Disposition change the first time an NPC sees your outfit style (see WastelandGame.OutfitStyle).</summary>
+        public static int StyleReaction(Temper temper, string style)
+        {
+            int i = System.Array.IndexOf(Styles, style);
+            return i < 0 ? 0 : StyleReactions[i, (int)temper];
+        }
+
+        public static string StyleNote(string style, bool good) => style switch
+        {
+            "RAIDER" => good ? "(THEY LIKE YOUR WAR PAINT.)" : "(THEY EYE YOUR RAIDER GEAR WARILY.)",
+            "HAZMAT" => good ? "(THEY GRIN AT YOUR SPACE SUIT.)" : "(THEY KEEP THEIR DISTANCE FROM YOUR HAZMAT GEAR.)",
+            "DRIFTER" => good ? "(THEY NOD AT THE DUSTER AND HAT.)" : "(THEY SIZE UP THE GUNSLINGER LOOK.)",
+            "RAGGED" => good ? "(THEY PITY YOUR RAGS.)" : "(THEY WRINKLE THEIR NOSE AT YOUR RAGS.)",
+            _ => good ? "(YOU LOOK WELL KEPT.)" : "(TOO CLEAN FOR THE WASTES.)",
+        };
+
         public static readonly string[] Farewell = { "SAFE ROADS.", "DON'T DIE OUT THERE.", "KEEP YOUR TANK FULL.", "SEE YOU AROUND.", "MIND THE RAIDERS." };
 
         /// <summary>Errands: what they ask for (item id or res:N), how many, and the kind of reward.</summary>

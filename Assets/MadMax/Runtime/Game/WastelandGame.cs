@@ -577,6 +577,7 @@ namespace MadMax.Game
             UpdateSurvival(Time.deltaTime);
             UpdateRefuel(Time.deltaTime);
             UpdateHealth(Time.deltaTime);
+            UpdateClothing(Time.deltaTime);
             if (Pressed(Key.I)) Menus.Open(MenuSystem.Page.Inventory);
             if (Pressed(Key.P)) Menus.Open(MenuSystem.Page.Skills);
             if (Pressed(Key.O)) Menus.Open(MenuSystem.Page.Health);

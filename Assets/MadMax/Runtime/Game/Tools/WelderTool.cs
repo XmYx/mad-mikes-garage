@@ -36,6 +36,12 @@ namespace MadMax.Game
             if (!v) { MadMax.Audio.Sfx.Play("sizzle", at, 0.4f, 1.8f); return; }
             if (g && user == g.Player)
             {
+                // the arc blinds without a welding mask
+                if (!g.Wearing("welding_mask"))
+                {
+                    ScreenFader.Flash(new Color(0.85f, 0.95f, 1f), 1.2f);
+                    if (Random.value < 0.25f) g.Toast("ARC FLASH! A WELDING MASK WOULD HELP");
+                }
                 if (!g.Inventory.TrySpend(ResourceType.Scrap, 1)) { g.Toast("WELDER: NEED SCRAP RODS"); return; }
                 if (Random.value < 0.35f && !g.Inventory.TrySpend(ResourceType.Fuel, 1)) { g.Toast("WELDER: NEED FUEL FOR THE TORCH"); return; }
             }

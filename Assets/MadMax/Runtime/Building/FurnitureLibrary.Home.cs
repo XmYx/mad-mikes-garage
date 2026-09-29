@@ -36,6 +36,7 @@ namespace MadMax.Building
                 Station(go, "counter", "PREPARE FOOD (COUNTER)", 0f);
             }, (W, 5), (St, 3), (S, 2), (Fe, 1));
             yield return D("latrine", "LATRINE", U, Outhouse(), 8, false, go => go.AddComponent<Latrine>(), (W, 10), (S, 2));
+            yield return D("sewing_table", "SEWING TABLE", Fu, SewingTableGrid(), 4, false, go => Station(go, "sewing", "SEW (SEWING TABLE)", 0f), (W, 4), (Fe, 2), (S, 1));
             yield return D("wall_clock", "WALL CLOCK", De, ClockGrid(), 1, false, go => go.AddComponent<WallClock>(), (S, 2), (G, 1), (Cu, 1));
             yield return D("trophy_mount", "TROPHY MOUNT", De, TrophyGrid(), 2, false, go => go.AddComponent<TrophyMount>(), (W, 2));
         }
@@ -204,6 +205,24 @@ namespace MadMax.Building
             g.Mat(Iron);
             foreach (int x0 in new[] { -11, -5, 1, 7 }) g.Set(x0 + 2, 8, 6, Pal.Solid(Pal.Chrome[2]));
             g.Box(6, 12, -4, 6, 14, -4, Pal.Ramp(Pal.Chrome, 2)); g.Box(6, 14, -3, 6, 14, -2, Pal.Ramp(Pal.Chrome, 2));
+            return g;
+        }
+
+        static VoxelGrid SewingTableGrid()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            foreach (int x in new[] { -8, 8 }) foreach (int z in new[] { -4, 4 }) g.Box(x, 0, z, x, 8, z, Pal.Ramp(Pal.Wood, 1, 1211));
+            g.Box(-9, 9, -5, 9, 9, 5, Pal.Stripe(Pal.Ramp(Pal.Wood, 2, 1212), Pal.Ramp(Pal.Wood, 1, 1213), 0, 4));
+            g.Mat(Iron);
+            g.Box(-6, 1, -3, 6, 1, 3, Pal.Stripe(Pal.Ramp(Pal.Metal, 1, 1214), Pal.Ramp(Pal.Metal, 0, 1215), 0, 2));   // treadle
+            // the machine: bed, pillar, arm, needle, hand wheel
+            g.Box(-5, 10, -2, 3, 11, 2, Pal.Ramp(Pal.Black, 2, 1216));
+            g.Box(2, 12, -1, 3, 15, 1, Pal.Ramp(Pal.Black, 2, 1217));
+            g.Box(-5, 15, -1, 3, 16, 1, Pal.Ramp(Pal.Black, 2, 1218));
+            g.Set(-1, 16, 1, Pal.Solid(Pal.Ochre[3])); g.Set(0, 16, 1, Pal.Solid(Pal.Ochre[3]));             // gold decal
+            g.Box(-4, 12, 0, -4, 14, 0, Pal.Ramp(Pal.Chrome, 2));
+            g.CylX(14, 0, 1.6f, 4, 4, Pal.Ramp(Pal.Chrome, 1));
+            g.Mat(Cloth); g.Box(-8, 10, 3, -6, 11, 4, Pal.Ramp(Pal.Crimson, 2, 1219));                         // a bolt of fabric
             return g;
         }
 

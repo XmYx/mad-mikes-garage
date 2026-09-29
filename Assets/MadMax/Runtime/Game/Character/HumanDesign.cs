@@ -6,7 +6,7 @@ using UnityEngine;
 namespace MadMax.Game
 {
     public enum BodyPart { Pelvis, Chest, Head, UpperArmL, UpperArmR, ForearmL, ForearmR, HandL, HandR, ThighL, ThighR, ShinL, ShinR, FootL, FootR }
-    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back }
+    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack }
     public enum HairStyle { Bald, Buzz, Short, Mohawk, Ponytail, Long }
 
     /// <summary>Body look. Serializable (saves, network).</summary>
@@ -31,7 +31,15 @@ namespace MadMax.Game
         public float warmth, cooling;     // °C of cold protection / heat relief (negative cooling = traps heat)
         public float inflate = 1f;                                   // voxels over the skin (layering)
         public Dictionary<BodyPart, Vector2> coverage = new Dictionary<BodyPart, Vector2>(); // (from,to) along the segment 0..1
-        public Func<Vector3Int, BodyPart, float, Color32> paint;     // voxel, part, t along segment
+        public Func<Vector3Int, BodyPart, float, Color32> paint;     // voxel, part, t along segment (alpha 0 = no voxel)
+        public float carry;                                          // extra carry capacity, kg (backpacks)
+        public float waterproof;                                     // 0..1 how much rain it keeps off (best garment counts)
+        public float radiation;                                      // 0..1 radiation shielding (stacks multiplicatively)
+        public bool filter;                                          // breathes through dust and smoke
+        public float durability = 1f;                                // wear resistance (leather, metal > 1)
+        public string style;                                         // look for first impressions: raider, hazmat, drifter
+        public Func<Appearance, VoxelGrid> prop;                     // rigid extra (hat brim, backpack) in 4 cm voxels, bone-local
+        public BodyPart propBone = BodyPart.Chest;
     }
 
     /// <summary>Human proportions, voxel meshes for body/garments/hair (4 cm voxels = twice the world detail).</summary>
@@ -171,7 +179,9 @@ namespace MadMax.Game
                 if (Sdf(part, p, a) > inflate * S) continue;
                 float t = Along(part, p, a);
                 if (range.HasValue && (t < range.Value.x || t > range.Value.y)) continue;
-                g.Set(v, _ => paint(v, p, t));
+                var col = paint(v, p, t);
+                if (col.a == 0) continue;                                           // straps, holes, open backs
+                g.Set(v, _ => col);
             }
             if (g.Count == 0) return null;
             g.Bevel(0.12f, 0.18f);
@@ -205,10 +215,21 @@ namespace MadMax.Game
             }, null, "Body_" + part);
         }
 
-        public static Mesh GarmentMesh(ClothingDef def, BodyPart part, Appearance a)
+        public static Mesh GarmentMesh(ClothingDef def, BodyPart part, Appearance a, bool torn = false)
         {
             if (!def.coverage.TryGetValue(part, out var range)) return null;
-            return Build(part, a, def.inflate, (v, p, t) => def.paint(v, part, t), range, def.id + "_" + part);
+            // worn-out garments get ragged holes
+            return Build(part, a, def.inflate, (v, p, t) => torn && Pal.Hash(v, 97) < 0.16f ? default : def.paint(v, part, t), range, def.id + "_" + part + (torn ? "_torn" : ""));
+        }
+
+        /// <summary>A garment's rigid extra (hat brim, backpack) as a mesh in the bone's space.</summary>
+        public static Mesh PropMesh(ClothingDef def, Appearance a)
+        {
+            if (def.prop == null) return null;
+            var g = def.prop(a);
+            if (g == null || g.Count == 0) return null;
+            g.Bevel(0.12f, 0.18f);
+            return VoxelMesher.Build(g, def.id + "_prop", S);
         }
 
         /// <summary>Static hair cap on the head (dynamic strands are added by HairStrands).</summary>

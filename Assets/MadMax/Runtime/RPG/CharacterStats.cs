@@ -67,6 +67,8 @@ namespace MadMax.RPG
         public float bodyTemp = 37f;                                 // core °C
         public float restedUntil, fedUntil;                          // buff ends, in game hours (DayNight.TotalDays * 24)
         public float waste;                                          // 0..140: meals eaten since the last latrine visit
+        public float wetness;                                        // 0..1 soaked clothes (rain, swimming)
+        [NonSerialized] public float carryBonus;                     // backpacks (kg)
         [NonSerialized] public bool rested, fed;                     // WELL RESTED (XP, stamina), WELL FED (slower hunger)
         public List<Injury> injuries = new List<Injury>();
 
@@ -167,7 +169,7 @@ namespace MadMax.RPG
         public float FuelEfficiency => Mathf.Max(0.7f, 1f - Level(Skill.Survival) * 0.03f);
         public float DrivingGrip => 1f + Level(Skill.Driving) * 0.012f;
         public float Spread => Mathf.Max(0.35f, 1f - Level(Skill.Firearms) * 0.065f);
-        public float CarryCapacity => 40f + Attribute(Attr.Strength) * 6f;
+        public float CarryCapacity => 40f + Attribute(Attr.Strength) * 6f + carryBonus;
         /// <summary>0..~0.35 price advantage when trading (charisma, speech).</summary>
         public float Bargain => Attribute(Attr.Charisma) * 0.018f + Level(Skill.Speech) * 0.015f;
         public float ReadingSpeed => 0.6f + Attribute(Attr.Intelligence) * 0.08f + (traits.Contains("bookworm") ? 0.3f : 0f);

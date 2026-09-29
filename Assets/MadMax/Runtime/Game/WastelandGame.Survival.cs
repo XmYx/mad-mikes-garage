@@ -229,6 +229,11 @@ namespace MadMax.Game
                 if (UseRepairKit()) Inventory.TakeItem(id);
                 return;
             }
+            if (id == "use_sewing_kit")
+            {
+                if (UseSewingKit()) Inventory.TakeItem(id);
+                return;
+            }
             if (id == ItemIds.Sponge)
             {
                 int n = MadMax.World.BloodStains.Clean(Player.transform.position, 3f);

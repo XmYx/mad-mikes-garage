@@ -168,6 +168,7 @@ namespace MadMax.Items
             };
             list.AddRange(Extra());
             list.AddRange(Roadmap());
+            foreach (var r in list) if (r.category == RecipeCategory.Clothing) r.station = "sewing";    // all clothes at the sewing table
             return list;
         }
 
@@ -175,6 +176,14 @@ namespace MadMax.Items
             new Recipe { id = id, name = name, category = c, station = station, kind = OutputKind.Resource, outputResource = output, amount = amount, description = desc, resources = res };
         static Recipe Itm(string id, string name, RecipeCategory c, string station, string output, int amount, string desc, (string, int)[] items, params (ResourceType, int)[] res) =>
             new Recipe { id = id, name = name, category = c, station = station, kind = OutputKind.Item, output = output, amount = amount, description = desc, items = items ?? new (string, int)[0], resources = res };
+
+        /// <summary>Garments with their own recipe (the rest get a generic "4 cloth" one).</summary>
+        static readonly HashSet<string> SewnElsewhere = new HashSet<string>
+        {
+            "bandana", "goggles", "gloves", "helmet", "vest", "tank", "jeans", "boots", "shoulder", "coat",
+            "duster", "poncho", "hazmat", "gasmask", "sweater", "overalls", "cowboy", "bomber", "shemagh", "fingerless", "combat_boots",
+            "welding_mask", "skull_mask", "schoolbag", "hikingpack", "framepack",
+        };
 
         static IEnumerable<Recipe> Extra()
         {
@@ -201,7 +210,7 @@ namespace MadMax.Items
                 var item = MadMax.Game.ClothingLibrary.ItemId(c);
                 bool has = false;
                 foreach (var r in all ?? new List<Recipe>()) if (r.output == item) has = true;
-                if (!has && c.id != "bandana" && c.id != "goggles" && c.id != "gloves" && c.id != "helmet" && c.id != "vest" && c.id != "tank" && c.id != "jeans" && c.id != "boots" && c.id != "shoulder" && c.id != "coat")
+                if (!has && !SewnElsewhere.Contains(c.id))
                     yield return Itm("c_" + c.id, c.name, RecipeCategory.Clothing, "workbench", item, 1, "SEW", null, (C, 4));
             }
             yield return Res("filter_water", "FILTER WATER 5L", RecipeCategory.Supplies, "workbench", Wt, 5, "CLOTH AND CHARCOAL FILTER", (Dw, 5), (Ch, 1));

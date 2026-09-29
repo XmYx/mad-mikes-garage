@@ -20,6 +20,10 @@ namespace MadMax.Game
         {
             int before = Stats.injuries.Count;
             InjuryRules.Apply(Stats.injuries, amount, cause, injuryRnd);
+            // clothes take the damage too: a crash or fire everything, a hit what covers the wound
+            if (cause == "CRASH") TearClothes(null, amount / 150f);
+            else if (cause == "BURNED") TearClothes(null, amount / 40f);
+            else if (Stats.injuries.Count > before) TearClothes(Stats.injuries[Stats.injuries.Count - 1].zone, amount / 60f);
             if (Stats.injuries.Count > before)
             {
                 var inj = Stats.injuries[Stats.injuries.Count - 1];
@@ -32,8 +36,9 @@ namespace MadMax.Game
         public (float warmth, float cooling) Insulation()
         {
             float w = 0f, c = 0f;
-            foreach (var id in Player.Rig.outfit) { var d = ClothingLibrary.Get(id); if (d != null) { w += d.warmth; c += d.cooling; } }
-            return (w, c);
+            // torn garments keep half their warmth; soaked clothes lose most of it
+            foreach (var id in Player.Rig.outfit) { var d = ClothingLibrary.Get(id); if (d != null) { w += d.warmth * (GarmentCondition(id) < 0.35f ? 0.5f : 1f); c += d.cooling; } }
+            return (w * (1f - 0.55f * Stats.wetness), c);
         }
 
         float dripTimer;
@@ -62,11 +67,11 @@ namespace MadMax.Game
             var pos = Player.transform.position;
             env += Climate.At(pos) * (Sheltered || Current ? 1f : 0.35f);
             foreach (var f in Fire.All) { if (!f) continue; float d = Vector3.Distance(f.transform.position, pos); if (d < 5f) env += 14f * f.intensity * (1f - d / 5f); }
-            bool wet = Player.Swimming || (Weather.Raining && !Sheltered && !Current);
             if (Player.Swimming) env = Mathf.Min(env, outside - 4f);
-            if (wet) env -= Weather.Snowing ? 7f : 5f;
+            // wet clothes chill (evaporation), worse in snow; in the heat they cool you a little
+            env -= s.wetness * (Weather.Snowing ? 7f : 5f);
             var (warmth, cooling) = Insulation();
-            FeltTemperature = env < 20f ? Mathf.Min(20f, env + warmth * 1.4f * (wet ? 0.5f : 1f)) : env - cooling * 1.2f;
+            FeltTemperature = env < 20f ? Mathf.Min(20f, env + warmth * 1.4f) : env - cooling * 1.2f;
             // ---- core temperature drifts outside the comfort band
             float target = 37f - Mathf.Max(0f, 12f - FeltTemperature) * 0.14f + Mathf.Max(0f, FeltTemperature - 30f) * 0.1f;
             target = Mathf.Clamp(target, 28f, 43f);

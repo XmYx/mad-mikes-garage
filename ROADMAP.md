@@ -65,14 +65,18 @@ lantern, pipe shotgun, molotov.
 ## 3. Player clothing `T1`
 *Exists:* ~17 garments in slots, warmth / cooling, layered voxel shells.
 
-- [ ] **Condition**: garments tear from hits, crashes and fire; mend with cloth (sewing kit / sewing table)
-- [ ] **Backpacks** (back slot): school bag +8 kg, hiking pack +18 kg, frame pack +28 kg carry capacity
-- [ ] **Wetness**: rain soaks clothes (warmth drops), fires and shelter dry them; ponchos / dusters keep you dry
-- [ ] New garments: leather duster, poncho, hazmat suit (radiation), gas mask (smoke, dust, radiation), wool
+- [x] **Condition**: garments tear from hits, crashes and fire; mend with cloth (sewing kit / sewing table)
+- [x] **Backpacks** (back slot): school bag +8 kg, hiking pack +18 kg, frame pack +28 kg carry capacity
+- [x] **Wetness**: rain soaks clothes (warmth drops), fires and shelter dry them; ponchos / dusters keep you dry
+- [x] New garments: leather duster, poncho, hazmat suit (radiation), gas mask (smoke, dust, radiation), wool
       sweater, work overalls, cowboy hat, bomber jacket, shemagh, fingerless gloves, combat boots, welding mask,
       raider skull mask
-- [ ] **Style**: outfit changes first impressions in dialogue (raider gear scares the nervous, clean clothes help)
-- [ ] **Sewing table** station for clothing recipes
+- [x] **Style**: outfit changes first impressions in dialogue (raider gear scares the nervous, clean clothes help)
+- [x] **Sewing table** station for clothing recipes
+      *Done:* `WastelandGame.Clothing` (wear per garment, tatters render as holes below 35 %, fall apart at 100 %),
+      backpacks got their own PACK slot (shoulder armour keeps BACK) with rigid voxel props, `CharacterStats.wetness`,
+      radiation / dust / smoke protection (coughing without a face cover), welding without a mask flashes the
+      screen, skull mask needs a bull skull, hazmat needs the chemistry book, raider gear opens a parley option.
 
 *Ties:* weather & temperature, radiation, dialogue, crafting, economy.
 

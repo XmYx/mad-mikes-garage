@@ -360,7 +360,7 @@ namespace MadMax.Game
             if (st.sick > 0f) canvas.Text(tx, top + step * 2 + 3, "SICK", new Color32(160, 220, 80, 255));
             foreach (var inj in st.injuries) if (inj.Bleeding) { if ((Time.time * 2f) % 1f > 0.4f) canvas.Text(tx, top + step * 3 + 3, "BLEEDING  O", Red); break; }
             // buffs and the latrine need, one short tag each
-            string tags = (st.rested ? "RESTED " : "") + (st.fed ? "FED " : "") + (needs && st.waste >= 100f ? "LATRINE" : "");
+            string tags = (st.rested ? "RESTED " : "") + (st.fed ? "FED " : "") + (st.wetness > 0.3f ? "WET " : "") + (game.Coughing ? "COUGH " : "") + (needs && st.waste >= 100f ? "LATRINE" : "");
             if (tags.Length > 0) canvas.Text(tx, top + step * 4 + 3, tags.TrimEnd(), st.waste >= 100f && needs ? new Color32(210, 170, 90, 255) : new Color32(150, 210, 150, 255));
         }
 
