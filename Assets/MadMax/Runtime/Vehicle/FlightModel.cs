@@ -28,6 +28,10 @@ namespace MadMax.Vehicles
         public bool Airborne { get; private set; }
         /// <summary>Main wing angle of attack (degrees).</summary>
         public float AoA { get; private set; }
+        /// <summary>Sideslip in degrees (+ = air from the right): the slip ball.</summary>
+        public float Sideslip { get; private set; }
+        /// <summary>Close to the stall (wing AoA over ~13°, or the rotor slowing): the stall horn.</summary>
+        public bool StallWarning => Airborne && (Stalled || (kind == Kind.Trike ? AoA > 13f : RotorRpm < 260f));
         public float Heading => transform.eulerAngles.y;
 
         struct Surface
@@ -124,15 +128,25 @@ namespace MadMax.Vehicles
             // aloft a little yaw / roll damping stands in for the pilot's feet
             var w = rb.angularVelocity;
             float yawRate = Vector3.Dot(w, transform.up), rollRate = Vector3.Dot(w, transform.forward), pitchRate = Vector3.Dot(w, transform.right);
+            bool sim = MadMax.Game.GameSettings.Current.simFlight;                               // SIM FLIGHT: no assists aloft
+            Sideslip = Airspeed > 3f ? Mathf.Atan2(Vector3.Dot(air, transform.right), Mathf.Max(1f, Vector3.Dot(air, transform.forward))) * Mathf.Rad2Deg : 0f;
+            if (StallWarning && GetComponent<VehicleDriver>().Occupied) MadMax.Audio.Sfx.Loop(this, "beep", 0.5f, 1f, 20f);
+            if (kind == Kind.Gyro && RotorRpm > 20f) MadMax.Audio.Sfx.Loop(transform, "rotor", Mathf.Clamp01(RotorRpm / 400f) * 0.7f, Mathf.Clamp(RotorRpm / 300f, 0.4f, 2f), 90f);   // blade slap
             if (!Airborne) rb.AddTorque(-transform.up * yawRate * 4f, ForceMode.Acceleration);
-            else if (Airspeed > 6f)
+            else if (Airspeed > 6f && !sim)
             {
                 // turn coordinator: the nose swings onto the flight path (what rudder work does), killing sideslip
                 float beta = Mathf.Atan2(Vector3.Dot(air, transform.right), Mathf.Max(1f, Vector3.Dot(air, transform.forward)));
                 rb.AddTorque(transform.up * (beta * 10f - yawRate * 2.5f), ForceMode.Acceleration);
             }
             // pitch: the trike pilot shoves the wing bar, the gyro pilot tilts the disc — authority grows with airspeed
-            if (kind == Kind.Trike)
+            if (kind == Kind.Trike && sim)
+            {
+                // raw weight shift: the bar moves the wing, nothing holds the attitude or stops a stall
+                float qs = Mathf.Clamp01(fwdAir * fwdAir / (16f * 16f));
+                rb.AddTorque((-transform.right * (pilotPitch * 1.6f + pitchRate * 1.2f) - transform.forward * (pilotRoll * 2.2f + rollRate * 1.5f)) * qs, ForceMode.Acceleration);
+            }
+            else if (kind == Kind.Trike)
             {
                 // pitch-rate command with an angle-of-attack limiter: pulling never takes the wing past ~11°
                 float qScale = Mathf.Clamp01(fwdAir * fwdAir / (16f * 16f));
@@ -216,7 +230,9 @@ namespace MadMax.Vehicles
             float wantRoll = Mathf.Abs(pilotRoll) > 0.05f ? pilotRoll * 40f : -bankRight * 0.9f;
             if (bankRight * Mathf.Sign(wantRoll) > 45f) wantRoll = 0f;
             float rollRight = -Vector3.Dot(w, fwd) * Mathf.Rad2Deg;
-            if (Airborne)
+            if (Airborne && MadMax.Game.GameSettings.Current.simFlight)
+                rb.AddTorque((-right * (pilotPitch * 1.2f - upRate * Mathf.Deg2Rad * 0.8f) - fwd * (pilotRoll * 1.6f - rollRight * Mathf.Deg2Rad * 1.0f)) * auth, ForceMode.Acceleration);   // raw disc tilt
+            else if (Airborne)
                 rb.AddTorque((-right * (wantPitch - upRate) * 0.12f - fwd * (wantRoll - rollRight) * 0.14f) * auth, ForceMode.Acceleration);
             if (Airborne && tip < 90f && Airspeed > 3f) Stalled = true;                                    // too slow to hold the rotor up
         }

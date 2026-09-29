@@ -92,7 +92,7 @@ namespace MadMax.Game
         float shake;
 
         /// <summary>Screen shake scaled by impact strength (m/s above the damage threshold).</summary>
-        public void Shake(float strength) { shake = Mathf.Min(1f, shake + strength * 0.08f); }
+        public void Shake(float strength) { if (GameSettings.Current.cameraShake) shake = Mathf.Min(1f, shake + strength * 0.08f); }
 
         public void Cycle()
         {
@@ -110,16 +110,16 @@ namespace MadMax.Game
             var kb = Keyboard.current; var mouse = Mouse.current; var pad = Gamepad.current;
             var game = WastelandGame.Instance;
             if (game && game.Menus && game.Menus.IsOpen) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; return; }
-            if (kb != null && kb.vKey.wasPressedThisFrame) Cycle();
+            if (Controls.Down(Controls.Act.View)) Cycle();
             if (pad != null && pad.buttonNorth.wasPressedThisFrame) Cycle();
 
             float zoom = 0f;
             if (mouse != null) { float s = mouse.scroll.ReadValue().y; if (Mathf.Abs(s) > 0.01f) zoom -= Mathf.Sign(s); }
-            if (kb != null) zoom += ((kb.minusKey.isPressed || kb.numpadMinusKey.isPressed ? 1f : 0f) - (kb.equalsKey.isPressed || kb.numpadPlusKey.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
+            if (kb != null) zoom += ((Controls.Held(Controls.Act.ZoomOut) || kb.numpadMinusKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.ZoomIn) || kb.numpadPlusKey.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
             if (pad != null) zoom += ((pad.dpad.down.isPressed ? 1f : 0f) - (pad.dpad.up.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
             if (zoom != 0f) ApplyZoom(zoom);
 
-            if (kb != null) yaw += ((kb.cKey.isPressed ? 1f : 0f) - (kb.zKey.isPressed ? 1f : 0f)) * 90f * Time.deltaTime;
+            yaw += ((Controls.Held(Controls.Act.CamRight) ? 1f : 0f) - (Controls.Held(Controls.Act.CamLeft) ? 1f : 0f)) * 90f * Time.deltaTime;
 
             // cursor: locked for on-foot free look, Esc releases, click re-locks
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) cursorReleased = false;
@@ -128,8 +128,10 @@ namespace MadMax.Game
             Cursor.visible = !lockCursor;
 
             Vector2 look = Vector2.zero;
-            if (mouse != null && !WastelandGame.RadialBlocksLook && (lockCursor || mouse.rightButton.isPressed)) look = mouse.delta.ReadValue() * 0.15f;
-            if (pad != null) look += pad.rightStick.ReadValue() * 120f * Time.deltaTime;
+            var gs = GameSettings.Current;
+            if (mouse != null && !WastelandGame.RadialBlocksLook && (lockCursor || mouse.rightButton.isPressed)) look = mouse.delta.ReadValue() * 0.15f * gs.mouseSensitivity;
+            if (pad != null && !(game && game.Current && game.Current.GetComponent<MadMax.Vehicles.FlightModel>())) look += pad.rightStick.ReadValue() * 120f * Time.deltaTime * gs.mouseSensitivity;   // aircraft: the stick flies
+            if (gs.invertY) look.y = -look.y;
             if (mode == ViewMode.ThirdPerson) { orbitYaw += look.x; orbitPitch = Mathf.Clamp(orbitPitch - look.y, -10f, 70f); }
             if (mode == ViewMode.FirstPerson)
             {

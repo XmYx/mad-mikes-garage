@@ -115,6 +115,7 @@ namespace MadMax.Npc
             }
             else g.Toast("JOB TAKEN: " + c.title);
             Active.Add(c);
+            MadMax.Game.Journal.Add("JOB", c.title);
             if (c.Escort) GuildEscort.Start(g, c);
         }
 

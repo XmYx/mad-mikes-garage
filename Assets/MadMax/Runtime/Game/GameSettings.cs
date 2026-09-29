@@ -31,8 +31,37 @@ namespace MadMax.Game
         public float radioVolume = 0.8f; // master gain for all radios
         public float sfxVolume = 1f;     // sound effects
         public bool blood = true;        // blood bursts and stains on injuries
+        // controls & camera
+        public string keys = "";         // rebound keys (Controls): "Act=Key;..." (defaults omitted)
+        public float mouseSensitivity = 1f;
+        public bool invertY;
+        public float fovFirst = 60f;     // vertical degrees (≈ 90° horizontal at 16:9)
+        public float fovThird = 55f;
+        public bool cameraShake = true;
+        // interface
+        public int hudScale;             // 0 = with the pixel size, else the HUD's own height index into PixelHeights
+        public bool colourBlind;         // blue/orange instead of red/green on bars and lamps
+        public bool metric = true;       // km/h and °C (off: mph and °F)
+        public bool radioCaptions;       // subtitles for DJ talk, news and weather
+        public bool hints = true;        // context hints (the first times you meet something)
+        public int autosaveMinutes = 10; // 0 off
+        // audio
+        public float ambientVolume = 1f;
+        public float uiVolume = 1f;
+        // handling assists
+        public bool simFlight;           // raw flight model: no rate commands, auto-level, bank or AoA limits
+        public bool vintageSidecar;      // outfits pull to the chair and lift it like the real thing
 
         public static readonly string[] LightNames = { "VEHICLES ONLY", "LOW", "HIGH" };
+        public static readonly int[] AutosaveChoices = { 0, 5, 10, 20, 30 };
+
+        /// <summary>Speed for display: km/h or mph.</summary>
+        public string Speed(float kmh) => metric ? Mathf.RoundToInt(kmh) + " KM/H" : Mathf.RoundToInt(kmh * 0.6214f) + " MPH";
+        public float SpeedValue(float kmh) => metric ? kmh : kmh * 0.6214f;
+        public string SpeedUnit => metric ? "KM/H" : "MPH";
+        /// <summary>Temperature for display: °C or °F (the 3x5 font has no degree sign).</summary>
+        public string Temp(float c) => metric ? Mathf.RoundToInt(c) + "C" : Mathf.RoundToInt(c * 1.8f + 32f) + "F";
+        public int HudHeight => hudScale <= 0 ? PixelHeight : PixelHeights[Mathf.Clamp(hudScale - 1, 0, PixelHeights.Length - 1)];
 
         public static readonly int[] PixelHeights = { 180, 240, 270, 320, 360, 480, 540 };
         public static readonly string[] LodNames = { "LOW", "MEDIUM", "HIGH", "ULTRA" };
@@ -112,6 +141,8 @@ namespace MadMax.Game
 
             if (rig)
             {
+                rig.fpsFov = Mathf.Clamp(fovFirst, rig.fpsFovRange.x, rig.fpsFovRange.y);
+                rig.thirdFov = Mathf.Clamp(fovThird, 35f, 90f);
                 rig.fogEnd = ViewRadius - 4f;
                 rig.fogStart = rig.fogEnd * 0.55f;
                 var cam = rig.pixel.GetComponent<Camera>();

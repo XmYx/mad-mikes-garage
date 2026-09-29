@@ -82,6 +82,9 @@ namespace MadMax.Npc
         // ------------------------------------------------------------------ route
 
         /// <summary>Point and heading at a distance along the ping-pong loop.</summary>
+        /// <summary>Where the convoy is: its lead car when spawned, else its point on the road.</summary>
+        public Vector3 Position => cars.Count > 0 && cars[0] ? cars[0].transform.position : PointAt(travel, out _);
+
         public Vector3 PointAt(float d, out Vector3 dir)
         {
             float loop = Mathf.Repeat(d, routeLen * 2f);

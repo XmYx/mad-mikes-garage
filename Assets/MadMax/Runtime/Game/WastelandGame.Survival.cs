@@ -121,10 +121,13 @@ namespace MadMax.Game
                 }
                 else Toast("SLEPT BADLY: " + Comfort.Word(comfort) + (note != null ? " (" + note + ")" : ""));
                 MadMax.Net.NetSession.Instance?.SendWeather();
+                if (GameSettings.Current.autosaveMinutes > 0) Invoke(nameof(AutosaveNow), 1.5f);         // after the toast
             }
             else Toast("RESTED");
             Stats.stamina = Stats.MaxStamina;
         }
+
+        void AutosaveNow() => Autosave();
 
         /// <summary>A long soak in the tub: clean, warm, rested for a while.</summary>
         public void Bathe(bool clean)

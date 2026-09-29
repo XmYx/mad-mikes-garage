@@ -11,7 +11,7 @@ namespace MadMax.Vehicles
     {
         None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
         CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384,
-        ServiceDue = 32768, Clogged = 65536, Misfire = 131072
+        ServiceDue = 32768, Clogged = 65536, Misfire = 131072, Labouring = 262144
     }
 
     /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
@@ -160,11 +160,14 @@ namespace MadMax.Vehicles
                 fuel = Mathf.Max(0f, fuel - burn);
                 if (!oilInFuel) oil = Mathf.Max(0f, oil - 0.00008f * load * dt);
 
-                // heat in, heat out
-                float heat = (0.25f + load * rpmFrac) * 4.4f * (TryGetComponent<VehicleTuning>(out var tune) ? tune.HeatFactor : 1f);   // hot engine maps, boost, nitrous
+                // heat in, heat out. Pinned against something at full throttle the rev limiter bounces (less heat than
+                // a real pull) and the engine labours; the thermal mass gives about a minute and a half before trouble
+                bool pinned = speed < 1.5f && load > 0.8f && rpmFrac > 0.93f;
+                float heat = (0.25f + load * rpmFrac * (pinned ? 0.6f : 1f)) * 4.4f * (TryGetComponent<VehicleTuning>(out var tune) ? tune.HeatFactor : 1f);   // hot engine maps, boost, nitrous
                 float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? 1f - 0.6f * Mathf.Clamp01(radiator.damage) : 0f;
-                float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.6f + 0.4f * Mathf.Clamp01(speed / 20f)) : 0.55f + Mathf.Clamp01(speed / 25f) * 0.45f;
-                Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * dt;   // ~12 s time constant
+                float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.72f + 0.28f * Mathf.Clamp01(speed / 20f)) : 0.6f + Mathf.Clamp01(speed / 25f) * 0.4f;   // fan at a standstill
+                Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * 0.45f * dt;   // ~30 s time constant
+                if (pinned && Temperature > 95f) f |= Fault.Labouring;
 
                 if (FuelFraction < 0.03f && Mathf.PerlinNoise(Time.time * 3f, 0.5f) < 0.4f) power = 0f;          // sputtering
                 if (Temperature > HotLimit) { f |= Fault.Overheat; power *= Mathf.Lerp(1f, 0.4f, (Temperature - HotLimit) / 20f); }
@@ -289,6 +292,7 @@ namespace MadMax.Vehicles
             if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";
             if ((f & Fault.NoOil) != 0) return "NO OIL - ENGINE DAMAGE";
             if ((f & Fault.Overheat) != 0) return "OVERHEATING";
+            if ((f & Fault.Labouring) != 0) return "ENGINE LABOURING: EASE OFF";
             if ((f & Fault.NoRadiator) != 0) return "NO RADIATOR";
             if ((f & Fault.CoolantLeak) != 0) return "RADIATOR LEAK";
             if ((f & Fault.OilLeak) != 0) return "OIL LEAK";

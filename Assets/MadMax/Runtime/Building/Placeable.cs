@@ -104,6 +104,7 @@ namespace MadMax.Building
             if (Collapsing) return;
             hits -= Mathf.Max(1, Mathf.RoundToInt(power));
             Emit(hits > 0 ? 6 : 40, direction);
+            if (hits > 0 && hits <= 2) MadMax.Audio.Sfx.Play("creak", point, 0.5f, UnityEngine.Random.Range(0.9f, 1.2f), 30f, 1f);   // about to give
             if (hits > 0) return;
             Break(2);
         }

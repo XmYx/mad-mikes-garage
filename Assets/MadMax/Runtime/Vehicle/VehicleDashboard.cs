@@ -18,7 +18,8 @@ namespace MadMax.Vehicles
         float next;
 
         static readonly Color32 Bg = new Color32(20, 13, 10, 255), Rim = new Color32(90, 55, 32, 255), Tick = new Color32(214, 180, 130, 255),
-            Needle = new Color32(255, 110, 40, 255), Amber = new Color32(255, 180, 60, 255), Red = new Color32(230, 40, 30, 255), Off = new Color32(50, 34, 26, 255);
+            Needle = new Color32(255, 110, 40, 255), Amber = new Color32(255, 180, 60, 255), Off = new Color32(50, 34, 26, 255);
+        static Color32 Red => MadMax.Game.PixelHud.Bad;
 
         void Start()
         {
@@ -56,7 +57,7 @@ namespace MadMax.Vehicles
         {
             canvas.Clear(Bg);
             canvas.Frame(0, 0, 64, 24, Rim);
-            float speed = Mathf.Abs(driver.SpeedKmh);
+            float speed = Mathf.Abs(driver.SpeedKmh);                                         // the dial reads 0..max whatever the units
             var eng = driver.Engine;
             canvas.Dial(11, 12, 10, speed / maxSpeedKmh, Tick, Needle);
             canvas.Dial(52, 12, 10, eng ? driver.Rpm / eng.maxRpm : 0f, Tick, Needle, 0.85f);

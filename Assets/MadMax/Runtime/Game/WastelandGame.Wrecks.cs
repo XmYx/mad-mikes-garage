@@ -20,19 +20,26 @@ namespace MadMax.Game
             for (int i = 0; i < wreckCount; i++)
             {
                 Vector3 pos, dir;
+                var prefab = prefabs[rnd.Next(prefabs.Count)];
                 if (i < 3)
                 {
-                    // a few close to the start so scavenging begins right away
-                    float a = i * 2.1f + 0.5f;
-                    pos = spawn + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * (26f + i * 9f);
-                    dir = new Vector3(Mathf.Sin(a * 3f), 0, Mathf.Cos(a * 3f));
+                    // a few at the back of the start yard so scavenging begins right away (cold: no fuel to cook off)
+                    World.Yard(out var yo, out var ya, out var ys);
+                    dir = Quaternion.Euler(0, 40f + i * 55f, 0) * ya;
+                    pos = FindClearSpot(yo + ya * (46f + i * 9f) + ys * 30f, ya, HalfExtents(prefab), Quaternion.LookRotation(dir));
                 }
                 else if (i % 4 == 0)
                 {
+                    // around a town square, off its streets
                     var t = World.roads.towns[rnd.Next(World.roads.towns.Count)];
-                    float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
-                    pos = new Vector3(t.x, 0, t.y) + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * (8f + (float)rnd.NextDouble() * 14f);
-                    dir = new Vector3(Mathf.Sin(a + 1f), 0, Mathf.Cos(a + 1f));
+                    pos = Vector3.zero; dir = Vector3.forward;
+                    for (int tries = 0; tries < 8; tries++)
+                    {
+                        float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
+                        pos = new Vector3(t.x, 0, t.y) + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * (8f + (float)rnd.NextDouble() * 18f);
+                        dir = new Vector3(Mathf.Sin(a + 1f), 0, Mathf.Cos(a + 1f));
+                        if (World.Sample(pos.x, pos.z).roadDist > 6f) break;
+                    }
                 }
                 else
                 {
@@ -41,20 +48,21 @@ namespace MadMax.Game
                     var a = road.points[k]; var b = road.points[k + 1];
                     var along = (b - a); along.y = 0; along.Normalize();
                     var side = Vector3.Cross(Vector3.up, along) * (rnd.NextDouble() < 0.5 ? -1f : 1f);
-                    pos = a + side * (road.width * 0.5f + 2.5f + (float)rnd.NextDouble() * 4f);
+                    pos = a + side * (road.width * 0.5f + 3f + (float)rnd.NextDouble() * 4f);                 // on the verge
                     dir = Quaternion.Euler(0, (float)rnd.NextDouble() * 70f - 35f, 0) * along;
                 }
-                var prefab = prefabs[rnd.Next(prefabs.Count)];
-                pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
+                if (i >= 3 && (World.YardWeight(pos.x, pos.z) > 0f || World.Sample(pos.x, pos.z).roadDist < 4.5f)) continue;   // never on a lane or in the yard
+                if (i >= 3) pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
                 var go = Instantiate(prefab, pos, Quaternion.LookRotation(dir));
                 go.name = "Wreck " + prefab.name;
                 var v = go.GetComponent<VehicleDriver>();
                 if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = rnd.NextDouble() < 0.3;
                 Register(v, v.driveable ? wrecks : null);
                 Ruin(v, rnd);
+                if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
                 if (go.TryGetComponent<VehicleSystems>(out var sys))
                 {
-                    sys.fuel = sys.fuelCapacity * (float)rnd.NextDouble() * 0.35f;
+                    sys.fuel = i < 3 ? 0f : sys.fuelCapacity * (float)rnd.NextDouble() * 0.35f;
                     sys.oil = sys.oilCapacity * (float)rnd.NextDouble() * 0.8f;
                     sys.coolant = sys.coolantCapacity * (float)rnd.NextDouble() * 0.8f;
                 }
@@ -136,6 +144,7 @@ namespace MadMax.Game
 
         void Wake(Rigidbody rb)
         {
+            if (rb.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 3f;   // dropping back onto the ground
             var p = rb.position;
             p.y = Mathf.Max(p.y, terrain.Height(p.x, p.z) + 0.5f);
             rb.position = p;

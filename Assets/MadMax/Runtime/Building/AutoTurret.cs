@@ -78,7 +78,7 @@ namespace MadMax.Building
             rounds--;
             var muzzle = head.position + head.forward * 1.3f + head.up * 0.24f;
             MadMax.World.Fx.Flash(muzzle, new Color(1f, 0.8f, 0.4f), 6f, 3f, 0.06f);
-            MadMax.Audio.Sfx.Play("shotgun", muzzle, 0.7f, Random.Range(1.5f, 1.7f), 90f);
+            MadMax.Audio.Sfx.Play("shot_mg", muzzle, 0.7f, Random.Range(0.95f, 1.1f), 90f);
             if (Random.value < Mathf.Clamp01(0.8f - dist / 60f)) target.ApplyHit(target.transform.position + Vector3.up * 1.1f, head.forward, 0.55f, 0.1f, gameObject);
             else if (MadMax.World.DebrisSystem.Instance) MadMax.World.DebrisSystem.Instance.EmitPuff(target.transform.position + Random.insideUnitSphere, new Color32(190, 150, 110, 255), 0.06f, Vector3.up, 0.5f);
         }

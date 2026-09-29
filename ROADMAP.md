@@ -529,15 +529,17 @@ exception, a bleed-out loop after respawn, aircraft among roadside wrecks, and t
 over 33 ms on a town approach to 4). The items below are what is left: suggestions, not bugs in progress.*
 
 ### Gameplay
-- [ ] **No world map or waypoints.** The minimap shows wrecks, trailers and fleet vehicles only. Hauls, escorts
+- [x] **No world map or waypoints.** The minimap shows wrecks, trailers and fleet vehicles only. Hauls, escorts
       and town-boss couriers go to towns kilometres away, and bounty gangs, claims, caves, bunkers, airfields and
       aerially scouted sites (roadmap 25, only a toast) have no marker. Suggest: a full-screen map page (towns by
       name, roads, discovered sites, claims, faction territory), pins for active jobs, a route line along the roads
       on the minimap, and a compass strip in first person.
-- [ ] **Death has little weight.** Respawn keeps the whole pack and only halves health. Open wounds are now
+      *Done:* MAP page (M; pad Select tap): the land, roads, towns by name, found sites (bunker/tunnel/airfield letters), claims, fleet, job pins; drag/WASD pan, wheel zoom, click sets a waypoint (RMB/X clears); the route follows the roads (A* `World/RoadRoute`) on the minimap, with rim markers for waypoint and pins; compass strip in first/third person. Found places: `WastelandGame.Discovered` (towns entered, sites visited or scouted), saved.
+- [x] **Death has little weight.** Respawn keeps the whole pack and only halves health. Open wounds are now
       bandaged on respawn, which fixed a loop where a bad crash bled the player out again after every respawn. A
       crash can still bleed you out in about a minute with no warning. Suggest: drop part of the pack as a
       searchable stash where you fell (scaled by difficulty), and a bleed-out warning with a bandage prompt.
+      *Done:* a share of the pack stays in a searchable stash where you fell (NORMAL a third, HARD two thirds, BRUTAL all but what you wear; saved, waypoint set), and a flashing BLEEDING OUT countdown with a hint to bandage.
 - [ ] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
       Suggest a short starter chain on the town board (patch the car, fuel it, first haul, first workbench and
       wall, first tame), each step unlocking the next and teaching one system.
@@ -561,34 +563,43 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       composter, and grazing animals could trample or eat crops without a fence.
 
 ### Driving, riding, flying
-- [ ] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle; add launch
+- [x] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle; add launch
       torque so ramps and hills don't need a run-up.
-- [ ] **Stall overheating**: a car pinned against an obstacle at full throttle cooks its engine and catches fire
+      *Done:* uphill the clutch is slipped nearer the torque peak, and while it slips the drive gets a launch multiplier (automatic 1.9x like a torque converter, manual 1.3x).
+- [x] **Stall overheating**: a car pinned against an obstacle at full throttle cooks its engine and catches fire
       in well under a minute; slow the heat build-up, or add a rev-limiter warning.
-- [ ] **Bikes and small vegetation**: a biker is thrown off by a bush at 30 km/h (bushes are solid destructible
+      *Done:* thermal mass ~30 s, radiator fan at a standstill, a pinned engine on the limiter makes less heat, and ENGINE LABOURING: EASE OFF warns first.
+- [x] **Bikes and small vegetation**: a biker is thrown off by a bush at 30 km/h (bushes are solid destructible
       props). Let small shrubs and fences break under a bike, with a wobble instead of a crash.
-- [ ] **Sidecar outfits are assisted**: steering is grip-limited, holds the heading when the bars are released,
+      *Done:* bushes, fences, cacti and small props no longer throw the rider: the bike ploughs through (the prop carves) with a wobble.
+- [x] **Sidecar outfits are assisted**: steering is grip-limited, holds the heading when the bars are released,
       and most of the pull towards the chair is trimmed out. A "vintage" setting could bring the pull and the
       chair-lift back for players who want the real thing.
-- [ ] **Flight is arcade-assisted**: the trike flies on rate commands with auto-level, a bank limit and an AoA
+      *Done:* setting SIDECAR HANDLING: ASSISTED / VINTAGE (straight bars, most of the pull left in).
+- [x] **Flight is arcade-assisted**: the trike flies on rate commands with auto-level, a bank limit and an AoA
       limiter; the gyro has rate-commanded disc tilt. Suggest a SIM FLIGHT setting (raw weight shift, stalls and
       spins, crosswind landings), plus instruments for it (slip ball, stall horn).
+      *Done:* setting FLIGHT MODEL: SIMULATION (raw weight shift / disc tilt, no auto-level, bank or AoA limits, no turn coordinator); slip ball and STALL WARN on the flight panel, a stall horn.
 - [ ] **No runway lights or night flying aids**: airfields are unlit, and a night landing means aiming at the dark.
-- [ ] **Start line-up**: the starting fleet parks on the road through the start town, and wrecks can spawn on road
+- [x] **Start line-up**: the starting fleet parks on the road through the start town, and wrecks can spawn on road
       surfaces (a parked ambulance across the lane). Park the fleet on a yard beside the road; keep wrecks on the
       verge.
-- [ ] **Burning wrecks near the start**: a wreck spawned on fire about 17 m from the starting fleet set the
+      *Done:* a graded gravel start yard beside the highway (`WorldGen.YardWeight`, terrain feature 6, no props or ground cover): the fleet parks in rows facing the road, machines across it, trailers at the back; wrecks never spawn on a lane (town wrecks off the streets, roadside ones on the verge) or in the yard.
+- [x] **Burning wrecks near the start**: a wreck spawned on fire about 17 m from the starting fleet set the
       Interceptor and Excavator alight. Keep ignition-prone wrecks away from the spawn, or spawn them cold.
+      *Done:* the three scavenge wrecks sit at the back of the yard, cold (no fuel), and every spawned or woken wreck gets a settling grace (`VehicleDamage.graceUntil`) so drops and depenetration never damage them.
 
 ### World
 - [ ] **Thin variety for driving.** There are no rivers, fords or bridges, scrapyards, military checkpoints,
       refineries or radio masts (the radio has stations but no towers). Scrapyards would give parts hunting, fords
       would make snorkels matter, and checkpoints would carry faction tolls; each feeds an existing system.
-- [ ] **The start town is cramped**: sheds, the fleet and props leave little room to turn a truck. The autotest
+- [x] **The start town is cramped**: sheds, the fleet and props leave little room to turn a truck. The autotest
       pilot got stuck there repeatedly and now starts outside town.
-- [ ] **Caves and bunkers read as black voids**: under the underground cutaway everything outside lamp radii is
+      *Done:* the start yard keeps a 90 x 76 m lot clear of buildings and props.
+- [x] **Caves and bunkers read as black voids**: under the underground cutaway everything outside lamp radii is
       pure black. Suggest a faint ambient fill under `Subterranean` roofs, glowing fungus, or light spilling in at
       the portals.
+      *Done:* under a `Subterranean` roof a faint cool fill light (`_MadMaxUnderFill`) keeps the dark between lamps readable, in every view.
 - [ ] **Regional weather** (deferred on purpose): tropical regions get no extra rain, and weather is still
       global.
 
@@ -599,13 +610,15 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] **Road life is one-sided**: raider convoys hunt the player and town raids happen, but raiders never
       ambush trader convoys or pack traders on the road unless you are there. Off-screen skirmishes, and the wrecks
       they leave, would make the roads feel alive.
-- [ ] **Vulture flocks outlive the scene**: a flock keeps circling a far carcass after the player leaves (flocks
+- [x] **Vulture flocks outlive the scene**: a flock keeps circling a far carcass after the player leaves (flocks
       are only culled by count). Fold them away with their carcass.
+      *Done:* a flock leaves with its meal: carcass gone, picked clean, or the scene left beyond fold range.
 
 ### Saves
-- [ ] **No autosave, one slot.** The game only saves from the pause menu, not on quit or sleep, and permadeath
+- [x] **No autosave, one slot.** The game only saves from the pause menu, not on quit or sleep, and permadeath
       deletes the only file. Suggest: autosave on sleep and every N minutes (a setting), save on quit, three slots
       plus a rolling backup.
+      *Done:* three save slots plus an autosave (`SaveSystem.Slots`), the previous file kept as .bak (written via a temp file; a damaged save falls back to it), a slot list with day/place, autosave every N minutes (setting), after sleeping and on quit; permadeath deletes the run's slot and the autosave.
 - [ ] Not saved: ruts, dents, crate positions (known), storm state and lightning fires in flight.
 
 ### Multiplayer
@@ -619,18 +632,21 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       airfields reach other players only through the join snapshot.
 
 ### Controls
-- [ ] **Keys are overloaded by context and cannot be rebound**: G service/repair, X 4WD/dismantle, E/Q gear
+- [x] **Keys are overloaded by context and cannot be rebound**: G service/repair, X 4WD/dismantle, E/Q gear
       shift/take/drop part, R reload/research/weather debug, T recover/second action/parley, Shift run/wheelie/
       sprint/gallop, Space handbrake/jump/pull up. Suggest a controls page with rebinding, and moving the debug keys
       (R rain cycle, Backspace drop part, G instant repair, T recover) behind a dev flag.
-- [ ] **Gamepad is partial**: driving and some menus are mapped; building, fishing, aiming, radial menus, flying
+      *Done:* `Game/Controls`: every gameplay key is a rebindable action (CONTROLS page, clash warnings, reset), prompts and the help sheet show the bound keys; debug keys (weather F9, drop part Backspace, instant repair F10) only with --dev (MadMax > Dev > Debug Keys); radio power moved to / (M opens the map); recover only when slow or on its side.
+- [x] **Gamepad is partial**: driving and some menus are mapped; building, fishing, aiming, radial menus, flying
       trim and the (future) map are not.
-- [ ] **The help strip is a wall of text**: eight dense lines cover the top third of the screen for 12 s after
+      *Done:* hold Select for the action wheel (right stick picks; hotbar tools are on it), tap Select = map / recover; build mode on the pad (d-pad pieces, shoulders categories, Y rotate, X dismantle, RT place); top-down aiming with LT + right stick; the right stick flies the aircraft instead of turning the camera.
+- [x] **The help strip is a wall of text**: eight dense lines cover the top third of the screen for 12 s after
       every load. Replace it with context hints ("F — ride the horse", "Space — vault") and keep H for the full
       sheet.
+      *Done:* context hints (`Game/Hints`): one line the first couple of times you drive, ride, fly, aim, fish, build, bleed or run low on fuel; setting HINTS, SHOW ALL HINTS AGAIN; H still shows the full sheet (with the bound keys).
 
 ### Settings
-- [ ] Missing:
+- [x] Missing:
   - mouse sensitivity and invert-Y
   - FOV for first and third person
   - camera shake toggle
@@ -641,14 +657,17 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
   - units (km/h / mph, °C / °F)
   - radio captions (DJ talk and weather reports are voice only)
   - SIM FLIGHT and vintage sidecar assists (see above)
+      *Done:* settings are grouped (GAMEPLAY, MOUSE & CAMERA, GRAPHICS, AUDIO, INTERFACE, CONTROLS): mouse sensitivity, invert Y, first/third person FOV, camera shake, HUD size, colour-blind HUD (blue/orange), effects / ambient / interface / radio volumes, autosave interval, units (km/h or mph, C or F), radio captions (from `audio/export_captions.py` → `Radio/captions.json`), flight model, sidecar handling.
 
 ### Audio
-- [ ] **No footsteps**: the `footsteps` clip is never played, so the player, NPCs and animals are silent on foot.
+- [x] **No footsteps**: the `footsteps` clip is never played, so the player, NPCs and animals are silent on foot.
       Suggest per-surface steps (sand, mud, snow, wood and metal floors, water) from `HumanAnimator.Footstep`, and
       hooves for the horse.
-- [ ] **Weapons share sounds**: the pistol, rifle and roof MG reuse `shotgun` at other pitches, and the bow reuses
+      *Done:* per-surface steps for the player and nearby NPCs (road, gravel, sand, mud, snow, water, wood decks, vehicle floors) and hooves for big animals, synthesised by `Audio/ProceduralSfx` (the fallback for keys without a recorded clip).
+- [x] **Weapons share sounds**: the pistol, rifle and roof MG reuse `shotgun` at other pitches, and the bow reuses
       `pop`/`scratch`. There are no night insects, no creak or collapse sounds for structures, and no rotor chop
       for the gyro beyond the engine synth.
+      *Done:* pistols, the rifle and machine guns have their own synthesised reports, the bow twangs; crickets on warm dry nights; structures creak before they give and rumble when they collapse; the gyro's rotor slaps.
 
 ### Visuals
 - [ ] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
@@ -657,11 +676,13 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] The TowTruck showed its lights on while parked (seen during roadmap 14).
 
 ### UI / HUD
-- [ ] **The HUD and font scale with the pixel height**: at 480–540 px the 3×5 font becomes tiny on big screens.
+- [x] **The HUD and font scale with the pixel height**: at 480–540 px the 3×5 font becomes tiny on big screens.
       Draw the HUD canvas at its own (settable) resolution.
-- [ ] **No journal**: contracts, errands, town-boss chains, research and known recipes each live on their own
+      *Done:* setting HUD SIZE draws the HUD canvas at its own resolution.
+- [x] **No journal**: contracts, errands, town-boss chains, research and known recipes each live on their own
       page. A journal (jobs with destinations and deadlines, rumours heard, sites found or scouted) would tie them
       together.
+      *Done:* JOURNAL page (Tab from the map): the jobs in hand with distances (ENTER sets a waypoint), then a notebook of rumours heard, errands and jobs taken, places found, by day (`Game/Journal`, saved).
 
 ### Performance
 - [ ] **New-game load is a ~4 s single frame** behind the fader: terrain around the spawn (0.7 s after
@@ -678,6 +699,8 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       Merge static pieces per structure cell into combined meshes, rebuilt when a piece changes.
 
 ### Balance / tech notes
-- [ ] `Fire.Burn` heats vehicles once per overlapping collider (`VehicleSystems.Heat`), so vehicles with many part
+- [x] `Fire.Burn` heats vehicles once per overlapping collider (`VehicleSystems.Heat`), so vehicles with many part
       colliders cook faster than simple ones. The player-damage half of this bug was fixed in roadmap 17.
-- [ ] The tuning card's top speed is an estimate (drag and gearing only).
+      *Done:* fires heat each vehicle (and try to ignite each piece) once per tick.
+- [x] The tuning card's top speed is an estimate (drag and gearing only).
+      *Done:* the card solves the real force balance per gear (torque curve and tuning, rev limiter, drag and tyre rolling resistance).

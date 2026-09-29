@@ -4,13 +4,15 @@ namespace MadMax.Game
 {
     /// <summary>Startup switches for quick testing. Player: command-line flags (either -flag or --flag):
     /// --no-intro (skip the boot film and title flyover, land on the menu), --no-menu (straight into the game:
-    /// no film, no title, no menu), --continue (with --no-menu: load the save instead of a fresh world).
+    /// no film, no title, no menu), --continue (with --no-menu: load the save instead of a fresh world), --dev (debug keys).
     /// Editor: the same switches as toggles under MadMax > Dev (EditorPrefs).</summary>
     public static class LaunchOptions
     {
         public static bool NoIntro => Has("no-intro") || NoMenu;
         public static bool NoMenu => Has("no-menu");
         public static bool Continue => Has("continue");
+        /// <summary>--dev: debug keys (weather cycle, drop a part, instant repair; see <see cref="Controls"/>).</summary>
+        public static bool Dev => Has("dev");
 
         static string[] args;
 

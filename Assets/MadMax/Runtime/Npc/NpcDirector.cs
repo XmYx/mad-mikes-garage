@@ -207,6 +207,8 @@ namespace MadMax.Npc
             foreach (var c in convoys) c.Horn(game, at);
         }
 
+        public IReadOnlyList<Convoy> Convoys => convoys;
+
         public Convoy NearestRaiders(Vector3 at, out float dist)
         {
             dist = float.MaxValue; Convoy best = null;

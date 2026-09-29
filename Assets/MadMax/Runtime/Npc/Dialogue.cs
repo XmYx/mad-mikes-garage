@@ -367,6 +367,7 @@ namespace MadMax.Npc
             if (facts.Count == 0) facts.Add("QUIET. TOO QUIET.");
             int i0 = ((P.seed & 0xffff) + Day) % facts.Count;
             line = facts[i0] + (facts.Count > 1 && S.disposition >= 20 ? " " + facts[(i0 + 1) % facts.Count] : "");
+            MadMax.Game.Journal.Add("RUMOUR", P.Name + ": " + line);
             g.Stats.Practice(Skill.Speech, 0.5f);
             Hub(false);
         }
@@ -386,7 +387,7 @@ namespace MadMax.Npc
             var j = NpcLore.Jobs[P.job];
             line = j.ask;
             choices.Clear();
-            Add("I'LL DO IT.", () => { S.jobState = 1; Change(2); line = "GOOD. I'LL BE AROUND."; Hub(false); });
+            Add("I'LL DO IT.", () => { S.jobState = 1; Change(2); line = "GOOD. I'LL BE AROUND."; MadMax.Game.Journal.Add("ERRAND", P.Name + ": " + j.ask); Hub(false); });
             Add("NOT RIGHT NOW.", () => Hub());
         }
 

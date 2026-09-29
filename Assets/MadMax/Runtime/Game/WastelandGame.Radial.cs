@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using MadMax.Vehicles;
+using MadMax.Items;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,7 +13,7 @@ namespace MadMax.Game
     /// slice by accumulated movement (works with the locked cursor); camera look pauses meanwhile.</summary>
     public partial class WastelandGame
     {
-        public struct RadialAction { public string label; public Key key; public System.Action run; }
+        public struct RadialAction { public string label; public Controls.Act? act; public System.Action run; }
 
         public bool RadialOpen { get; private set; }
         public int RadialHover { get; private set; } = -1;
@@ -23,19 +24,49 @@ namespace MadMax.Game
         bool TabTapped;
         float tabHeld;
         Vector2 radialAim;
-        Key injectedKey = Key.None;
-        int injectedFrame = -1;
+        static readonly Regex PromptKey = new Regex(@"\[([^\]]+)\]\s*([^\[]*)");
 
-        static readonly Regex PromptKey = new Regex(@"\[([A-Z0-9]+)\]\s*([^\[]*)");
 
-        bool Injected(Key k) => injectedFrame == Time.frameCount && injectedKey == k;
-        bool KeyDown(Keyboard kb, Key k) => (kb != null && kb[k].wasPressedThisFrame) || Injected(k);
+        /// <summary>Gamepad Select tapped (not held for the wheel): map on foot, recover in a vehicle.</summary>
+        public bool PadSelectTapped { get; private set; }
+        float padHeld = -1f;
 
         void UpdateRadial(Keyboard kb, Mouse mouse)
         {
-            TabTapped = false;
-            if (kb == null || Menus.IsOpen || TitleSequence.Playing || (Build && Build.RadialOpen)) { CloseRadial(); return; }
-            var tab = kb.tabKey;
+            TabTapped = false; PadSelectTapped = false;
+            var pad = Gamepad.current;
+            if (Menus.IsOpen || TitleSequence.Playing || (Build && Build.RadialOpen)) { CloseRadial(); padHeld = -1f; return; }
+            // gamepad: hold Select for the wheel, aim with the right stick, release to run
+            if (pad != null)
+            {
+                if (pad.selectButton.wasPressedThisFrame) padHeld = 0f;
+                if (padHeld >= 0f && pad.selectButton.isPressed)
+                {
+                    padHeld += Time.unscaledDeltaTime;
+                    if (!RadialOpen && padHeld > 0.3f) { GatherActions(); RadialOpen = RadialActions.Count > 0; RadialHover = -1; }
+                    if (RadialOpen)
+                    {
+                        var st = pad.rightStick.ReadValue();
+                        int n = RadialActions.Count;
+                        if (st.magnitude > 0.5f)
+                        {
+                            float a = (Mathf.Atan2(st.x, st.y) * Mathf.Rad2Deg + 360f) % 360f;
+                            RadialHover = Mathf.Clamp(Mathf.FloorToInt(((a + 180f / n) % 360f) / (360f / n)), 0, n - 1);
+                        }
+                    }
+                    RadialBlocksLook = RadialOpen;
+                    return;
+                }
+                if (padHeld >= 0f && pad.selectButton.wasReleasedThisFrame)
+                {
+                    if (RadialOpen) { if (RadialHover >= 0) RunRadial(RadialActions[RadialHover]); CloseRadial(); }
+                    else if (padHeld <= 0.3f) PadSelectTapped = true;
+                    padHeld = -1f;
+                    return;
+                }
+            }
+            if (kb == null) { CloseRadial(); return; }
+            var tab = kb.tabKey;                                                             // Tab: fixed (wheel / next fleet vehicle)
             if (tab.wasPressedThisFrame) tabHeld = 0f;
             if (tab.isPressed)
             {
@@ -66,13 +97,13 @@ namespace MadMax.Game
         void RunRadial(RadialAction a)
         {
             if (a.run != null) a.run();
-            else { injectedKey = a.key; injectedFrame = Time.frameCount; }   // handled by the normal input code later this frame
+            else if (a.act.HasValue) Controls.Inject(a.act.Value);                       // handled by the normal input code later this frame
         }
 
-        void AddRadial(string label, Key key, System.Action run = null)
+        void AddRadial(string label, Controls.Act? act, System.Action run = null)
         {
             foreach (var r in RadialActions) if (r.label == label) return;
-            RadialActions.Add(new RadialAction { label = label, key = key, run = run });
+            RadialActions.Add(new RadialAction { label = label, act = act, run = run });
         }
 
         void GatherActions()
@@ -80,38 +111,47 @@ namespace MadMax.Game
             RadialActions.Clear();
             // whatever the prompt offers right now
             if (Prompt != null)
-                foreach (Match m in PromptKey.Matches(Prompt))
+                foreach (Match m in PromptKey.Matches(Controls.Localize(Prompt)))
                 {
                     string label = m.Groups[2].Value.Trim().TrimEnd(',', '.', ' ');
                     if (label.Length == 0) continue;
-                    if (System.Enum.TryParse<Key>(m.Groups[1].Value, true, out var key) && key != Key.None) AddRadial(label, key);
+                    var act = Controls.FromToken(m.Groups[1].Value);
+                    if (act.HasValue) AddRadial(label, act);
                 }
             if (Current)
             {
                 var car = Current;
-                AddRadial("LIGHTS", Key.N);
-                if (car.awdSelectable) AddRadial(car.FourWheelDrive ? "2WD" : "4WD", Key.X);
-                if (car.hasDiffLock) AddRadial(car.diffLocked ? "OPEN DIFF" : "LOCK DIFF", Key.L);
+                AddRadial("LIGHTS", Controls.Act.Lights);
+                if (car.awdSelectable) AddRadial(car.FourWheelDrive ? "2WD" : "4WD", Controls.Act.FourWheel);
+                if (car.hasDiffLock) AddRadial(car.diffLocked ? "OPEN DIFF" : "LOCK DIFF", Controls.Act.DiffLock);
                 var radio = car.GetComponent<MadMax.Audio.RadioReceiver>();
-                AddRadial(radio && radio.on ? "RADIO OFF" : "RADIO ON", Key.M);
-                if (radio && radio.on) AddRadial("NEXT STATION", Key.Period);
-                if (car.GetComponent<VehicleClimate>()) AddRadial("CLIMATE", Key.K);
-                AddRadial("HORN", Key.None, () => MadMax.Audio.Sfx.Play("horn", car.transform.position + car.transform.forward * 1.5f, 1f, 1f, 80f, 0.4f));
-                AddRadial("RECOVER", Key.T);
-                if (car.TryGetComponent<VehicleDamage>(out _)) AddRadial("REPAIR", Key.G);
+                AddRadial(radio && radio.on ? "RADIO OFF" : "RADIO ON", Controls.Act.RadioPower);
+                if (radio && radio.on) AddRadial("NEXT STATION", Controls.Act.RadioNext);
+                if (car.GetComponent<VehicleClimate>()) AddRadial("CLIMATE", Controls.Act.Climate);
+                AddRadial("HORN", null, () => MadMax.Audio.Sfx.Play("horn", car.transform.position + car.transform.forward * 1.5f, 1f, 1f, 80f, 0.4f));
+                AddRadial("RECOVER", Controls.Act.Recover);
+                if (LaunchOptions.Dev && car.TryGetComponent<VehicleDamage>(out _)) AddRadial("REPAIR (DEV)", Controls.Act.DevRepair);
                 // a tanker behind: pump from the cab
                 foreach (var t in trailers)
                 {
                     if (!t || !t.TryGetComponent<TowCoupling>(out var tc) || tc.Tower != car || !t.TryGetComponent<FuelTanker>(out var ft)) continue;
-                    AddRadial(ft.Pumping == FuelTanker.Mode.Fill ? "STOP PUMP" : "FUEL FROM TANKER", Key.None, () => ft.Toggle(FuelTanker.Mode.Fill));
-                    AddRadial(ft.Pumping == FuelTanker.Mode.Drain ? "STOP DRAIN" : "DRAIN INTO TANKER", Key.None, () => ft.Toggle(FuelTanker.Mode.Drain));
+                    AddRadial(ft.Pumping == FuelTanker.Mode.Fill ? "STOP PUMP" : "FUEL FROM TANKER", null, () => ft.Toggle(FuelTanker.Mode.Fill));
+                    AddRadial(ft.Pumping == FuelTanker.Mode.Drain ? "STOP DRAIN" : "DRAIN INTO TANKER", null, () => ft.Toggle(FuelTanker.Mode.Drain));
                 }
             }
             else
             {
-                AddRadial("INVENTORY", Key.I);
-                AddRadial("SKILLS", Key.P);
-                AddRadial("HEALTH", Key.O);
+                // tools from the hotbar (the pad's way to switch)
+                for (int i = 0; i < HotbarSize; i++)
+                {
+                    int slot = i;
+                    if (Hotbar[slot] != null && (!Player.Tool || Player.Tool.id != Hotbar[slot]) && Hotbar[slot].StartsWith("tool_"))
+                        AddRadial(ItemCatalog.Name(Hotbar[slot]), null, () => UseItem(Hotbar[slot]));
+                }
+                AddRadial("INVENTORY", Controls.Act.Inventory);
+                AddRadial("SKILLS", Controls.Act.Skills);
+                AddRadial("HEALTH", Controls.Act.Health);
+                AddRadial("MAP", Controls.Act.Map);
             }
             if (RadialActions.Count > 12) RadialActions.RemoveRange(12, RadialActions.Count - 12);
         }

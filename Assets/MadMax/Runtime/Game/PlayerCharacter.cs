@@ -433,6 +433,22 @@ namespace MadMax.Game
             });
         }
 
+        /// <summary>The footstep for what is underfoot: a deck or floor piece, a vehicle, water, snow, mud, road, sand, gravel.</summary>
+        public static string StepSound(Vector3 foot, Surface s)
+        {
+            if (Physics.Raycast(foot + Vector3.up * 0.3f, Vector3.down, out var hit, 0.6f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.collider.GetComponentInParent<MadMax.Vehicles.VehicleDriver>()) return "step_metal";
+                if (hit.collider.GetComponentInParent<MadMax.Building.Placeable>()) return "step_wood";
+            }
+            var t = DeformableTerrain.Instance;
+            if (t && t.WaterDepth(foot.x, foot.z) > 0.05f) return "step_water";
+            if (Weather.Snow > 0.35f && s.road < 0.5f) return "step_snow";
+            if (s.mud > 0.35f) return "step_mud";
+            if (s.road > 0.5f) return "step_road";
+            return t && t.BiomeAt(foot.x, foot.z) == Biome.Desert ? "step_sand" : "step_gravel";
+        }
+
         void OnFootstep(bool left)
         {
             if (!SeatedIn && !Swimming && !Interior) MadMax.World.Fx.Footprint(transform.position, transform.forward, left);   // prints in snow, sand, mud
@@ -441,6 +457,7 @@ namespace MadMax.Game
             var foot = transform.position + transform.right * (left ? -0.1f : 0.1f);
             terrain.Deform(foot, transform.forward, transform.right, 0.16f, run ? 1400f : 900f, 0f, 0f);
             var s = terrain.SurfaceAt(foot.x, foot.z);
+            MadMax.Audio.Sfx.Play(StepSound(foot, s), foot, run ? 0.45f : 0.28f, Random.Range(0.9f, 1.1f), 18f);
             if (DebrisSystem.Instance && run)
                 DebrisSystem.Instance.EmitPuff(foot + Vector3.up * 0.05f, s.wet > 0.5f ? new Color32(70, 42, 26, 255) : new Color32(190, 120, 70, 255), 0.05f, Vector3.up * 0.6f - transform.forward * 0.4f, 0.4f);
         }

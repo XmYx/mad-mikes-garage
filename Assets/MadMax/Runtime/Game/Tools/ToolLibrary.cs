@@ -223,15 +223,15 @@ namespace MadMax.Game
             { "tool_slingshot", (r, t) => { t.localPosition = new Vector3(0, -8f * S, 0); r.projectile = Projectile.Kind.Stone; r.ammoResource = ResourceType.Stone; r.projectileSpeed = 28f; r.power = 0.3f; r.spread = 3f;
                 r.reloadTime = 0f; r.noise = 4f; r.sound = "pop"; r.shake = 0.2f; r.swingDuration = 0.6f; } },
             { "tool_bow", (r, t) => { t.localPosition = new Vector3(0, -3f * S, 0); r.projectile = Projectile.Kind.Arrow; r.ammo = "ammo_arrow"; r.recover = "ammo_arrow"; r.projectileSpeed = 42f; r.power = 0.8f; r.spread = 1.5f;
-                r.reloadTime = 0f; r.noise = 5f; r.sound = "scratch"; r.shake = 0.3f; r.swingDuration = 0.9f; r.aimZoom = 0.7f; } },
+                r.reloadTime = 0f; r.noise = 5f; r.sound = "bow"; r.shake = 0.3f; r.swingDuration = 0.9f; r.aimZoom = 0.7f; } },
             { "tool_crossbow", (r, t) => { t.localPosition = new Vector3(0, -14f * S, 0); r.projectile = Projectile.Kind.Bolt; r.ammo = "ammo_bolt"; r.recover = "ammo_bolt"; r.projectileSpeed = 60f; r.power = 1.1f; r.spread = 0.8f;
                 r.reloadTime = 2.2f; r.noise = 8f; r.sound = "click"; r.shake = 0.5f; r.swingDuration = 0.6f; r.aimZoom = 0.6f; } },
             { "tool_pipe_pistol", (r, t) => { t.localPosition = new Vector3(0, -8f * S, 0); r.pellets = 1; r.spread = 2.5f; r.range = 45f; r.power = 0.55f; r.ammo = "ammo_cartridge";
-                r.reloadTime = 1.6f; r.jamChance = 0.08f; r.noise = 60f; r.shake = 0.8f; r.swingDuration = 0.5f; } },
+                r.reloadTime = 1.6f; r.jamChance = 0.08f; r.noise = 60f; r.sound = "shot_pistol"; r.shake = 0.8f; r.swingDuration = 0.5f; } },
             { "tool_revolver", (r, t) => { t.localPosition = new Vector3(0, -9f * S, 0); r.pellets = 1; r.spread = 1.2f; r.range = 60f; r.power = 0.65f; r.ammo = "ammo_cartridge"; r.magazine = 6;
-                r.reloadTime = 3f; r.jamChance = 0.01f; r.noise = 70f; r.shake = 1f; r.swingDuration = 0.45f; } },
+                r.reloadTime = 3f; r.jamChance = 0.01f; r.noise = 70f; r.sound = "shot_pistol"; r.shake = 1f; r.swingDuration = 0.45f; } },
             { "tool_bolt_rifle", (r, t) => { t.localPosition = new Vector3(0, -22f * S, 0); r.pellets = 1; r.spread = 0.3f; r.range = 160f; r.power = 1.5f; r.ammo = "ammo_rifle"; r.magazine = 5;
-                r.reloadTime = 3.5f; r.jamChance = 0.03f; r.noise = 130f; r.shake = 2.2f; r.swingDuration = 1.1f; r.aimZoom = 0.4f; } },
+                r.reloadTime = 3.5f; r.jamChance = 0.03f; r.noise = 130f; r.sound = "shot_rifle"; r.shake = 2.2f; r.swingDuration = 1.1f; r.aimZoom = 0.4f; } },
             { "tool_flare_gun", (r, t) => { t.localPosition = new Vector3(0, -6f * S, 0); r.projectile = Projectile.Kind.Flare; r.ammo = "ammo_flare"; r.projectileSpeed = 30f; r.power = 0.3f; r.spread = 2f;
                 r.reloadTime = 1.3f; r.noise = 20f; r.sound = "pop"; r.shake = 0.6f; r.swingDuration = 0.5f; } },
         };

@@ -45,6 +45,7 @@ Shader "MadMax/PixelVoxel"
         float _MadMaxOutlineDelta;
         float _MadMaxBrightnessDelta;
         float _MadMaxNight;      // 0 day .. 1 night
+        float _MadMaxUnderFill;  // 0 .. 1 under a cave / bunker roof: faint fill light
         float _MadMaxSnow;       // snow dusting on upward faces
         float _MadMaxAutumn;     // 0..1 foliage turning gold and rust (swaying materials: trees, grass)
         float4 _MadMaxClouds;    // x coverage 0..1, y shadow strength, z 1/scale (1/m); x = 0 disables
@@ -165,7 +166,7 @@ Shader "MadMax/PixelVoxel"
                 }
                 half night = _MadMaxNight;
                 half3 shade = _ShadowTint.rgb * (1.0h - night * 0.85h);
-                half3 amb = _Ambient.rgb * (1.0h - night * 0.6h) + half3(0.012h, 0.016h, 0.035h) * night;
+                half3 amb = _Ambient.rgb * (1.0h - night * 0.6h) + half3(0.012h, 0.016h, 0.035h) * night + half3(0.05h, 0.052h, 0.06h) * _MadMaxUnderFill;
                 half3 c = albedo * (lerp(shade, light.color, q) + amb);
                 #if defined(_ADDITIONAL_LIGHTS)
                 // point lights (lamps, stoves), banded like the sun

@@ -21,6 +21,7 @@ namespace MadMax.World
         Light glow;
         float tick, emit;
         readonly Collider[] near = new Collider[24];
+        static readonly HashSet<Component> touched = new HashSet<Component>();   // per Burn call (main thread only)
 
         /// <summary>Start a fire (or feed an existing one close by).</summary>
         public static Fire Ignite(Vector3 pos, Transform attach, float fuel, float intensity = 0.6f, bool ground = false)
@@ -120,6 +121,7 @@ namespace MadMax.World
             int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 0.5f, reach, near, ~0, QueryTriggerInteraction.Ignore);
             var game = MadMax.Game.WastelandGame.Instance;
             bool playerBurned = false;
+            touched.Clear();
             for (int i = 0; i < n; i++)
             {
                 var c = near[i];
@@ -140,11 +142,12 @@ namespace MadMax.World
                     if (Random.value < 0.08f * intensity * (1f - Weather.Wetness)) Ignite(hit, d.transform, 20f, 0.4f);
                     continue;
                 }
+                // pieces and vehicles once per tick, however many colliders they have in the flames
                 var placed = c.GetComponentInParent<MadMax.Building.Placeable>();
-                if (placed && Random.value < 0.06f * intensity * (1f - Weather.Wetness)) { Ignite(c.bounds.center, placed.transform, 15f, 0.4f); continue; }
+                if (placed) { if (touched.Add(placed) && Random.value < 0.06f * intensity * (1f - Weather.Wetness)) Ignite(c.bounds.center, placed.transform, 15f, 0.4f); continue; }
                 // vehicles: heat the parts, cook off the fuel
                 var sys = c.GetComponentInParent<MadMax.Vehicles.VehicleSystems>();
-                if (sys) sys.Heat(intensity * dt);
+                if (sys && touched.Add(sys)) sys.Heat(intensity * dt);
             }
             // ground fire: creeps across dry forest / meadow / tropical ground
             if (Authority && ground && intensity > 0.4f && Weather.Wetness < 0.25f && Weather.Snow < 0.1f && Random.value < 0.25f)

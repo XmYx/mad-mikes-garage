@@ -79,6 +79,9 @@ namespace MadMax.Game
         public string factions;
         public List<MadMax.Animals.AnimalSave> animals = new List<MadMax.Animals.AnimalSave>();
         public List<string> foundAircraft = new List<string>(), scouted = new List<string>();
+        public List<string> discovered = new List<string>(), journal = new List<string>();
+        public bool hasWaypoint; public Vector3 waypoint;
+        public List<WastelandGame.StashSave> stashes = new List<WastelandGame.StashSave>();
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
@@ -90,13 +93,48 @@ namespace MadMax.Game
         public List<MadMax.World.DeformableTerrain.ChunkEdit> terrain = new List<MadMax.World.DeformableTerrain.ChunkEdit>();
     }
 
-    /// <summary>Single save slot (JSON in persistentDataPath) plus the hand-over between scene reloads.</summary>
+    /// <summary>Save slots (JSON in persistentDataPath): 0 = autosave, 1..3 = the player's slots (slot 1 keeps the old
+    /// single-slot file name). Every write keeps the previous file as a .bak; a small .meta line per slot feeds the slot
+    /// list without parsing whole saves. Also the hand-over between scene reloads.</summary>
     public static class SaveSystem
     {
-        public static string Path => System.IO.Path.Combine(Application.persistentDataPath, "wasteland_save.json");
-        public static bool HasSave => File.Exists(Path);
+        public const int Slots = 4;                                  // 0 autosave + 3
+        /// <summary>The slot the running game was loaded from / last saved to (autosaves go to 0 regardless).</summary>
+        public static int Slot = 1;
 
-        /// <summary>Set before reloading the scene: load this state instead of generating a new game.</summary>
+        public static string PathOf(int slot) => System.IO.Path.Combine(Application.persistentDataPath,
+            slot == 0 ? "wasteland_autosave.json" : slot == 1 ? "wasteland_save.json" : "wasteland_save_" + slot + ".json");
+        public static string Path => PathOf(Slot);
+        public static bool Exists(int slot) => File.Exists(PathOf(slot));
+        /// <summary>Any save at all (CONTINUE, LOAD).</summary>
+        public static bool HasSave { get { for (int i = 0; i < Slots; i++) if (Exists(i)) return true; return false; } }
+
+        /// <summary>The most recently written slot, -1 if none.</summary>
+        public static int Latest()
+        {
+            int best = -1; DateTime bt = DateTime.MinValue;
+            for (int i = 0; i < Slots; i++)
+            {
+                if (!Exists(i)) continue;
+                var t = File.GetLastWriteTime(PathOf(i));
+                if (t > bt) { bt = t; best = i; }
+            }
+            return best;
+        }
+
+        /// <summary>One line for the slot list: when, which day, where.</summary>
+        public static string Info(int slot)
+        {
+            if (!Exists(slot)) return "EMPTY";
+            try { var meta = PathOf(slot) + ".meta"; if (File.Exists(meta)) return File.ReadAllText(meta).Trim(); } catch { }
+            return File.GetLastWriteTime(PathOf(slot)).ToString("yyyy-MM-dd HH:mm");
+        }
+
+        public static void Delete(int slot)
+        {
+            foreach (var f in new[] { PathOf(slot), PathOf(slot) + ".meta" }) if (File.Exists(f)) File.Delete(f);
+        }
+
         public static SaveData Pending;
         /// <summary>Set before reloading the scene: skip the main menu (new game requested from the menu).</summary>
         public static bool SkipMenu;
@@ -108,18 +146,36 @@ namespace MadMax.Game
         public static bool PendingHost;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { Pending = null; SkipMenu = false; PendingRules = null; PendingCharacter = null; PendingLook = null; PendingOutfit = null; PendingHost = false; }
+        static void Reset() { Pending = null; SkipMenu = false; PendingRules = null; PendingCharacter = null; PendingLook = null; PendingOutfit = null; PendingHost = false; Slot = 1; }
 
-        public static void Write(SaveData data)
+        public static void Write(SaveData data) => Write(data, Slot, null);
+
+        /// <summary>Write a slot, keeping the previous file as a .bak (written to a temp file first: a crash mid-write
+        /// never leaves a half save).</summary>
+        public static void Write(SaveData data, int slot, string summary)
         {
             data.savedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-            File.WriteAllText(Path, JsonUtility.ToJson(data));
+            string path = PathOf(slot), tmp = path + ".tmp";
+            File.WriteAllText(tmp, JsonUtility.ToJson(data));
+            if (File.Exists(path)) File.Copy(path, path + ".bak", true);
+            File.Copy(tmp, path, true);
+            File.Delete(tmp);
+            File.WriteAllText(path + ".meta", data.savedAt + (string.IsNullOrEmpty(summary) ? "" : "  " + summary));
         }
 
-        public static SaveData Read()
+        public static SaveData Read() => Read(Slot);
+
+        public static SaveData Read(int slot)
         {
-            try { return HasSave ? JsonUtility.FromJson<SaveData>(File.ReadAllText(Path)) : null; }
-            catch (Exception e) { Debug.LogWarning("[MadMax] Save unreadable: " + e.Message); return null; }
+            string path = PathOf(slot);
+            try { return File.Exists(path) ? JsonUtility.FromJson<SaveData>(File.ReadAllText(path)) : null; }
+            catch (Exception e)
+            {
+                // a damaged file: fall back to the backup
+                Debug.LogWarning("[MadMax] Save unreadable, trying the backup: " + e.Message);
+                try { return File.Exists(path + ".bak") ? JsonUtility.FromJson<SaveData>(File.ReadAllText(path + ".bak")) : null; }
+                catch { return null; }
+            }
         }
     }
 }

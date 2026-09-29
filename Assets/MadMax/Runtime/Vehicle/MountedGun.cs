@@ -47,7 +47,7 @@ namespace MadMax.Vehicles
             var dir = gun.rotation * Quaternion.Euler(Random.Range(-1.3f, 1.3f), Random.Range(-1.3f, 1.3f), 0f) * Vector3.forward;
             var end = VehicleWeapons.Hitscan(Vehicle, muzzle, dir, 150f, 0.85f, 0.12f);
             Tracers.Add(muzzle, end, new Color(1f, 0.85f, 0.45f, 0.9f), 0.05f, 0.035f);
-            MadMax.Audio.Sfx.Play("shotgun", muzzle, 0.45f, Random.Range(1.6f, 1.8f), 120f, 0.03f);
+            MadMax.Audio.Sfx.Play("shot_mg", muzzle, 0.6f, Random.Range(0.95f, 1.05f), 120f, 0.03f);
             var fx = DebrisSystem.Instance;
             if (fx) fx.EmitPuff(muzzle + dir * 0.2f, new Color32(255, 214, 120, 255), 0.06f, dir * 3f, 0.06f);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.Noise(muzzle, 90f);

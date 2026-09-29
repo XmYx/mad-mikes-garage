@@ -134,6 +134,15 @@ namespace MadMax.Game
             bool topDown = cameraRig.mode == ViewMode.Isometric || cameraRig.mode == ViewMode.TiltShift;
             Vector2 view = ForceAim ? (topDown ? ForceAimViewport : new Vector2(0.5f, 0.5f))
                 : topDown && mouse != null ? new Vector2(mouse.position.ReadValue().x / Screen.width, mouse.position.ReadValue().y / Screen.height) : new Vector2(0.5f, 0.5f);
+            // top-down with a pad: the right stick points the aim around the character (camera-relative)
+            if (!ForceAim && topDown && pad != null && pad.leftTrigger.isPressed && pad.rightStick.ReadValue().sqrMagnitude > 0.05f)
+            {
+                var st = pad.rightStick.ReadValue();
+                var f = Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up).normalized; var r = Vector3.Cross(Vector3.up, f);
+                var target = Player.transform.position + Vector3.up * 1.1f + (f * st.y + r * st.x).normalized * 12f;
+                var vp = cam.WorldToViewportPoint(target);
+                view = new Vector2(vp.x, vp.y);
+            }
             var ray = cam.ViewportPointToRay(new Vector3(view.x, view.y, 0f));
             AimPoint = Physics.Raycast(ray, out var hit, 300f, ~0, QueryTriggerInteraction.Ignore) && !hit.collider.transform.IsChildOf(Player.transform) ? hit.point : ray.GetPoint(60f);
             if (topDown)

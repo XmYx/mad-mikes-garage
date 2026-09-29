@@ -257,13 +257,20 @@ namespace MadMax.Vehicles
                 float ratio = neutral ? 0f : (Reversing ? reverseRatio : gears[Mathf.Clamp(Gear, 1, gears.Length) - 1]) * finalDrive;
                 float r = DrivenRadius();
                 float wheelRpm = Mathf.Abs(ForwardSpeed) / r * 60f / (2f * Mathf.PI);
-                float launch = engine.idleRpm + driveCmd * (engine.maxRpm * (brakeCmd > 0.5f ? 0.8f : 0.45f) - engine.idleRpm); // clutch slip at pull-away (brake-torqued: higher)
+                // clutch slip at pull-away (brake-torqued: higher). Uphill the driver slips it nearer the torque peak
+                float uphill = Mathf.Clamp01((Vector3.Dot(transform.forward, Vector3.up) * (Reversing ? -1f : 1f) - 0.04f) * 6f) * Mathf.Clamp01(1f - Mathf.Abs(ForwardSpeed) / 4f);
+                float launchFrac = brakeCmd > 0.5f ? 0.8f : Mathf.Lerp(0.45f, Mathf.Max(0.55f, engine.peakAt), uphill);
+                float launch = engine.idleRpm + Mathf.Max(driveCmd, uphill * 0.8f) * (engine.maxRpm * launchFrac - engine.idleRpm);
                 float target = neutral ? Mathf.Lerp(engine.idleRpm, engine.maxRpm, driveCmd) : Mathf.Max(launch, wheelRpm * ratio);
+                // while the clutch (or an automatic's torque converter) slips, torque at the wheels is multiplied:
+                // up to 1.9x from a standstill in an automatic, 1.3x slipping a manual clutch hard
+                float coupling = neutral ? 1f : Mathf.Clamp01(wheelRpm * ratio / Mathf.Max(1f, launch));
+                float launchBoost = Mathf.Lerp(manual ? 1.3f : 1.9f, 1f, coupling);
                 float freeRev = driven == 0 ? 1f : WheelSlip;
                 if (!neutral) target = Mathf.Lerp(target, engine.maxRpm, driveCmd * Mathf.Clamp01(freeRev));
                 Rpm = Mathf.Lerp(Rpm, Mathf.Min(target, engine.maxRpm), 12f * dt);
                 float health = 1f - 0.7f * Mathf.Clamp01(engine.GetComponent<VehiclePart>().damage);
-                float torque = Rpm >= engine.maxRpm * 0.995f ? 0f : engine.TorqueAt(Rpm) * driveCmd * health * power * (tuning ? tuning.TorqueFactor(Rpm / engine.maxRpm) : 1f);
+                float torque = Rpm >= engine.maxRpm * 0.995f ? 0f : engine.TorqueAt(Rpm) * driveCmd * health * power * launchBoost * (tuning ? tuning.TorqueFactor(Rpm / engine.maxRpm) : 1f);
                 driveForce = neutral ? 0f : torque * ratio * efficiency / r * (Reversing ? -1f : 1f);
 
                 shiftTimer -= dt;

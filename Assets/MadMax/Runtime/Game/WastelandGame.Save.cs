@@ -33,10 +33,14 @@ namespace MadMax.Game
 
         public void ReturnToMainMenu() => Reload();
 
-        public void LoadGame()
+        /// <summary>Load the most recent save (CONTINUE).</summary>
+        public void LoadGame() { int latest = SaveSystem.Latest(); if (latest < 0) { Toast("NO SAVE FOUND"); return; } LoadGame(latest); }
+
+        public void LoadGame(int slot)
         {
-            var data = SaveSystem.Read();
+            var data = SaveSystem.Read(slot);
             if (data == null) { Toast("NO SAVE FOUND"); return; }
+            SaveSystem.Slot = slot == 0 ? SaveSystem.Slot : slot;                       // an autosave keeps saving to the slot it came from
             SaveSystem.Pending = data;
             Reload();
         }
@@ -48,12 +52,45 @@ namespace MadMax.Game
             ScreenFader.LoadScene(SceneManager.GetActiveScene().name);
         }
 
-        public void SaveGame()
+        public void SaveGame() => SaveGame(SaveSystem.Slot);
+
+        public void SaveGame(int slot)
         {
             if (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient) { Toast("ONLY THE HOST CAN SAVE"); return; }
-            SaveSystem.Write(CaptureSave());
-            Toast("GAME SAVED");
+            SaveSystem.Write(CaptureSave(), slot, SaveSummary());
+            if (slot > 0) SaveSystem.Slot = slot;
+            autosaveAt = Time.unscaledTime + Mathf.Max(1, GameSettings.Current.autosaveMinutes) * 60f;
+            Toast(slot == 0 ? "AUTOSAVED" : "GAME SAVED (SLOT " + slot + ")");
         }
+
+        /// <summary>Slot list line: day, place, what you are in.</summary>
+        string SaveSummary()
+        {
+            var at = Current ? Current.transform.position : Player ? Player.transform.position : Vector3.zero;
+            var st = World != null ? World.SettlementAt(at.x, at.z) : null;
+            string where = st != null ? MadMax.Npc.Market.TownName(st) : World != null ? World.BiomeAt(at.x, at.z).ToString().ToUpperInvariant() : "";
+            return "DAY " + (DayNight.Day + 1) + "  " + where + (Current ? "  " + Name(Current) : "");
+        }
+
+        float autosaveAt = -1f;
+
+        /// <summary>Autosave on the clock (setting), after sleeping and on quit. Host / single player only.</summary>
+        public void Autosave(string why = null)
+        {
+            if (!played || (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient) || (Vitals && Vitals.Dead)) return;
+            try { SaveGame(0); }
+            catch (System.Exception e) { Debug.LogWarning("[MadMax] Autosave failed: " + e.Message); }
+        }
+
+        void UpdateAutosave()
+        {
+            int minutes = GameSettings.Current.autosaveMinutes;
+            if (minutes <= 0 || !played || (Menus && Menus.IsOpen)) return;
+            if (autosaveAt < 0f) { autosaveAt = Time.unscaledTime + minutes * 60f; return; }
+            if (Time.unscaledTime >= autosaveAt) Autosave();
+        }
+
+        void OnApplicationQuit() { if (played && GameSettings.Current.autosaveMinutes > 0) Autosave(); }
 
         /// <summary>Snapshot of the world (also the join payload for network clients).</summary>
         public SaveData CaptureSave(bool forNetwork = false)
@@ -79,6 +116,8 @@ namespace MadMax.Game
             d.factions = MadMax.Npc.Factions.Save();
             MadMax.Animals.AnimalDirector.Instance?.Save(d);
             d.foundAircraft = new List<string>(FoundAircraft); d.scouted = new List<string>(Scouted);
+            SaveMap(d);
+            SaveStashes(d);
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
@@ -262,6 +301,8 @@ namespace MadMax.Game
             MadMax.Animals.AnimalDirector.Instance?.Load(d);
             if (d.foundAircraft != null) foreach (var k in d.foundAircraft) FoundAircraft.Add(k);
             if (d.scouted != null) foreach (var k in d.scouted) Scouted.Add(k);
+            LoadMap(d);
+            LoadStashes(d);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;

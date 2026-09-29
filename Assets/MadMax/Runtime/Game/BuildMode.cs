@@ -87,8 +87,8 @@ namespace MadMax.Game
             if (kb != null && game.Player && !game.Current)
             {
                 // tap B toggles, hold B opens the radial picker (release on a slice to build it)
-                if (kb.bKey.wasPressedThisFrame) { bHeld = 0f; RadialHover = -1; }
-                if (kb.bKey.isPressed)
+                if (Controls.Down(Controls.Act.Build)) { bHeld = 0f; RadialHover = -1; }
+                if (Controls.Held(Controls.Act.Build))
                 {
                     bHeld += Time.unscaledDeltaTime;
                     if (bHeld > 0.22f) RadialOpen = true;
@@ -111,7 +111,7 @@ namespace MadMax.Game
                         }
                     }
                 }
-                if (kb.bKey.wasReleasedThisFrame)
+                if (Controls.Up(Controls.Act.Build))
                 {
                     if (RadialOpen) { SetCategory(Categories[RadialCategory]); if (RadialHover >= 0) Selected = RadialHover; SetActive(true); RadialOpen = false; }
                     else SetActive(!Active);
@@ -124,19 +124,28 @@ namespace MadMax.Game
             if (kb != null)
             {
                 int ci = System.Array.IndexOf(Categories, Category);
-                if (kb.periodKey.wasPressedThisFrame) SetCategory(Categories[(ci + 1) % Categories.Length]);
-                if (kb.commaKey.wasPressedThisFrame) SetCategory(Categories[(ci + Categories.Length - 1) % Categories.Length]);
+                if (Controls.Down(Controls.Act.BuildNextCategory)) SetCategory(Categories[(ci + 1) % Categories.Length]);
+                if (Controls.Down(Controls.Act.BuildPrevCategory)) SetCategory(Categories[(ci + Categories.Length - 1) % Categories.Length]);
                 all = Pieces;
                 for (int i = 0; i < 10; i++)
                 {
                     var key = i == 9 ? Key.Digit0 : Key.Digit1 + i;
                     if (kb[key].wasPressedThisFrame) Selected = Mathf.Min(i, all.Count - 1);
                 }
-                if (kb.pageDownKey.wasPressedThisFrame || kb.rightBracketKey.wasPressedThisFrame) Selected = (Selected + 1) % all.Count;
-                if (kb.pageUpKey.wasPressedThisFrame || kb.leftBracketKey.wasPressedThisFrame) Selected = (Selected + all.Count - 1) % all.Count;
-                if (kb.yKey.wasPressedThisFrame) yawSteps = (yawSteps + 1) % 4;
+                if (kb.pageDownKey.wasPressedThisFrame || Controls.Down(Controls.Act.BuildNextPiece)) Selected = (Selected + 1) % all.Count;
+                if (kb.pageUpKey.wasPressedThisFrame || Controls.Down(Controls.Act.BuildPrevPiece)) Selected = (Selected + all.Count - 1) % all.Count;
+                if (Controls.Down(Controls.Act.BuildRotate)) yawSteps = (yawSteps + 1) % 4;
             }
-            if (pad != null && pad.dpad.up.wasPressedThisFrame) Selected = (Selected + 1) % all.Count;
+            if (pad != null)
+            {
+                // pad: d-pad up/down picks the piece, shoulders switch category, north rotates
+                if (pad.dpad.up.wasPressedThisFrame) Selected = (Selected + 1) % all.Count;
+                if (pad.dpad.down.wasPressedThisFrame) Selected = (Selected + all.Count - 1) % all.Count;
+                int pci = System.Array.IndexOf(Categories, Category);
+                if (pad.rightShoulder.wasPressedThisFrame) { SetCategory(Categories[(pci + 1) % Categories.Length]); all = Pieces; }
+                if (pad.leftShoulder.wasPressedThisFrame) { SetCategory(Categories[(pci + Categories.Length - 1) % Categories.Length]); all = Pieces; }
+                if (pad.buttonNorth.wasPressedThisFrame) yawSteps = (yawSteps + 1) % 4;
+            }
             var def = Current;
             var player = game.Player;
             if (!player.Tool || player.Tool.id != ItemIds.ClawHammer)
@@ -159,10 +168,11 @@ namespace MadMax.Game
             var targetPiece = hit.collider.GetComponentInParent<Placeable>();
             if (def.link != UtilityKind.None) { LinkTick(def, targetPiece, kb, mouse); return; }
             if (def.plan == -2) { CaptureTick(targetPiece, kb, mouse); return; }
-            if (targetPiece && kb != null && kb.xKey.wasPressedThisFrame) { Dismantle(targetPiece); return; }
-            if (!targetPiece && def.plan >= 0 && kb != null && kb.xKey.wasPressedThisFrame) { StructurePlans.Forget(def.plan); Selected = Mathf.Max(0, Selected - 1); game.Toast("PLAN FORGOTTEN"); return; }
-            if (targetPiece && kb != null && kb.uKey.wasPressedThisFrame) { Upgrade(targetPiece); return; }
-            if (targetPiece && kb != null && kb.rKey.wasPressedThisFrame) { Repair(targetPiece); return; }
+            bool padX = pad != null && pad.buttonWest.wasPressedThisFrame;
+            if (targetPiece && (Controls.Down(Controls.Act.BuildDismantle) || padX)) { Dismantle(targetPiece); return; }
+            if (!targetPiece && def.plan >= 0 && Controls.Down(Controls.Act.BuildDismantle)) { StructurePlans.Forget(def.plan); Selected = Mathf.Max(0, Selected - 1); game.Toast("PLAN FORGOTTEN"); return; }
+            if (targetPiece && Controls.Down(Controls.Act.BuildUpgrade)) { Upgrade(targetPiece); return; }
+            if (targetPiece && Controls.Down(Controls.Act.BuildRepair)) { Repair(targetPiece); return; }
 
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
             Transform parent = chassis ? chassis.transform : structures;
@@ -287,7 +297,7 @@ namespace MadMax.Game
             bool fits = node && (node.kinds & def.link) != 0;
             string what = def.link == UtilityKind.Power ? "CABLE" : "PIPE";
             float reach = def.link == UtilityKind.Power ? UtilityGrid.CableReach : UtilityGrid.PipeReach;
-            if (node && kb != null && kb.xKey.wasPressedThisFrame) { node.Unlink(); game.Toast("LINKS CUT"); linkStart = null; return; }
+            if (node && Controls.Down(Controls.Act.BuildDismantle)) { node.Unlink(); game.Toast("LINKS CUT"); linkStart = null; return; }
             bool click = mouse != null && mouse.leftButton.wasPressedThisFrame;
             if (!linkStart)
             {

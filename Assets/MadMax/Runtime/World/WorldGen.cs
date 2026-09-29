@@ -56,6 +56,27 @@ namespace MadMax.World
                 float radius = kind == Biome.Village ? 42f : kind == Biome.Town ? 58f : 95f;
                 settlements.Add(new Settlement { pos = p, kind = kind, radius = radius, height = BaseHeight(p.x, p.y), index = i });
             }
+            roads.SpawnPoint(out yardP, out yardDir);
+            yardSide = Vector3.Cross(Vector3.up, yardDir);
+        }
+
+        // ------------------------------------------------------------------ the start yard
+        // A graded gravel lot on both sides of the first highway where the game starts: the starting fleet parks on the
+        // -side, the machines on the +side. No props or ground cover there (the start town is tight enough).
+        public const float YardAlong0 = -14f, YardAlong1 = 74f, YardAcross0 = -40f, YardAcross1 = 36f;
+        Vector3 yardP, yardDir, yardSide;
+
+        /// <summary>Spawn point, road direction and right-hand side of the start yard (metres, world).</summary>
+        public void Yard(out Vector3 origin, out Vector3 along, out Vector3 side) { origin = yardP; along = yardDir; side = yardSide; }
+
+        /// <summary>1 inside the start yard, fading to 0 over 12 m outside it.</summary>
+        public float YardWeight(float x, float z)
+        {
+            float dx = x - yardP.x, dz = z - yardP.z;
+            float a = dx * yardDir.x + dz * yardDir.z, c = dx * yardSide.x + dz * yardSide.z;
+            float e = Mathf.Max(Mathf.Max(YardAlong0 - a, a - YardAlong1), Mathf.Max(YardAcross0 - c, c - YardAcross1));
+            float w = Mathf.Clamp01(1f - (e + 2f) / 12f);
+            return w * w * (3f - 2f * w);
         }
 
         public readonly float biomeScale;
@@ -244,6 +265,8 @@ namespace MadMax.World
                 var site = SiteAt(x, z);
                 if (site != null) h = ShapeSite(site, x, z, h, ref s, ref wet);
             }
+            float yard = YardWeight(x, z);
+            if (yard > 0f) { h = Mathf.Lerp(h, yardP.y, yard); wet *= 1f - 0.6f * yard; }
             var hits = threadHits ??= new List<RoadHit>();
             roads.QueryAll(x, z, hits);
             if (hits.Count > 0)
@@ -268,6 +291,7 @@ namespace MadMax.World
                 s.road = roadMax;
                 wet *= 1f - s.road * 0.85f;
             }
+            if (yard > 0.8f && s.road < 0.3f && s.feature == 0) s.feature = 6;                 // yard gravel
             s.height = h;
             s.baseWet = wet;
             return s;

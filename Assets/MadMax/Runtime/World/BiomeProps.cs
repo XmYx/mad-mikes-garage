@@ -530,7 +530,7 @@ namespace MadMax.World
         public static void Buildings(WorldGen world, Settlement st, List<(string id, Vector2 pos, float yaw)> into)
         {
             into.Clear();
-            foreach (var pl in Layout(world, st)) if (pl.id != "Loot" && pl.id != "Light") into.Add((pl.id, pl.pos, pl.yaw));
+            foreach (var pl in Layout(world, st)) if (pl.id != "Loot" && pl.id != "Light" && world.YardWeight(pl.pos.x, pl.pos.y) < 0.05f) into.Add((pl.id, pl.pos, pl.yaw));
         }
 
         public delegate (VoxelGrid grid, Mesh mesh, float size)? Lookup(string id);
@@ -612,6 +612,7 @@ namespace MadMax.World
                 {
                     var pl = list[i];
                     if (DeformableTerrain.ChunkOf(new Vector3(pl.pos.x, 0, pl.pos.y)) != c) continue;
+                    if (world.YardWeight(pl.pos.x, pl.pos.y) > 0.05f) continue;                       // the start yard stays clear (index kept: save keys)
                     if (pl.id == "Loot" || pl.id == "Light") { SpawnExtra(terrain, st, i, pl, parent, mat); continue; }
                     float y = terrain.Height(pl.pos.x, pl.pos.y) + (pl.dynamic ? 0.08f : -0.1f);
                     var d = SpawnById(terrain, pl.id, pl.id.TrimEnd('0', '1', '2', '3'), parent, mat, new Vector3(pl.pos.x, y, pl.pos.y), pl.yaw, pl.dynamic, store, $"s{st.index},{i}", legacy);

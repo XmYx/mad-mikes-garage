@@ -55,9 +55,13 @@ namespace MadMax.Vehicles
 
         void OnCollisionEnter(Collision c) => Handle(c);
 
+        /// <summary>Settling grace: no damage from contacts until then (spawned or woken wrecks dropping into place,
+        /// depenetration shoves).</summary>
+        [System.NonSerialized] public float graceUntil;
+
         void Handle(Collision c)
         {
-            if (Time.time - lastHit < cooldown || c.contactCount == 0) return;
+            if (Time.time - lastHit < cooldown || c.contactCount == 0 || Time.time < graceUntil) return;
             float dv = c.impulse.magnitude / rb.mass;
             if (dv < minImpactSpeed) return;
 

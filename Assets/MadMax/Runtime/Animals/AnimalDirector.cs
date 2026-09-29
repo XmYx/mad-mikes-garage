@@ -213,7 +213,11 @@ namespace MadMax.Animals
             foreach (var kv in flocks)
             {
                 kv.Value.RemoveAll(a => !a);
-                if (kv.Value.Count == 0 && !kv.Key) gone.Add(kv.Key);
+                // a flock leaves with its meal: carcass gone, picked clean or butchered, or the scene left far behind
+                var carcass = kv.Key as Carcass;
+                bool done = !kv.Key || (carcass && (carcass.butchered || !carcass.Fresh)) || Flat(kv.Key.transform.position - focus).magnitude > FoldRange;
+                if (done) { foreach (var v in kv.Value) if (v && v.Alive) Destroy(v.gameObject); kv.Value.Clear(); }
+                if (kv.Value.Count == 0) gone.Add(kv.Key);
                 count += kv.Value.Count;
             }
             foreach (var k in gone) flocks.Remove(k);

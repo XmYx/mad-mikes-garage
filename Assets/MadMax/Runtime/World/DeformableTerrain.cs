@@ -807,6 +807,9 @@ namespace MadMax.World
                     return Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2];
                 case 5:                                                                             // faded runway paint
                     return hs < 0.18f ? Asphalt[1] : Line;
+                case 6:                                                                             // start yard: packed gravel, oil stains
+                    if (Mathf.PerlinNoise(gx * 0.35f + 11f, gz * 0.35f + 23f) > 0.78f) return Dirt[0];
+                    return hs > 0.92f ? RockGrey[1] : Gravel[hs < 0.45f ? 0 : 1];
                 default:
                     return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
             }
@@ -838,7 +841,7 @@ namespace MadMax.World
             if (feat != 0)
             {
                 col = FeatureColor(ch, k, feat, hs, gx, gz);
-                if (feat >= 2) return col;                        // under a roof: no puddles or snow
+                if (feat >= 2 && feat != 6) return col;           // under a roof: no puddles or snow (the yard is open sky)
             }
             else if (road > hs * 0.6f + 0.3f)
             {

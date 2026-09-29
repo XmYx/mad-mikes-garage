@@ -12,12 +12,13 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
         /// <summary>Menus that stop the world (time scale 0).</summary>
-        public bool Pauses => !TitleSequence.Playing && (MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online) && (Current == Page.Main || Current == Page.Pause || Current == Page.Character || (Current == Page.Settings && settingsFrom != Page.None));
+        public bool Pauses => !TitleSequence.Playing && (MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online) && (Current == Page.Main || Current == Page.Pause || Current == Page.Character || Current == Page.Map || Current == Page.Journal || Current == Page.Slots
+            || ((Current == Page.Settings || Current == Page.Controls) && settingsFrom != Page.None));
 
         class Item
         {
@@ -36,20 +37,37 @@ namespace MadMax.Game
 
         WastelandGame game;
         readonly List<Item> items = new List<Item>();
+        static readonly string[] SettingsTabs = { "GAMEPLAY", "MOUSE & CAMERA", "GRAPHICS", "AUDIO", "INTERFACE" };
+        bool slotsSave;
+        Vector2 mapCenter; float mapMpp = 4f; Vector2Int mapMouse; Vector3 mapUnderMouse; string mapHover;
+        bool mapDrag; Vector2 mapDragFrom; float mapDragMoved;
+        static readonly float[] MapZooms = { 1f, 2f, 4f, 8f, 16f };
+        void OpenSlots(bool save) { slotsSave = save; var from = Current; Open(Page.Slots); settingsFrom = from; }
+        int settingsTab = -1;
+        Controls.Act? rebinding;
+        int rebindFrame;
         int cursor, category, scroll;
         Page settingsFrom;
         CraftingStation station;
         Vector2 lastMouse;
 
         static readonly Color32 Text = new Color32(255, 226, 170, 255), Dim = new Color32(150, 110, 75, 255), Amber = new Color32(255, 170, 50, 255),
-            Red = new Color32(235, 60, 45, 255), Green = new Color32(130, 210, 90, 255), Hi = new Color32(110, 55, 25, 230);
+            Hi = new Color32(110, 55, 25, 230);
+        static Color32 Red => PixelHud.Bad;
+        static Color32 Green => PixelHud.Good;
 
         public void Init(WastelandGame g) { game = g; }
 
         public void Open(Page p)
         {
             if (p != Page.Character) mirror = false;
-            if (p == Page.Settings) settingsFrom = Current;
+            if (p == Page.Settings && Current != Page.Controls) { settingsFrom = Current; settingsTab = -1; }
+            rebinding = null;
+            if (p == Page.Map && Current != Page.Journal && game && game.Player)
+            {
+                var me = game.Current ? game.Current.transform.position : game.Player.transform.position;
+                mapCenter = new Vector2(me.x, me.z);
+            }
             Current = p;
             cursor = 0; scroll = 0;
             Rebuild();
@@ -232,7 +250,14 @@ namespace MadMax.Game
         {
             switch (Current)
             {
-                case Page.Settings: GameSettings.Current.Save(); if (settingsFrom != Page.None) Open(settingsFrom); else Close(); break;
+                case Page.Settings:
+                    GameSettings.Current.Save();
+                    if (settingsTab >= 0) { settingsTab = -1; cursor = 0; Rebuild(); }
+                    else if (settingsFrom != Page.None) Open(settingsFrom); else Close();
+                    break;
+                case Page.Controls: Open(Page.Settings); break;
+                case Page.Journal: Open(Page.Map); break;
+                case Page.Slots: if (settingsFrom != Page.None) Open(settingsFrom); else Close(); break;
                 case Page.Main: break;                                   // main menu has no "back"
                 case Page.NewGame: Open(Page.Main); break;
                 case Page.Creation: Open(Page.NewGame); break;
@@ -252,6 +277,7 @@ namespace MadMax.Game
             {
                 case Page.Main:
                     Add("CONTINUE", () => game.LoadGame(), () => SaveSystem.HasSave);
+                    Add("LOAD GAME", () => OpenSlots(false), () => SaveSystem.HasSave);
                     Add("NEW GAME", () => { hostNew = false; Open(Page.NewGame); });
                     Add("HOST GAME", () => { hostNew = true; Open(Page.NewGame); });
                     Add("JOIN GAME", () => Open(Page.Join));
@@ -269,33 +295,125 @@ namespace MadMax.Game
                             adjust = d => { game.Rules.dayLength = Mathf.Clamp(game.Rules.dayLength + d, 0, GameRules.DayLengths.Length - 1); MadMax.World.DayNight.DayMinutes = GameRules.DayLengths[game.Rules.dayLength]; },
                             confirm = () => { game.Rules.dayLength = (game.Rules.dayLength + 1) % GameRules.DayLengths.Length; MadMax.World.DayNight.DayMinutes = GameRules.DayLengths[game.Rules.dayLength]; }, enabled = () => solo });
                     }
-                    Add("SAVE GAME", () => { game.SaveGame(); Close(); }, () => !(MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient));
+                    Add("SAVE GAME", () => OpenSlots(true), () => !(MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient));
                     Add("OPEN TO NETWORK", () => { game.Host(); Close(); }, () => MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online);
                     Add("DISCONNECT", () => { MadMax.Net.NetSession.Instance.Shutdown(); game.ReturnToMainMenu(); }, () => MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.Online);
-                    Add("LOAD GAME", () => game.LoadGame(), () => SaveSystem.HasSave);
+                    Add("LOAD GAME", () => OpenSlots(false), () => SaveSystem.HasSave);
                     Add("SETTINGS", () => Open(Page.Settings));
                     Add("MAIN MENU", () => game.ReturnToMainMenu());
                     Add("QUIT", Quit);
                     break;
                 case Page.Settings:
-                    Opt("TRANSMISSION", () => s.manualTransmission ? "MANUAL" : "AUTO", d => s.manualTransmission = !s.manualTransmission);
-                    Opt("PIXEL SIZE", () => s.PixelHeight + " LINES", d => s.pixelHeightIndex = Mathf.Clamp(s.pixelHeightIndex - d, 0, GameSettings.PixelHeights.Length - 1));
-                    Opt("RENDER STYLE", () => s.vector ? "VECTOR (FULL RES)" : "PIXEL ART", d => s.vector = !s.vector);
-                    Opt("DITHER", () => s.dither ? "ON" : "OFF", d => s.dither = !s.dither);
-                    Opt("LINE OF SIGHT", () => s.lineOfSight ? "ON" : "OFF", d => s.lineOfSight = !s.lineOfSight);
-                    Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
-                    Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
-                    Opt("SFX VOLUME", () => Mathf.RoundToInt(s.sfxVolume * 100) + "%", d => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + d * 0.1f) * 10f) / 10f));
-                    Opt("RADIO VOLUME", () => Mathf.RoundToInt(s.radioVolume * 100) + "%", d => s.radioVolume = Mathf.Clamp01(Mathf.Round((s.radioVolume + d * 0.1f) * 10f) / 10f));
-                    Opt("LIGHT DETAIL", () => GameSettings.LightNames[s.lightDetail], d => s.lightDetail = Mathf.Clamp(s.lightDetail + d, 0, 2));
-                    Opt("OUTLINE", () => s.outline == 0 ? "OFF" : s.outline + " PX", d => s.outline = Mathf.Clamp(s.outline + d, 0, 2));
-                    Opt("SHADOWS", () => new[] { "OFF", "LOW", "HIGH" }[s.shadows], d => s.shadows = Mathf.Clamp(s.shadows + d, 0, 2));
-                    Opt("BLOOM", () => s.bloom ? "ON" : "OFF", d => s.bloom = !s.bloom);
-                    Opt("BRIGHTNESS", () => Mathf.RoundToInt(s.brightness * 100) + "%", d => s.brightness = Mathf.Clamp(s.brightness + d * 0.1f, 0.5f, 1.8f));
-                    Opt("DETAIL / LOD", () => GameSettings.LodNames[s.lod], d => s.lod = Mathf.Clamp(s.lod + d, 0, 3));
-                    Opt("RESOLUTION", () => s.ResolutionName, d => { int n = GameSettings.Resolutions.Length; s.resolutionIndex = n == 0 ? -1 : ((s.resolutionIndex < 0 ? n - 1 : s.resolutionIndex) + d + n) % n; });
-                    Opt("FULLSCREEN", () => s.fullscreen ? "ON" : "OFF", d => s.fullscreen = !s.fullscreen);
-                    Opt("VSYNC", () => s.vsync ? "ON" : "OFF", d => s.vsync = !s.vsync);
+                    if (settingsTab < 0)
+                    {
+                        for (int t = 0; t < SettingsTabs.Length; t++) { int tab = t; Add(SettingsTabs[t], () => { settingsTab = tab; cursor = 0; Rebuild(); }); }
+                        Add("CONTROLS", () => Open(Page.Controls));
+                    }
+                    else if (settingsTab == 0)
+                    {
+                        Opt("TRANSMISSION", () => s.manualTransmission ? "MANUAL" : "AUTO", d => s.manualTransmission = !s.manualTransmission);
+                        Opt("HINTS", () => s.hints ? "ON" : "OFF", d => s.hints = !s.hints);
+                        Opt("AUTOSAVE", () => s.autosaveMinutes == 0 ? "OFF" : "EVERY " + s.autosaveMinutes + " MIN", d => { int i = System.Array.IndexOf(GameSettings.AutosaveChoices, s.autosaveMinutes); s.autosaveMinutes = GameSettings.AutosaveChoices[(Mathf.Max(0, i) + d + GameSettings.AutosaveChoices.Length) % GameSettings.AutosaveChoices.Length]; });
+                        Opt("UNITS", () => s.metric ? "KM/H, CELSIUS" : "MPH, FAHRENHEIT", d => s.metric = !s.metric);
+                        Opt("FLIGHT MODEL", () => s.simFlight ? "SIMULATION" : "ASSISTED", d => s.simFlight = !s.simFlight);
+                        Opt("SIDECAR HANDLING", () => s.vintageSidecar ? "VINTAGE" : "ASSISTED", d => s.vintageSidecar = !s.vintageSidecar);
+                        Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
+                        Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
+                    }
+                    else if (settingsTab == 1)
+                    {
+                        Opt("MOUSE SENSITIVITY", () => Mathf.RoundToInt(s.mouseSensitivity * 100) + "%", d => s.mouseSensitivity = Mathf.Clamp(Mathf.Round((s.mouseSensitivity + d * 0.1f) * 10f) / 10f, 0.2f, 3f));
+                        Opt("INVERT Y", () => s.invertY ? "ON" : "OFF", d => s.invertY = !s.invertY);
+                        Opt("FIRST PERSON FOV", () => Mathf.RoundToInt(s.fovFirst) + " DEG", d => s.fovFirst = Mathf.Clamp(s.fovFirst + d * 5f, 40f, 95f));
+                        Opt("THIRD PERSON FOV", () => Mathf.RoundToInt(s.fovThird) + " DEG", d => s.fovThird = Mathf.Clamp(s.fovThird + d * 5f, 35f, 90f));
+                        Opt("CAMERA SHAKE", () => s.cameraShake ? "ON" : "OFF", d => s.cameraShake = !s.cameraShake);
+                        Opt("LINE OF SIGHT", () => s.lineOfSight ? "ON" : "OFF", d => s.lineOfSight = !s.lineOfSight);
+                    }
+                    else if (settingsTab == 2)
+                    {
+                        Opt("PIXEL SIZE", () => s.PixelHeight + " LINES", d => s.pixelHeightIndex = Mathf.Clamp(s.pixelHeightIndex - d, 0, GameSettings.PixelHeights.Length - 1));
+                        Opt("RENDER STYLE", () => s.vector ? "VECTOR (FULL RES)" : "PIXEL ART", d => s.vector = !s.vector);
+                        Opt("DITHER", () => s.dither ? "ON" : "OFF", d => s.dither = !s.dither);
+                        Opt("LIGHT DETAIL", () => GameSettings.LightNames[s.lightDetail], d => s.lightDetail = Mathf.Clamp(s.lightDetail + d, 0, 2));
+                        Opt("OUTLINE", () => s.outline == 0 ? "OFF" : s.outline + " PX", d => s.outline = Mathf.Clamp(s.outline + d, 0, 2));
+                        Opt("SHADOWS", () => new[] { "OFF", "LOW", "HIGH" }[s.shadows], d => s.shadows = Mathf.Clamp(s.shadows + d, 0, 2));
+                        Opt("BLOOM", () => s.bloom ? "ON" : "OFF", d => s.bloom = !s.bloom);
+                        Opt("BRIGHTNESS", () => Mathf.RoundToInt(s.brightness * 100) + "%", d => s.brightness = Mathf.Clamp(s.brightness + d * 0.1f, 0.5f, 1.8f));
+                        Opt("DETAIL / LOD", () => GameSettings.LodNames[s.lod], d => s.lod = Mathf.Clamp(s.lod + d, 0, 3));
+                        Opt("RESOLUTION", () => s.ResolutionName, d => { int n = GameSettings.Resolutions.Length; s.resolutionIndex = n == 0 ? -1 : ((s.resolutionIndex < 0 ? n - 1 : s.resolutionIndex) + d + n) % n; });
+                        Opt("FULLSCREEN", () => s.fullscreen ? "ON" : "OFF", d => s.fullscreen = !s.fullscreen);
+                        Opt("VSYNC", () => s.vsync ? "ON" : "OFF", d => s.vsync = !s.vsync);
+                    }
+                    else if (settingsTab == 3)
+                    {
+                        Opt("EFFECTS VOLUME", () => Mathf.RoundToInt(s.sfxVolume * 100) + "%", d => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("AMBIENT VOLUME", () => Mathf.RoundToInt(s.ambientVolume * 100) + "%", d => s.ambientVolume = Mathf.Clamp01(Mathf.Round((s.ambientVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("INTERFACE VOLUME", () => Mathf.RoundToInt(s.uiVolume * 100) + "%", d => s.uiVolume = Mathf.Clamp01(Mathf.Round((s.uiVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("RADIO VOLUME", () => Mathf.RoundToInt(s.radioVolume * 100) + "%", d => s.radioVolume = Mathf.Clamp01(Mathf.Round((s.radioVolume + d * 0.1f) * 10f) / 10f));
+                        Opt("RADIO CAPTIONS", () => s.radioCaptions ? "ON" : "OFF", d => s.radioCaptions = !s.radioCaptions);
+                    }
+                    else
+                    {
+                        Opt("HUD SIZE", () => s.hudScale <= 0 ? "WITH PIXEL SIZE" : GameSettings.PixelHeights[s.hudScale - 1] + " LINES", d => s.hudScale = Mathf.Clamp(s.hudScale - d, 0, GameSettings.PixelHeights.Length));
+                        Opt("COLOUR-BLIND HUD", () => s.colourBlind ? "ON (BLUE / ORANGE)" : "OFF", d => s.colourBlind = !s.colourBlind);
+                        Opt("HINTS", () => s.hints ? "ON" : "OFF", d => s.hints = !s.hints);
+                        Add("SHOW ALL HINTS AGAIN", () => { Hints.Reset(); game.Toast("HINTS RESET"); });
+                    }
+                    Add("BACK", Back);
+                    break;
+                case Page.Journal:
+                {
+                    // live jobs first (ENTER: waypoint to where they lead), then the notebook
+                    var jp = new List<WastelandGame.Pin>();
+                    game.JobPins(jp);
+                    foreach (var pin in jp)
+                    {
+                        var pp = pin;
+                        var me = game.Current ? game.Current.transform.position : game.Player.transform.position;
+                        items.Add(new Item { label = pp.label, value = () => Mathf.RoundToInt(Vector3.Distance(new Vector3(pp.pos.x, me.y, pp.pos.z), me)) + " M", confirm = () => { game.SetWaypoint(pp.pos, pp.label); Close(); }, hint = "ENTER: SET A WAYPOINT THERE" });
+                    }
+                    foreach (var c in MadMax.Npc.Contracts.Active)
+                        if (!c.completed && !c.failed && !jp.Exists(q => q.label == c.title))
+                            items.Add(new Item { label = c.title, value = () => c.need > 0 ? c.done + "/" + c.need : "", hint = c.deadline >= 0 ? "DEADLINE: DAY " + (c.deadline + 1) : null });
+                    if (items.Count == 0) items.Add(new Item { label = "NO JOBS IN HAND", value = () => "BOARDS AND BOSSES IN TOWN", enabled = () => false });
+                    foreach (var e in Journal.Entries)
+                    {
+                        var en = e;
+                        string shortText = en.kind + ": " + (en.text.Length > 64 ? en.text.Substring(0, 62) + ".." : en.text);
+                        items.Add(new Item { label = shortText, value = () => "DAY " + en.day, hint = en.text.Length > 64 ? en.text : null, enabled = () => false });
+                    }
+                    Add("MAP (TAB)", () => Open(Page.Map));
+                    break;
+                }
+                case Page.Slots:
+                    for (int i = slotsSave ? 1 : 0; i < SaveSystem.Slots; i++)
+                    {
+                        int slot = i;
+                        if (!slotsSave && !SaveSystem.Exists(slot)) continue;
+                        items.Add(new Item
+                        {
+                            label = slot == 0 ? "AUTOSAVE" : "SLOT " + slot + (slot == SaveSystem.Slot ? " *" : ""),
+                            value = () => SaveSystem.Info(slot),
+                            confirm = () => { if (slotsSave) { game.SaveGame(slot); Close(); } else game.LoadGame(slot); },
+                            hint = slotsSave ? (SaveSystem.Exists(slot) ? "ENTER OVERWRITES (THE OLD SAVE IS KEPT AS A BACKUP)" : "ENTER SAVES HERE") : "ENTER LOADS"
+                        });
+                    }
+                    Add("BACK", Back);
+                    break;
+                case Page.Controls:
+                    for (int i = 0; i < Controls.Count; i++)
+                    {
+                        var act = (Controls.Act)i;
+                        if (act >= Controls.Act.DevWeather && !LaunchOptions.Dev) continue;
+                        items.Add(new Item
+                        {
+                            label = Controls.Labels[i],
+                            value = () => rebinding == act ? "PRESS A KEY" : Controls.Name(act) + (Controls.Clash(act).HasValue ? "  ! " + Controls.Name(act) + " ALSO " + Controls.Labels[(int)Controls.Clash(act).Value] : ""),
+                            confirm = () => { rebinding = act; rebindFrame = Time.frameCount; },
+                            hint = "ENTER: PRESS THE NEW KEY  (ESC CANCELS)  DEFAULT " + Controls.KeyName(Controls.Default(act))
+                        });
+                    }
+                    Add("RESET ALL TO DEFAULTS", () => { Controls.ResetAll(); game.Toast("CONTROLS RESET"); });
                     Add("BACK", Back);
                     break;
                 case Page.Character:
@@ -873,6 +991,18 @@ namespace MadMax.Game
         {
             var kb = Keyboard.current; var pad = Gamepad.current; var mouse = Mouse.current;
             bool esc = (kb != null && kb.escapeKey.wasPressedThisFrame) || (pad != null && pad.startButton.wasPressedThisFrame);
+            if (Current == Page.Controls && rebinding.HasValue)
+            {
+                // capturing a key for the CONTROLS page
+                if (esc) { rebinding = null; return; }
+                if (Time.frameCount > rebindFrame && Controls.TryReadKey(out var key))
+                {
+                    Controls.Set(rebinding.Value, key);
+                    MadMax.Audio.Sfx.Play2D("menu", 0.6f);
+                    rebinding = null;
+                }
+                return;
+            }
             if (!IsOpen)
             {
                 if (esc) Open(Page.Pause);
@@ -888,6 +1018,9 @@ namespace MadMax.Game
                 if (kb != null && kb.backspaceKey.wasPressedThisFrame && v.Length > 0) field.setText(v.Substring(0, v.Length - 1));
             }
             typed = "";
+            if (Current == Page.Map) { MapInput(kb, mouse, pad); return; }
+            if (Current == Page.Journal && kb != null && kb.tabKey.wasPressedThisFrame) { Open(Page.Map); return; }
+            if ((Current == Page.Map || Current == Page.Journal) && Controls.Down(Controls.Act.Map)) { Close(); return; }
             if (Current == Page.Crafting && ((kb != null && kb.eKey.wasPressedThisFrame) || (kb != null && kb.tabKey.wasPressedThisFrame))) { Close(); return; }
             if (Current == Page.Crafting && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
             if (Current == Page.Crafting && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
@@ -950,6 +1083,79 @@ namespace MadMax.Game
             else if (ok && Enabled(it)) it.confirm?.Invoke();
         }
 
+        void MapInput(Keyboard kb, Mouse mouse, Gamepad pad)
+        {
+            if (Controls.Down(Controls.Act.Map)) { Close(); return; }
+            if (kb != null && kb.tabKey.wasPressedThisFrame) { Open(Page.Journal); return; }
+            float dt = Time.unscaledDeltaTime;
+            Vector2 pan = Vector2.zero;
+            if (kb != null)
+            {
+                pan.x = (kb.dKey.isPressed || kb.rightArrowKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed || kb.leftArrowKey.isPressed ? 1f : 0f);
+                pan.y = (kb.wKey.isPressed || kb.upArrowKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed || kb.downArrowKey.isPressed ? 1f : 0f);
+            }
+            if (pad != null) pan += pad.leftStick.ReadValue();
+            mapCenter += pan * mapMpp * 120f * dt;
+            int zi = System.Array.IndexOf(MapZooms, mapMpp); if (zi < 0) zi = 2;
+            int dz = 0;
+            if (kb != null && (kb.equalsKey.wasPressedThisFrame || kb.numpadPlusKey.wasPressedThisFrame)) dz = -1;
+            if (kb != null && (kb.minusKey.wasPressedThisFrame || kb.numpadMinusKey.wasPressedThisFrame)) dz = 1;
+            if (mouse != null) { float wheel = mouse.scroll.ReadValue().y; if (wheel > 0.01f) dz = -1; else if (wheel < -0.01f) dz = 1; }
+            if (pad != null) { if (pad.rightShoulder.wasPressedThisFrame) dz = -1; if (pad.leftShoulder.wasPressedThisFrame) dz = 1; }
+            if (dz != 0) mapMpp = MapZooms[Mathf.Clamp(zi + dz, 0, MapZooms.Length - 1)];
+            var canvas = PixelHud.Canvas;
+            if (mouse != null && canvas != null)
+            {
+                var m = mouse.position.ReadValue();
+                mapMouse = new Vector2Int(Mathf.FloorToInt(m.x / Screen.width * canvas.w), Mathf.FloorToInt((1f - m.y / Screen.height) * canvas.h));
+                if (mouse.leftButton.wasPressedThisFrame) { mapDrag = true; mapDragFrom = mapMouse; mapDragMoved = 0f; }
+                if (mapDrag && mouse.leftButton.isPressed)
+                {
+                    var d = (Vector2)mapMouse - mapDragFrom;
+                    mapDragMoved += d.magnitude; mapDragFrom = mapMouse;
+                    mapCenter += new Vector2(-d.x, d.y) * mapMpp;
+                }
+                if (mapDrag && mouse.leftButton.wasReleasedThisFrame)
+                {
+                    mapDrag = false;
+                    if (mapDragMoved < 3f) game.SetWaypoint(mapUnderMouse, mapHover);                  // a click, not a drag
+                }
+                if (mouse.rightButton.wasPressedThisFrame) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); }
+            }
+            if (kb != null && kb.xKey.wasPressedThisFrame) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); }
+            if ((kb != null && kb.enterKey.wasPressedThisFrame) || (pad != null && pad.buttonSouth.wasPressedThisFrame)) game.SetWaypoint(new Vector3(mapCenter.x, 0f, mapCenter.y), mapHover);
+            if (kb != null && kb.cKey.wasPressedThisFrame && game.Player) { var me = game.Current ? game.Current.transform.position : game.Player.transform.position; mapCenter = new Vector2(me.x, me.z); }
+        }
+
+        void DrawMap(PixelCanvas c)
+        {
+            c.Rect(0, 0, c.w, c.h, new Color32(10, 5, 3, 235));
+            int x = 6, y = 16, w = c.w - 12, h = c.h - 32;
+            var hud = PixelHud.Instance;
+            if (hud)
+            {
+                var focus = Vector2Int.RoundToInt(new Vector2(x + w / 2, y + h / 2));
+                var under = mapMouse.x >= x && mapMouse.y >= y && mapMouse.x < x + w && mapMouse.y < y + h ? mapMouse : focus;
+                mapUnderMouse = hud.DrawWorldMap(c, x, y, w, h, mapCenter, mapMpp, under, out mapHover);
+                c.Frame(x - 1, y - 1, w + 2, h + 2, Dim);
+                // centre cross (pad / keyboard waypoint)
+                c.Set(focus.x, focus.y, Dim); c.Set(focus.x - 2, focus.y, Dim); c.Set(focus.x + 2, focus.y, Dim); c.Set(focus.x, focus.y - 2, Dim); c.Set(focus.x, focus.y + 2, Dim);
+                if (mapHover != null) { int tw = PixelCanvas.TextWidth(mapHover) + 6; int tx = Mathf.Clamp(under.x + 6, 2, c.w - tw - 2); c.Panel(tx, under.y - 12, tw, 9); c.Text(tx + 3, under.y - 10, mapHover, Amber); }
+            }
+            string title = "MAP  " + Mathf.RoundToInt(mapMpp * 100) / 100f + " M/PX" + (game.HasWaypoint ? "   WAYPOINT " + Mathf.RoundToInt(Vector3.Distance(game.Waypoint, game.Current ? game.Current.transform.position : game.Player.transform.position)) + " M" : "");
+            c.Text(x, 5, title, Amber);
+            string help = "DRAG/WASD PAN  WHEEL ZOOM  CLICK WAYPOINT  RMB/X CLEAR  C CENTRE  TAB JOURNAL  ESC BACK";
+            c.Text((c.w - PixelCanvas.TextWidth(help)) / 2, c.h - 11, help, Dim);
+            c.Text(c.w - 118, 5, "B BUNKER T TUNNEL A AIRFIELD", new Color32(150, 200, 255, 255));
+        }
+
+        void DrawJournal(PixelCanvas c)
+        {
+            DrawList(c, "JOURNAL   DAY " + (MadMax.World.DayNight.Day + 1), Mathf.Min(c.w - 20, 420));
+            DrawHint(c);
+            c.Text(6, c.h - 20, "TAB MAP   ESC BACK", Dim);
+        }
+
         // ------------------------------------------------------------------ drawing
         public void Draw(PixelCanvas c)
         {
@@ -984,6 +1190,11 @@ namespace MadMax.Game
                     DrawHint(c);
                     break;
                 case Page.Join: DrawList(c, "JOIN GAME", 220); { var net = MadMax.Net.NetSession.Instance; if (net) c.Text((c.w - PixelCanvas.TextWidth(net.Status)) / 2, c.h - 20, net.Status, Amber); } break;
+                case Page.Controls: DrawList(c, "CONTROLS", 330); DrawHint(c); break;
+                case Page.Settings: DrawList(c, settingsTab < 0 ? "SETTINGS" : "SETTINGS - " + SettingsTabs[settingsTab], 230); DrawHint(c); break;
+                case Page.Map: DrawMap(c); break;
+                case Page.Journal: DrawJournal(c); break;
+                case Page.Slots: DrawList(c, slotsSave ? "SAVE GAME" : "LOAD GAME", 300); DrawHint(c); break;
                 default: DrawList(c, Current == Page.Pause ? "PAUSED" : "SETTINGS", 180); break;
             }
         }
@@ -1062,7 +1273,7 @@ namespace MadMax.Game
             void Row(string k, string v) { c.Text(sx + 6, ty, k, Dim); c.Text(sx + sw - 6 - PixelCanvas.TextWidth(v), ty, v, Text); ty += 9; }
             Row("POWER", Mathf.RoundToInt(kw) + " KW  " + Mathf.RoundToInt(kw * 1.341f) + " HP");
             Row("TORQUE", Mathf.RoundToInt(torque) + " NM");
-            Row("TOP SPEED", Mathf.RoundToInt(top) + " KM/H");
+            Row("TOP SPEED", GameSettings.Current.Speed(top));
             Row("WEIGHT", Mathf.RoundToInt(mass) + " KG");
             Row("BRAKING", decel.ToString("0.0") + " M/S2");
             Row("TYRE GRIP", grip.ToString("0.00") + (t.NitrousOn ? "  NOS!" : ""));
@@ -1146,8 +1357,8 @@ namespace MadMax.Game
             c.Rect(bx + 19, by + 70, 9, 5, Zone(MadMax.RPG.BodyZone.FootL));
             int ty = by + 82;
             var tempCol = st.bodyTemp < 35.5f ? new Color32(120, 170, 255, 255) : st.bodyTemp > 38.5f ? Hurt3 : Green;
-            c.Text(x + 6, ty, "CORE " + st.bodyTemp.ToString("0.0") + "C", tempCol);
-            c.Text(x + 6, ty + 8, "FEELS " + Mathf.RoundToInt(game.FeltTemperature) + "C" + (game.Sheltered ? " INDOORS" : ""), Dim);
+            c.Text(x + 6, ty, "CORE " + (GameSettings.Current.metric ? st.bodyTemp.ToString("0.0") + "C" : (st.bodyTemp * 1.8f + 32f).ToString("0.0") + "F"), tempCol);
+            c.Text(x + 6, ty + 8, "FEELS " + GameSettings.Current.Temp(game.FeltTemperature) + (game.Sheltered ? " INDOORS" : ""), Dim);
             var (warm, cool) = game.Insulation();
             c.Text(x + 6, ty + 16, "CLOTHES +" + warm.ToString("0") + " WARM " + (cool >= 0 ? "+" : "") + cool.ToString("0") + " COOL", Dim);
             string cond = st.bodyTemp < 33f ? "SEVERE HYPOTHERMIA" : st.bodyTemp < 35f ? "HYPOTHERMIA" : st.bodyTemp < 36f ? "COLD" : st.bodyTemp > 40.5f ? "SEVERE HEATSTROKE" : st.bodyTemp > 39f ? "HEATSTROKE" : st.bodyTemp > 38f ? "HOT" : "OK";

@@ -28,7 +28,11 @@ namespace MadMax.Game
         Color32[] map; int mapSize; float mapHalf;
 
         static readonly Color32 Text = new Color32(255, 226, 170, 255), Dim = new Color32(190, 140, 90, 255), Amber = new Color32(255, 170, 50, 255),
-            Red = new Color32(235, 50, 35, 255), Green = new Color32(130, 210, 90, 255), Empty = new Color32(70, 45, 30, 255);
+            Empty = new Color32(70, 45, 30, 255);
+        // bad / good: red / green, or orange / blue with COLOUR-BLIND HUD
+        static Color32 Red = new Color32(235, 50, 35, 255), Green = new Color32(130, 210, 90, 255);
+        public static Color32 Bad => GameSettings.Current.colourBlind ? new Color32(255, 130, 20, 255) : new Color32(235, 50, 35, 255);
+        public static Color32 Good => GameSettings.Current.colourBlind ? new Color32(90, 170, 255, 255) : new Color32(130, 210, 90, 255);
 
         public void Init(WastelandGame g, CameraRig r)
         {
@@ -88,12 +92,111 @@ namespace MadMax.Game
 
         Vector2 ToMap(Vector3 w) => new Vector2((w.x + mapHalf) / (2f * mapHalf) * mapSize, (w.z + mapHalf) / (2f * mapHalf) * mapSize);
 
+        public static PixelHud Instance { get; private set; }
+        void Awake() => Instance = this;
+        void OnDestroy() { if (Instance == this) Instance = null; }
+
+        static readonly List<WastelandGame.Pin> pins = new List<WastelandGame.Pin>();
+        static readonly List<MadMax.World.Site> mapSites = new List<MadMax.World.Site>();
+
+        /// <summary>Full world map (MAP page): the land, roads and towns, found sites, claims, the fleet, job pins, the
+        /// waypoint and its route. <paramref name="center"/> in world x/z, <paramref name="mpp"/> metres per pixel.
+        /// Returns the world point under <paramref name="mouse"/> (canvas pixels) for the caller.</summary>
+        public Vector3 DrawWorldMap(PixelCanvas c, int x, int y, int w, int h, Vector2 center, float mpp, Vector2Int mouse, out string hover)
+        {
+            string hovered = null;
+            float mapMpp = 2f * mapHalf / mapSize;
+            for (int j = 0; j < h; j++)
+            for (int i = 0; i < w; i++)
+            {
+                float wx = center.x + (i - w / 2) * mpp, wz = center.y - (j - h / 2) * mpp;
+                int mx = Mathf.FloorToInt((wx + mapHalf) / mapMpp), my = Mathf.FloorToInt((wz + mapHalf) / mapMpp);
+                c.Set(x + i, y + j, (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(22, 13, 9, 255) : map[my * mapSize + mx]);
+            }
+            Vector2Int P(Vector3 wp) => new Vector2Int(x + w / 2 + Mathf.RoundToInt((wp.x - center.x) / mpp), y + h / 2 - Mathf.RoundToInt((wp.z - center.y) / mpp));
+            bool Inside(Vector2Int p) => p.x > x + 1 && p.y > y + 1 && p.x < x + w - 2 && p.y < y + h - 2;
+            float hoverD = 6f;
+            void Hover(Vector2Int p, string label) { float d = Vector2Int.Distance(p, mouse); if (d < hoverD) { hoverD = d; hovered = label; } }
+            // route and waypoint
+            if (game.HasWaypoint)
+            {
+                for (int i = 1; i < game.Route.Count; i++)
+                {
+                    var a = P(game.Route[i - 1]); var b = P(game.Route[i]);
+                    if (Inside(a) || Inside(b)) c.Line(a.x, a.y, b.x, b.y, new Color32(120, 220, 255, 255));
+                }
+                var wpt = P(game.Waypoint);
+                if (Inside(wpt)) { c.Line(wpt.x - 2, wpt.y - 2, wpt.x + 2, wpt.y + 2, Text); c.Line(wpt.x - 2, wpt.y + 2, wpt.x + 2, wpt.y - 2, Text); Hover(wpt, "WAYPOINT"); }
+            }
+            // towns (names for all; found ones brighter)
+            var world = game.World;
+            foreach (var st in world.settlements)
+            {
+                var tp = P(new Vector3(st.pos.x, 0f, st.pos.y));
+                if (!Inside(tp)) continue;
+                bool known = game.Discovered.Contains("town:" + st.index);
+                string name = MadMax.Npc.Market.TownName(st);
+                c.Rect(tp.x - 2, tp.y - 2, 5, 5, known ? new Color32(230, 110, 50, 255) : new Color32(150, 80, 45, 255));
+                c.Text(tp.x - PixelCanvas.TextWidth(name) / 2, tp.y + 4, name, known ? Text : Dim);
+                var fac = MadMax.Npc.Factions.OfSettlement(st);
+                Hover(tp, name + (known ? "" : "  (NOT VISITED)") + (fac == MadMax.Npc.Faction.None ? "" : "  " + MadMax.Npc.Factions.Names[(int)fac]));
+            }
+            // found sites
+            world.SitesNear(new Vector3(center.x, 0f, center.y), Mathf.Max(w, h) * mpp, mapSites);
+            foreach (var site in mapSites)
+            {
+                if (!game.Discovered.Contains(site.Key)) continue;
+                var sp = P(new Vector3(site.pos.x, 0f, site.pos.y));
+                if (!Inside(sp)) continue;
+                string letter = site.kind == MadMax.World.SiteKind.Bunker ? "B" : site.kind == MadMax.World.SiteKind.Airfield ? "A" : "T";
+                c.Rect(sp.x - 2, sp.y - 2, 5, 7, new Color32(20, 30, 40, 230));
+                c.Text(sp.x - 1, sp.y - 1, letter, new Color32(150, 200, 255, 255));
+                Hover(sp, WastelandGame.SiteName(site));
+            }
+            // claims, fleet
+            foreach (var cf in MadMax.Building.ClaimFlag.All)
+            {
+                if (!cf) continue;
+                var cp = P(cf.transform.position);
+                if (!Inside(cp)) continue;
+                c.Rect(cp.x, cp.y - 3, 1, 4, Text); c.Rect(cp.x + 1, cp.y - 3, 2, 2, Green);
+                Hover(cp, "YOUR CLAIM");
+            }
+            foreach (var fv in game.Fleet)
+            {
+                if (!fv || fv == game.Current) continue;
+                var fp = P(fv.transform.position);
+                if (Inside(fp)) { c.Rect(fp.x - 1, fp.y - 1, 2, 2, Amber); Hover(fp, WastelandGame.Name(fv)); }
+            }
+            // job pins
+            game.JobPins(pins);
+            foreach (var pin in pins)
+            {
+                var pp = P(pin.pos);
+                if (!Inside(pp)) continue;
+                c.Set(pp.x, pp.y - 2, pin.color); c.Rect(pp.x - 1, pp.y - 1, 3, 1, pin.color); c.Rect(pp.x - 2, pp.y, 5, 1, pin.color); c.Rect(pp.x - 1, pp.y + 1, 3, 1, pin.color); c.Set(pp.x, pp.y + 2, pin.color);
+                Hover(pp, pin.label);
+            }
+            // you
+            var me = game.Current ? game.Current.transform : game.Player.transform;
+            var mp = P(me.position);
+            if (Inside(mp))
+            {
+                var f = me.forward;
+                c.Line(mp.x, mp.y, mp.x + Mathf.RoundToInt(f.x * 5), mp.y - Mathf.RoundToInt(f.z * 5), Text);
+                c.Rect(mp.x - 1, mp.y - 1, 3, 3, Text);
+                Hover(mp, "YOU");
+            }
+            hover = hovered;
+            return new Vector3(center.x + (mouse.x - x - w / 2) * mpp, 0f, center.y - (mouse.y - y - h / 2) * mpp);
+        }
+
         void LateUpdate()
         {
             if (!game || !rig || !rig.pixel || !rig.pixel.Target) return;
             var t = rig.pixel.Target;
             // the HUD stays at the chosen pixel height even when the world renders at full resolution (vector mode)
-            int hh = GameSettings.Current.PixelHeight, hw = Mathf.Max(1, Mathf.RoundToInt(hh * t.width / (float)t.height));
+            int hh = GameSettings.Current.HudHeight, hw = Mathf.Max(1, Mathf.RoundToInt(hh * t.width / (float)t.height));   // HUD SIZE setting: its own resolution
             if (canvas == null || canvas.w != hw || canvas.h != hh)
             {
                 canvas = new PixelCanvas(hw, hh);
@@ -101,12 +204,14 @@ namespace MadMax.Game
             }
             canvas.Clear(new Color32(0, 0, 0, 0));
             Canvas = canvas;
+            Red = Bad; Green = Good;
             if (TitleSequence.Playing || (game.Menus && game.Menus.Current == MenuSystem.Page.Main)) { if (game.Menus && game.Menus.IsOpen) game.Menus.Draw(canvas); canvas.Upload(); return; }
             var car = game.Current;
             bool fps = rig.mode == ViewMode.FirstPerson;
 
             DrawMinimap(canvas.w - 70, 6, 64);
             DrawWeather(canvas.w - 70, 74);
+            if (fps || rig.mode == ViewMode.ThirdPerson) DrawCompass();
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.Online) canvas.Text(canvas.w - 70, 94, $"{net.Status} {net.PlayerCount}P", Dim);
             string where = car ? WastelandGame.Name(car) : game.Player.Interior ? "IN " + WastelandGame.Name(game.Player.Interior) : "ON FOOT";
@@ -139,7 +244,7 @@ namespace MadMax.Game
                 if (car.TryGetComponent<MadMax.Vehicles.Crane>(out var cr) && cr.CranePart) Line(cr.Status);
                 if (car.TryGetComponent<MadMax.Vehicles.VehicleWeapons>(out var vw) && vw.Armed) Line(vw.Status);
                 if (car.TryGetComponent<MadMax.Vehicles.VehicleTuning>(out var tn) && (tn.nitrous > 0 || tn.NitrousOn)) Line(tn.NitrousOn ? "NITROUS!" : "NOS X" + tn.nitrous + "  [CTRL]");
-                if (car.TryGetComponent<MadMax.Vehicles.VehicleClimate>(out var cl) && cl.Enclosed) canvas.Text(canvas.w - 70, 102, "CABIN " + Mathf.RoundToInt(cl.CabinTemperature) + "C" + (cl.on ? "" : " OFF"), Dim);
+                if (car.TryGetComponent<MadMax.Vehicles.VehicleClimate>(out var cl) && cl.Enclosed) canvas.Text(canvas.w - 70, 102, "CABIN " + GameSettings.Current.Temp(cl.CabinTemperature) + (cl.on ? "" : " OFF"), Dim);
             }
             var flight = car ? car.GetComponent<MadMax.Vehicles.FlightModel>() : null;
             if (car && !fps)
@@ -153,7 +258,21 @@ namespace MadMax.Game
                 DrawAerial(flight);
             }
 
-            string prompt = game.RadialOpen ? null : game.Prompt;
+            // bleed-out warning and the context hint, above the prompt
+            float bleedOut = game.BleedOutSeconds;
+            if (bleedOut >= 0f && bleedOut < 60f && (Time.time * 2f) % 1f > 0.3f)
+            {
+                string bw = "BLEEDING OUT: " + Mathf.CeilToInt(bleedOut) + " S   " + Controls.Name(Controls.Act.Health) + " HEALTH: BANDAGE";
+                canvas.Text((canvas.w - PixelCanvas.TextWidth(bw)) / 2, 58, bw, Red);
+            }
+            var hint = Hints.Current;
+            if (hint != null && !(game.Menus && game.Menus.IsOpen))
+            {
+                int hw2 = PixelCanvas.TextWidth(hint) + 8, hy = canvas.h - (car && !fps ? 66 : 54);
+                canvas.Rect((canvas.w - hw2) / 2, hy, hw2, 10, new Color32(10, 5, 3, 170));
+                canvas.Text((canvas.w - hw2) / 2 + 4, hy + 2, hint, Text);
+            }
+            string prompt = game.RadialOpen ? null : Controls.Localize(game.Prompt);
             if (prompt != null)
             {
                 int w = PixelCanvas.TextWidth(prompt) + 8;
@@ -301,9 +420,9 @@ namespace MadMax.Game
         /// rotor speed, an artificial horizon and a blinking stall warning.</summary>
         void DrawFlight(VehicleDriver car, MadMax.Vehicles.FlightModel f, int x, int y)
         {
-            canvas.Panel(x, y, 132, 46);
+            canvas.Panel(x, y, 132, 50);
             canvas.Text(x + 4, y + 4, "ALT " + Mathf.RoundToInt(f.Altitude) + "M", f.Altitude < 15f && f.Airborne ? Amber : Text);
-            canvas.Text(x + 4, y + 11, "SPD " + Mathf.RoundToInt(f.Airspeed * 3.6f) + " KM/H", Text);
+            canvas.Text(x + 4, y + 11, "SPD " + GameSettings.Current.Speed(f.Airspeed * 3.6f), Text);
             float vs = f.VerticalSpeed;
             canvas.Text(x + 4, y + 18, "V/S " + (vs >= 0f ? "+" : "-") + Mathf.Abs(vs).ToString("0.0"), vs < -6f ? Red : Dim);
             int hdg = Mathf.RoundToInt(f.Heading) % 360;
@@ -329,6 +448,13 @@ namespace MadMax.Game
             }
             canvas.Rect(hx + hw / 2 - 6, hy + hh / 2, 12, 1, Amber);
             canvas.Rect(hx + hw / 2, hy + hh / 2 - 2, 1, 5, Amber);
+            // slip ball: a bead in a tube under the horizon (centred = coordinated)
+            int by = hy + hh + 3;
+            canvas.Rect(hx + 8, by, hw - 16, 5, new Color32(20, 16, 12, 255));
+            canvas.Rect(hx + hw / 2 - 3, by, 1, 5, Dim); canvas.Rect(hx + hw / 2 + 3, by, 1, 5, Dim);
+            int ball = Mathf.RoundToInt(Mathf.Clamp(-f.Sideslip * 0.6f, -(hw / 2 - 11), hw / 2 - 11));
+            canvas.Rect(hx + hw / 2 - 1 + ball, by + 1, 3, 3, Mathf.Abs(f.Sideslip) > 8f ? Amber : Text);
+            if (f.StallWarning && !f.Stalled && (Time.time * 3f) % 1f > 0.5f) canvas.Text(x + 62, y + 40, "STALL WARN", Amber);
             if (f.Stalled && (Time.time * 3f) % 1f > 0.35f)
             {
                 const string s = "STALL";
@@ -489,7 +615,7 @@ namespace MadMax.Game
             int tx = x + 78;
             var tc = st.bodyTemp < 35.5f ? new Color32(120, 170, 255, 255) : st.bodyTemp > 38.5f ? Red : Dim;
             Icon(tx, top + 2, ThermoIcon);
-            canvas.Text(tx + 7, top + 3, st.bodyTemp.ToString("0.0") + "C", tc);
+            canvas.Text(tx + 7, top + 3, GameSettings.Current.metric ? st.bodyTemp.ToString("0.0") + "C" : (st.bodyTemp * 1.8f + 32f).ToString("0.0") + "F", tc);
             if (game.Player.Encumbered) canvas.Text(tx, top + step + 3, "OVERLOADED", Red);
             if (st.sick > 0f) canvas.Text(tx, top + step * 2 + 3, "SICK", new Color32(160, 220, 80, 255));
             foreach (var inj in st.injuries) if (inj.Bleeding) { if ((Time.time * 2f) % 1f > 0.4f) canvas.Text(tx, top + step * 3 + 3, "BLEEDING  O", Red); break; }
@@ -572,7 +698,7 @@ namespace MadMax.Game
                 int x = cx + Mathf.RoundToInt(Mathf.Sin(a) * r * 1.25f), y = cy - Mathf.RoundToInt(Mathf.Cos(a) * r);
                 string name = acts[i].label;
                 if (name.Length > 26) name = name.Substring(0, 26);
-                string key = acts[i].key == UnityEngine.InputSystem.Key.None ? "" : KeyName(acts[i].key);
+                string key = acts[i].act.HasValue ? "[" + Controls.Name(acts[i].act.Value) + "]" : "";
                 int w = Mathf.Max(PixelCanvas.TextWidth(name), PixelCanvas.TextWidth(key)) + 8;
                 bool sel = i == game.RadialHover;
                 if (sel) canvas.Panel(x - w / 2, y - 7, w, key.Length > 0 ? 17 : 11); else canvas.Rect(x - w / 2, y - 7, w, key.Length > 0 ? 17 : 11, new Color32(20, 12, 8, 200));
@@ -590,17 +716,14 @@ namespace MadMax.Game
             canvas.Text(cx - PixelCanvas.TextWidth(hint) / 2, cy - r - 20, hint, Dim);
         }
 
-        static string KeyName(UnityEngine.InputSystem.Key k) =>
-            k == UnityEngine.InputSystem.Key.Period ? "[.]" : k == UnityEngine.InputSystem.Key.Comma ? "[,]" : "[" + k.ToString().ToUpperInvariant().Replace("DIGIT", "") + "]";
-
         static string ViewName(ViewMode m) => m == ViewMode.Isometric ? "ISO" : m == ViewMode.TiltShift ? "TILT" : m == ViewMode.ThirdPerson ? "3RD" : "1ST";
 
         void DrawVehiclePanel(VehicleDriver car, int x, int y)
         {
             canvas.Panel(x, y - 14, 150, 46);
-            float kmh = Mathf.Abs(car.SpeedKmh);
+            float kmh = GameSettings.Current.SpeedValue(Mathf.Abs(car.SpeedKmh));
             canvas.Text(x + 4, y + 4, Mathf.RoundToInt(kmh).ToString("000"), Text, 3);
-            canvas.Text(x + 42, y + 4, "KM/H", Dim);
+            canvas.Text(x + 42, y + 4, GameSettings.Current.SpeedUnit, Dim);
             string gear = !car.Engine ? "-" : car.Reversing ? "R" : car.manual && car.Gear == 0 ? "N" : car.Gear.ToString();
             canvas.Frame(x + 42, y + 11, 11, 9, Dim);
             canvas.Text(x + 46, y + 13, gear, Amber);
@@ -630,7 +753,7 @@ namespace MadMax.Game
             // analogue speedometer and rev counter beside the digital readout
             int gx = x + 152;
             canvas.Panel(gx, y - 14, 96, 46);
-            AnalogGauge(gx + 24, y + 5, 18, kmh, 180f, 999f, 20f, 60f, "KM/H");
+            AnalogGauge(gx + 24, y + 5, 18, kmh, GameSettings.Current.metric ? 180f : 120f, 999f, 20f, GameSettings.Current.metric ? 60f : 40f, GameSettings.Current.SpeedUnit);
             float maxK = car.Engine ? Mathf.Ceil(car.Engine.maxRpm / 1000f) : 7f;
             AnalogGauge(gx + 72, y + 5, 18, car.Engine ? car.Rpm / 1000f : 0f, maxK, car.Engine ? car.Engine.maxRpm * 0.88f / 1000f : 99f, 1f, maxK > 5f ? 2f : 1f, "RPM X1000");
             // rpm segments
@@ -720,6 +843,46 @@ namespace MadMax.Game
 
         static Color32 DamageColor(float d) => d < 0.5f ? Color32.Lerp(Green, Amber, d * 2f) : Color32.Lerp(Amber, Red, (d - 0.5f) * 2f);
 
+        /// <summary>Compass strip (first and third person): the headings, the waypoint and job pins.</summary>
+        void DrawCompass()
+        {
+            var cam = rig && rig.pixel ? rig.pixel.transform : null;
+            if (!cam) return;
+            float yaw = cam.eulerAngles.y;
+            int w = 124, x0 = canvas.w / 2 - w / 2, y0 = 2, half = w / 2;
+            canvas.Rect(x0, y0, w, 9, new Color32(10, 5, 3, 140));
+            string[] names = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+            for (int i = 0; i < 8; i++)
+            {
+                float a = Mathf.DeltaAngle(yaw, i * 45f);
+                if (Mathf.Abs(a) > 62f) continue;
+                int px = x0 + half + Mathf.RoundToInt(a / 62f * (half - 4));
+                canvas.Text(px - PixelCanvas.TextWidth(names[i]) / 2, y0 + 2, names[i], i % 2 == 0 ? Text : Dim);
+            }
+            void Mark(Vector3 p, Color32 col)
+            {
+                var d = p - cam.position;
+                float a = Mathf.Clamp(Mathf.DeltaAngle(yaw, Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg), -62f, 62f);
+                int px = x0 + half + Mathf.RoundToInt(a / 62f * (half - 4));
+                canvas.Rect(px - 1, y0 + 9, 3, 2, col); canvas.Set(px, y0 + 11, col);
+            }
+            game.JobPins(pins);
+            foreach (var pin in pins) Mark(pin.pos, pin.color);
+            if (game.HasWaypoint) Mark(game.Waypoint, new Color32(120, 220, 255, 255));
+        }
+
+        /// <summary>A marker inside the minimap, or an arrowhead on its rim pointing at something off the edge.</summary>
+        void RimMarker(Vector2Int p, int x, int y, int size, Color32 col)
+        {
+            int cx = x + size / 2, cy = y + size / 2;
+            if (p.x > x + 1 && p.y > y + 1 && p.x < x + size - 2 && p.y < y + size - 2) { canvas.Rect(p.x - 1, p.y - 1, 3, 3, col); return; }
+            var d = new Vector2(p.x - cx, p.y - cy);
+            if (d.sqrMagnitude < 1f) return;
+            float k = (size / 2 - 2) / Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y));
+            int ex = cx + Mathf.RoundToInt(d.x * k), ey = cy + Mathf.RoundToInt(d.y * k);
+            canvas.Rect(ex - 1, ey - 1, 3, 3, col);
+        }
+
         void DrawMinimap(int x, int y, int size)
         {
             canvas.Panel(x - 2, y - 2, size + 4, size + 4);
@@ -743,6 +906,26 @@ namespace MadMax.Game
             foreach (var w in game.Wrecks) if (w) Dot(w.transform, new Color32(150, 140, 130, 255));
             foreach (var t in game.Trailers) if (t) Dot(t.transform, new Color32(110, 160, 220, 255));
             foreach (var fv in game.Fleet) if (fv && fv != game.Current) Dot(fv.transform, Amber);
+            Vector2Int MP(Vector3 wp) { var m = ToMap(wp); return new Vector2Int(x + size / 2 + Mathf.RoundToInt((m.x - center.x) / scale), y + size / 2 - Mathf.RoundToInt((m.y - center.y) / scale)); }
+            bool In(Vector2Int q) => q.x > x && q.y > y && q.x < x + size - 1 && q.y < y + size - 1;
+            // the waypoint route, and the waypoint (on the rim when off the map)
+            if (game.HasWaypoint)
+            {
+                for (int i = 1; i < game.Route.Count; i++)
+                {
+                    var a = MP(game.Route[i - 1]); var b = MP(game.Route[i]);
+                    if (In(a) && In(b)) canvas.Line(a.x, a.y, b.x, b.y, new Color32(120, 220, 255, 255));
+                    else if (In(a) || In(b))
+                    {
+                        // clip the leaving segment to the frame
+                        var q = In(a) ? a : b; var r = In(a) ? b : a;
+                        for (float t = 0f; t <= 1f; t += 0.05f) { var z = Vector2Int.RoundToInt(Vector2.Lerp(q, r, t)); if (!In(z)) break; canvas.Set(z.x, z.y, new Color32(120, 220, 255, 255)); }
+                    }
+                }
+                RimMarker(MP(game.Waypoint), x, y, size, Text);
+            }
+            game.JobPins(pins);
+            foreach (var pin in pins) RimMarker(MP(pin.pos), x, y, size, pin.color);
             var f = focus.forward;
             int ox = x + size / 2, oy = y + size / 2;
             canvas.Line(ox, oy, ox + Mathf.RoundToInt(f.x * 4), oy - Mathf.RoundToInt(f.z * 4), Text);
@@ -755,7 +938,7 @@ namespace MadMax.Game
             string sky = Weather.Snowing ? "SNOW" : Weather.Raining ? "RAIN" : Weather.Snow > 0.2f ? "SNOWY" : "DRY";
             canvas.Text(x, y, sky, Weather.Raining ? Amber : Dim);
             canvas.Text(x + 22, y, Weather.SeasonNames[Mathf.Clamp(Weather.Season, 0, 3)], Dim);
-            string t = Mathf.RoundToInt(Weather.Temperature) + "C";
+            string t = GameSettings.Current.Temp(Weather.Temperature);
             canvas.Text(x + 64 - PixelCanvas.TextWidth(t), y, t, Weather.Temperature < 0f ? new Color32(150, 190, 255, 255) : Dim);
             Bar(x, y + 8, 64, Weather.Wetness, new Color32(110, 120, 140, 255));
             if (Weather.Snow > 0.01f) Bar(x, y + 11, 64, Weather.Snow, new Color32(230, 230, 240, 255));
@@ -797,26 +980,51 @@ namespace MadMax.Game
             MadMax.Audio.RadioReceiver rx = null;
             if (car) car.TryGetComponent(out rx);
             else if (game.Focused is MadMax.Building.RadioSet rs) rx = rs.GetComponent<MadMax.Audio.RadioReceiver>();
-            if (!rx || !rx.on || Time.unscaledTime - rx.ChangedAt > 6f) return;
+            if (!rx || !rx.on) return;
+            if (GameSettings.Current.radioCaptions && MadMax.Audio.RadioNetwork.Instance)
+            {
+                // RADIO CAPTIONS: what the DJ, the news or the callers are saying, wrapped over two or three lines
+                var item = MadMax.Audio.RadioNetwork.Instance.Now(rx.station, out float off);
+                var cap = MadMax.Audio.RadioNetwork.Caption(item.file, off);
+                if (cap != null)
+                {
+                    int maxChars = Mathf.Max(20, (canvas.w - 40) / 4);
+                    var rows = new List<string>();
+                    var words = cap.Split(' ');
+                    string row = "";
+                    foreach (var wd in words) { if (row.Length + wd.Length + 1 > maxChars) { rows.Add(row); row = wd; } else row = row.Length == 0 ? wd : row + " " + wd; }
+                    if (row.Length > 0) rows.Add(row);
+                    int cy = canvas.h - (car && rig.mode != ViewMode.FirstPerson ? 96 : 80) - rows.Count * 7;
+                    foreach (var r in rows)
+                    {
+                        int rw = PixelCanvas.TextWidth(r) + 6;
+                        canvas.Rect((canvas.w - rw) / 2, cy - 1, rw, 8, new Color32(0, 0, 0, 170));
+                        canvas.Text((canvas.w - rw) / 2 + 3, cy, r, new Color32(230, 230, 210, 255));
+                        cy += 7;
+                    }
+                }
+            }
+            if (Time.unscaledTime - rx.ChangedAt > 6f) return;
             string line = rx.StationLabel() + (string.IsNullOrEmpty(rx.NowPlaying) ? "" : "  -  " + rx.NowPlaying);
-            int w = PixelCanvas.TextWidth(line) + 10, x = (canvas.w - w) / 2, y = 4;
+            int w = PixelCanvas.TextWidth(line) + 10, x = (canvas.w - w) / 2, y = rig.mode == ViewMode.FirstPerson || rig.mode == ViewMode.ThirdPerson ? 15 : 4;
             canvas.Panel(x, y, w, 12);
             canvas.Text(x + 5, y + 4, line, Amber);
         }
 
         void DrawHelp()
         {
+            string K(Controls.Act a) => Controls.Name(a);
             string[] lines =
             {
-                "WASD DRIVE/WALK  SPACE HANDBRAKE/JUMP  SHIFT RUN  LMB USE TOOL  RMB AIM  R RELOAD  1-8 HOTBAR  I INVENTORY  P SKILLS  O HEALTH",
-                "ON FOOT: SPACE AT A WALL VAULT/CLIMB  CTRL CROUCH (RUNNING: SLIDE, LANDING: ROLL)  STAND STILL ON A MOVING CAR: HOLD ON",
-                "ANIMALS: CROUCH AND STAY DOWNWIND TO HUNT  E BUTCHER/FEED/MILK/TAME  T FOLLOW/STAY  HORSE: W TROT  SHIFT GALLOP  SPACE JUMP  F DISMOUNT",
-                "F ENTER/EXIT  E USE/OPEN/CRAFT/TALK  T SECOND ACTION (LOCK, TRADE, TUNE)  Q DROP  J HITCH  G SERVICE  K SIPHON  U ARMOUR  TAB FLEET",
-                "BUILD (B, HOLD: RADIAL): , . CATEGORY  1-0 PIECE  Y ROTATE  X DISMANTLE  R REPAIR  U UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
-                "DRIVING: X 4WD  L DIFF LOCK  E/Q SHIFT  N LIGHTS  Y HORN  CTRL NITROUS  T RECOVER/PARLEY  LMB WEAPON  MACHINES: 1 2 3",
-                "BIKES: A/D LEAN INTO THE TURN  SHIFT WHEELIE  CRASH = THROWN OFF (F TO GET BACK ON)  BICYCLE: SHIFT SPRINTS (STAMINA)",
-                "FLYING: W/S THROTTLE LEVER  A/D BANK  SPACE PULL UP  CTRL PUSH DOWN  S (IDLE) BRAKES  TAKE OFF FROM AIRSTRIPS OR STRAIGHT ROADS",
-                "RADIO: M ON/OFF  , . TUNE  [ ] VOLUME   FISHING: LMB CAST, CLICK ON A BITE, HOLD TO REEL   V VIEW  ESC MENU  H HELP"
+                K(Controls.Act.Forward) + K(Controls.Act.Left) + K(Controls.Act.Back) + K(Controls.Act.Right) + " DRIVE/WALK  " + K(Controls.Act.Jump) + " HANDBRAKE/JUMP  " + K(Controls.Act.Run) + " RUN  LMB USE TOOL  RMB AIM  " + K(Controls.Act.Reload) + " RELOAD  1-8 HOTBAR  " + K(Controls.Act.Inventory) + " INVENTORY  " + K(Controls.Act.Skills) + " SKILLS  " + K(Controls.Act.Health) + " HEALTH  " + K(Controls.Act.Map) + " MAP",
+                "ON FOOT: " + K(Controls.Act.Jump) + " AT A WALL VAULT/CLIMB  " + K(Controls.Act.Crouch) + " CROUCH (RUNNING: SLIDE, LANDING: ROLL)  STAND STILL ON A MOVING CAR: HOLD ON",
+                "ANIMALS: CROUCH AND STAY DOWNWIND TO HUNT  " + K(Controls.Act.Use) + " BUTCHER/FEED/MILK/TAME  " + K(Controls.Act.Second) + " FOLLOW/STAY  HORSE: " + K(Controls.Act.Forward) + " TROT  " + K(Controls.Act.Run) + " GALLOP  " + K(Controls.Act.Jump) + " JUMP  " + K(Controls.Act.Enter) + " DISMOUNT",
+                K(Controls.Act.Enter) + " ENTER/EXIT  " + K(Controls.Act.Use) + " USE/OPEN/CRAFT/TALK  " + K(Controls.Act.Second) + " SECOND ACTION (LOCK, TRADE, TUNE)  " + K(Controls.Act.Drop) + " DROP  " + K(Controls.Act.Hitch) + " HITCH  " + K(Controls.Act.Service) + " SERVICE  " + K(Controls.Act.Siphon) + " SIPHON  " + K(Controls.Act.Armour) + " ARMOUR  TAB FLEET / HOLD: WHEEL",
+                "BUILD (" + K(Controls.Act.Build) + ", HOLD: RADIAL): " + K(Controls.Act.BuildPrevCategory) + " " + K(Controls.Act.BuildNextCategory) + " CATEGORY  1-0 PIECE  " + K(Controls.Act.BuildRotate) + " ROTATE  " + K(Controls.Act.BuildDismantle) + " DISMANTLE  " + K(Controls.Act.BuildRepair) + " REPAIR  " + K(Controls.Act.BuildUpgrade) + " UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
+                "DRIVING: " + K(Controls.Act.FourWheel) + " 4WD  " + K(Controls.Act.DiffLock) + " DIFF LOCK  " + K(Controls.Act.ShiftUp) + "/" + K(Controls.Act.ShiftDown) + " SHIFT  " + K(Controls.Act.Lights) + " LIGHTS  " + K(Controls.Act.Horn) + " HORN  " + K(Controls.Act.Nitrous) + " NITROUS  " + K(Controls.Act.Recover) + " RECOVER/PARLEY  LMB WEAPON  " + K(Controls.Act.Dropper) + " DROPPER  " + K(Controls.Act.Smoke) + " SMOKE  MACHINES: 1 2 3",
+                "BIKES: LEFT/RIGHT LEAN INTO THE TURN  " + K(Controls.Act.Run) + " WHEELIE  CRASH = THROWN OFF (" + K(Controls.Act.Enter) + " TO GET BACK ON)  BICYCLE: " + K(Controls.Act.Run) + " SPRINTS (STAMINA)",
+                "FLYING: " + K(Controls.Act.Forward) + "/" + K(Controls.Act.Back) + " THROTTLE LEVER  LEFT/RIGHT BANK  " + K(Controls.Act.Jump) + " PULL UP  " + K(Controls.Act.Crouch) + " PUSH DOWN  " + K(Controls.Act.Back) + " (IDLE) BRAKES  TAKE OFF FROM AIRSTRIPS OR STRAIGHT ROADS",
+                "RADIO: " + K(Controls.Act.RadioPower) + " ON/OFF  " + K(Controls.Act.RadioPrev) + " " + K(Controls.Act.RadioNext) + " TUNE  " + K(Controls.Act.VolumeDown) + " " + K(Controls.Act.VolumeUp) + " VOLUME   FISHING: LMB CAST, CLICK ON A BITE, HOLD TO REEL   " + K(Controls.Act.View) + " VIEW  ESC MENU  " + K(Controls.Act.Help) + " HELP"
             };
             int w = 0; foreach (var l in lines) w = Mathf.Max(w, PixelCanvas.TextWidth(l));
             int x = (canvas.w - w) / 2 - 4, y = 26;

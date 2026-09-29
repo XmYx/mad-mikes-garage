@@ -245,7 +245,9 @@ namespace MadMax.World
             foreach (var p in fallen) { if (grid.voxels.ContainsKey(p)) sum += (Vector3)p; Take(p); }
             if (removedVox.Count == 0) return;
             if (DebrisSystem.Instance) DebrisSystem.Instance.Emit(debris, voxelSize, Vector3.zero);
-            Yield(transform.TransformPoint(sum / removedVox.Count * voxelSize), grid.Count == 0);
+            var fallAt = transform.TransformPoint(sum / removedVox.Count * voxelSize);
+            if (removedVox.Count > 60) MadMax.Audio.Sfx.Play("collapse", fallAt, Mathf.Clamp01(0.4f + removedVox.Count / 2000f), 1f, 90f);
+            Yield(fallAt, grid.Count == 0);
             if (grid.Count == 0) { Destroy(gameObject); return; }
             Carved?.Invoke();
         }

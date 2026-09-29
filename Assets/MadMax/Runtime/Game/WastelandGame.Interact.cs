@@ -181,10 +181,10 @@ namespace MadMax.Game
 
         void UpdateInteraction(Keyboard kb, Gamepad pad)
         {
-            bool F = KeyDown(kb, Key.F) || (pad != null && pad.buttonEast.wasPressedThisFrame);
-            bool E = KeyDown(kb, Key.E) || (pad != null && pad.rightShoulder.wasPressedThisFrame);
-            bool Q = KeyDown(kb, Key.Q) || (pad != null && pad.leftShoulder.wasPressedThisFrame);
-            bool J = KeyDown(kb, Key.J) || (pad != null && pad.dpad.right.wasPressedThisFrame);
+            bool F = Controls.Down(Controls.Act.Enter) || (pad != null && pad.buttonEast.wasPressedThisFrame);
+            bool E = Controls.Down(Controls.Act.Use) || (pad != null && pad.rightShoulder.wasPressedThisFrame);
+            bool Q = Controls.Down(Controls.Act.Drop) || (pad != null && pad.leftShoulder.wasPressedThisFrame);
+            bool J = Controls.Down(Controls.Act.Hitch) || (pad != null && pad.dpad.right.wasPressedThisFrame);
             Prompt = null;
             NearbyVehicle = null;
 
@@ -201,18 +201,18 @@ namespace MadMax.Game
             // ---- sitting on furniture (or standing on a roof): get up / down, use what is in reach
             if (Player.Sitting)
             {
-                bool T0 = KeyDown(kb, Key.T) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
+                bool T0 = Controls.Down(Controls.Act.Second) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
                 string near = PieceInteraction(E, T0);
                 Prompt = (Player.SeatedOn && Player.SeatedOn.ride != null ? "[F] DISMOUNT" : Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP") + (near != null ? "   " + near : "");
                 if (F) Player.StandUp();
                 return;
             }
 
-            bool G = KeyDown(kb, Key.G);
-            bool K = KeyDown(kb, Key.K);
+            bool G = Controls.Down(Controls.Act.Service) || (pad != null && pad.dpad.up.wasPressedThisFrame);
+            bool K = Controls.Down(Controls.Act.Siphon) || (pad != null && pad.dpad.down.wasPressedThisFrame);
 
             // ---- on foot: workbench, then parts
-            bool T = KeyDown(kb, Key.T) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
+            bool T = Controls.Down(Controls.Act.Second) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
             string partText = Player.Carried ? null : PieceInteraction(E, T);
             if (partText == null) partText = PartInteraction(E, Q);
 
@@ -258,7 +258,7 @@ namespace MadMax.Game
 
             string towPrompt = FootTow(J);
             string fluidText = FluidInteraction(G, K);
-            string armourText = ArmourInteraction(KeyDown(kb, Key.U) && !Build.Active);
+            string armourText = ArmourInteraction(Controls.Down(Controls.Act.Armour) && !Build.Active);
             Prompt = Join(partText, enterText, towPrompt, fluidText, armourText);
         }
 

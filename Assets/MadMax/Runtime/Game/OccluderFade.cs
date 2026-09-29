@@ -22,7 +22,7 @@ namespace MadMax.Game
         public static bool Underground { get; private set; }
         static readonly int WorldCutId = Shader.PropertyToID("_MadMaxCut");
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Underground = false; Active = null; Shader.SetGlobalVector(WorldCutId, Vector4.zero); }
+        static void ResetStatics() { Underground = false; Active = null; Shader.SetGlobalVector(WorldCutId, Vector4.zero); Shader.SetGlobalFloat("_MadMaxUnderFill", 0f); }
         /// <summary>The camera's cutaway (build aiming skips roofs it has clipped away).</summary>
         public static OccluderFade Active { get; private set; }
         float lastCutY = float.MaxValue;
@@ -43,7 +43,9 @@ namespace MadMax.Game
         readonly Collider[] around = new Collider[32];
         readonly List<Renderer> restore = new List<Renderer>();
         MaterialPropertyBlock mpb;
-        static readonly int CutId = Shader.PropertyToID("_CutY");
+        static readonly int CutId = Shader.PropertyToID("_CutY"), FillId = Shader.PropertyToID("_MadMaxUnderFill");
+        bool subRoof;
+        float fill;
 
         void LateUpdate()
         {
@@ -77,6 +79,11 @@ namespace MadMax.Game
                 Underground = under;
                 if (!under) Shader.SetGlobalVector(WorldCutId, Vector4.zero);
             }
+            // under rock or a bunker slab (any view): a faint cool fill so the dark between lamps still reads
+            if (target && (Time.frameCount & 7) == 0)
+                subRoof = Physics.Raycast(target.position + Vector3.up, Vector3.up, out var sr, 30f, ~0, QueryTriggerInteraction.Ignore) && sr.collider.GetComponentInParent<MadMax.World.Subterranean>();
+            fill = Mathf.MoveTowards(fill, subRoof ? 1f : 0f, Time.deltaTime * 1.5f);
+            Shader.SetGlobalFloat(FillId, fill);
             lastCutY = cutY;
             foreach (var r in now)
             {

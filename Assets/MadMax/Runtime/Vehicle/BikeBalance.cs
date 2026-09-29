@@ -73,7 +73,14 @@ namespace MadMax.Vehicles
             if (sidecar || Crashed)
             {
                 v.steerOverride = float.NaN;
-                if (sidecar && !Crashed && ridden)
+                bool vintage = ridden && MadMax.Game.GameSettings.Current.vintageSidecar && !v.aiDriven;
+                if (sidecar && !Crashed && ridden && vintage)
+                {
+                    // VINTAGE: straight bars, the pull towards the chair left to the rider, the chair lifts when it will
+                    v.steerOverride = v.steerInput * v.maxSteer * Mathf.Lerp(1f, 0.35f, av / 25f);
+                    rb.AddTorque(-transform.up * (v.DriveForce * (rb.centerOfMass.x - driveX) * 0.25f));
+                }
+                else if (sidecar && !Crashed && ridden)
                 {
                     // no lean: the bars steer directly, up to what the tyres hold at this speed (~1 g), and the rider
                     // holds it straight against the chair (power drags an outfit towards its chair, braking away)
@@ -143,6 +150,14 @@ namespace MadMax.Vehicles
             if (n.y > 0.7f) return;                                                           // landings and the ground
             if (c.rigidbody && !c.rigidbody.isKinematic && c.rigidbody.mass < 40f) return;       // pickups, debris, crates: ride over them
             float hit = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
+            // shrubs, fences, cacti: the bike ploughs through (the prop carves) with a wobble instead of a spill
+            var prop = c.collider.GetComponentInParent<MadMax.World.DestructibleVoxels>();
+            if (prop && (prop.name == "Bush" || prop.name == "Fence" || prop.name == "Cactus" || prop.VoxelCount < 500) && hit < 16f)
+            {
+                rb.AddTorque(transform.forward * Random.Range(-1f, 1f) * Mathf.Min(3f, hit * 0.3f) + transform.up * Random.Range(-0.6f, 0.6f), ForceMode.VelocityChange);
+                rb.linearVelocity *= 0.92f;
+                return;
+            }
             if (hit > 7f) { LastCrash = "hit " + c.collider.name + " " + hit.ToString("0.0") + " n=" + n; Crash(hit * 2.2f, "THROWN OVER THE BARS"); }
         }
 

@@ -98,12 +98,23 @@ namespace MadMax.Npc
             n.rig.outfit.AddRange(p.outfit);
             n.rig.Rebuild();
             n.anim = new HumanAnimator(n.rig);
+            n.anim.Footstep += left => n.OnFootstep();
             n.maxHealth = n.health = p.role == NpcRole.RaiderBoss ? 160f : p.Raider ? 90f : p.role == NpcRole.Leader ? 110f : 70f;
             n.flank = (Mathf.Abs(p.seed >> 4) % 3 - 1) * 55f;
             if (n.State.Has(NpcSave.Surrendered)) n.leaving = true;                          // spared before: keeps out of the way
             if (!n.State.Has(NpcSave.Surrendered)) n.SetTool(p.tool, mat);
             n.lastPos = pos;
             return n;
+        }
+
+        void OnFootstep()
+        {
+            var g = WastelandGame.Instance;
+            if (!g || !g.Player) return;
+            var p = transform.position;
+            if ((p - g.Player.transform.position).sqrMagnitude > 20f * 20f) return;                  // only the close ones are heard
+            var t = DeformableTerrain.Instance;
+            MadMax.Audio.Sfx.Play(PlayerCharacter.StepSound(p, t ? t.SurfaceAt(p.x, p.z) : default), p, 0.2f, Random.Range(0.85f, 1.05f), 14f);
         }
 
         void SetTool(string id, Material mat)

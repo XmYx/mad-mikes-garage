@@ -65,6 +65,7 @@ namespace MadMax.Animals
         Transform hurter;
         AnimalCall call;
         SynthVoice voice;
+        int lastHalf;
         static readonly RaycastHit[] hits = new RaycastHit[8];
 
         // ------------------------------------------------------------------ building
@@ -735,6 +736,14 @@ namespace MadMax.Animals
             float legLen = Mathf.Max(0.05f, Mesh.legLen);
             phase += s / (legLen * 2.6f) * dt;
             float wphase = phase * Mathf.PI * 2f;
+            // hooves (the big ones) on each half stride, near the listener
+            int half = Mathf.FloorToInt(phase * 2f);
+            if (half != lastHalf)
+            {
+                lastHalf = half;
+                if (s > 0.4f && Def.mass >= 150f && Def.plan == BodyPlan.Quadruped && MadMax.Audio.Sfx.HasListener && (transform.position - MadMax.Audio.Sfx.ListenerPosition).sqrMagnitude < 30f * 30f)
+                    MadMax.Audio.Sfx.Play("hoof", transform.position, Mathf.Clamp(0.25f + s * 0.05f, 0.25f, 0.6f), Random.Range(0.85f, 1.1f) * (Def.mass > 400f ? 0.85f : 1f), 30f);
+            }
             float gallop = Mathf.InverseLerp(Def.walk * 2.5f, Def.run * 0.8f, s);
             float swing = Mathf.Clamp01(s / Mathf.Max(0.3f, Def.walk)) * 24f + gallop * 14f;
             if (Def.plan == BodyPlan.Bird)

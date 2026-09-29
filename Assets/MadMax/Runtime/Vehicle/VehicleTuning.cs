@@ -127,14 +127,31 @@ namespace MadMax.Vehicles
                 torque = Mathf.Max(torque, t);
                 kw = Mathf.Max(kw, t * rpm * 2f * Mathf.PI / 60f / 1000f);
             }
-            float r = 0.35f;
-            foreach (var w in driver.GetComponentsInChildren<WheelStats>()) { var p = w.GetComponent<VehiclePart>(); if (p && p.radius > 0f) { r = p.radius; break; } }
-            float gearLimited = e.maxRpm / (driver.gears[driver.gears.Length - 1] * driver.finalDrive) * 2f * Mathf.PI * r / 60f;
-            // power-limited: where air drag and rolling resistance eat all the power at the wheels
+            float r = 0.35f, rolling = 0f; int nw = 0;
+            foreach (var w in driver.GetComponentsInChildren<WheelStats>())
+            {
+                var p = w.GetComponent<VehiclePart>();
+                if (p && p.radius > 0f && nw == 0) r = p.radius;
+                rolling += w.rolling; nw++;
+            }
+            rolling = nw > 0 ? rolling / nw : 1f;
+            // flat hard ground: the fastest speed where some gear's pull at the tyres still beats air drag + rolling
+            // resistance (the same forces VehicleDriver applies), the rev limiter included
             var rb = GetComponent<Rigidbody>();
-            float weight = (rb ? rb.mass : 1500f) * 9.81f, wheelPower = kw * 1000f * driver.efficiency, v = 1f;
-            while (v < 150f && (driver.drag * v * v + 0.015f * RollingFactor * weight) * v < wheelPower) v += 0.5f;
-            topKmh = Mathf.Min(gearLimited, v) * 3.6f;
+            float weight = (rb ? rb.mass : 1500f) * 9.81f, crr = 0.015f * rolling * RollingFactor, best = 0f;
+            foreach (float g in driver.gears)
+            {
+                float ratio = g * driver.finalDrive;
+                for (float v = 1f; v < 150f; v += 0.25f)
+                {
+                    float rpm = v / r * 60f / (2f * Mathf.PI) * ratio;
+                    if (rpm >= e.maxRpm * 0.995f) break;
+                    float pull = e.TorqueAt(rpm) * TorqueFactor(rpm / e.maxRpm) * ratio * driver.efficiency / r;
+                    if (pull < driver.drag * v * v + crr * weight) break;
+                    best = Mathf.Max(best, v);
+                }
+            }
+            topKmh = best * 3.6f;
         }
 
         // ------------------------------------------------------------------ save

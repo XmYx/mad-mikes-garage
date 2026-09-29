@@ -61,7 +61,7 @@ namespace MadMax.Game
         public VehicleDriver Current { get; private set; }
         public PlayerCharacter Player { get; private set; }
         public VehicleDriver NearbyVehicle { get; private set; }
-        public bool ShowHelp { get; private set; } = true;
+        public bool ShowHelp { get; private set; }
         public Inventory Inventory { get; } = new Inventory();
         public BuildMode Build { get; private set; }
         public MenuSystem Menus { get; private set; }
@@ -255,6 +255,7 @@ namespace MadMax.Game
             if (Current) Exit();
             if (Player.Carried) Player.DropCarried();
             Player.StandUp();
+            if (!Rules.permadeath) DropStash();
             // go limp where you fell; the camera stays on the body for a moment
             var cc = Player.GetComponent<CharacterController>();
             if (cc) cc.enabled = false;
@@ -262,7 +263,7 @@ namespace MadMax.Game
             Ragdoll.For(Player.Rig).Go(push, Player.transform.position + Vector3.up * 1.2f, Player.Velocity);
             if (Rules.permadeath)
             {
-                if (SaveSystem.HasSave) System.IO.File.Delete(SaveSystem.Path);
+                SaveSystem.Delete(SaveSystem.Slot); SaveSystem.Delete(0);                           // permadeath: this run's slot and the autosave
                 Invoke(nameof(ReturnToMainMenu), 4f);
                 return;
             }
@@ -424,44 +425,49 @@ namespace MadMax.Game
 
         void SpawnFleet(Vector3 p, Vector3 dir)
         {
-            var side = Vector3.Cross(Vector3.up, dir);
-            float along = 0f;
-            // starting fleet by rule: everything, a single vehicle, or nothing (on foot)
+            // the start yard (WorldGen): a graded gravel lot on both sides of the highway. The fleet parks in rows on the
+            // -side facing the road, the machines on the +side, trailers at the back of the lot; the road stays open
+            World.Yard(out var origin, out var along, out var side);
             var chosen = new List<GameObject>();
+            var machines = new List<GameObject>();
             foreach (var pf in vehiclePrefabs)
             {
-                if (pf.GetComponent<Machine>()) continue;
+                if (pf.GetComponent<Machine>()) { if (Rules.fleet == 0) machines.Add(pf); continue; }
                 if (Rules.fleet == 0 || (Rules.fleet == 1 && pf.name == "Scavenger") || (Rules.fleet == 2 && pf.name == "Trabant")) chosen.Add(pf);
             }
-            for (int i = 0; i < chosen.Count; i++)
-            {
-                var half = HalfExtents(chosen[i]);
-                along += half.z;
-                var pos = FindClearSpot(p + side * (i % 2 == 0 ? 2f : -2f) + dir * along, dir, half);
-                along += half.z + 1.5f;
-                Register(Instantiate(chosen[i], pos, Quaternion.LookRotation(dir)).GetComponent<VehicleDriver>(), fleet);
-            }
-            // construction yard: the machines parked in a row off the road (full fleet only)
+            var first = chosen.Count > 0 ? chosen[0] : null;                                      // the car you start in
+            chosen.Sort((a, b) => HalfExtents(b).z.CompareTo(HalfExtents(a).z));                 // long ones in the front row
+            float across = -9f;
+            across = ParkRows(chosen, origin, along, -side, across, fleet);
+            int fi = first ? fleet.FindIndex(v => v && v.name.StartsWith(first.name)) : -1;
+            if (fi > 0) { var v0 = fleet[fi]; fleet.RemoveAt(fi); fleet.Insert(0, v0); }
             if (Rules.fleet == 0)
             {
-                var yard = p + side * 22f + dir * 10f;
-                int mi = 0;
-                foreach (var pf in vehiclePrefabs)
-                {
-                    if (!pf.GetComponent<Machine>()) continue;
-                    var half = HalfExtents(pf);
-                    var pos = FindClearSpot(yard + dir * (mi * 7f), side, half);
-                    Register(Instantiate(pf, pos, Quaternion.LookRotation(side)).GetComponent<VehicleDriver>(), fleet);
-                    mi++;
-                }
+                var trailers = new List<GameObject>(trailerPrefabs);
+                ParkRows(trailers, origin, along, -side, across - 3f, null);
+                ParkRows(machines, origin, along, side, 11f, fleet);
             }
-            // trailers wait on the shoulder behind the convoy
-            for (int i = 0; i < trailerPrefabs.Length && Rules.fleet == 0; i++)
+        }
+
+        /// <summary>Park vehicles in rows starting <paramref name="front"/> metres from the road on the <paramref name="side"/>,
+        /// noses to the road, columns along it. Returns where the next row would start.</summary>
+        float ParkRows(List<GameObject> prefabs, Vector3 origin, Vector3 along, Vector3 side, float front, List<VehicleDriver> group)
+        {
+            front = Mathf.Abs(front);
+            float col = WorldGen.YardAlong0 + 3f, rowDepth = 0f;
+            var face = Quaternion.LookRotation(-side);
+            foreach (var pf in prefabs)
             {
-                var half = HalfExtents(trailerPrefabs[i]);
-                var pos = FindClearSpot(p - dir * (8f + i * 16f) + side * 6.5f, -dir, half);
-                Register(Instantiate(trailerPrefabs[i], pos, Quaternion.LookRotation(dir)).GetComponent<VehicleDriver>(), null);
+                var half = HalfExtents(pf);
+                if (col + half.x * 2f > WorldGen.YardAlong1 - 2f) { front += rowDepth + 3.5f; col = WorldGen.YardAlong0 + 3f; rowDepth = 0f; }
+                col += half.x + 0.6f;
+                var at = origin + along * col + side * (front + half.z);
+                var pos = FindClearSpot(at, along, half, face);
+                Register(Instantiate(pf, pos, face).GetComponent<VehicleDriver>(), group);
+                col += half.x + 0.6f;
+                rowDepth = Mathf.Max(rowDepth, half.z * 2f);
             }
+            return -(front + rowDepth + 3.5f);
         }
 
         void Register(VehicleDriver v, List<VehicleDriver> group)
@@ -492,9 +498,10 @@ namespace MadMax.Game
 
         /// <summary>First position along <paramref name="dir"/> where a vehicle-sized box is free of props and vehicles,
         /// lifted above the highest terrain point under its footprint.</summary>
-        Vector3 FindClearSpot(Vector3 start, Vector3 dir, Vector3 half)
+        Vector3 FindClearSpot(Vector3 start, Vector3 dir, Vector3 half) => FindClearSpot(start, dir, half, Quaternion.LookRotation(dir));
+
+        Vector3 FindClearSpot(Vector3 start, Vector3 dir, Vector3 half, Quaternion rot)
         {
-            var rot = Quaternion.LookRotation(dir);
             for (int step = 0; step < 40; step++)
             {
                 var pos = start + dir * (step * 3f);
@@ -518,7 +525,7 @@ namespace MadMax.Game
         {
             if (!Player) return;
             var kb = Keyboard.current; var pad = Gamepad.current; var mouse = Mouse.current;
-            bool Pressed(Key k) => (kb != null && kb[k].wasPressedThisFrame) || Injected(k);
+            bool Pressed(Key k) => kb != null && kb[k].wasPressedThisFrame;                      // fixed keys (machine / winch / crane digits)
             UpdateRadial(kb, mouse);
 
             if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); return; }
@@ -540,12 +547,12 @@ namespace MadMax.Game
                 return;
             }
 
-            if (Pressed(Key.H)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
+            if (Controls.Down(Controls.Act.Help)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
             if (ShowHelp && Time.time > helpUntil) ShowHelp = false;
             UpdateAim(mouse, pad);
-            if (Pressed(Key.R) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
-            else if (Pressed(Key.R) && !Build.Active && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
-            if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame)) && fleet.Count > 0)
+            if (Controls.Down(Controls.Act.Reload) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
+            if (Controls.Down(Controls.Act.DevWeather) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
+            if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame && Current)) && fleet.Count > 0)
             {
                 int i = fleet.IndexOf(Current);
                 if (Player.Interior) Player.ExitInterior(Player.transform.position);
@@ -556,18 +563,18 @@ namespace MadMax.Game
             {
                 float v = Mathf.Abs(Current.ForwardSpeed);
                 Stats.Practice(Skill.Driving, v * Time.deltaTime * 0.02f * (1f + Current.WheelSlip * 2f + Current.Mud));
-                if ((Pressed(Key.LeftCtrl) || (pad != null && pad.leftStickButton.wasPressedThisFrame)) && Current.TryGetComponent<VehicleTuning>(out var nos))
+                if ((Controls.Down(Controls.Act.Nitrous) || (pad != null && pad.leftStickButton.wasPressedThisFrame)) && !Current.GetComponent<FlightModel>() && Current.TryGetComponent<VehicleTuning>(out var nos))
                 {
                     if (nos.FireNitrous()) { MadMax.Audio.Sfx.Play("explosion", Current.transform.position, 0.35f, 1.8f, 40f); Toast("NITROUS! " + nos.nitrous + " LEFT"); }
                     else if (nos.nitrous <= 0 && !nos.NitrousOn) Toast("NO NITROUS FITTED (TUNING BENCH)");
                 }
-                if (Pressed(Key.X)) { Current.ToggleFourWheelDrive(); if (Current.awdSelectable) Toast(Current.FourWheelDrive ? "4WD ENGAGED" : "2WD"); }
-                if (Pressed(Key.L)) { Current.ToggleDiffLock(); Toast(Current.hasDiffLock ? (Current.diffLocked ? "DIFF LOCKED" : "DIFF OPEN") : "NO DIFF LOCK ON THIS VEHICLE"); }
-                if (Pressed(Key.E) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();
-                if (Pressed(Key.Q) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
-                if (Pressed(Key.N)) { var vl = Current.GetComponent<VehicleLights>(); if (vl) { vl.mode = (vl.mode + 1) % 3; Toast(VehicleLights.ModeNames[vl.mode]); } }
+                if (Controls.Down(Controls.Act.FourWheel)) { Current.ToggleFourWheelDrive(); if (Current.awdSelectable) Toast(Current.FourWheelDrive ? "4WD ENGAGED" : "2WD"); }
+                if (Controls.Down(Controls.Act.DiffLock)) { Current.ToggleDiffLock(); Toast(Current.hasDiffLock ? (Current.diffLocked ? "DIFF LOCKED" : "DIFF OPEN") : "NO DIFF LOCK ON THIS VEHICLE"); }
+                if (Controls.Down(Controls.Act.ShiftUp) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();
+                if (Controls.Down(Controls.Act.ShiftDown) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
+                if (Controls.Down(Controls.Act.Lights) || (pad != null && pad.dpad.left.wasPressedThisFrame)) { var vl = Current.GetComponent<VehicleLights>(); if (vl) { vl.mode = (vl.mode + 1) % 3; Toast(VehicleLights.ModeNames[vl.mode]); } }
                 // horn (a siren with an emergency bar): Y, middle mouse, right stick
-                bool horn = !ExternalInput && ((kb != null && kb.yKey.isPressed) || (mouse != null && mouse.middleButton.isPressed) || (pad != null && pad.rightStickButton.isPressed));
+                bool horn = !ExternalInput && (Controls.Held(Controls.Act.Horn) || (mouse != null && mouse.middleButton.isPressed) || (pad != null && pad.rightStickButton.isPressed));
                 bool siren = horn && EmergencyLights.Fitted(Current);
                 if (siren) MadMax.Audio.Sfx.Loop(Current, "siren", 0.9f, 1f, 160f);
                 if (horn && !hornHeld)
@@ -577,13 +584,14 @@ namespace MadMax.Game
                 }
                 hornHeld = horn;
                 if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
-                if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f, kb.leftShiftKey.isPressed);
-                if (Pressed(Key.K) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
+                bool shiftHeld = Controls.Held(Controls.Act.Run);
+                if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (shiftHeld ? -1f : 1f) : 0f, shiftHeld);
+                if (Controls.Down(Controls.Act.Climate) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
                 if (Current.TryGetComponent<VehicleWeapons>(out var guns) && !ExternalInput)
                     guns.Control(new WeaponInput
                     {
                         fire = mouse != null && mouse.leftButton.isPressed, firePressed = mouse != null && mouse.leftButton.wasPressedThisFrame,
-                        alt = kb != null && kb.leftShiftKey.isPressed, drop = Pressed(Key.B), smoke = Pressed(Key.U),
+                        alt = Controls.Held(Controls.Act.Run), drop = Controls.Down(Controls.Act.Dropper) || (pad != null && pad.dpad.down.wasPressedThisFrame), smoke = Controls.Down(Controls.Act.Smoke),
                         aim = VehicleAim(), dt = Time.deltaTime
                     });
                 if (Current.TryGetComponent<Machine>(out var machine) && kb != null)
@@ -591,14 +599,15 @@ namespace MadMax.Game
                     {
                         h1 = kb.digit1Key.isPressed, h2 = kb.digit2Key.isPressed, h3 = kb.digit3Key.isPressed, h4 = kb.digit4Key.isPressed, h5 = kb.digit5Key.isPressed, h6 = kb.digit6Key.isPressed,
                         p1 = Pressed(Key.Digit1), p2 = Pressed(Key.Digit2), p3 = Pressed(Key.Digit3), p4 = Pressed(Key.Digit4), p5 = Pressed(Key.Digit5), p6 = Pressed(Key.Digit6),
-                        shift = kb.leftShiftKey.isPressed
+                        shift = Controls.Held(Controls.Act.Run)
                     });
             }
             {
                 // radio: the driven vehicle's head unit, or a radio set the player is looking at
                 var radio = Current ? MadMax.Audio.RadioReceiver.On(Current.gameObject) : Focused is MadMax.Building.RadioSet rs ? rs.GetComponent<MadMax.Audio.RadioReceiver>() : null;
                 if (radio && !(Build && Build.Active))
-                    radio.HandleKeys(Current && Pressed(Key.M), Pressed(Key.Comma) ? -1 : Pressed(Key.Period) ? 1 : 0, Pressed(Key.LeftBracket) ? -1 : Pressed(Key.RightBracket) ? 1 : 0);
+                    radio.HandleKeys(Current && Controls.Down(Controls.Act.RadioPower), Controls.Down(Controls.Act.RadioPrev) ? -1 : Controls.Down(Controls.Act.RadioNext) ? 1 : 0,
+                        Controls.Down(Controls.Act.VolumeDown) ? -1 : Controls.Down(Controls.Act.VolumeUp) ? 1 : 0);
             }
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Items");
             UpdateHotbar(kb, mouse);
@@ -612,9 +621,10 @@ namespace MadMax.Game
             UpdateHealth(Time.deltaTime);
             UpdateClothing(Time.deltaTime);
             UnityEngine.Profiling.Profiler.EndSample();
-            if (Pressed(Key.I)) Menus.Open(MenuSystem.Page.Inventory);
-            if (Pressed(Key.P)) Menus.Open(MenuSystem.Page.Skills);
-            if (Pressed(Key.O)) Menus.Open(MenuSystem.Page.Health);
+            if (Controls.Down(Controls.Act.Inventory)) Menus.Open(MenuSystem.Page.Inventory);
+            if (Controls.Down(Controls.Act.Skills)) Menus.Open(MenuSystem.Page.Skills);
+            if (Controls.Down(Controls.Act.Health)) Menus.Open(MenuSystem.Page.Health);
+            if (Controls.Down(Controls.Act.Map) || (PadSelectTapped && !Current)) Menus.Open(MenuSystem.Page.Map);
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Interaction");
             UpdateInteraction(kb, pad);
             UnityEngine.Profiling.Profiler.EndSample();
@@ -622,16 +632,25 @@ namespace MadMax.Game
             UpdateServerFoci();
             UpdateSleepers();
             UnityEngine.Profiling.Profiler.EndSample();
-            if (Current && (Pressed(Key.T) || (pad != null && pad.selectButton.wasPressedThisFrame)) && !MadMax.Npc.NpcDirector.TryParley()) Current.Recover();
-            if (Current && Pressed(Key.Backspace)) DropRandomPart(Current);
-            if (Current && Pressed(Key.G) && Current.TryGetComponent<VehicleDamage>(out var dmg)) dmg.Repair();
+            UpdateAutosave();
+            UpdateMap();
+            UpdateHints();
+            UpdateStashes();
+            if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
+            {
+                // back on the wheels: only for a vehicle on its side or roof, or stuck and nearly still
+                if (Current.transform.up.y < 0.5f || Mathf.Abs(Current.ForwardSpeed) < 2f) Current.Recover();
+                else Toast("SLOW DOWN TO RECOVER");
+            }
+            if (Current && Controls.Down(Controls.Act.DevDropPart)) DropRandomPart(Current);
+            if (Current && Controls.Down(Controls.Act.DevRepair) && Current.TryGetComponent<VehicleDamage>(out var dmg)) dmg.Repair();
 
             Vector2 move = Vector2.zero; bool space = false, shift = false, spaceDown = false;
             if (kb != null)
             {
-                move.x = (kb.dKey.isPressed || kb.rightArrowKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed || kb.leftArrowKey.isPressed ? 1f : 0f);
-                move.y = (kb.wKey.isPressed || kb.upArrowKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed || kb.downArrowKey.isPressed ? 1f : 0f);
-                space = kb.spaceKey.isPressed; spaceDown = kb.spaceKey.wasPressedThisFrame; shift = kb.leftShiftKey.isPressed;
+                move.x = (Controls.Held(Controls.Act.Right) || kb.rightArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Left) || kb.leftArrowKey.isPressed ? 1f : 0f);
+                move.y = (Controls.Held(Controls.Act.Forward) || kb.upArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Back) || kb.downArrowKey.isPressed ? 1f : 0f);
+                space = Controls.Held(Controls.Act.Jump); spaceDown = Controls.Down(Controls.Act.Jump); shift = Controls.Held(Controls.Act.Run);
             }
             float throttle = Mathf.Max(0f, move.y), brake = Mathf.Max(0f, -move.y);
             if (pad != null)
@@ -672,7 +691,7 @@ namespace MadMax.Game
                     // aircraft: W/S move the throttle lever, A/D bank, Space pulls up, Ctrl pushes down (pad: right stick)
                     flight.rollInput = Mathf.Clamp(move.x, -1f, 1f);
                     flight.throttleAxis = Mathf.Clamp(throttle - brake, -1f, 1f);
-                    float pitch = (space ? 1f : 0f) - (kb != null && kb.leftCtrlKey.isPressed ? 1f : 0f);
+                    float pitch = (space ? 1f : 0f) - (Controls.Held(Controls.Act.Crouch) ? 1f : 0f);
                     if (pad != null) pitch -= pad.rightStick.ReadValue().y;
                     flight.pitchInput = Mathf.Clamp(pitch, -1f, 1f);
                 }
@@ -682,7 +701,7 @@ namespace MadMax.Game
                 Player.moveInput = move;
                 Player.run = shift;
                 if (spaceDown) Player.jump = true;
-                Player.crouch = (kb != null && kb.leftCtrlKey.isPressed) || (pad != null && pad.rightStickButton.isPressed);   // crouch; at a run: slide
+                Player.crouch = Controls.Held(Controls.Act.Crouch) || (pad != null && pad.rightStickButton.isPressed);   // crouch; at a run: slide
                 bool attack = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
                 if (Player.Tool is FishingRodTool rod && rod.Busy)
                 {

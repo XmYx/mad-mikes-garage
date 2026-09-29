@@ -41,6 +41,7 @@ namespace MadMax.Building
             for (int i = 0; i < near.Count; i++) if (!held[i]) fall.Add(near[i]);
             fall.Sort((a, b) => a.transform.position.y.CompareTo(b.transform.position.y));
             for (int i = 0; i < fall.Count; i++) fall[i].Collapse(0.12f + i * 0.07f);
+            if (fall.Count > 0) { MadMax.Audio.Sfx.Play("creak", fall[0].transform.position, 0.8f, Random.Range(0.8f, 1f), 50f); MadMax.Audio.Sfx.Play("collapse", fall[0].transform.position, Mathf.Clamp01(0.4f + fall.Count * 0.08f), 1f, 80f); }
             if (fall.Count > 0) MadMax.Audio.Sfx.Play("crash_big", at, 0.8f, 0.8f);
         }
 

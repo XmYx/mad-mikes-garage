@@ -95,6 +95,7 @@ namespace MadMax.Npc
             if (s == 1 && !Contracts.Active.Exists(x => x.id == CullId(town)))
                 Contracts.Active.Add(new Contract { id = CullId(town), kind = 1, target = Gang(town), title = "BOSS'S CULL: 4 " + Gang(town) + " RAIDERS", need = 4, reward = 0, town = town });
             g.Toast("JOB TAKEN: " + Title(s));
+            MadMax.Game.Journal.Add("TOWN", Market.TownName(Town(town)) + " BOSS: " + Title(s));
         }
 
         static Faction rewardFaction = Faction.Settlers;

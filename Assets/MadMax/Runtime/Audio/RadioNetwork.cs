@@ -14,6 +14,8 @@ namespace MadMax.Audio
         public List<RadioFile> tracks = new List<RadioFile>(), links = new List<RadioFile>(), shows = new List<RadioFile>();
     }
     [Serializable] public class RadioManifest { public List<RadioStationDef> stations = new List<RadioStationDef>(); public List<RadioFile> ads = new List<RadioFile>(); }
+    [Serializable] public class RadioCaption { public string file; public List<string> lines = new List<string>(); }
+    [Serializable] public class RadioCaptions { public List<RadioCaption> files = new List<RadioCaption>(); }
 
     /// <summary>All stations broadcast continuously on a shared clock: each station builds a deterministic programme
     /// (songs, DJ links, jingles, ad breaks; talk shows by time of day and weather) and receivers join mid-item.
@@ -41,7 +43,32 @@ namespace MadMax.Audio
         const int CacheSize = 10;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Instance = null; Manifest = null; cache.Clear(); lastUse.Clear(); loading.Clear(); }
+        static void ResetStatics() { Instance = null; Manifest = null; cache.Clear(); lastUse.Clear(); loading.Clear(); captions = null; }
+
+        // spoken lines per clip (captions.json from audio/export_captions.py), for the RADIO CAPTIONS setting
+        static Dictionary<string, List<string>> captions;
+
+        /// <summary>The caption line being spoken <paramref name="offset"/> seconds into <paramref name="file"/> (null: music,
+        /// or no script). Lines share the clip's length by their length.</summary>
+        public static string Caption(RadioFile file, float offset)
+        {
+            if (file == null || string.IsNullOrEmpty(file.file)) return null;
+            if (captions == null)
+            {
+                captions = new Dictionary<string, List<string>>();
+                string path = System.IO.Path.Combine(Application.streamingAssetsPath, "Radio", "captions.json");
+                if (System.IO.File.Exists(path))
+                {
+                    var all = JsonUtility.FromJson<RadioCaptions>(System.IO.File.ReadAllText(path));
+                    if (all != null) foreach (var c in all.files) captions[c.file] = c.lines;
+                }
+            }
+            if (!captions.TryGetValue(file.file, out var lines) || lines.Count == 0) return null;
+            int total = 0; foreach (var l in lines) total += l.Length;
+            float at = Mathf.Clamp01(offset / Mathf.Max(0.1f, file.len)) * total;
+            foreach (var l in lines) { if (at <= l.Length) return l; at -= l.Length; }
+            return lines[lines.Count - 1];
+        }
 
         public int StationCount => Manifest != null ? Manifest.stations.Count : 0;
         public RadioStationDef Station(int i) => Manifest.stations[Wrap(i)];

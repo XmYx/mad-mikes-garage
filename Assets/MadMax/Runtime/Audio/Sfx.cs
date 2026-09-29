@@ -41,6 +41,7 @@ namespace MadMax.Audio
         {
             if (clips.TryGetValue(key, out var c) && c) return c;
             c = Resources.Load<AudioClip>("Sfx/" + key);
+            if (!c) c = ProceduralSfx.Make(key);                                         // synthesised stand-ins (ProceduralSfx)
             clips[key] = c;
             return c;
         }
@@ -94,7 +95,7 @@ namespace MadMax.Audio
             var clip = Clip(key);
             if (!clip) return;
             var s = Next();
-            s.spatialBlend = 0f; s.clip = clip; s.pitch = pitch; s.volume = Mathf.Clamp01(volume) * Master;
+            s.spatialBlend = 0f; s.clip = clip; s.pitch = pitch; s.volume = Mathf.Clamp01(volume) * Master * MadMax.Game.GameSettings.Current.uiVolume;   // interface sounds
             s.Play();
         }
 

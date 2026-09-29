@@ -115,7 +115,7 @@ namespace MadMax.Game
             float sp = spread * (stats != null ? stats.Spread : 1f) * game.AimPenalty * (2f - game.QualityPower(id)) * (game.Aiming ? 0.5f : 1f);
             var fx = DebrisSystem.Instance;
             bool anyHit = false;
-            MadMax.Audio.Sfx.Play(sound, origin, sound == "shotgun" ? 1f : 0.7f, Random.Range(0.95f, 1.05f) * (sound == "shotgun" && pellets == 1 ? 1.35f : 1f), Mathf.Max(20f, noise * 1.5f));
+            MadMax.Audio.Sfx.Play(sound, origin, sound == "shotgun" || sound.StartsWith("shot_") ? 1f : 0.7f, Random.Range(0.95f, 1.05f), Mathf.Max(20f, noise * 1.5f));
             if (projectile.HasValue)
             {
                 var d = Quaternion.Euler(Random.Range(-sp, sp), Random.Range(-sp, sp), 0f) * aim;
