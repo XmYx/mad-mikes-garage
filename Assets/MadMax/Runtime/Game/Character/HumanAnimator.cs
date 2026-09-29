@@ -103,6 +103,12 @@ namespace MadMax.Game
                 {
                     Set(BodyPart.ThighL, thL - tp.knees * 0.6f, 0, -2f, kk); Set(BodyPart.ThighR, thR - tp.knees * 0.6f, 0, 2f, kk);
                     Set(BodyPart.ShinL, knL + tp.knees, 0, 0, kk); Set(BodyPart.ShinR, knR + tp.knees, 0, 0, kk);
+                    // bent knees lower the hips so the feet stay planted (crouch, slide, braced swings)
+                    if (s.grounded)
+                    {
+                        float kr = tp.knees * Mathf.Deg2Rad;
+                        pelvis.localPosition -= Vector3.up * (pelvisBase * (1f - 0.5f * (Mathf.Cos(kr * 0.6f) + Mathf.Cos(kr * 0.4f))));
+                    }
                 }
             }
             float ks = acting ? 1f - Mathf.Exp(-40f * dt) : k;   // actions follow their keyframes tightly

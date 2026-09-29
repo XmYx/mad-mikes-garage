@@ -205,6 +205,9 @@ namespace MadMax.Items
             yield return Itm("oil_filter", "OIL FILTER", RecipeCategory.Supplies, "workbench", "use_oil_filter", 1, "OIL CHANGE: G WITH A FULL SUMP OF OIL IN THE PACK", null, (S, 1), (C, 1));
             yield return Itm("air_filter", "AIR FILTER", RecipeCategory.Supplies, "workbench", "use_air_filter", 1, "DUST CHOKES ENGINES: SWAP IT (G)", null, (C, 2), (S, 1));
             yield return Itm("spark_plugs", "SPARK PLUGS", RecipeCategory.Supplies, "workbench", "use_spark_plugs", 1, "WORN PLUGS MISFIRE (PETROL ENGINES): SWAP THEM (G)", null, (Cu, 1), (Fe, 1), (ResourceType.Clay, 1));
+
+            // ---- 22. parkour: the grappling hook
+            yield return Itm("grapple", "GRAPPLING HOOK", RecipeCategory.Tools, "workbench", "tool_grapple", 1, "24 M OF ROPE: HOOK A ROOF OR WALL AND REEL IN (AIM RMB)", null, (Fe, 3), (C, 3), (Rb, 1));
         }
 
         static Recipe Armr(string id, string name, string station, string desc, params (ResourceType, int)[] res) =>

@@ -466,14 +466,16 @@ rumours, errands, haggling, parley, combat, ragdolls.
 *Ties:* NPCs, economy, dialogue, base raids, bounties.
 
 ## 22. Player parkour `T3`
-- [ ] **Vault** low obstacles (0.5–1.2 m)
-- [ ] **Mantle / climb** ledges up to 2.3 m (crates, cars, walls, roofs)
-- [ ] **Crouch & slide**
-- [ ] **Landing roll** cuts fall damage; sprint jumps
-- [ ] **Athletics** skill
-- [ ] **Ride on vehicles** (truck beds, roofs)
+- [x] **Vault** low obstacles (0.5–1.2 m)
+- [x] **Mantle / climb** ledges up to 2.3 m (crates, cars, walls, roofs)
+- [x] **Crouch & slide**
+- [x] **Landing roll** cuts fall damage; sprint jumps
+- [x] **Athletics** skill
+- [x] **Ride on vehicles** (truck beds, roofs)
 
 *Ties:* combat, bunkers, base defence, injuries (falls), grappling hook.
+
+*Done:* `PlayerCharacter.Parkour` (partial). Space at a wall-like face (never a slope or a person) probes the top: 0.45–1.2 m vaults over and down the far side (or steps up when it is deep), walls too thin to stand on are climbed over, ledges to 2.3 m are mantled when a standing capsule fits on top (reach → pull-up → press over, keyed arm/knee poses; hop for high edges); a vault never drops more than 1.5 m below the feet. Ctrl / R3 crouches (capsule 1.3 m, 45 % speed, the animator now lowers the pelvis for bent knees so feet stay planted), crouching at a run slides (capsule 1.0 m, decaying speed, dust); standing up waits for headroom. Holding Ctrl as you land a hard fall rolls (a third of the damage, a short roll forward); the fall threshold rises with Athletics. Running jumps are higher and carry 12 % further. Standing on anything moving carries you with its point velocity and turns you with it; standing still on a vehicle doing > 4 m/s braces on a hidden standing perch (let go = walk). New `Skill.Athletics` (Agility; practised by all of it: quicker climbs, longer slides, quicker feet). Crouching halves raider convoy sight and lets hostile people notice you at 28 m instead of 60 m. `GrappleTool` (`tool_grapple`, workbench: iron 3, cloth 3, rubber 1; bunker loot): aim with RMB, 24 m rope — top surfaces land you on them, walls leave you hanging below the hook and climb over an edge in reach.
 
 ## 23. Animals `T3`
 - [ ] **Framework**: voxel quadruped and bird rigs with procedural gaits; senses (sight, smell with the wind,

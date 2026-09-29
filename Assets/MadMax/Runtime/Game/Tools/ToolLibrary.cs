@@ -11,7 +11,8 @@ namespace MadMax.Game
         // index = network tool id: append only
         public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern",
             "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector", "tool_hoe", "tool_watering_can", "tool_fishing_rod",
-            "tool_spear", "tool_nail_bat", "tool_knife", "tool_leaf_blade", "tool_slingshot", "tool_bow", "tool_crossbow", "tool_pipe_pistol", "tool_revolver", "tool_bolt_rifle", "tool_flare_gun" };
+            "tool_spear", "tool_nail_bat", "tool_knife", "tool_leaf_blade", "tool_slingshot", "tool_bow", "tool_crossbow", "tool_pipe_pistol", "tool_revolver", "tool_bolt_rifle", "tool_flare_gun",
+            "tool_grapple" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -191,6 +192,16 @@ namespace MadMax.Game
                     g.CylY(0, 0, 1.5f, -6, -2, p => p.y == -6 ? Pal.Black[1] : Pal.Ochre[4]);
                     g.Box(0, -1, -1, 0, 1, 0, Pal.Ramp(Pal.Ochre, 3));
                     break;
+                case "tool_grapple":
+                    g.Box(0, -6, 0, 0, 0, 0, Pal.Ramp(Pal.Metal, 2, 2201));                                   // shank
+                    foreach (int sx in new[] { -1, 1 })                                                      // three flukes
+                    {
+                        g.Box(sx, -7, 0, sx * 2, -7, 0, Pal.Ramp(Pal.Metal, 1, 2202));
+                        g.Box(sx * 3, -6, 0, sx * 3, -4, 0, Pal.Ramp(Pal.Metal, 1, 2203));
+                    }
+                    g.Box(0, -7, 1, 0, -7, 2, Pal.Ramp(Pal.Metal, 1, 2204)); g.Box(0, -6, 3, 0, -4, 3, Pal.Ramp(Pal.Metal, 1, 2205));
+                    g.CylY(0, 0, 2.2f, 1, 3, p => (p.y + p.x) % 2 == 0 ? Pal.Sand[2] : Pal.Sand[3]);          // coiled rope at the grip
+                    break;
                 case "tool_flashlight":
                     g.CylY(0, 0, 1.2f, -6, 0, Pal.Ramp(Pal.Metal, 1, 722));
                     g.CylY(0, 0, 1.7f, -8, -7, Pal.Ramp(Pal.Chrome, 2));
@@ -285,6 +296,12 @@ namespace MadMax.Game
                 f.tip = tip; tip.localPosition = new Vector3(0, -24f * S, 0);
                 f.swingDuration = 0.7f; f.strikeAt = 0.5f; f.style = ToolStyle.Slash;
                 tool = f;
+            }
+            else if (id == "tool_grapple")
+            {
+                var gr = go.AddComponent<GrappleTool>();
+                gr.swingDuration = 0.6f; gr.strikeAt = 0.4f; gr.style = ToolStyle.Slash;
+                tool = gr;
             }
             else if (id == "tool_geiger")
             {

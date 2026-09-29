@@ -648,6 +648,7 @@ namespace MadMax.Game
                 Player.moveInput = move;
                 Player.run = shift;
                 if (spaceDown) Player.jump = true;
+                Player.crouch = (kb != null && kb.leftCtrlKey.isPressed) || (pad != null && pad.rightStickButton.isPressed);   // crouch; at a run: slide
                 bool attack = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
                 if (Player.Tool is FishingRodTool rod && rod.Busy)
                 {

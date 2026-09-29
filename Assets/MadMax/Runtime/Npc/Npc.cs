@@ -161,7 +161,7 @@ namespace MadMax.Npc
             if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; foe = PickFoe(g); }
             if (Surrendered) mode = Mode.Surrender;
             else if (foe) mode = Mode.Fight;
-            else if (Hostile && dPlayer < 60f && !g.Vitals.Dead) mode = Mode.Fight;
+            else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching: harder to spot
             else if (mode != Mode.Flee || Time.time > fleeUntil) mode = Routine();
             if (mode != Mode.Gather) LeaveFire();
             if (mode != Mode.Sleep && asleep) SetAsleep(false);

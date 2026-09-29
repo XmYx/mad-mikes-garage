@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MadMax.RPG
 {
     public enum Attr { Strength, Endurance, Agility, Intelligence, Perception, Charisma }
-    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming, Speech }
+    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming, Speech, Athletics }
 
     /// <summary>A base trait picked at character creation. Positive traits cost points, negative ones refund them.</summary>
     public class TraitDef
@@ -88,11 +88,11 @@ namespace MadMax.RPG
         [NonSerialized] public float learningSpeed = 1f;            // game rule
         public static event Action<string> Notice;                   // "MECHANICS 3", "STRENGTH 6"
 
-        public const int SkillCount = 11, AttrCount = 6, MaxLevel = 10;
-        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING", "SPEECH" };
+        public const int SkillCount = 12, AttrCount = 6, MaxLevel = 10;
+        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING", "SPEECH", "ATHLETICS" };
         public static readonly string[] AttrNames = { "STRENGTH", "ENDURANCE", "AGILITY", "INTELLIGENCE", "PERCEPTION", "CHARISMA" };
         // which attribute grows alongside each skill
-        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance, Attr.Charisma };
+        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance, Attr.Charisma, Attr.Agility };
 
         public static float XpForLevel(int level) => 40f * level * level;
         public int Level(Skill s) => Mathf.Min(MaxLevel, Mathf.FloorToInt(Mathf.Sqrt(skillXp[(int)s] / 40f)));

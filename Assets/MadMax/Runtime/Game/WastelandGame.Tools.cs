@@ -125,7 +125,7 @@ namespace MadMax.Game
 
         void UpdateAim(UnityEngine.InputSystem.Mouse mouse, UnityEngine.InputSystem.Gamepad pad)
         {
-            bool ranged = !Current && Player && Player.Tool is RangedTool && !Menus.IsOpen;
+            bool ranged = !Current && Player && (Player.Tool is RangedTool || Player.Tool is GrappleTool) && !Menus.IsOpen;
             Aiming = ranged && (ForceAim || (mouse != null && mouse.rightButton.isPressed) || (pad != null && pad.leftTrigger.isPressed));
             Player.aiming = Aiming;
             AimScreen = new Vector2(-1f, -1f);

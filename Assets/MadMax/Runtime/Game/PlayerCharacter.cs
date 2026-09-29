@@ -8,7 +8,7 @@ namespace MadMax.Game
     /// footprints in mud. Can walk vehicle interiors (kinematic, vehicle-local) and sits physically in driver seats.
     /// Inputs are written by WastelandGame; movement is relative to <see cref="viewYaw"/>.</summary>
     [RequireComponent(typeof(CharacterController))]
-    public class PlayerCharacter : MonoBehaviour
+    public partial class PlayerCharacter : MonoBehaviour
     {
         public float walkSpeed = 1.7f;                 // brisk walk (real 1.4 m/s)
         public float runSpeed = 5.2f;                  // run (real jog 3–4, sprint 6–8 m/s)
@@ -280,6 +280,7 @@ namespace MadMax.Game
             if (Sitting) { UpdateSitting(dt); return; }
             if (SeatedIn) { UpdateSeated(dt); return; }
             if (Interior) { UpdateInterior(dt); return; }
+            if (Traversing) { TraverseTick(dt); return; }                                  // vault, climb, zip (roadmap 22)
 
             var terrain = DeformableTerrain.Instance;
             var dir = Quaternion.Euler(0, viewYaw, 0) * new Vector3(moveInput.x, 0, moveInput.y);
@@ -293,6 +294,7 @@ namespace MadMax.Game
             if (aiming) speed = Mathf.Min(speed, walkSpeed * 0.7f);
             if (game) speed *= game.InjurySpeed;
             if (Carried) speed *= 0.6f;
+            speed *= CrouchSpeed(stats, canRun);
             if (terrain) speed *= Mathf.Lerp(1f, 0.6f, terrain.SurfaceAt(transform.position.x, transform.position.z).mud);
             if (MadMax.Building.DefenceHazard.All.Count > 0) speed *= MadMax.Building.DefenceHazard.SlowAt(transform.position);   // barbed wire
             // water: wade (slower), swim (float at the surface, costs stamina), drown when exhausted
@@ -301,6 +303,7 @@ namespace MadMax.Game
             Swimming = waterDepth > 1.25f;
             if (waterDepth > 0.2f) speed *= Mathf.Lerp(1f, 0.45f, Mathf.Clamp01(waterDepth / 1.25f));
             var horizontal = dir * speed;
+            if (Sliding) horizontal = SlideVelocity(dt);
             if (Swimming)
             {
                 bool tired = vitals && (vitals.Exhausted || !vitals.Spend(4f * dt));
@@ -319,16 +322,25 @@ namespace MadMax.Game
 
             if (cc.isGrounded)
             {
-                if (airborne && fallSpeed < -9f) vitals?.Hurt((-fallSpeed - 9f) * 8f, "FALL");    // hard landing
+                if (airborne) Land(vitals);                                                   // hard landings hurt; a roll saves most of it
                 airborne = false; fallSpeed = 0f;
                 vy = -1f;
-                if (jump && !Carried && (!vitals || !vitals.Exhausted) && (!game || game.CanJumpInjured)) { vy = jumpSpeed; vitals?.Spend(8f); }
+                if (jump && TryTraverse(dir)) { jump = false; return; }                        // vault or climb what is in front
+                if (jump && !Carried && !Crouching && (!vitals || !vitals.Exhausted) && (!game || game.CanJumpInjured))
+                {
+                    bool sprint = canRun && dir.sqrMagnitude > 0.5f;
+                    vy = jumpSpeed * (sprint ? 1.08f : 1f); vitals?.Spend(sprint ? 10f : 8f);
+                    if (sprint) { sprintJump = 0.6f; game?.Stats?.Practice(MadMax.RPG.Skill.Athletics, 0.5f); }
+                }
             }
             else { airborne = true; fallSpeed = Mathf.Min(fallSpeed, vy); }
             jump = false;
             vy += gravity * dt;
+            if (sprintJump > 0f) { sprintJump -= dt; horizontal *= 1.12f; }                     // a running leap carries further
+            horizontal += Carrier(dt);                                                        // riding on a vehicle bed or roof
             cc.Move((horizontal + Vector3.up * vy) * dt);
             Velocity = cc.velocity;
+            CrouchTick(dt, canRun);
 
             if (terrain)
             {
@@ -338,7 +350,7 @@ namespace MadMax.Game
             }
 
             Face(dir, dt, Quaternion.Euler(0, viewYaw, 0));
-            Animate(dt, new Vector2(Velocity.x, Velocity.z).magnitude, cc.isGrounded, Velocity.y);
+            Animate(dt, new Vector2(Velocity.x - carry.x, Velocity.z - carry.z).magnitude, cc.isGrounded, Velocity.y);   // riding: legs don't run
         }
 
         void Face(Vector3 dir, float dt, Quaternion view)
@@ -391,6 +403,7 @@ namespace MadMax.Game
             float turn = Mathf.DeltaAngle(lastYaw, yaw) / dt;
             lastYaw = yaw;
             ToolPose? toolPose = PoseOverride ?? (Tool ? Tool.IdlePose : null);
+            if (Crouching || Sliding) toolPose = CrouchPose(toolPose);
             if (swingT >= 0f && Tool && PoseOverride == null)
             {
                 var st = WastelandGame.Instance ? WastelandGame.Instance.Stats : null;
