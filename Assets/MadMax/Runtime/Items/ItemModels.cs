@@ -41,7 +41,9 @@ namespace MadMax.Items
                     g.Box(-3, 0, 0, 3, 6, 0, Pal.Solid(c)); g.Box(-5, 4, 0, 5, 6, 0, Pal.Solid(c)); g.Box(-1, 6, 0, 1, 6, 0, Pal.Solid(dark));
                     break;
                 case ItemCategory.Throwable:
-                    g.CylY(0, 0, 1.6f, 0, 5, Pal.Ramp(Pal.Glass, 2)); g.Box(0, 6, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); g.Set(0, 9, 0, Pal.Solid(Pal.Amber));
+                    if (id == "throw_dynamite") { for (int x = -2; x <= 2; x += 2) g.CylY(x, 0, 1f, 0, 6, Pal.Ramp(Pal.Crimson, 2)); g.Box(-2, 3, 1, 2, 3, 1, Pal.Solid(Pal.Cream[3])); g.Box(0, 7, 0, 0, 9, 0, Pal.Solid(Pal.Black[2])); }
+                    else if (id == "throw_pipebomb") { g.CylY(0, 0, 1.6f, 0, 6, Pal.Ramp(Pal.Metal, 2)); g.CylY(0, 0, 2f, 0, 0, Pal.Ramp(Pal.Metal, 1)); g.CylY(0, 0, 2f, 6, 6, Pal.Ramp(Pal.Metal, 1)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Black[2])); }
+                    else { g.CylY(0, 0, 1.6f, 0, 5, Pal.Ramp(Pal.Glass, 2)); g.Box(0, 6, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); g.Set(0, 9, 0, Pal.Solid(Pal.Amber)); }
                     break;
                 case ItemCategory.Ammo:
                     for (int i = -2; i <= 2; i += 2) { g.Box(i, 0, 0, i, 3, 0, Pal.Solid(Pal.Hex("b02818"))); g.Set(i, 4, 0, Pal.Solid(Pal.Bronze[2])); }

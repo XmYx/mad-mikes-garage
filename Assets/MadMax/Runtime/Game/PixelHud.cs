@@ -219,6 +219,12 @@ namespace MadMax.Game
                 string s = "RAD " + (r * 10f).ToString("0.0");
                 canvas.Text(x0 + n * (slot + 2) + 4, y + 1, s, r > 0.5f ? new Color32(220, 60, 40, 255) : r > 0.15f ? Amber : Green);
             }
+            if (MetalDetectorTool.Reading >= 0f)
+            {
+                float r = MetalDetectorTool.Reading;
+                string s = r < 0.05f ? "ORE: NOTHING" : "ORE: " + ResourceInfo.Name(MetalDetectorTool.Kind).Replace(" ORE", "") + " " + Mathf.RoundToInt(r * 100f) + "%";
+                canvas.Text(x0 + n * (slot + 2) + 4, y + 1, s, r > 0.5f ? Green : r > 0.15f ? Amber : Dim);
+            }
             if (BinocularsTool.Looking) DrawSpotting();
         }
 

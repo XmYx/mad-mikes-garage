@@ -427,6 +427,12 @@ namespace MadMax.World
         /// <summary>Soil a dig produces here: biome topsoil, stone deeper down.</summary>
         public ResourceType SoilAt(float x, float z, float depthBelowBase)
         {
+            // deep over an ore deposit, some scoops come up as ore (richer ground, more often)
+            if (depthBelowBase > 0.6f && World != null)
+            {
+                float ore = World.OreAt(x, z, out var kind);
+                if (ore > 0.3f && Hash(Mathf.FloorToInt(x * 3f), Mathf.FloorToInt(z * 3f) + Mathf.FloorToInt(depthBelowBase * 4f)) < ore * 0.6f) return kind;
+            }
             if (depthBelowBase > 1.6f) return ResourceType.Stone;
             switch (BiomeAt(x, z))
             {

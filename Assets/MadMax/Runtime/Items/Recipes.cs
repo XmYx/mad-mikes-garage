@@ -43,6 +43,7 @@ namespace MadMax.Items
             { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
             { "bp_cargo_generator", "BLUEPRINT: ONBOARD GENERATOR" }, { "bp_lights_search", "BLUEPRINT: SEARCHLIGHT" }, { "bp_framepack", "BLUEPRINT: FRAME PACK" },
             { "use_battery", "CAR BATTERY" }, { "med_antibiotics", "ANTIBIOTICS" }, { "med_painkillers", "PAINKILLERS" }, { "use_fuel_additive", "FUEL ADDITIVE" }, { "use_sewing_kit", "SEWING KIT" },
+            { "throw_dynamite", "DYNAMITE" }, { "throw_pipebomb", "PIPE BOMB" }, { "tool_detector", "METAL DETECTOR" },
             { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };

@@ -58,6 +58,48 @@ namespace MadMax.World
             for (int i = 0; i < 2; i++) Add(T("Shop" + i, Shop(i), 0.2f));
             Add(T("Streetlight0", Streetlight(), 0.08f));
             Add(T("GasPump0", GasPumpGrid(), 0.08f));
+            foreach (var ore in OreRamps.Keys) for (int v = 0; v < 2; v++) Add(T("Ore_" + ore + v, OreRock(ore, v), 0.12f));
+        }
+
+        // ------------------------------------------------------------------ ore outcrops
+        static readonly Dictionary<ResourceType, Color32[]> OreRamps = new Dictionary<ResourceType, Color32[]>
+        {
+            { ResourceType.IronOre, Pal.Rust }, { ResourceType.CopperOre, Pal.Moss }, { ResourceType.TinOre, Pal.Chrome }, { ResourceType.Bauxite, Pal.Ochre },
+            { ResourceType.Coal, Pal.Black }, { ResourceType.Sulfur, Pal.Ochre }, { ResourceType.LeadOre, Pal.Metal }, { ResourceType.UraniumOre, Pal.Moss },
+        };
+
+        /// <summary>A lumpy rock of stone shot through with bands of ore (the voxels' material is the ore: breaking
+        /// them yields it).</summary>
+        static VoxelGrid OreRock(ResourceType ore, int v)
+        {
+            var g = new VoxelGrid();
+            var rnd = new System.Random(900 + (int)ore * 7 + v);
+            float sx = (float)rnd.NextDouble() * 100f, sz = (float)rnd.NextDouble() * 100f;
+            int rx = 10 + v * 3, ry = 8 + v * 2, rz = 9 + v * 2;
+            var vein = OreRamps[ore];
+            bool bright = ore == ResourceType.Sulfur, glow = ore == ResourceType.UraniumOre;
+            for (int x = -rx; x <= rx; x++)
+            for (int y = 0; y <= ry; y++)
+            for (int z = -rz; z <= rz; z++)
+            {
+                float nx = x / (float)rx, ny = y / (float)ry, nz = z / (float)rz;
+                float d = nx * nx + ny * ny + nz * nz + (Mathf.PerlinNoise((x + sx) * 0.21f, (z + sz) * 0.21f + y * 0.13f) - 0.5f) * 0.45f;
+                if (d > 1f) continue;
+                float band = Mathf.Abs(Mathf.PerlinNoise((x + sx) * 0.16f, (y + z * 0.7f + sz) * 0.16f) + Mathf.PerlinNoise((z + sz) * 0.16f, (y + x * 0.5f) * 0.16f) - 1f);
+                bool isVein = band < (ore == ResourceType.Coal ? 0.12f : 0.08f);
+                var p = new Vector3Int(x, y, z);
+                if (isVein)
+                {
+                    g.Mat((byte)ore);
+                    g.Set(p, q => glow && Pal.Hash(q, 17) > 0.8f ? GlowGreen : Pal.Pick(vein, q, 1810 + (int)ore, bright ? 3 : 2));
+                }
+                else
+                {
+                    g.Mat(Stone);
+                    g.Set(p, q => Pal.Pick(Conc, q, 1811, 2));
+                }
+            }
+            return g;
         }
 
         public static VoxelGrid TemplateGrid(string id) { Ensure(); return templates.TryGetValue(id, out var t) ? t.grid : null; }
@@ -540,6 +582,23 @@ namespace MadMax.World
                         break;
                 }
                 SpawnById(terrain, id, name, parent, mat, new Vector3(x, terrain.Height(x, z) - 0.05f, z), yawSteps * 90f + (float)rnd.NextDouble() * 20f, dyn, store, key, legacy);
+            }
+
+            // ---- ore outcrops over the rich core of a deposit
+            float oreHere = world.OreAt(cx, cz, out var oreKind);
+            if (oreHere > 0.5f && world.SettlementAt(cx, cz) == null)
+            {
+                int n = oreHere > 0.78f ? 2 : 1;
+                for (int i = 0; i < n; i++)
+                {
+                    float x = (c.x + 0.2f + 0.6f * (float)rnd.NextDouble()) * DeformableTerrain.ChunkWorld;
+                    float z = (c.y + 0.2f + 0.6f * (float)rnd.NextDouble()) * DeformableTerrain.ChunkWorld;
+                    int variant = rnd.Next(2), yawSteps = rnd.Next(4);
+                    var s = world.Sample(x, z);
+                    if (s.roadDist < 6f || !float.IsNaN(s.water) || s.feature != 0) continue;
+                    var d = SpawnById(terrain, "Ore_" + oreKind + variant, "Rock", parent, mat, new Vector3(x, terrain.Height(x, z) - 0.15f, z), yawSteps * 90f, false, store, $"o{c.x},{c.y},{i}", legacy);
+                    if (d && oreKind == ResourceType.UraniumOre) d.gameObject.AddComponent<Hazard>().radiation = 0.35f;
+                }
             }
 
             // ---- settlement pieces whose anchor is in this chunk

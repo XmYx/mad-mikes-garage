@@ -26,6 +26,37 @@ namespace MadMax.Designs
             yield return Flamethrower();
             yield return RearDropper();
             yield return SmokeLauncher();
+            yield return ExcavatorDrill();
+        }
+
+        /// <summary>Rock drill for the excavator (roadmap 7): the arm's boom and stick with a hydraulic auger ("bit",
+        /// spun by the Machine) instead of the bucket. Bores rock and outcrops, and digs deep for buried ore.</summary>
+        public static PartDesign ExcavatorDrill()
+        {
+            var g = new VoxelGrid();
+            var paint = CatPaint(1541);
+            g.Use("boom");
+            g.CylX(0, 0, 2.2f, -2, 2, Pal.Ramp(Pal.Metal, 1, 1542));
+            g.Tube(new Vector3(0, 0, 0), new Vector3(0, 16, 24), 1.6f, paint);
+            g.Tube(new Vector3(0, 4, 6), new Vector3(0, 14, 20), 0.6f, Pal.Ramp(Pal.Chrome, 2));
+            g.Use("stick");
+            g.CylX(16, 24, 1.8f, -2, 2, Pal.Ramp(Pal.Metal, 1, 1543));
+            g.Tube(new Vector3(0, 16, 24), new Vector3(0, -6, 42), 1.3f, paint);
+            g.Use("bucket");
+            g.Box(-2, -11, 40, 2, -6, 44, Pal.Ramp(Pal.Metal, 0, 1544));                                        // drive head
+            g.Box(-3, -9, 41, -3, -7, 43, Pal.Ramp(Pal.Black, 1)); g.Box(3, -9, 41, 3, -7, 43, Pal.Ramp(Pal.Black, 1));   // hoses
+            g.Use("bit");
+            g.Box(0, -25, 42, 0, -12, 42, Pal.Ramp(Pal.Metal, 2, 1545));                                        // shaft
+            for (int y = -24; y <= -13; y++)
+            {
+                float a = y * 0.9f;
+                g.Set(Mathf.RoundToInt(Mathf.Cos(a) * 2f), y, 42 + Mathf.RoundToInt(Mathf.Sin(a) * 2f), Pal.Ramp(Pal.Chrome, 2));   // helical flight
+                g.Set(Mathf.RoundToInt(Mathf.Cos(a) * 1f), y, 42 + Mathf.RoundToInt(Mathf.Sin(a) * 1f), Pal.Ramp(Pal.Chrome, 1));
+            }
+            g.Set(0, -26, 42, Pal.Solid(Pal.Chrome[3]));                                                          // point
+            g.Use("body");
+            var p = Make("tool_excavator_drill", PartCategory.Tool, g, 950, 4);
+            return p.Segment("boom", new Vector3Int(0, 0, 0)).Segment("stick", new Vector3Int(0, 16, 24), "boom").Segment("bucket", new Vector3Int(0, -6, 42), "stick").Segment("bit", new Vector3Int(0, -11, 42), "bucket");
         }
 
         // ---------------------------------------------------------------- cargo socket

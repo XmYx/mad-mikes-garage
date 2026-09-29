@@ -106,6 +106,19 @@ namespace MadMax.RPG
                     }
                     break;
                 }
+                case "BLAST":
+                {
+                    // shrapnel and the shock wave: cuts, a burn, and on a big one a broken limb
+                    var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));
+                    int n = amount > 30f ? 3 : amount > 12f ? 2 : 1;
+                    for (int i = 0; i < n; i++)
+                    {
+                        var z = all[rnd.Next(all.Length)];
+                        var w = amount > 35f && rnd.NextDouble() < 0.4 && z != BodyZone.Head && z != BodyZone.Torso ? Wound.Fracture : i == 0 ? Wound.Burn : Wound.Laceration;
+                        list.Add(new Injury { zone = z, type = w, severity = w == Wound.Burn ? 0.7f : 1f });
+                    }
+                    break;
+                }
                 case "BURNED":
                 {
                     var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));

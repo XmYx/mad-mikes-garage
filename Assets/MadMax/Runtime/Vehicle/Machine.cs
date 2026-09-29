@@ -107,6 +107,16 @@ namespace MadMax.Vehicles
                     if (k.shift) Hinge(ref slew, MachineKeys.Axis(k.h2, k.h1), 30f, -150f, 150f, dt);
                     else Hinge(ref boom, MachineKeys.Axis(k.h1, k.h2), 22f, -35f, 45f, dt);
                     Hinge(ref stick, MachineKeys.Axis(k.h3, k.h4), 28f, -55f, 75f, dt);
+                    // a rock drill in place of the bucket: [5] spins the auger into rock, outcrops and deep ground
+                    var bit = Seg(Tool, "bit");
+                    if (bit)
+                    {
+                        bool spin = k.h5 && !k.shift;
+                        if (spin) bit.localRotation *= Quaternion.Euler(0f, 900f * dt, 0f);
+                        string doing = Drill(bit.TransformPoint(new Vector3(0, -15, 0) * S), spin, dt);
+                        Status = "EXCAVATOR DRILL" + (doing != null ? "  " + doing : "") + "  [1/2] BOOM  [3/4] STICK  [5] DRILL  [SHIFT+1/2] SWING";
+                        break;
+                    }
                     Hinge(ref bucket, MachineKeys.Axis(k.h5, k.h6), 45f, -80f, 75f, dt);
                     var tip = Teeth(Seg(Tool, "bucket"), new Vector3(0, -8, 4));
                     bool inSoil = Dig(ref load, ref loadType, ref tick, Capacity, tip, (k.h5 || k.h3) && !k.shift, 1.0f, 0.14f, dt, 8f);
@@ -171,6 +181,51 @@ namespace MadMax.Vehicles
         static string Pct(float v, float cap) => Mathf.RoundToInt(v / Mathf.Max(0.01f, cap) * 100f) + "%";
 
         static Vector3 Teeth(Transform seg, Vector3 local) => seg ? seg.TransformPoint(local * S) : Vector3.zero;
+
+        float drillTick;
+        static readonly Collider[] drillHits = new Collider[16];
+
+        /// <summary>The spinning auger: breaks rock props and walls it touches (their ore and stone drop as pickups) and
+        /// bores deep into the ground, handing the spoil (ore over a deposit) straight to the operator.</summary>
+        string Drill(Vector3 tip, bool spinning, float dt)
+        {
+            MadMax.Audio.Sfx.Loop(this, "grinder", spinning ? 0.6f : 0f, 0.7f, 40f);
+            if (!spinning || (drillTick -= dt) > 0f) return null;
+            drillTick = 0.2f;
+            string doing = "SPINNING";
+            int n = Physics.OverlapSphereNonAlloc(tip, 0.8f, drillHits, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = drillHits[i];
+                if (c.transform.IsChildOf(transform)) continue;
+                var dmg = c.GetComponentInParent<IDamageable>();
+                if (dmg == null) continue;
+                var p = c is MeshCollider mc && !mc.convex ? c.bounds.ClosestPoint(tip) : c.ClosestPoint(tip);
+                dmg.ApplyHit(p, Vector3.down, 1.2f, 0.45f, gameObject);
+                Fx.Sparks(p, Vector3.up, 3, new Color(1f, 0.8f, 0.4f));
+                doing = "BREAKING ROCK";
+                break;
+            }
+            var terrain = DeformableTerrain.Instance;
+            float ground = terrain.Height(tip.x, tip.z);
+            if (tip.y < ground + 0.1f)
+            {
+                float depth = terrain.DugDepth(tip.x, tip.z);
+                if (depth > 12f) return "AS DEEP AS THE DRILL GOES";
+                var at = new Vector3(tip.x, ground, tip.z);
+                float moved = Terraform(DeformableTerrain.TerraOp.Dig, at, 0.5f, 0.22f);
+                if (moved > 0f)
+                {
+                    var type = terrain.SoilAt(tip.x, tip.z, depth);
+                    int units = Mathf.Max(1, Mathf.RoundToInt(moved * UnitsPerM3));
+                    var g = MadMax.Game.WastelandGame.Instance;
+                    if (g) g.Inventory.Add(type, units);
+                    Fx.Smoke(at + Vector3.up * 0.3f, Vector3.up * 1.2f + Random.insideUnitSphere * 0.5f, 0.5f, DustColor(type), 1.2f);
+                    doing = "BORING " + depth.ToString("0.0") + " M: " + ResourceInfo.Name(type);
+                }
+            }
+            return doing;
+        }
 
         /// <summary>Scoop while the teeth are in the soil and the operator is curling / pushing. Returns whether the teeth are in the ground.</summary>
         bool Dig(ref float held, ref ResourceType type, ref float timer, float cap, Vector3 tip, bool working, float radius, float amount, float dt, float maxDepth)

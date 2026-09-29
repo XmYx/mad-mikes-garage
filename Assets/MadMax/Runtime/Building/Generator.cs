@@ -7,14 +7,16 @@ namespace MadMax.Building
     public class Generator : MonoBehaviour, IPlaceState, IInteractable
     {
         public string Prompt(MadMax.Game.WastelandGame g) =>
-            (on ? "[E] STOP" : "[E] START") + "  [T] REFUEL  " + fuel.ToString("0.0") + "/" + tankLitres + "L" + (node ? "  LOAD " + Mathf.RoundToInt(node.demand) + "W" : "");
+            (on ? "[E] STOP" : "[E] START") + (solid ? "  [T] STOKE  FIRE " : "  [T] REFUEL  ") + fuel.ToString("0.0") + "/" + tankLitres + (solid ? "" : "L") + (node ? "  LOAD " + Mathf.RoundToInt(node.demand) + "W" : "");
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
-            if (secondary) { int n = Refuel(g.Inventory); g.Toast(n > 0 ? "ADDED " + n + "L" : "NO FUEL OR ETHANOL"); }
+            if (secondary) { int n = Refuel(g.Inventory); g.Toast(n > 0 ? (solid ? "STOKED THE FIREBOX" : "ADDED " + n + "L") : solid ? "NO COAL, CHARCOAL OR WOOD" : "NO FUEL OR ETHANOL"); }
             else Toggle();
         }
 
         public float output = 1500f, tankLitres = 20f;
+        /// <summary>Steam generator: burns coal (5 per lump), charcoal (4) or wood (2) instead of liquid fuel.</summary>
+        public bool solid;
         public float fuel;
         public bool on;
         UtilityNode node;
@@ -38,6 +40,14 @@ namespace MadMax.Building
 
         public int Refuel(Inventory inv)
         {
+            if (solid)
+            {
+                int lumps = 0;
+                foreach (var (t, per) in new[] { (ResourceType.Coal, 5f), (ResourceType.Charcoal, 4f), (ResourceType.Wood, 2f) })
+                    while (fuel + per <= tankLitres + 0.01f && inv.TrySpend(t, 1)) { fuel += per; lumps++; }
+                if (lumps > 0) GetComponent<Placeable>()?.Dirty();
+                return lumps;
+            }
             int want = Mathf.FloorToInt(tankLitres - fuel);
             int n = 0;
             foreach (var t in new[] { ResourceType.Diesel, ResourceType.Fuel, ResourceType.Ethanol })

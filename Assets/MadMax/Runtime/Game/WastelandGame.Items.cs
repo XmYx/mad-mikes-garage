@@ -130,9 +130,10 @@ namespace MadMax.Game
         /// <summary>A thrown bottle. Only the authority's bottle starts the fire (clients see a visual copy).</summary>
         public void SpawnThrown(string id, Vector3 p, Vector3 v, bool authority)
         {
+            bool dynamite = id == "throw_dynamite", pipe = id == "throw_pipebomb";
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Molotov";
-            go.transform.localScale = new Vector3(0.09f, 0.22f, 0.09f);
+            go.name = dynamite ? "Dynamite" : pipe ? "PipeBomb" : "Molotov";
+            go.transform.localScale = dynamite ? new Vector3(0.07f, 0.24f, 0.07f) : pipe ? new Vector3(0.09f, 0.26f, 0.09f) : new Vector3(0.09f, 0.22f, 0.09f);
             go.transform.position = p;
             go.GetComponent<MeshRenderer>().sharedMaterial = propMaterial;
             var col = go.GetComponent<Collider>();
@@ -142,6 +143,18 @@ namespace MadMax.Game
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             rb.linearVelocity = v;
             rb.angularVelocity = Random.insideUnitSphere * 8f;
+            if (dynamite || pipe)
+            {
+                // a lit fuse, then the bang: dynamite breaks rock and digs craters, a pipe bomb shreds what stands near
+                var ex = go.AddComponent<MadMax.World.Explosive>();
+                ex.authority = authority; ex.source = Player ? Player.gameObject : null;
+                ex.fuse = dynamite ? 4f : 3f; ex.radius = dynamite ? 3.2f : 2.2f; ex.power = dynamite ? 8f : 5f; ex.crater = dynamite ? 1.2f : 0.3f;
+                var r = go.GetComponent<MeshRenderer>();
+                r.material.color = dynamite ? new Color(0.75f, 0.12f, 0.08f) : new Color(0.4f, 0.4f, 0.42f);
+                var wick = new GameObject("Wick");
+                wick.transform.SetParent(go.transform, false); wick.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+                return;
+            }
             go.AddComponent<MadMax.World.Molotov>().authority = authority;
             var fire = new GameObject("Wick").AddComponent<Light>();
             fire.transform.SetParent(go.transform, false); fire.type = LightType.Point; fire.range = 3f; fire.intensity = 1.5f; fire.color = new Color(1f, 0.6f, 0.2f);

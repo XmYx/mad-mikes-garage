@@ -121,6 +121,11 @@ namespace MadMax.Items
             yield return lead;
             yield return Itm("battery", "CAR BATTERY", RecipeCategory.Supplies, "workbench", "use_battery", 1, "LEAD-ACID: FLASHLIGHTS, BATTERY BANKS", null, (ResourceType.Lead, 2), (ResourceType.Acid, 1), (S, 1));
 
+            // ---- 7. mining: explosives, prospecting
+            yield return Itm("dynamite", "DYNAMITE X2", RecipeCategory.Weapons, "chemlab", "throw_dynamite", 2, "4 S FUSE: BREAKS ROCK, BLOWS CRATERS", new[] { (ItemIds.Paper, 1) }, (ResourceType.Gunpowder, 2), (ResourceType.Cloth, 1));
+            yield return Itm("pipebomb", "PIPE BOMB", RecipeCategory.Weapons, "gunsmith", "throw_pipebomb", 1, "3 S FUSE: SHRAPNEL", null, (ResourceType.Gunpowder, 1), (S, 2));
+            yield return Itm("detector", "METAL DETECTOR", RecipeCategory.Tools, "workbench", "tool_detector", 1, "BEEPS OVER BURIED ORE", null, (Cu, 3), (G, 1), (S, 2));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

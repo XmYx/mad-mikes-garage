@@ -134,12 +134,16 @@ decorative turret.
 ## 7. Mining `T2`
 *Exists:* digging soils by depth (sand, clay, laterite, rubble, slag, stone), wash plant → ores.
 
-- [ ] **Ore veins**: visible outcrops (iron, copper, tin, bauxite, coal, sulfur, uranium) on mesas and hills;
+- [x] **Ore veins**: visible outcrops (iron, copper, tin, bauxite, coal, sulfur, uranium) on mesas and hills;
       pickaxe / sledge / explosives yield ore
-- [ ] **Explosives**: dynamite and pipe bombs blast rock and terrain (craters)
-- [ ] **Drill** attachment for the excavator
-- [ ] **Prospecting**: geiger and metal detector show buried ore strength
-- [ ] **Coal** as fuel for furnaces and generators
+- [x] **Explosives**: dynamite and pipe bombs blast rock and terrain (craters)
+- [x] **Drill** attachment for the excavator
+- [x] **Prospecting**: geiger and metal detector show buried ore strength
+- [x] **Coal** as fuel for furnaces and generators
+      *Done:* `WorldGen.Ores` deposits (140 m cells, biome rules, + lead ore), outcrop templates whose vein voxels are
+      the ore material (any carving yields it), deep digs over deposits bring ore up (`SoilAt`), `Explosion` /
+      `Explosive` (dynamite, pipe bomb, BLAST wounds), `tool_excavator_drill` (auger "bit" segment, bores 12 m, spoil to
+      the operator), `MetalDetectorTool`, geiger reads uranium, steam generator burns coal, coal stands in for charcoal.
 
 *Ties:* refining, tools, weapons (explosives), economy.
 

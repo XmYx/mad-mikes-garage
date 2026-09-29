@@ -10,7 +10,7 @@ namespace MadMax.Game
     {
         // index = network tool id: append only
         public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern",
-            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight" };
+            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -111,6 +111,11 @@ namespace MadMax.Game
                     g.Box(0, -3, 2, 0, -1, 2, Pal.Solid(Pal.Glass[3]));                                       // dial
                     g.Box(0, -8, 0, 0, -5, 0, Pal.Ramp(Pal.Metal, 2));                                        // probe
                     break;
+                case "tool_detector":
+                    g.Box(0, -12, 0, 0, 0, 0, Pal.Ramp(Pal.Metal, 2, 723));                                   // shaft
+                    g.Box(-1, -2, 1, 1, -1, 2, Pal.Ramp(Pal.Black, 1)); g.Set(0, -1, 3, Pal.Solid(Pal.Amber));  // control box
+                    g.CylZ(0, -13, 2.4f, 1, 2, Pal.Ramp(Pal.Ochre, 2, 724), 1.2f);                            // search coil
+                    break;
                 case "tool_flashlight":
                     g.CylY(0, 0, 1.2f, -6, 0, Pal.Ramp(Pal.Metal, 1, 722));
                     g.CylY(0, 0, 1.7f, -8, -7, Pal.Ramp(Pal.Chrome, 2));
@@ -159,6 +164,12 @@ namespace MadMax.Game
                 var b = go.AddComponent<BinocularsTool>();
                 b.swingDuration = 0.4f; b.strikeAt = 0.1f; b.style = ToolStyle.Twist;
                 tool = b;
+            }
+            else if (id == "tool_detector")
+            {
+                var d = go.AddComponent<MetalDetectorTool>();
+                d.swingDuration = 0.4f; d.strikeAt = 0.1f; d.style = ToolStyle.Twist;
+                tool = d;
             }
             else if (id == "tool_geiger")
             {

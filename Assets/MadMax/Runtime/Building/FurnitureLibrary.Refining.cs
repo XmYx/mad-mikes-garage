@@ -21,6 +21,12 @@ namespace MadMax.Building
                 Glow(go, new Vector3(1.1f, 4.1f, -0.8f), new Color(1f, 0.55f, 0.2f), 6f, 2f, false, 0f);     // flare stack
             }, (Fe, 20), (Cu, 8), (Co, 6), (G, 2));
             yield return D("oil_press", "OIL PRESS", In, OilPress(), 6, false, go => Station(go, "press", "PRESS SEED OIL", 0f), (W, 6), (Fe, 3));
+            yield return D("coal_generator", "STEAM GENERATOR", BuildCategory.Utility, SteamGenerator(), 12, false, go =>
+            {
+                Node(go, UtilityKind.Power, 0.9f);
+                var gen = go.AddComponent<Generator>(); gen.solid = true; gen.output = 2500f; gen.tankLitres = 40f;
+                Glow(go, new Vector3(0f, 0.35f, 0.75f), new Color(1f, 0.5f, 0.2f), 3f, 1.5f, false, 0f);
+            }, (Fe, 10), (Cu, 6), (ResourceType.Stone, 6));
         }
 
         static Mesh beamMesh;
@@ -68,6 +74,19 @@ namespace MadMax.Building
             g.Box(-2, 3, 15, 6, 6, 15, p => (p.x + p.y) % 2 == 0 ? Pal.Amber : Pal.Rust[4]);                                   // burner window
             g.Tube(new Vector3(14, 2, -10), new Vector3(14, 50, -10), 0.9f, Pal.Ramp(Pal.Metal, 0, 1726));                    // flare stack
             foreach (int x in new[] { -14, -10 }) g.CylY(x, 10, 2.5f, 2, 8, Pal.Weathered(Pal.Cream, 0.3f, 1727 + x, 2, 0)); // product tanks
+            return g;
+        }
+
+        static VoxelGrid SteamGenerator()
+        {
+            var g = new VoxelGrid().Mat(Iron);
+            g.CylZ(0, 7, 5f, -9, 6, p => p.z % 4 == 0 ? Pal.Metal[0] : Pal.Pick(Pal.Metal, p, 1741, 2));                     // boiler drum
+            g.Mat(Stone); g.Box(-5, 0, 6, 5, 7, 9, Pal.Ramp(Pal.Black, 2, 1742));                                            // firebox
+            g.Box(-2, 2, 10, 2, 4, 10, p => (p.x + p.y) % 2 == 0 ? Pal.Amber : Pal.Rust[4]);                                   // fire door glow
+            g.Mat(Iron);
+            g.Box(-1, 12, -6, 1, 20, -4, Pal.Ramp(Pal.Metal, 0, 1743));                                                        // stack
+            g.CylX(8, -10, 4f, 6, 7, p => ((p.y + p.z) & 1) == 0 ? Pal.Crimson[2] : Pal.Metal[1]);                           // flywheel
+            g.Box(6, 3, -12, 9, 6, -8, Pal.Ramp(Pal.Bronze, 2, 1744));                                                         // dynamo
             return g;
         }
 
