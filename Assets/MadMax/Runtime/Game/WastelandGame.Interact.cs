@@ -228,7 +228,8 @@ namespace MadMax.Game
 
             string towPrompt = FootTow(J);
             string fluidText = FluidInteraction(G, K);
-            Prompt = Join(partText, enterText, towPrompt, fluidText);
+            string armourText = ArmourInteraction(KeyDown(kb, Key.U));
+            Prompt = Join(partText, enterText, towPrompt, fluidText, armourText);
         }
 
         static string Join(params string[] parts)
@@ -250,6 +251,52 @@ namespace MadMax.Game
                 if (d < bd) { bd = d; best = s; }
             }
             return best;
+        }
+
+        // ------------------------------------------------------------------ armour
+        string ArmourInteraction(bool U)
+        {
+            if (Inventory.GetItem("tool_welder") <= 0) return null;
+            var v = FindNearby(enterDistance + 0.5f);
+            if (!v || !v.TryGetComponent<VehicleArmor>(out var armour)) return null;
+            if (U) Menus.OpenArmour(armour);
+            return "[U] ARMOUR";
+        }
+
+        /// <summary>Weld a material onto a zone (or repair it, or strip it for part of the material back).</summary>
+        public void WeldArmour(VehicleArmor a, ArmorZone z, ArmorMat m)
+        {
+            int i = (int)z;
+            if (Inventory.GetItem("tool_welder") <= 0) { Toast("YOU NEED A WELDER"); return; }
+            if (a.Voxels(z) == 0) return;
+            if (m == ArmorMat.None)
+            {
+                if (a.mat[i] == ArmorMat.None) return;
+                a.Cost(z, a.mat[i], 0.3f * a.condition[i], out var r1, out int n1, out var r2, out int n2);
+                Inventory.Add(r1, n1); if (n2 > 0) Inventory.Add(r2, n2);
+                a.Set(z, ArmorMat.None, 0f);
+                MadMax.Audio.Sfx.Play("grinder", a.transform.position, 0.6f, 1f);
+                Toast("CUT OFF THE " + VehicleArmor.ZoneNames[i] + ": +" + n1 + " " + ResourceInfo.Name(r1));
+                return;
+            }
+            float share = a.mat[i] == m ? 1f - a.condition[i] : 1f;
+            if (share < 0.02f) { Toast("THE " + VehicleArmor.ZoneNames[i] + " IS IN GOOD SHAPE"); return; }
+            a.Cost(z, m, share, out var c1, out int k1, out var c2, out int k2);
+            if (Inventory.Get(c1) < k1 || (k2 > 0 && Inventory.Get(c2) < k2) || Inventory.Get(ResourceType.Fuel) < 1)
+            {
+                Toast("NEED " + k1 + " " + ResourceInfo.Name(c1) + (k2 > 0 ? " + " + k2 + " " + ResourceInfo.Name(c2) : "") + " + 1 PETROL FOR THE TORCH");
+                return;
+            }
+            Inventory.TrySpend(c1, k1); if (k2 > 0) Inventory.TrySpend(c2, k2);
+            Inventory.TrySpend(ResourceType.Fuel, 1);
+            if (a.mat[i] != ArmorMat.None && a.mat[i] != m) Inventory.Add(ResourceType.Scrap, Mathf.Max(1, a.Voxels(z) / 40));   // the old plates come off
+            a.Set(z, m, 1f);
+            MadMax.Audio.Sfx.Play("grinder", a.transform.position, 0.8f, 1.3f);
+            if (MadMax.World.DebrisSystem.Instance)
+                for (int s = 0; s < 10; s++) MadMax.World.DebrisSystem.Instance.EmitPuff(a.transform.position + Vector3.up + Random.insideUnitSphere, new Color32(255, 220, 120, 255), 0.03f, Random.insideUnitSphere * 3f, 0.25f);
+            Stats.Practice(MadMax.RPG.Skill.Mechanics, 4f);
+            WearTool("tool_welder", 0.03f);
+            Toast("WELDED " + VehicleArmor.MatNames[(int)m] + " ON THE " + VehicleArmor.ZoneNames[i]);
         }
 
         // ------------------------------------------------------------------ fluids

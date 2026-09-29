@@ -64,6 +64,7 @@ namespace MadMax.Game
         void Ruin(VehicleDriver v, System.Random rnd)
         {
             var chassis = v.GetComponent<VehicleChassis>();
+            if (rnd.NextDouble() < 0.25 && v.TryGetComponent<VehicleArmor>(out var kit)) kit.RandomKit(rnd.Next(), 0.85f);   // someone's old war rig
             foreach (var s in chassis.Sockets)
             {
                 var part = s.Current;

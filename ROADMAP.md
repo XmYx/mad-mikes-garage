@@ -202,11 +202,20 @@ decorative turret.
 ## 11. Vehicle armor `T2`
 *Exists:* plate, spikes, ram and bull bars with absorb / spikes / ram stats.
 
-- [ ] **Coverage zones**: front, sides, rear, roof, wheel guards, window grilles on every vehicle
-- [ ] **Materials**: scrap sheet, steel plate, tyre-rubber composite (absorb, weight, fire resistance)
-- [ ] **Damage routing**: crashes, gunfire and fire hit the zone's armour first; armour loses condition and falls off
-- [ ] **Window grilles** stop shots at the driver (slightly blocked view)
-- [ ] **Weight** penalty on handling and fuel
+- [x] **Coverage zones**: front, sides, rear, roof, wheel guards, window grilles on every vehicle
+- [x] **Materials**: scrap sheet, steel plate, tyre-rubber composite (absorb, weight, fire resistance)
+- [x] **Damage routing**: crashes, gunfire and fire hit the zone's armour first; armour loses condition and falls off
+- [x] **Window grilles** stop shots at the driver (slightly blocked view)
+- [x] **Weight** penalty on handling and fuel
+      *Done:* `VehicleArmor` on every vehicle: the body's voxel shell (body, roof, doors, hood; undented) is recovered
+      from its mesh per vehicle type and each zone becomes a fitted one-voxel plate (sides sill → window line with the
+      arches open, front / rear faces, cabin roof, arcs over each tyre, bars over the glass — grilles ride outside the
+      body so first person looks through them). Scrap patchwork / riveted steel / tyre-tread composite differ in crash and
+      bullet share, fire intake, kg and wear. `VehicleDamage` crash and hit paths soak through the zone first; worn out
+      plates are torn off (debris). Grilles cut the driver-hit chance from raider fire; the fire factor feeds
+      `VehicleSystems.Heat`; the kg go into `VehicleChassis.extraMass`. [U] next to a vehicle with a welder opens the
+      ARMOUR page (per zone: pick material, weld / repair for iron, scrap, rubber + petrol, or strip for some back).
+      Raider cars get random kits, some wrecks carry worn ones; saved per vehicle.
 
 *Ties:* raiders, tuning, crafting, welder.
 

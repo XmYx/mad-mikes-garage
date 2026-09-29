@@ -223,7 +223,7 @@ namespace MadMax.Vehicles
         float heatSoak;
 
         /// <summary>External heat (a fire next to or under the vehicle).</summary>
-        public void Heat(float amount) { heatSoak += amount; }
+        public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); }
 
         public bool Burning => fire;
 

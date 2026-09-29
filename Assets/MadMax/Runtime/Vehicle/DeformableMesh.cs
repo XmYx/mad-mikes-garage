@@ -13,6 +13,8 @@ namespace MadMax.Vehicles
         Vector3[] pristine, displaced, work;
 
         public bool IsDamaged { get; private set; }
+        /// <summary>Undented vertex positions (null until the first dent).</summary>
+        public Vector3[] Pristine => pristine;
 
         void Init()
         {

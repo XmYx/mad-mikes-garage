@@ -38,6 +38,7 @@ namespace MadMax.Vehicles
 
         VehicleDriver driver;
         VehicleChassis chassis;
+        VehicleArmor armour;
         Rigidbody rb;
         float lastHit, pullSign = 1f;
 
@@ -46,6 +47,7 @@ namespace MadMax.Vehicles
             driver = GetComponent<VehicleDriver>();
             chassis = GetComponent<VehicleChassis>();
             rb = GetComponent<Rigidbody>();
+            if (!TryGetComponent(out armour) && transform.Find("Body")) armour = gameObject.AddComponent<VehicleArmor>();
         }
 
         void OnCollisionEnter(Collision c) => Handle(c);
@@ -68,6 +70,7 @@ namespace MadMax.Vehicles
             MadMax.Audio.Sfx.Play(s > 6f ? "crash_big" : "crash_small", point, Mathf.Clamp01(0.35f + s * 0.08f), UnityEngine.Random.Range(0.9f, 1.1f), 60f, 0.15f);
             // armour near the impact soaks part of it; spikes and rams hit back
             var shield = ShieldAt(point, out var armor);
+            if (armour) s *= 1f - armour.Soak(point, s, false);                             // welded-on plates first
             if (shield)
             {
                 shield.damage += s * partDamagePerMs * 0.5f / shield.sizeClass * shield.Toughness;
@@ -140,6 +143,8 @@ namespace MadMax.Vehicles
         /// <summary>Tool / explosion hit: dents and damages parts near the point (a hammer can knock panels off).</summary>
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
+            if (armour) power *= 1f - armour.Soak(point, power * 2.5f, true);
+            if (power < 0.02f) { Impact?.Invoke(power, point); return; }
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
                 if (mf.name == "Driver" || mf.name == "Dashboard") continue;

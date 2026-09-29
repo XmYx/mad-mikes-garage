@@ -265,7 +265,8 @@ namespace MadMax.Npc
             {
                 g.Current.GetComponent<VehicleDamage>()?.ApplyHit(hit.point, aim, 0.5f * power, 0.3f * power, source);
                 MadMax.Audio.Sfx.Play("hit_metal", hit.point, 0.7f);
-                if (Random.value < 0.12f) g.Vitals.Hurt(Random.Range(5f, 10f), "SHOT");  // through the glass
+                float grille = g.Current.TryGetComponent<VehicleArmor>(out var arm) ? arm.GrilleCover : 0f;
+                if (Random.value < 0.12f * (1f - grille)) g.Vitals.Hurt(Random.Range(5f, 10f), "SHOT");  // through the glass (grilles catch most)
             }
             else if (!g.Current && hit.collider.transform.IsChildOf(g.Player.transform))
             {

@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -103,6 +103,31 @@ namespace MadMax.Game
         Container container;
         bool containerSide;              // false = player's items, true = container's
         public void OpenContainer(Container c) { container = c; containerSide = false; Open(Page.Container); }
+
+        MadMax.Vehicles.VehicleArmor armourTarget;
+        readonly int[] armourPlan = new int[MadMax.Vehicles.VehicleArmor.Zones];
+        /// <summary>Armour page for a vehicle: pick a material per zone and weld it on (welder in the pack).</summary>
+        public void OpenArmour(MadMax.Vehicles.VehicleArmor a)
+        {
+            armourTarget = a;
+            for (int i = 0; i < armourPlan.Length; i++) armourPlan[i] = a.mat[i] == MadMax.Vehicles.ArmorMat.None ? 1 : (int)a.mat[i];
+            Open(Page.Armour);
+        }
+
+        string ArmourLine(MadMax.Vehicles.VehicleArmor a, int i)
+        {
+            var z = (MadMax.Vehicles.ArmorZone)i;
+            var cur = a.mat[i]; var plan = (MadMax.Vehicles.ArmorMat)armourPlan[i];
+            string now = cur == MadMax.Vehicles.ArmorMat.None ? "BARE" : MadMax.Vehicles.VehicleArmor.MatNames[(int)cur] + " " + Mathf.RoundToInt(a.condition[i] * 100f) + "%";
+            if (a.Voxels(z) == 0) return "N/A";
+            if (plan == MadMax.Vehicles.ArmorMat.None) return now + (cur == MadMax.Vehicles.ArmorMat.None ? "" : "  > STRIP");
+            float share = plan == cur ? 1f - a.condition[i] : 1f;
+            if (share < 0.02f) return now + "  (" + VehicleArmorName(plan) + ")";
+            a.Cost(z, plan, share, out var r1, out int n1, out var r2, out int n2);
+            return now + "  > " + VehicleArmorName(plan) + "  " + n1 + " " + ResourceInfo.Name(r1) + (n2 > 0 ? " " + n2 + " " + ResourceInfo.Name(r2) : "");
+        }
+
+        static string VehicleArmorName(MadMax.Vehicles.ArmorMat m) => m == MadMax.Vehicles.ArmorMat.Steel ? "STEEL" : m == MadMax.Vehicles.ArmorMat.Composite ? "COMPOSITE" : m == MadMax.Vehicles.ArmorMat.Scrap ? "SCRAP" : "NONE";
 
         void MoveRes(Inventory from, Inventory to, ResourceType t, int n, bool intoBox)
         {
@@ -441,6 +466,26 @@ namespace MadMax.Game
                     Add("BACK", () => Open(Page.Crafting));
                     break;
                 }
+                case Page.Armour:
+                {
+                    var a = armourTarget;
+                    if (!a) { Close(); break; }
+                    items.Add(new Item { label = WastelandGame.Name(a), value = () => "+" + Mathf.RoundToInt(a.TotalKg) + " KG ARMOUR", enabled = () => false });
+                    for (int zi = 0; zi < MadMax.Vehicles.VehicleArmor.Zones; zi++)
+                    {
+                        int i = zi;
+                        items.Add(new Item
+                        {
+                            label = MadMax.Vehicles.VehicleArmor.ZoneNames[i],
+                            value = () => ArmourLine(a, i),
+                            adjust = d => armourPlan[i] = (armourPlan[i] + d + 4) % 4,
+                            confirm = () => game.WeldArmour(a, (MadMax.Vehicles.ArmorZone)i, (MadMax.Vehicles.ArmorMat)armourPlan[i]),
+                            enabled = () => a.Voxels((MadMax.Vehicles.ArmorZone)i) > 0,
+                            hint = "A/D PICK MATERIAL (NONE = STRIP)   E WELD IT ON / REPAIR   STEEL STOPS BULLETS, COMPOSITE SOAKS CRASHES BUT BURNS",
+                        });
+                    }
+                    break;
+                }
                 case Page.Repair when station && station.type == "sewing":
                 {
                     // mend garments: the ones you wear and the spares in the pack
@@ -754,6 +799,7 @@ namespace MadMax.Game
                 case Page.Talk: DrawTalk(c); break;
                 case Page.Repair: DrawList(c, station && station.type == "sewing" ? "MEND CLOTHES" : "REPAIR TOOLS", 250); DrawHint(c); break;
                 case Page.Salvage: DrawList(c, "SALVAGE", 250); DrawHint(c); break;
+                case Page.Armour: DrawList(c, "ARMOUR", 320); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);

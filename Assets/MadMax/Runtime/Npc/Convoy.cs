@@ -221,6 +221,7 @@ namespace MadMax.Npc
         /// <summary>Raider cars get spikes, plates, rams and the odd turret on free sockets.</summary>
         void Armour(WastelandGame g, VehicleDriver v, int i)
         {
+            if (v.TryGetComponent<VehicleArmor>(out var kit)) kit.RandomKit(seed * 31 + i + save.generation * 7, 0.4f);   // welded plates and grilles
             var r = new System.Random(seed + i * 17 + save.generation);
             var chassis = v.GetComponent<VehicleChassis>();
             if (!chassis) return;
