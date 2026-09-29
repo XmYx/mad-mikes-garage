@@ -449,7 +449,7 @@ namespace MadMax.Game
             if (!m || m.GetComponent<IInteractable>() == null) return;
             var col = m.GetComponent<Collider>();
             // ClosestPoint only works on primitive and convex colliders (not CharacterControllers: NPCs)
-            bool closest = col && !(col is CharacterController) && (!(col is MeshCollider mc) || mc.convex);
+            bool closest = col && col.enabled && col.gameObject.activeInHierarchy && !(col is CharacterController) && (!(col is MeshCollider mc) || mc.convex);   // a disabled collider's ClosestPoint is the query point itself
             var p = closest ? col.ClosestPoint(eye) : m.transform.position + Vector3.up;
             float d = Vector3.Distance(p, eye);
             if (d > best) return;

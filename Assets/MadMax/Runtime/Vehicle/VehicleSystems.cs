@@ -69,6 +69,7 @@ namespace MadMax.Vehicles
 
         VehicleDriver driver;
         VehicleDamage damage;
+        BikeBalance bike;
         VehicleChassis chassis;
         bool hasRadiatorSocket;
         MountSocket radiatorSocket;
@@ -81,6 +82,7 @@ namespace MadMax.Vehicles
         {
             driver = GetComponent<VehicleDriver>();
             damage = GetComponent<VehicleDamage>();
+            bike = GetComponent<BikeBalance>();
             chassis = GetComponent<VehicleChassis>();
             foreach (var s in chassis.Sockets) if (s.accepts == PartCategory.Radiator) radiatorSocket = s;
             hasRadiatorSocket = radiatorSocket;
@@ -116,14 +118,16 @@ namespace MadMax.Vehicles
             if (!engine) { Faults = f | Fault.NoEngine; PowerFactor = 0f; Cool(dt, speed); return; }
             if (ep && ep.partId == "engine_pedals")
             {
-                // a bicycle: no fuel, no oil, no heat — the rider's stamina (NPCs never tire)
+                // a bicycle: no fuel, no oil, no heat — the rider's legs. Cruising is free; Shift = out of the
+                // saddle, full power for stamina (NPCs never tire)
                 float legs = driver.Occupied ? 1f : 0f;
                 var game = MadMax.Game.WastelandGame.Instance;
                 if (legs > 0f && game && game.Current == driver && game.Vitals)
                 {
-                    game.Vitals.Spend(driver.DriveCommand * 7f * dt);
-                    game.Stats?.Practice(MadMax.RPG.Skill.Athletics, driver.DriveCommand * dt * 0.05f);
-                    if (game.Vitals.Exhausted) legs = 0.3f;
+                    bool sprint = bike && bike.leanBack && driver.DriveCommand > 0.1f && !game.Vitals.Exhausted;
+                    if (sprint) game.Vitals.Spend(driver.DriveCommand * 9f * dt);
+                    game.Stats?.Practice(MadMax.RPG.Skill.Athletics, driver.DriveCommand * dt * (sprint ? 0.08f : 0.02f));
+                    legs = game.Vitals.Exhausted ? 0.35f : sprint ? 1f : 0.6f;
                 }
                 PowerFactor = legs; Faults = f & (Fault.FuelLeak | Fault.OnFire); Cool(dt, speed);
                 return;

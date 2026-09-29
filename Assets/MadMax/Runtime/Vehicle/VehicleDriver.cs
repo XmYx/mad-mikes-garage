@@ -59,6 +59,10 @@ namespace MadMax.Vehicles
         public float steerPull;
         /// <summary>Front-wheel angle (deg) set each step by <see cref="BikeBalance"/>; NaN = from <see cref="steerInput"/>.</summary>
         [System.NonSerialized] public float steerOverride = float.NaN;
+        /// <summary>Rider's throttle control (bikes): drive capped at this multiple of the tyre's grip; 0 = off.</summary>
+        [System.NonSerialized] public float tractionLimit;
+        /// <summary>Tractive force at the driven tyres this step (N).</summary>
+        public float DriveForce { get; private set; }
         [Tooltip("Centre of mass offset to the right (m): sidecar outfits.")] public float comOffsetX;
         [Tooltip("Aircraft: wheels roll free (the propeller pushes, FlightModel), the gearbox never reverses.")] public bool aircraft;
         [Tooltip("Use centerOfMass instead of the body-bounds estimate.")] public bool customCom;
@@ -179,7 +183,15 @@ namespace MadMax.Vehicles
             if (body && body.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
             {
                 var b = mf.sharedMesh.bounds;
-                rb.centerOfMass = customCom ? centerOfMass : new Vector3(comOffsetX, b.min.y + 0.25f, b.center.z);
+                float cx = comOffsetX;
+                if (TryGetComponent<BikeBalance>(out var bike) && !bike.sidecar)
+                {
+                    // a single-track bike balances over its tyres' contact line
+                    int n = 0; cx = 0f;
+                    foreach (var w in wheels) if (!w.idler) { cx += w.socket.transform.localPosition.x + (w.left ? -0.5f : 0.5f) * w.width; n++; }
+                    cx = n > 0 ? cx / n : 0f;
+                }
+                rb.centerOfMass = customCom ? centerOfMass : new Vector3(cx, b.min.y + 0.25f, b.center.z);
             }
         }
 
@@ -325,7 +337,8 @@ namespace MadMax.Vehicles
             // ---- drive distribution: locked = each wheel up to its own grip; open diff = both wheels of an axle
             // limited by the weaker one (a wheel in the air or on mud steals the torque and just spins)
             float share = driven > 0 ? driveForce / driven : 0f;
-            foreach (var w in wheels) if (w.part && w.grounded && IsDriven(w)) w.drive = share;
+            foreach (var w in wheels) if (w.part && w.grounded && IsDriven(w)) w.drive = tractionLimit > 0f ? Mathf.Clamp(share, -w.maxF * tractionLimit, w.maxF * tractionLimit) : share;
+            DriveForce = 0f; foreach (var w in wheels) DriveForce += w.drive;
             if (!diffLocked && Mathf.Abs(share) > 0f)
             {
                 for (int i = 0; i < wheels.Count; i++)

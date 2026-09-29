@@ -141,14 +141,15 @@ namespace MadMax.Game
                 if (car.TryGetComponent<MadMax.Vehicles.VehicleTuning>(out var tn) && (tn.nitrous > 0 || tn.NitrousOn)) Line(tn.NitrousOn ? "NITROUS!" : "NOS X" + tn.nitrous + "  [CTRL]");
                 if (car.TryGetComponent<MadMax.Vehicles.VehicleClimate>(out var cl) && cl.Enclosed) canvas.Text(canvas.w - 70, 102, "CABIN " + Mathf.RoundToInt(cl.CabinTemperature) + "C" + (cl.on ? "" : " OFF"), Dim);
             }
+            var flight = car ? car.GetComponent<MadMax.Vehicles.FlightModel>() : null;
             if (car && !fps)
             {
-                DrawVehiclePanel(car, 6, canvas.h - 38);
+                if (!flight) DrawVehiclePanel(car, 6, canvas.h - 38);                            // aircraft: the flight panel instead
                 DrawPartsMap(car, canvas.w - 44, canvas.h - 70);
             }
-            if (car && car.TryGetComponent<MadMax.Vehicles.FlightModel>(out var flight))
+            if (flight)
             {
-                DrawFlight(car, flight, fps ? 6 : 160, canvas.h - 52);
+                DrawFlight(car, flight, 6, canvas.h - 52);
                 DrawAerial(flight);
             }
 
@@ -813,7 +814,7 @@ namespace MadMax.Game
                 "F ENTER/EXIT  E USE/OPEN/CRAFT/TALK  T SECOND ACTION (LOCK, TRADE, TUNE)  Q DROP  J HITCH  G SERVICE  K SIPHON  U ARMOUR  TAB FLEET",
                 "BUILD (B, HOLD: RADIAL): , . CATEGORY  1-0 PIECE  Y ROTATE  X DISMANTLE  R REPAIR  U UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
                 "DRIVING: X 4WD  L DIFF LOCK  E/Q SHIFT  N LIGHTS  Y HORN  CTRL NITROUS  T RECOVER/PARLEY  LMB WEAPON  MACHINES: 1 2 3",
-                "BIKES: A/D LEAN INTO THE TURN  SHIFT WHEELIE  CRASH = THROWN OFF (F TO GET BACK ON)  BICYCLE: PEDALS COST STAMINA",
+                "BIKES: A/D LEAN INTO THE TURN  SHIFT WHEELIE  CRASH = THROWN OFF (F TO GET BACK ON)  BICYCLE: SHIFT SPRINTS (STAMINA)",
                 "FLYING: W/S THROTTLE LEVER  A/D BANK  SPACE PULL UP  CTRL PUSH DOWN  S (IDLE) BRAKES  TAKE OFF FROM AIRSTRIPS OR STRAIGHT ROADS",
                 "RADIO: M ON/OFF  , . TUNE  [ ] VOLUME   FISHING: LMB CAST, CLICK ON A BITE, HOLD TO REEL   V VIEW  ESC MENU  H HELP"
             };

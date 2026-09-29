@@ -16,7 +16,7 @@ namespace MadMax.Vehicles
         {
             sys = GetComponent<VehicleSystems>(); driver = GetComponent<VehicleDriver>();
             var n = gameObject.name;
-            Enclosed = !(n.StartsWith("Paver") || n.StartsWith("Roller"));        // open operator platforms
+            Enclosed = !(n.StartsWith("Paver") || n.StartsWith("Roller") || GetComponent<BikeBalance>() || n.StartsWith("Ultralight") || n.StartsWith("DuneBuggy"));   // open platforms, bikes, open cockpits
             CabinTemperature = MadMax.World.Weather.Temperature;
         }
 

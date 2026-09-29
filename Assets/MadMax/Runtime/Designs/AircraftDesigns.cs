@@ -60,7 +60,7 @@ namespace MadMax.Designs
             {
                 name = "Ultralight", mass = 250, drive = VehicleDriver.Drive.Rear, travel = 0.18f, finalDrive = 1f, gears = new[] { 1f },
                 frequency = 1.5f, brakeForce = 1500f, maxSteer = 30f, eye = new Vector3Int(0, 16, 4), passenger = new Vector3Int(0, 17, -1),
-                fuelL = 30f, oilL = 0f, coolantL = 0f, usesCoolant = false, oilInFuel = true, aircraft = "trike", com = new Vector3(0f, 0.75f, 0.3f)
+                fuelL = 30f, oilL = 0f, coolantL = 0f, usesCoolant = false, oilInFuel = true, aircraft = "trike", com = new Vector3(0f, 0.75f, 0.12f)
             };
             var g = new VoxelGrid();
             var pod = Pal.Weathered(Pal.Cream, 0.12f, 2521, 3, 2);
@@ -80,8 +80,8 @@ namespace MadMax.Designs
             g.Box(-1, 12, 9, 1, 14, 9, Pal.Ramp(Pal.Glass, 3, 2524));                                                        // windscreen
             g.Box(-2, 6, 2, 2, 7, 5, Pal.Ramp(Pal.Black, 1, 2525)); g.Box(-2, 6, -3, 2, 8, 0, Pal.Ramp(Pal.Black, 1, 2525));   // seats
             g.Tube(new Vector3(0, 5, 13), new Vector3(0, 6, -9), 0.7f, tube);                                                // keel
-            g.Tube(new Vector3(-9, 5, -5), new Vector3(9, 5, -5), 0.6f, tube);                                               // main gear axle
-            foreach (int s in new[] { -1, 1 }) g.Tube(new Vector3(s * 8, 5, -5), new Vector3(s * 1, 9, -2), 0.5f, tube);     // gear struts
+            g.Tube(new Vector3(-9, 5, 0), new Vector3(9, 5, 0), 0.6f, tube);                                                 // main gear axle (under the pilot)
+            foreach (int s in new[] { -1, 1 }) g.Tube(new Vector3(s * 8, 5, 0), new Vector3(s * 1, 9, 2), 0.5f, tube);       // gear struts
             g.Tube(new Vector3(0, 7, -2), new Vector3(0, 28, 0), 0.7f, tube);                                                // mast
             g.Tube(new Vector3(0, 11, 8), new Vector3(0, 28, 1), 0.5f, tube);                                                // front strut
             foreach (int s in new[] { -1, 1 }) g.Tube(new Vector3(0, 28, 1), new Vector3(s * 5, 17, 8), 0.4f, tube);         // control A-frame
@@ -103,7 +103,7 @@ namespace MadMax.Designs
             d.colliders.Add(VehicleDesign.Box(-5, 4, -10, 5, 14, 14));
             d.spinners.Add(("Prop", Propeller(10), new Vector3Int(0, 12, -11)));
             d.Socket("wheel_nose", PartCategory.Wheel, -1, 4, 14, "wheel_aero");
-            d.Socket("wheel_main", PartCategory.Wheel, 9, 4, -5, "wheel_aero", true);
+            d.Socket("wheel_main", PartCategory.Wheel, 9, 4, 0, "wheel_aero", true);
             d.Socket("engine", PartCategory.Engine, 0, 10, -7, "engine_2stroke_aero", false, 1);
             return d;
         }
@@ -114,7 +114,7 @@ namespace MadMax.Designs
             {
                 name = "Gyrocopter", mass = 320, drive = VehicleDriver.Drive.Rear, travel = 0.2f, finalDrive = 1f, gears = new[] { 1f },
                 frequency = 1.6f, brakeForce = 1800f, maxSteer = 30f, eye = new Vector3Int(0, 17, 3),
-                fuelL = 40f, oilL = 0f, coolantL = 0f, usesCoolant = false, oilInFuel = true, aircraft = "gyro", com = new Vector3(0f, 0.8f, 0.15f)
+                fuelL = 40f, oilL = 0f, coolantL = 0f, usesCoolant = false, oilInFuel = true, aircraft = "gyro", com = new Vector3(0f, 0.8f, 0.1f)
             };
             var g = new VoxelGrid();
             var paint = Pal.Weathered(Pal.Ochre, 0.18f, 2531, 3, 2);
@@ -135,8 +135,8 @@ namespace MadMax.Designs
             g.Box(-2, 6, 1, 2, 8, 4, Pal.Ramp(Pal.Black, 1, 2535));                                                          // seat
             g.Tube(new Vector3(0, 5, 12), new Vector3(0, 6, -10), 0.7f, tube);                                               // keel
             g.Tube(new Vector3(0, 11, -8), new Vector3(0, 12, -27), 0.6f, tube);                                             // tail boom
-            g.Tube(new Vector3(-8, 5, -3), new Vector3(8, 5, -3), 0.6f, tube);                                               // main gear
-            foreach (int s in new[] { -1, 1 }) g.Tube(new Vector3(s * 7, 5, -3), new Vector3(s * 1, 9, 0), 0.5f, tube);
+            g.Tube(new Vector3(-8, 5, 0), new Vector3(8, 5, 0), 0.6f, tube);                                                 // main gear
+            foreach (int s in new[] { -1, 1 }) g.Tube(new Vector3(s * 7, 5, 0), new Vector3(s * 1, 9, 2), 0.5f, tube);
             g.Tube(new Vector3(0, 8, -2), new Vector3(0, 33, 0), 0.8f, tube);                                                // mast
             g.Box(-1, 32, -1, 1, 33, 1, Pal.Ramp(Pal.Chrome, 2, 2536));                                                      // rotor head
             g.Box(-8, 12, -26, 8, 12, -23, paint);                                                                            // tailplane
@@ -160,7 +160,7 @@ namespace MadMax.Designs
             d.spinners.Add(("Rotor", rot, new Vector3Int(0, 34, 0)));
             d.spinners.Add(("Prop", Propeller(9), new Vector3Int(0, 10, -10)));
             d.Socket("wheel_nose", PartCategory.Wheel, -1, 4, 13, "wheel_aero");
-            d.Socket("wheel_main", PartCategory.Wheel, 8, 4, -3, "wheel_aero", true);
+            d.Socket("wheel_main", PartCategory.Wheel, 8, 4, 0, "wheel_aero", true);
             d.Socket("engine", PartCategory.Engine, 0, 8, -6, "engine_2stroke_aero", false, 1);
             return d;
         }

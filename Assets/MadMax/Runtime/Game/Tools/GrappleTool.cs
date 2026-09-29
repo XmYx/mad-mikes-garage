@@ -4,15 +4,18 @@ using UnityEngine;
 
 namespace MadMax.Game
 {
-    /// <summary>Grappling hook (roadmap 22): throw it at a wall, roof edge, tree or rock within 24 m and reel in. A
+    /// <summary>Grappling hook (roadmaps 1, 22): throw it at a wall, roof edge, tree or rock within 24 m and reel in. A
     /// top surface lands you on it; a wall leaves you hanging below the hook, pulling yourself over the edge when there
-    /// is one in reach. Aim with RMB like a gun. People and loose light things give it nothing to bite.</summary>
+    /// is one in reach. A loose part or crate (under 300 kg) is reeled in to your feet instead. Aim with RMB like a gun.
+    /// People and animals give it nothing to bite.</summary>
     public class GrappleTool : HandTool
     {
         public const float Range = 24f;
         LineRenderer rope;
         Vector3 hookAt;
         PlayerCharacter holder;
+        Rigidbody pulled;
+        float pullUntil;
         static Material ropeMat;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => ropeMat = null;
 
@@ -29,9 +32,13 @@ namespace MadMax.Game
                 return;
             }
             var rb = hit.collider.attachedRigidbody;
-            if (hit.collider.GetComponentInParent<MadMax.Npc.Npc>() || (rb && !rb.isKinematic && rb.mass < 300f))
+            if (hit.collider.GetComponentInParent<MadMax.Npc.Npc>() || hit.collider.GetComponentInParent<MadMax.Animals.Animal>()) { g.Toast("NOTHING SOLID TO HOOK"); return; }
+            if (rb && !rb.isKinematic && rb.mass < 300f && !rb.GetComponent<MadMax.Vehicles.VehicleDriver>())
             {
-                g.Toast("NOTHING SOLID TO HOOK");
+                // a loose part, a crate: reel it in instead
+                pulled = rb; hookAt = hit.point; holder = user; pullUntil = Time.time + 1.6f;
+                MadMax.Audio.Sfx.Play("hit_metal", hit.point, 0.5f, 1.4f);
+                g.Toast("REELING IT IN");
                 return;
             }
             if (!user.Zip(hit.point, hit.normal)) { g.Toast("THE HOOK SLIPS"); return; }
@@ -40,9 +47,19 @@ namespace MadMax.Game
             g.Stats?.Practice(Skill.Athletics, 1f);
         }
 
+        void FixedUpdate()
+        {
+            if (!pulled || !holder) return;
+            var to = holder.transform.position + Vector3.up * 1f + holder.transform.forward * 1.2f - pulled.worldCenterOfMass;
+            if (Time.time > pullUntil || to.magnitude < 1.4f) { pulled.linearVelocity *= 0.3f; pulled = null; return; }
+            pulled.WakeUp();
+            pulled.linearVelocity = Vector3.Lerp(pulled.linearVelocity, to.normalized * Mathf.Min(9f, to.magnitude * 3f) + Vector3.up * 1.5f, 0.25f);
+            hookAt = pulled.worldCenterOfMass;
+        }
+
         void LateUpdate()
         {
-            if (!holder || !holder.Zipping) { if (rope) rope.enabled = false; return; }
+            if (!holder || !(holder.Zipping || pulled)) { if (rope) rope.enabled = false; return; }
             if (!rope)
             {
                 if (!ropeMat) ropeMat = Fx.TransparentMaterial(null);

@@ -14,7 +14,7 @@ namespace MadMax.Vehicles
     {
         public bool sidecar;
         public float maxLean = 42f;
-        /// <summary>Lean back (Shift): wheelie.</summary>
+        /// <summary>Lean back (Shift): wheelie; on a bicycle, out of the saddle (sprint).</summary>
         [System.NonSerialized] public bool leanBack;
         public bool Crashed { get; private set; }
         /// <summary>Current roll in degrees (+ = leaning left).</summary>
@@ -23,10 +23,13 @@ namespace MadMax.Vehicles
         /// <summary>Pedal phase for the rider's legs (bicycles), radians.</summary>
         public float PedalPhase { get; private set; }
         public bool Pedals { get; private set; }
+        /// <summary>Why it last went down (debugging, tests).</summary>
+        public string LastCrash { get; private set; }
 
         VehicleDriver v;
         Rigidbody rb;
-        float wheelbase = 1.4f, fallenT, crashCd, pedalCheck;
+        float wheelbase = 1.4f, fallenT, crashCd, pedalCheck, holdYaw, driveX;
+        bool holding;
 
         void Awake()
         {
@@ -37,6 +40,7 @@ namespace MadMax.Vehicles
             {
                 if (s.accepts != PartCategory.Wheel || s.name.StartsWith("wheel_side")) continue;
                 float z = s.transform.localPosition.z;
+                if (z < zmin) { var ws = s.Current ? s.Current.GetComponent<WheelStats>() : null; driveX = s.transform.localPosition.x + (ws ? ws.width * 0.5f : 0.05f); }
                 zmin = Mathf.Min(zmin, z); zmax = Mathf.Max(zmax, z);
             }
             wheelbase = Mathf.Max(0.8f, zmax - zmin);
@@ -60,6 +64,7 @@ namespace MadMax.Vehicles
             bool ridden = v.Occupied;
             if ((pedalCheck -= dt) <= 0f) { pedalCheck = 1f; Pedals = v.Engine && v.Engine.name.Contains("pedals"); }
             if (Pedals && ridden) PedalPhase += v.DriveCommand * (1.5f + av * 0.6f) * dt * 2f;
+            v.tractionLimit = leanBack ? 0f : 1.1f;                                   // the rider feeds the throttle; Shift = everything (wheelie, roost)
 
             var terrain = MadMax.World.DeformableTerrain.Instance;
             float ground = terrain ? terrain.Height(transform.position.x, transform.position.z) : transform.position.y;
@@ -68,12 +73,30 @@ namespace MadMax.Vehicles
             if (sidecar || Crashed)
             {
                 v.steerOverride = float.NaN;
+                if (sidecar && !Crashed && ridden)
+                {
+                    // no lean: the bars steer directly, up to what the tyres hold at this speed (~1 g), and the rider
+                    // holds it straight against the chair (power drags an outfit towards its chair, braking away)
+                    float lim = Mathf.Min(v.maxSteer, Mathf.Atan(wheelbase * 11f / Mathf.Max(1f, av * av)) * Mathf.Rad2Deg);
+                    float yawRate = Vector3.Dot(rb.angularVelocity, transform.up), hold = 0f;
+                    if (Mathf.Abs(v.steerInput) > 0.05f || av < 2f) holding = false;
+                    else if (!holding) { holding = true; holdYaw = transform.eulerAngles.y; }
+                    if (holding)
+                    {
+                        float err = Mathf.DeltaAngle(holdYaw, transform.eulerAngles.y);                          // + = pulled right
+                        hold = Mathf.Clamp(-err * 0.6f - Mathf.Atan(yawRate * wheelbase / av) * Mathf.Rad2Deg, -6f, 6f);
+                    }
+                    v.steerOverride = v.steerInput * lim + hold * Mathf.Sign(speed);
+                    // the drive sits beside the outfit's centre of mass: power yaws it towards the chair. The rig's lead
+                    // and toe-in trim most of that out; the rest is the rider's job
+                    rb.AddTorque(-transform.up * (v.DriveForce * (rb.centerOfMass.x - driveX) * 0.8f));
+                }
                 if (!Crashed && ridden) CrashChecks(phi, pitchUp, dt, 70f);
                 return;
             }
 
             // the lean asked for: right = negative (A/D at speed), upright when slow, on the stand when parked
-            float target = !ridden ? 11f : av < 2.5f ? 0f : -v.steerInput * maxLean * Mathf.Clamp01((av - 2.5f) / 9f);
+            float target = !ridden ? 11f : av < 2.5f ? 0f : -v.steerInput * maxLean * Mathf.Clamp01((av - 2.5f) / 5f);
             float steerDeg;
             if (!ridden || av < 2.5f) steerDeg = v.steerInput * v.maxSteer;
             else
@@ -84,14 +107,21 @@ namespace MadMax.Vehicles
             }
             v.steerOverride = steerDeg;
 
-            // the rider's balance: a roll PD towards the target (weak in the air — the wheels' gyro)
+            // the rider's balance: a roll PD towards the target (weak in the air — the wheels' gyro). Slow, nothing
+            // holds the bike up but the feet / kickstand: it pivots on the tyres (inertia + m·h²) and its weight tips it
             float rollRate = Vector3.Dot(rb.angularVelocity, fwd);
             float kp = !ridden ? 30f : av < 2.5f ? 45f : 32f, kd = 9f;
             if (airborne) { kp *= 0.3f; kd *= 0.5f; }
-            if (Mathf.Abs(phi) < 70f) rb.AddTorque(fwd * ((target - phi) * Mathf.Deg2Rad * kp - rollRate * kd), ForceMode.Acceleration);
+            var axis = Quaternion.Inverse(rb.inertiaTensorRotation) * Vector3.forward;
+            float iRoll = Mathf.Max(0.5f, Vector3.Dot(Vector3.Scale(axis, axis), rb.inertiaTensor));
+            float h = Mathf.Max(0.25f, rb.worldCenterOfMass.y - ground);
+            float slow = airborne ? 0f : 1f - Mathf.Clamp01((av - 2.5f) / 5f);
+            float gain = Mathf.Lerp(1f, 1f + rb.mass * h * h / iRoll, slow);
+            float tip = slow * rb.mass * 9.81f * h * Mathf.Sin(phi * Mathf.Deg2Rad) / iRoll;
+            if (Mathf.Abs(phi) < 70f) rb.AddTorque(fwd * (gain * ((target - phi) * Mathf.Deg2Rad * kp - rollRate * kd) - tip), ForceMode.Acceleration);
 
             // wheelie: lean back on the throttle, balanced around 25°
-            if (ridden && leanBack && av > 1.5f && v.DriveCommand > 0.4f && !airborne)
+            if (ridden && leanBack && !Pedals && av > 1.5f && v.DriveCommand > 0.4f && !airborne)
             {
                 float pitchRate = Vector3.Dot(rb.angularVelocity, -transform.right);
                 rb.AddTorque(-transform.right * ((25f - pitchUp) * Mathf.Deg2Rad * 16f - pitchRate * 4f), ForceMode.Acceleration);
@@ -102,8 +132,8 @@ namespace MadMax.Vehicles
         void CrashChecks(float phi, float pitchUp, float dt, float fallAngle)
         {
             fallenT = Mathf.Abs(phi) > fallAngle ? fallenT + dt : 0f;
-            if (fallenT > 0.35f) Crash(Mathf.Abs(v.ForwardSpeed) * 1.2f, "YOU LOST IT");
-            else if (pitchUp > 65f) Crash(8f + Mathf.Abs(v.ForwardSpeed), "LOOPED THE WHEELIE");
+            if (fallenT > 0.35f) { LastCrash = "fell " + phi.ToString("0"); Crash(Mathf.Abs(v.ForwardSpeed) * 1.2f, "YOU LOST IT"); }
+            else if (pitchUp > 65f) { LastCrash = "wheelie " + pitchUp.ToString("0"); Crash(8f + Mathf.Abs(v.ForwardSpeed), "LOOPED THE WHEELIE"); }
         }
 
         void OnCollisionEnter(Collision c)
@@ -111,8 +141,9 @@ namespace MadMax.Vehicles
             if (Crashed || !v || !v.Occupied || Time.time < crashCd) return;
             var n = c.contactCount > 0 ? c.GetContact(0).normal : Vector3.up;
             if (n.y > 0.7f) return;                                                           // landings and the ground
+            if (c.rigidbody && !c.rigidbody.isKinematic && c.rigidbody.mass < 40f) return;       // pickups, debris, crates: ride over them
             float hit = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
-            if (hit > 7f) Crash(hit * 2.2f, "THROWN OVER THE BARS");
+            if (hit > 7f) { LastCrash = "hit " + c.collider.name + " " + hit.ToString("0.0") + " n=" + n; Crash(hit * 2.2f, "THROWN OVER THE BARS"); }
         }
 
         void Crash(float severity, string why)

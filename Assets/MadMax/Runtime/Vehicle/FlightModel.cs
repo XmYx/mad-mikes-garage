@@ -26,6 +26,8 @@ namespace MadMax.Vehicles
         public float RotorRpm { get; private set; }
         public bool Stalled { get; private set; }
         public bool Airborne { get; private set; }
+        /// <summary>Main wing angle of attack (degrees).</summary>
+        public float AoA { get; private set; }
         public float Heading => transform.eulerAngles.y;
 
         struct Surface
@@ -42,7 +44,7 @@ namespace MadMax.Vehicles
         Transform prop, rotor;
         float tip, propAngle, rotorAngle, crashCd, pilotPitch, pilotRoll;
         Vector3 rotorHub = new Vector3(0f, 2.7f, 0.1f);
-        const float Rho = 1.225f, RotorR = 4f, RotorCt = 0.0075f;
+        const float Rho = 1.225f, RotorR = 4f, RotorCt = 0.005f;
 
         void Awake()
         {
@@ -53,13 +55,15 @@ namespace MadMax.Vehicles
             rotor = transform.Find("Rotor");
             if (rotor) rotorHub = rotor.localPosition;
             if (v) { v.aircraft = true; v.drag = 0.05f; }
+            // the wing / rotor carry no collider, so give the airframe the inertia it really has (pitch, yaw, roll)
+            if (rb) { rb.inertiaTensor = kind == Kind.Trike ? new Vector3(500f, 900f, 700f) : new Vector3(600f, 700f, 450f); rb.inertiaTensorRotation = Quaternion.identity; }
             if (kind == Kind.Trike)
             {
                 surfaces = new[]
                 {
                     // a high flex wing with a little dihedral, a reflexed "tail" for pitch stability, a keel fin
-                    new Surface { pos = new Vector3(-2.4f, 2.3f, 0.35f), fwd = Vector3.forward, up = Quaternion.Euler(0f, 0f, -3f) * Vector3.up, area = 7.5f, aspect = 6.7f, stall = 15f, cd0 = 0.03f, control = 1 },
-                    new Surface { pos = new Vector3(2.4f, 2.3f, 0.35f), fwd = Vector3.forward, up = Quaternion.Euler(0f, 0f, 3f) * Vector3.up, area = 7.5f, aspect = 6.7f, stall = 15f, cd0 = 0.03f, control = 2 },
+                    new Surface { pos = new Vector3(-2.4f, 2.3f, 0.35f), fwd = Quaternion.Euler(-2f, 0f, 0f) * Vector3.forward, up = Quaternion.Euler(-2f, 0f, -3f) * Vector3.up, area = 8.8f, aspect = 6.2f, stall = 15f, cd0 = 0.03f, control = 1 },   // 2° incidence
+                    new Surface { pos = new Vector3(2.4f, 2.3f, 0.35f), fwd = Quaternion.Euler(-2f, 0f, 0f) * Vector3.forward, up = Quaternion.Euler(-2f, 0f, 3f) * Vector3.up, area = 8.8f, aspect = 6.2f, stall = 15f, cd0 = 0.03f, control = 2 },
                     new Surface { pos = new Vector3(0f, 2.25f, -1.5f), fwd = Quaternion.Euler(3f, 0f, 0f) * Vector3.forward, up = Quaternion.Euler(3f, 0f, 0f) * Vector3.up, area = 2.2f, aspect = 3f, stall = 18f, cd0 = 0.02f, control = 3 },   // 3° down: trims at ~6° wing AoA
                     new Surface { pos = new Vector3(0f, 1.6f, -1.3f), fwd = Vector3.forward, up = Vector3.right, area = 0.9f, aspect = 1.5f, stall = 20f, cd0 = 0.03f, control = 4 },
                 };
@@ -95,6 +99,7 @@ namespace MadMax.Vehicles
             Altitude = pos.y - ground;
             Airborne = Altitude > 1.2f;
             var wind = MadMax.World.Fx.Wind; wind.y = 0f;
+            wind *= Mathf.Clamp01(0.25f + Altitude / 25f);                                             // the wind gradient: calmer near the ground
             var vel = rb.linearVelocity;
             VerticalSpeed = vel.y;
             var air = vel - wind;
@@ -115,6 +120,35 @@ namespace MadMax.Vehicles
 
             // parasitic drag of the airframe
             rb.AddForce(-air * air.magnitude * 0.5f * Rho * 0.35f);
+            // handling help: the castering nose wheel keeps the take-off roll straight as the wing unloads the tyres;
+            // aloft a little yaw / roll damping stands in for the pilot's feet
+            var w = rb.angularVelocity;
+            float yawRate = Vector3.Dot(w, transform.up), rollRate = Vector3.Dot(w, transform.forward), pitchRate = Vector3.Dot(w, transform.right);
+            if (!Airborne) rb.AddTorque(-transform.up * yawRate * 4f, ForceMode.Acceleration);
+            else if (Airspeed > 6f)
+            {
+                // turn coordinator: the nose swings onto the flight path (what rudder work does), killing sideslip
+                float beta = Mathf.Atan2(Vector3.Dot(air, transform.right), Mathf.Max(1f, Vector3.Dot(air, transform.forward)));
+                rb.AddTorque(transform.up * (beta * 10f - yawRate * 2.5f), ForceMode.Acceleration);
+            }
+            // pitch: the trike pilot shoves the wing bar, the gyro pilot tilts the disc — authority grows with airspeed
+            if (kind == Kind.Trike)
+            {
+                // pitch-rate command with an angle-of-attack limiter: pulling never takes the wing past ~11°
+                float qScale = Mathf.Clamp01(fwdAir * fwdAir / (16f * 16f));
+                float want = pilotPitch * 30f;
+                if (fwdAir > 10f && AoA > 11f) want = Mathf.Min(want, -(AoA - 11f) * 6f);
+                float upRate = -pitchRate * Mathf.Rad2Deg;
+                rb.AddTorque(-transform.right * (want - upRate) * Mathf.Deg2Rad * 6f * qScale, ForceMode.Acceleration);
+                // roll-rate command, bank limited to 50°, easing back to wings-level with the bar centred
+                var fwd = transform.forward;
+                var upProj = Vector3.ProjectOnPlane(Vector3.up, fwd);
+                float bankRight = upProj.sqrMagnitude > 1e-4f ? -Vector3.SignedAngle(upProj.normalized, transform.up, fwd) : 0f;
+                float wantRoll = Mathf.Abs(pilotRoll) > 0.05f ? pilotRoll * 45f : -bankRight * 0.8f;
+                if (bankRight * Mathf.Sign(wantRoll) > 50f) wantRoll = 0f;
+                float rollRight = -rollRate * Mathf.Rad2Deg;
+                if (Airborne) rb.AddTorque(-fwd * (wantRoll - rollRight) * Mathf.Deg2Rad * 12f * qScale, ForceMode.Acceleration);
+            }
             Spin(dt, rpmFrac);
         }
 
@@ -128,7 +162,10 @@ namespace MadMax.Vehicles
             float q2 = vf * vf + vn * vn;
             if (q2 < 0.5f) return;
             float alpha = Mathf.Atan2(-vn, vf);
-            float defl = s.control == 1 ? pilotRoll : s.control == 2 ? -pilotRoll : s.control == 3 ? -pilotPitch : s.control == 4 ? -pilotRoll * 0.45f : 0f;   // rudder into the turn
+            if (s.control == 1) AoA = alpha * Mathf.Rad2Deg;
+            // the trike shifts weight instead of flying ailerons / elevator (see FixedUpdate); the fin's rudder follows the bank
+            float defl = kind == Kind.Trike ? (s.control == 4 ? -pilotRoll * 0.45f : 0f)
+                       : s.control == 1 ? pilotRoll : s.control == 2 ? -pilotRoll : s.control == 3 ? -pilotPitch : s.control == 4 ? -pilotRoll * 0.45f : 0f;
             alpha += defl * (s.control == 3 ? 14f : 12f) * Mathf.Deg2Rad;
             float slope = 2f * Mathf.PI * s.aspect / (s.aspect + 2f);
             float stall = s.stall * Mathf.Deg2Rad;
@@ -140,7 +177,7 @@ namespace MadMax.Vehicles
                 cl = 0.9f * Mathf.Sin(2f * alpha) * 0.65f;
                 float sa = Mathf.Sin(alpha);
                 cd = s.cd0 + 1.2f * sa * sa;
-                if (s.control == 1 || s.control == 2 || (kind == Kind.Gyro && s.control == 3)) Stalled = true;
+                if (s.control == 1 || s.control == 2) Stalled = true;
             }
             float q = 0.5f * Rho * q2 * s.area;
             var flow = -(fw * vf + up * vn).normalized;
@@ -154,19 +191,33 @@ namespace MadMax.Vehicles
         void Rotor(float dt, Vector3 air, bool pilot)
         {
             float horiz = new Vector2(air.x, air.z).magnitude;
-            float target = Mathf.Min(220f, horiz * 9f + Mathf.Max(0f, -Vector3.Dot(air, transform.up)) * 6f);
-            if (pilot && !Airborne && Throttle > 0.3f) target = Mathf.Max(target, 70f);         // pre-rotator
-            tip = Mathf.MoveTowards(tip, target, (target > tip ? 22f : 14f) * dt);
-            RotorRpm = tip / RotorR * 60f / (2f * Mathf.PI);
             var right = transform.right; var fwd = transform.forward;
             var axis = Quaternion.AngleAxis(-(3f + pilotPitch * 7f), right) * Quaternion.AngleAxis(-pilotRoll * 7f, fwd) * transform.up;
+            // autorotation lives on the air coming up through the tilted disc (forward speed into it, or sinking);
+            // climbing starves it, so the gyro settles into a modest climb instead of rocketing
+            float through = Mathf.Clamp(-Vector3.Dot(air, axis), -8f, 20f);
+            float target = Mathf.Clamp(horiz * 8f + through * 14f, 0f, 220f);
+            if (pilot && !Airborne && Throttle > 0.3f) target = Mathf.Max(target, 70f);         // pre-rotator
+            tip = Mathf.MoveTowards(tip, target, (target > tip ? 40f : 20f) * dt);
+            RotorRpm = tip / RotorR * 60f / (2f * Mathf.PI);
             float thrust = 0.5f * Rho * Mathf.PI * RotorR * RotorR * tip * tip * RotorCt;
             rb.AddForce(axis * thrust);                                                                    // through the centre of mass: the hang point
             if (air.sqrMagnitude > 1f) rb.AddForce(-air.normalized * thrust * 0.05f);                      // rotor drag
             // tilting the disc swings the airframe under it: control authority grows with rotor speed; the disc damps
             float auth = Mathf.Clamp01(tip / 150f);
             var w = rb.angularVelocity;
-            rb.AddTorque((right * (-pilotPitch * 1.5f - Vector3.Dot(w, right) * 1.2f) + fwd * (-pilotRoll * 1.8f - Vector3.Dot(w, fwd) * 1.2f)) * auth, ForceMode.Acceleration);
+            // stick = rate commands: pitch held within ±25° (easing to a 4° nose-up trim), bank within 45° (easing level)
+            float pitchUp = -Vector3.SignedAngle(Vector3.ProjectOnPlane(fwd, Vector3.up), fwd, right);
+            float wantPitch = Mathf.Abs(pilotPitch) > 0.05f ? pilotPitch * 20f : -(pitchUp - 4f) * 1.2f;
+            if (pitchUp * Mathf.Sign(wantPitch) > 25f) wantPitch = 0f;
+            float upRate = -Vector3.Dot(w, right) * Mathf.Rad2Deg;
+            var upProj = Vector3.ProjectOnPlane(Vector3.up, fwd);
+            float bankRight = upProj.sqrMagnitude > 1e-4f ? -Vector3.SignedAngle(upProj.normalized, transform.up, fwd) : 0f;
+            float wantRoll = Mathf.Abs(pilotRoll) > 0.05f ? pilotRoll * 40f : -bankRight * 0.9f;
+            if (bankRight * Mathf.Sign(wantRoll) > 45f) wantRoll = 0f;
+            float rollRight = -Vector3.Dot(w, fwd) * Mathf.Rad2Deg;
+            if (Airborne)
+                rb.AddTorque((-right * (wantPitch - upRate) * 0.12f - fwd * (wantRoll - rollRight) * 0.14f) * auth, ForceMode.Acceleration);
             if (Airborne && tip < 90f && Airspeed > 3f) Stalled = true;                                    // too slow to hold the rotor up
         }
 
@@ -182,15 +233,17 @@ namespace MadMax.Vehicles
 
         void OnCollisionEnter(Collision c)
         {
-            if (Time.time < crashCd) return;
-            float hit = c.relativeVelocity.magnitude;
-            if (hit < 11f) return;
+            if (Time.time < crashCd || c.contactCount == 0) return;
+            // the impact across the surface counts, not the slide along it (a tail scrape, a belly landing)
+            var n = c.GetContact(0).normal;
+            float hit = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
+            if (hit < 8f) return;
             crashCd = Time.time + 2f;
             var engine = v ? v.Engine : null;
             if (engine && engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = Mathf.Min(1f, ep.damage + (hit - 9f) * 0.04f);
             var g = MadMax.Game.WastelandGame.Instance;
-            if (g && g.Current == v) g.ThrowRider(v, rb.linearVelocity, (hit - 8f) * 5f, hit > 20f ? "YOU CRASHED" : "HARD LANDING");
-            if (hit > 26f) MadMax.World.Explosion.Blast(transform.position, 3f, 3f, 0.4f, gameObject, true);
+            if (g && g.Current == v) g.ThrowRider(v, rb.linearVelocity, (hit - 6f) * 5f, hit > 16f ? "YOU CRASHED" : "HARD LANDING");
+            if (hit > 22f) MadMax.World.Explosion.Blast(transform.position, 3f, 3f, 0.4f, gameObject, true);
             tip *= 0.2f;
         }
     }

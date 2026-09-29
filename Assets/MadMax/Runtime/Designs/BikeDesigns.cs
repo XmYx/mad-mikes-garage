@@ -132,7 +132,7 @@ namespace MadMax.Designs
         {
             var d = new VehicleDesign
             {
-                name = "Bicycle", mass = 60, drive = VehicleDriver.Drive.Rear, travel = 0.05f, finalDrive = 2.2f,
+                name = "Bicycle", mass = 60, drive = VehicleDriver.Drive.Rear, travel = 0.05f, finalDrive = 8.8f,
                 gears = new[] { 2.4f, 1.8f, 1.4f, 1.1f, 0.9f }, frequency = 2.4f, brakeForce = 900f, maxSteer = 38f,
                 eye = new Vector3Int(0, 22, -3), fuelL = 0f, oilL = 0f, coolantL = 0f, usesCoolant = false, oilInFuel = true, bike = true
             };
@@ -142,11 +142,11 @@ namespace MadMax.Designs
             var crate = Pal.Ramp(Pal.Wood, 1, 2455);
             g.Tube(new Vector3(0, 9, 6), new Vector3(0, 12, 5), 0.5f, tube);                                                 // head tube
             g.Tube(new Vector3(0, 12, 5), new Vector3(0, 12, -3), 0.5f, tube);                                               // top tube
-            g.Tube(new Vector3(0, 11, 5), new Vector3(0, 4, 0), 0.5f, tube);                                                 // down tube
-            g.Tube(new Vector3(0, 4, 0), new Vector3(0, 13, -3), 0.5f, tube);                                                // seat tube
+            g.Tube(new Vector3(0, 11, 5), new Vector3(0, 5, 0), 0.5f, tube);                                                 // down tube
+            g.Tube(new Vector3(0, 5, 0), new Vector3(0, 13, -3), 0.5f, tube);                                                // seat tube
             foreach (int x in new[] { -1, 1 })
             {
-                g.Tube(new Vector3(x, 4, 0), new Vector3(x, 4, -7), 0.4f, tube);                                             // chain stays
+                g.Tube(new Vector3(x, 5, 0), new Vector3(x, 4, -7), 0.4f, tube);                                             // chain stays
                 g.Tube(new Vector3(x, 12, -3), new Vector3(x, 4, -7), 0.4f, tube);                                           // seat stays
                 g.Tube(new Vector3(x, 4, 7), new Vector3(x, 10, 6), 0.4f, chrome);                                           // fork
             }
@@ -158,14 +158,14 @@ namespace MadMax.Designs
             g.Box(-2, 10, -10, 2, 11, -10, crate); g.Box(-2, 10, -5, 2, 11, -5, crate);                                     // crate
             g.Box(-2, 10, -9, -2, 11, -6, crate); g.Box(2, 10, -9, 2, 11, -6, crate);
             g.Set(0, 10, 7, Pal.Solid(Pal.LightW));                                                                          // lamp
-            Rider(g, 0f, 13, -3, 14, 4, 5, 4, 0);
+            Rider(g, 0f, 13, -3, 14, 4, 5, 5, 0);
             g.Bevel();
             d.body = g.Extract("body", Vector3Int.zero);
             d.driver = g.Extract("driver", Vector3Int.zero);
             d.colliders.Add(VehicleDesign.Box(-1, 3, -10, 1, 14, 8));
             d.Socket("wheel_front", PartCategory.Wheel, 0, 4, 7, "wheel_bicycle");
             d.Socket("wheel_rear", PartCategory.Wheel, 0, 4, -7, "wheel_bicycle");
-            d.Socket("engine", PartCategory.Engine, 0, 4, 0, "engine_pedals", false, 1);
+            d.Socket("engine", PartCategory.Engine, 0, 5, 0, "engine_pedals", false, 1);   // bottom bracket: pedals clear the ground
             return d;
         }
 
@@ -176,7 +176,7 @@ namespace MadMax.Designs
                 name = "SidecarOutfit", mass = 420, drive = VehicleDriver.Drive.Rear, travel = 0.16f, finalDrive = 8f,
                 gears = new[] { 2.6f, 1.8f, 1.35f, 1.08f, 0.9f }, frequency = 1.7f, brakeForce = 5200f, maxSteer = 28f,
                 eye = new Vector3Int(0, 21, -3), passenger = new Vector3Int(12, 15, -2),
-                fuelL = 16f, oilL = 3f, coolantL = 0f, usesCoolant = false, bike = true, sidecar = true, comX = 0.3f
+                fuelL = 16f, oilL = 3f, coolantL = 0f, usesCoolant = false, bike = true, sidecar = true, comX = 0.45f
             };
             var g = new VoxelGrid();
             var drab = Pal.Weathered(Pal.RigGreen, 0.25f, 2461, 3, 3);

@@ -98,11 +98,11 @@ namespace MadMax.Designs
             var g = new VoxelGrid();
             g.CylX(0, 0, 2.2f, 1, 1, p => (p.y * p.y + p.z * p.z) > 2 ? Pal.Metal[3] : Pal.Metal[1]);           // chainring
             g.Box(-1, 0, 0, 1, 0, 0, Pal.Ramp(Pal.Metal, 2));                                                     // axle
-            g.Box(2, -3, 0, 2, 0, 0, Pal.Ramp(Pal.Chrome, 1)); g.Box(-2, 0, 0, -2, 3, 0, Pal.Ramp(Pal.Chrome, 1));   // cranks
-            g.Box(3, -3, -1, 3, -3, 1, Pal.Ramp(Pal.Black, 1)); g.Box(-3, 3, -1, -3, 3, 1, Pal.Ramp(Pal.Black, 1));  // pedals
-            g.Tube(new Vector3(1, 2, 0), new Vector3(1, 1, -8), 0.3f, Pal.Ramp(Pal.Black, 0));                    // chain run
+            g.Box(2, -2, 0, 2, 0, 0, Pal.Ramp(Pal.Chrome, 1)); g.Box(-2, 0, 0, -2, 2, 0, Pal.Ramp(Pal.Chrome, 1));   // cranks
+            g.Box(3, -2, -1, 3, -2, 1, Pal.Ramp(Pal.Black, 1)); g.Box(-3, 2, -1, -3, 2, 1, Pal.Ramp(Pal.Black, 1));  // pedals
+            g.Tube(new Vector3(1, 2, 0), new Vector3(1, 0, -7), 0.3f, Pal.Ramp(Pal.Black, 0));                    // chain run
             var d = Make("engine_pedals", PartCategory.Engine, g, 1, 1);
-            d.torque = 22f; d.maxRpm = 700f; d.peakAt = 0.4f;
+            d.torque = 5f; d.maxRpm = 2600f; d.peakAt = 0.6f;                                                     // modelled above the 900 rpm idle
             return d;
         }
     }

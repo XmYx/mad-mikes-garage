@@ -41,8 +41,10 @@ lantern, pipe shotgun, molotov.
 - [x] **Geiger counter**: clicks with dose, points at hot loot and uranium ore
 - [x] **Flashlight**: battery spot beam (vs the lantern's all-round glow)
 - [x] **Repair kit** (`use_repair_kit`): field repair of one vehicle part (+30 % condition)
-- [ ] **Grappling hook**: climb walls / ledges (ties parkour), pull loose parts to you
-- [ ] **Fishing rod, hoe, watering can** (see Fishing, Gardening)
+- [x] **Grappling hook**: climb walls / ledges (ties parkour), pull loose parts to you
+- [x] **Fishing rod, hoe, watering can** (see Fishing, Gardening)
+
+*Done (late):* `GrappleTool` (roadmap 22) zips you up walls and roofs and reels loose parts / crates under 300 kg to your feet; the fishing rod, hoe and watering can shipped with roadmaps 8–10.
 
 *Ties:* crafting (repair, recipes), vehicles (welder, jack, repair kit), exploration (binoculars, geiger), parkour.
 
