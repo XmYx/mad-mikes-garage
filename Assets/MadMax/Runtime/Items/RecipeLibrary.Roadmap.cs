@@ -215,6 +215,13 @@ namespace MadMax.Items
                 yield return Cook(st, "cheese", "CHEESE", "food_cheese", 1, fuel, ("drink_milk", 3));
             }
             yield return Itm("arrows_feather", "ARROWS X6 (FLETCHED)", RecipeCategory.Weapons, "workbench", "ammo_arrow", 6, "FEATHERS MAKE THEM FLY TRUE", new[] { ("misc_feather", 2) }, (ResourceType.Wood, 1));
+            yield return new Recipe
+            {
+                id = "last_engine", name = "THE LAST ENGINE", category = RecipeCategory.Vehicles, kind = OutputKind.Part, output = MadMax.Game.LastEngine.Part, station = "garage",
+                description = "SUPERCHARGED V12 OF LEGEND: THE FOUR RELICS", seconds = 30f,
+                items = new[] { ("relic_block", 1), ("relic_heads", 1), ("relic_crank", 1), ("relic_blower", 1) },
+                resources = new[] { (ResourceType.Iron, 20), (ResourceType.Copper, 8), (ResourceType.Oil, 5) }
+            };
             yield return Itm("bone_meal", "BONE MEAL X2", RecipeCategory.Supplies, "workbench", ItemIds.Fertilizer, 2, "GROUND BONES FEED THE GARDEN", new[] { ("misc_bone", 3) });
 
             // ---- 22. parkour: the grappling hook

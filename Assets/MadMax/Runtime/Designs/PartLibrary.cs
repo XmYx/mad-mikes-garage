@@ -14,6 +14,7 @@ namespace MadMax.Designs
             yield return StreetWheel();
             yield return OffroadWheel();
             yield return V8Blower();
+            yield return LastEngine();
             yield return DieselSix();
             yield return SidePipes();
             yield return ChromeBumper();
@@ -374,6 +375,30 @@ namespace MadMax.Designs
             g.Box(-3, 10, 8, 3, 10, 8, Pal.Solid(Pal.Chrome[3]));
             var d = Make("engine_v8_blower", PartCategory.Engine, g, 260, 2);
             d.torque = 680f; d.maxRpm = 7200f; d.peakAt = 0.62f;
+            return d;
+        }
+
+        /// <summary>The Last Engine: a supercharged V12 of legend (endgame; assembled at a garage from four relics, see
+        /// <c>Game.LastEngine</c>). Same bay footprint as the blown V8, a little longer, twin blowers.</summary>
+        public static PartDesign LastEngine()
+        {
+            var g = new VoxelGrid();
+            var metal = Pal.Weathered(Pal.Metal, 0.08f, 12, 1, 2);
+            var chrome = Pal.Weathered(Pal.Chrome, 0.05f, 13, 2, -6);
+            g.Box(-5, 0, 0, 5, 4, 12, metal);                                                   // long block
+            g.Box(-6, 3, 1, -4, 5, 11, Pal.Solid(Pal.TailR)); g.Box(4, 3, 1, 6, 5, 11, Pal.Solid(Pal.TailR));   // red cam covers
+            for (int z = 1; z <= 11; z += 2) { g.Set(-7, 2, z, chrome); g.Set(7, 2, z, chrome); }                 // twelve header stubs
+            g.CylZ(0, 6, 1.6f, 12, 13, Pal.Solid(Pal.Black[1]));                               // pulley
+            g.Box(-3, 5, 1, 3, 5, 11, metal);                                                   // manifold
+            for (int b = 0; b < 2; b++)
+            {
+                int z0 = 1 + b * 6;
+                g.Box(-3, 6, z0, 3, 9, z0 + 4, Pal.Stripe(Pal.Solid(Pal.Chrome[3]), Pal.Solid(Pal.Chrome[1]), 2, 2));   // twin blowers
+                g.Box(-2, 10, z0 + 1, 2, 11, z0 + 3, Pal.Ramp(Pal.Black, 1, 3));               // scoops
+                g.Box(-1, 11, z0 + 2, 1, 11, z0 + 2, Pal.Solid(Pal.Void));
+            }
+            var d = Make("engine_v12_last", PartCategory.Engine, g, 380, 2);
+            d.torque = 1050f; d.maxRpm = 7800f; d.peakAt = 0.6f;
             return d;
         }
 

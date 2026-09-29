@@ -94,6 +94,7 @@ namespace MadMax.Game
                 var target = stage == 2 ? MadMax.Npc.TownQuests.Sister(st.index) : st;
                 if (target != null) into.Add(new Pin { label = MadMax.Npc.TownQuests.Title(stage), pos = new Vector3(target.pos.x, 0f, target.pos.y), color = new Color32(150, 220, 120, 255) });
             }
+            LastEngine.Pins(into);
         }
 
         void SaveMap(SaveData d)
@@ -101,6 +102,8 @@ namespace MadMax.Game
             d.discovered = new List<string>(Discovered);
             d.hasWaypoint = HasWaypoint; d.waypoint = Waypoint;
             d.journal = Journal.Save();
+            d.starter = StarterStep;
+            d.lastEngine = LastEngine.Save();
         }
 
         void LoadMap(SaveData d)
@@ -108,6 +111,8 @@ namespace MadMax.Game
             Discovered.Clear();
             if (d.discovered != null) foreach (var k in d.discovered) Discovered.Add(k);
             Journal.Load(d.journal);
+            StarterStep = d.starter;
+            LastEngine.Load(d.lastEngine);
             if (d.hasWaypoint) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }
         }
     }

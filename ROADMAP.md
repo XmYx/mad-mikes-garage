@@ -540,13 +540,15 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       crash can still bleed you out in about a minute with no warning. Suggest: drop part of the pack as a
       searchable stash where you fell (scaled by difficulty), and a bleed-out warning with a bandage prompt.
       *Done:* a share of the pack stays in a searchable stash where you fell (NORMAL a third, HARD two thirds, BRUTAL all but what you wear; saved, waypoint set), and a flashing BLEEDING OUT countdown with a hint to bandage.
-- [ ] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
+- [x] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
       Suggest a short starter chain on the town board (patch the car, fuel it, first haul, first workbench and
       wall, first tame), each step unlocking the next and teaching one system.
-- [ ] **No long-term goal or ending.** Skills, research, factions and bases grow, but nothing pulls the late game
+      *Done:* FIRST STEPS (`WastelandGame.Starter`): drive 300 m, top up a tank, swap a part off a wreck (waypoint to the nearest), run a haul from a town board (waypoint), build a workbench and a wall, tame an animal; one objective line under the compass, journal entries, scrap per step; saved (`SaveData.starter`).
+- [x] **No long-term goal or ending.** Skills, research, factions and bases grow, but nothing pulls the late game
       together. Suggest a myth to chase (the "Last Engine": a legendary V12 in parts across bunkers, airfields and
       faction vaults), faction endgames (the Guild's pipeline, the Church's pilgrimage), or a convoy run to the
       map edge.
+      *Done:* THE LAST ENGINE (`Game/LastEngine`): four relics — the block in the second-nearest bunker, the heads in the nearest airfield hangar, the crank on the boss of the gang with the longest road, the twin blowers from the Church at FRIENDLY standing; rumours name and pin them; the garage assembles `engine_v12_last` (1050 Nm V12 with its own engine sound); a car running it that reaches the world's edge makes THE LAST RUN (journal, standing). Faction endgames are left for later.
 - [ ] **No racing or arena activity in a driving game.** Suggest: point-to-point races between towns against
       rival drivers (entry fee and purse, tuning matters), bike trials on the mesas, air races between airfields,
       a scrap-metal arena with bets, and jump ramps with a hang-time score.

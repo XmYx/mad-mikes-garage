@@ -902,6 +902,7 @@ namespace MadMax.Npc
                 if (cd?.armor != null && Random.value < 0.7f) loot.extra.Add(ClothingLibrary.ItemId(cd));
             }
             if (pack) foreach (var kv in new List<KeyValuePair<string, int>>(pack.inventory.Items)) for (int i = 0; i < kv.Value; i++) loot.extra.Add(kv.Key);   // what they carried for you
+            MadMax.Game.LastEngine.BossDrop(Profile, loot);
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);
             convoy?.MemberDied(this);
         }

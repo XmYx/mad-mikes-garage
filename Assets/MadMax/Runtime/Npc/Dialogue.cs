@@ -365,6 +365,11 @@ namespace MadMax.Npc
             if (Weather.Raining) facts.Add("THIS RAIN TURNS THE FLATS TO GLUE. STAY ON THE ROADS.");
             if (S.disposition >= 50 && S.revealed >= 3) facts.Add("AND DON'T FORGET WHAT I TOLD YOU. " + P.Backstory(2));
             if (facts.Count == 0) facts.Add("QUIET. TOO QUIET.");
+            if (((P.seed & 0xffff) + Day) % 3 == 0)                                          // the legend of the Last Engine
+            {
+                var relic = MadMax.Game.LastEngine.Rumour(at, (P.seed & 0xffff) + Day);
+                if (relic != null) { facts.Clear(); facts.Add(relic); }
+            }
             int i0 = ((P.seed & 0xffff) + Day) % facts.Count;
             line = facts[i0] + (facts.Count > 1 && S.disposition >= 20 ? " " + facts[(i0 + 1) % facts.Count] : "");
             MadMax.Game.Journal.Add("RUMOUR", P.Name + ": " + line);

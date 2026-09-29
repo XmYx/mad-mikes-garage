@@ -47,6 +47,7 @@ namespace MadMax.Vehicles
             if (!Accepts(t)) return false;
             if (fuel < 0.5f || tankKind == ResourceType.None) tankKind = t == ResourceType.Ethanol ? ResourceType.Fuel : t;
             fuel = Mathf.Min(fuelCapacity, fuel + litres);
+            if (litres > 0.5f) MadMax.Game.WastelandGame.StarterNote("fuel");
             return true;
         }
         public bool usesCoolant = true;

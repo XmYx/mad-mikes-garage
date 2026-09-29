@@ -221,6 +221,12 @@ namespace MadMax.Game
             if (game.RadiationLevel > 0.02f && (Time.time * (2f + game.RadiationLevel * 6f)) % 1f > 0.35f)
                 canvas.Text(canvas.w / 2 - 20, 34, "RADIATION " + Mathf.RoundToInt(game.RadiationLevel * 100), new Color32(156, 255, 58, 255));
             if (!car && game.Player.Swimming) canvas.Text(canvas.w / 2 - 16, 26, "SWIMMING", new Color32(150, 190, 255, 255));
+            var starter = game.StarterLine;
+            if (starter != null && !(game.Menus && game.Menus.IsOpen))
+            {
+                starter = Controls.Localize(starter);
+                canvas.Text((canvas.w - PixelCanvas.TextWidth(starter)) / 2, fps || rig.mode == ViewMode.ThirdPerson ? 16 : 4, starter, new Color32(235, 200, 120, 255));
+            }
             DrawResources(6, 22);
             if (!car && !(game.Build && game.Build.Active) && !(game.Menus && game.Menus.IsOpen)) DrawToolbar();
             if (!car) DrawVitals(6, canvas.h - 16);

@@ -88,6 +88,8 @@ namespace MadMax.Game
         public List<MovedSave> moved = new List<MovedSave>();            // crates and other loose props pushed around
         public int storm; public float stormLeft, stormFor;             // Storms: kind, seconds left, total length
         public List<FireSave> fires = new List<FireSave>();
+        public int starter = -1;                                        // FIRST STEPS step (-1 = off)
+        public List<string> lastEngine = new List<string>();            // LastEngine flags
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;

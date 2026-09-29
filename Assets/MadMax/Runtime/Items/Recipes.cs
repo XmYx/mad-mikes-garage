@@ -55,6 +55,7 @@ namespace MadMax.Items
             { "throw_smoke", "SMOKE BOMB" }, { "throw_rock", "ROCK" },
             { "coin_chit", "GUILD CHIT" }, { "part:cargo_crate", "GUILD CRATE" },
             { "kit_turbo", "TURBO KIT" }, { "kit_supercharger", "SUPERCHARGER KIT" }, { "use_nitrous", "NITROUS BOTTLE" },
+            { "relic_block", "RELIC: V12 BLOCK" }, { "relic_heads", "RELIC: V12 HEADS" }, { "relic_crank", "RELIC: V12 CRANKSHAFT" }, { "relic_blower", "RELIC: TWIN BLOWERS" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 

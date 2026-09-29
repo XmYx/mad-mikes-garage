@@ -48,6 +48,7 @@ namespace MadMax.World
             var rnd = new System.Random(key.GetHashCode() ^ g.seed);
             var found = LootTables.Roll(table, rnd, MadMax.Game.GameRules.Current.loot, g.Stats.Attribute(MadMax.RPG.Attr.Perception));
             foreach (var x in extra) found.Add((x, 1));
+            MadMax.Game.LastEngine.AddFinds(g, key, found);
             if (found.Count == 0) { g.Toast("NOTHING USEFUL"); return; }
             var names = new List<string>();
             foreach (var (id, n) in found)

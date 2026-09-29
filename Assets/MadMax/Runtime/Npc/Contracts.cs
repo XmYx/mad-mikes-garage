@@ -172,6 +172,7 @@ namespace MadMax.Npc
             MadMax.Audio.Sfx.Play2D("cash", 0.8f);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 3f);
             g.Toast("PAID " + pay + " SCRAP" + (c.chits > 0 ? " + " + c.chits + " CHITS" : ""));
+            WastelandGame.StarterNote("paid");
         }
 
         /// <summary>Hand in a faction's supply job at a board (roadmap 21).</summary>

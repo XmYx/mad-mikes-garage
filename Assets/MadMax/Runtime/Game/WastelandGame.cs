@@ -193,6 +193,7 @@ namespace MadMax.Game
             else if (fleet.Count == 0 && !Dedicated) { Player.gameObject.SetActive(true); var sp = p + Vector3.Cross(Vector3.up, dir) * 6f; sp.y = terrain.Height(sp.x, sp.z) + 0.1f; Player.Teleport(sp, 0f); terrain.focus = Player.transform; if (cameraRig) cameraRig.SetTarget(Player.transform); }
             else if (!Dedicated) Enter(fleet[0]);
             GameSettings.Current.Apply(this);
+            if (!joining && pending == null && !Dedicated) BeginStarter();                        // FIRST STEPS for a fresh world
             if (Dedicated) StartDedicated();
             else if (pending == null && !SaveSystem.SkipMenu && LaunchOptions.NoMenu)
             {
@@ -638,6 +639,8 @@ namespace MadMax.Game
             UpdateStashes();
             BaseUpkeep.Tick();
             UpdateGarage();
+            UpdateStarter();
+            LastEngine.Tick(this);
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {
                 // back on the wheels: only for a vehicle on its side or roof, or stuck and nearly still

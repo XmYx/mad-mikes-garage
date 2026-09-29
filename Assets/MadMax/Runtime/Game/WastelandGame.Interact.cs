@@ -462,6 +462,7 @@ namespace MadMax.Game
                         best.Attach(part);
                         MadMax.Audio.Sfx.Play("ratchet", best.transform.position, 0.8f);
                         Stats.Practice(MadMax.RPG.Skill.Mechanics, 8f);
+                        StarterNote("mount");
                         MadMax.Net.NetSession.Instance?.SendPartMounted(best.GetComponentInParent<VehicleDriver>(), best.name, part);
                     }
                     return $"[E] MOUNT {carried.partId.ToUpperInvariant()} > {best.name.ToUpperInvariant()}   [Q] DROP";
@@ -494,6 +495,7 @@ namespace MadMax.Game
                     MadMax.Audio.Sfx.Play("ratchet", target.transform.position, 0.8f);
                     target.Socket.Detach(false);
                     Stats.Practice(MadMax.RPG.Skill.Mechanics, 6f);
+                    StarterNote("take");
                 }
                 else net?.SendPartCarried(target);
                 if (target.TryGetComponent<MadMax.Net.NetReplica>(out var rep)) Destroy(rep);

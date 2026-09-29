@@ -20,7 +20,15 @@ namespace MadMax.Audio
         {
             engineId ??= "";
             var p = new EngineProfile();
-            if (engineId.Contains("v8"))
+            if (engineId.Contains("v12"))
+            {
+                // 60° V12: twelve even pulses per two turns, a smooth scream, twin blowers whining
+                p.firing = Even(12);
+                p.headerMs = new[] { 0f, 0.4f, 0f, 0.4f, 0f, 0.4f, 0f, 0.4f, 0f, 0.4f, 0f, 0.4f };
+                p.pulseMs = 0.8f; p.pipeLength = 2.2f; p.mufflerHz = 1100f; p.rasp = 0.3f;
+                p.blower = 1.2f; p.crackle = 0.5f; p.roughness = 0.04f; p.gain = 1.1f;
+            }
+            else if (engineId.Contains("v8"))
             {
                 // cross-plane V8, firing order 1-8-4-3-6-5-7-2 alternates banks L R R L R L L R: uneven bank pulses burble
                 p.firing = Even(8);
