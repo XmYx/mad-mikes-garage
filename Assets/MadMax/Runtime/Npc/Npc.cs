@@ -559,7 +559,8 @@ namespace MadMax.Npc
         {
             if (!drivenCar) return;
             var v = drivenCar; drivenCar = null;
-            if (v.TryGetComponent<AiDriver>(out var ai) && ai.enabled) ai.Release();
+            var gw = WastelandGame.Instance;
+            if (v.TryGetComponent<AiDriver>(out var ai) && !(gw && gw.Current == v)) ai.Release();   // also when it was already switched off: never leave it "occupied"
             var p = v.transform.position - v.transform.right * 2.2f;
             var t = DeformableTerrain.Instance;
             if (t) p.y = t.HeightNoLoad(p.x, p.z) + 0.05f;

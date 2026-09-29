@@ -690,9 +690,10 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
       around the aircraft, so at 60 m+ the ground ends in fog close by. A far-terrain impostor ring (heights and
       biome colours only, no props) would sell altitude and help navigation.
-- [ ] The TowTruck showed its lights on while parked (seen during roadmap 14).
+- [x] The TowTruck showed its lights on while parked (seen during roadmap 14).
 
 ### UI / HUD
+      *Done:* likely a stale `Occupied` flag: an NPC leaving the wheel skipped `AiDriver.Release` when the AI was already switched off. `Npc.LeaveWheel` now always releases (unless the player took over), and auto headlights need a real driver (AI or the player); to confirm in the test pass.
 - [x] **The HUD and font scale with the pixel height**: at 480–540 px the 3×5 font becomes tiny on big screens.
       Draw the HUD canvas at its own (settable) resolution.
       *Done:* setting HUD SIZE draws the HUD canvas at its own resolution.
@@ -702,14 +703,16 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       *Done:* JOURNAL page (Tab from the map): the jobs in hand with distances (ENTER sets a waypoint), then a notebook of rumours heard, errands and jobs taken, places found, by day (`Game/Journal`, saved).
 
 ### Performance
-- [ ] **New-game load is a ~4 s single frame** behind the fader: terrain around the spawn (0.7 s after
+- [x] **New-game load is a ~4 s single frame** behind the fader: terrain around the spawn (0.7 s after
       parallelising), 36 wrecks (0.9 s), template baking and the scene switch. The spinner freezes during
       it. Suggest a loading coroutine with a progress bar, and wrecks spawned lazily as their chunks stream in.
+      *Done:* `WastelandGame.Start` is a coroutine: world/terrain, vehicles and HUD are built over separate frames behind the fader, the wheel keeps turning and a progress bar fills (`ScreenFader.Progress`); Update and the directors wait for `Ready`. Wrecks are planned up front and spawned as a player comes within 220 m (`wrecksPending`, saved; scrapyard wrecks too).
 - [ ] **GC near towns**: the allocation rate triples entering a settlement (chunk arrays, prop spawns, carve
       snapshots), and an incremental GC slice sometimes takes 30+ ms. Pool chunk arrays and debris lists, and try
       IL2CPP for release builds.
-- [ ] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
+- [x] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
       spread `SiteBuilder.Populate` over frames.
+      *Done:* `SiteBuilder`: the piece's collider is cooked on a worker (`Physics.BakeMesh`) once its mesh is uploaded, and pieces spawn through `SitePending`, one per frame across all sites.
 - [x] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
       before the async remesh. Dent mesh updates could batch per frame.
       *Done:* `DeformableMesh.Dent` only moves the vertex targets; one snap + upload + normals per mesh in `LateUpdate`, however many contacts and hits landed that frame.

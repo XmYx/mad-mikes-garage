@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using MadMax.Building;
 using MadMax.Items;
@@ -86,9 +87,12 @@ namespace MadMax.Game
         PickupSystem pickups;
         float helpUntil;
 
-        void Start()
+        /// <summary>Builds the world over a few frames behind the fader (the loading wheel keeps turning and a bar shows the
+        /// progress); <see cref="Ready"/> when done — Update and the directors wait for it.</summary>
+        IEnumerator Start()
         {
             Instance = this;
+            ScreenFader.Progress(0.05f);
             Time.fixedDeltaTime = 0.01f;
             Time.timeScale = 1f;
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp) urp.shadowDistance = shadowDistance;
@@ -126,6 +130,8 @@ namespace MadMax.Game
             terrain.viewRadius = viewRadius;
             terrain.Init(World, terrainMaterial, propMaterial);
             UnityEngine.Profiling.Profiler.EndSample();
+            ScreenFader.Progress(0.25f);
+            yield return null;
             var weather = new GameObject("Weather").AddComponent<Weather>();
             var fx = new GameObject("WorldFx");
             fx.AddComponent<DebrisSystem>().Init(propMaterial);
@@ -162,6 +168,8 @@ namespace MadMax.Game
                 if (!joining && pending.player.vehicle >= 0 && pending.player.vehicle < pending.vehicles.Count) focus = pending.vehicles[pending.player.vehicle].position;
                 terrain.BuildAllNow(focus);
                 Physics.SyncTransforms();
+                ScreenFader.Progress(0.6f);
+                yield return null;
                 RestoreVehicles(pending);
             }
             else
@@ -170,6 +178,8 @@ namespace MadMax.Game
                 terrain.BuildAllNow(p);
                 Physics.SyncTransforms();
                 UnityEngine.Profiling.Profiler.EndSample();
+                ScreenFader.Progress(0.6f);
+                yield return null;
                 UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fleet");
                 SpawnFleet(p, dir);
                 UnityEngine.Profiling.Profiler.EndSample();
@@ -179,6 +189,8 @@ namespace MadMax.Game
                 GiveStartingKit(Rules.startingKit);
             }
             Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
+            ScreenFader.Progress(0.85f);
+            yield return null;
 
             if (cameraRig)
             {
@@ -214,6 +226,7 @@ namespace MadMax.Game
             SaveSystem.PendingRules = null; SaveSystem.PendingCharacter = null; SaveSystem.PendingLook = null;
             SaveSystem.SkipMenu = false;
             helpUntil = Time.time + 12f;
+            ScreenFader.Progress(1f);
             Ready = true;
         }
 
@@ -525,12 +538,12 @@ namespace MadMax.Game
 
         void Update()
         {
-            if (!Player) return;
+            if (!Ready || !Player) return;
             var kb = Keyboard.current; var pad = Gamepad.current; var mouse = Mouse.current;
             bool Pressed(Key k) => kb != null && kb[k].wasPressedThisFrame;                      // fixed keys (machine / winch / crane digits)
             UpdateRadial(kb, mouse);
 
-            if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); return; }
+            if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); UpdateWreckStreaming(); return; }
             Menus.Tick();
             var settings = GameSettings.Current;
             foreach (var c in cars)
@@ -641,6 +654,7 @@ namespace MadMax.Game
             BaseUpkeep.Tick();
             UpdateGarage();
             UpdateStarter();
+            UpdateWreckStreaming();
             LastEngine.Tick(this);
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {

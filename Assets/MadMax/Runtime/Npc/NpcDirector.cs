@@ -353,7 +353,7 @@ namespace MadMax.Npc
 
         void Update()
         {
-            if (!game || game.Player == null) return;
+            if (!game || game.Player == null || !game.Ready) return;
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient) return;
             var focus = game.Current ? game.Current.transform.position : game.Player.transform.position;

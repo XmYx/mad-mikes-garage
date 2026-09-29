@@ -65,7 +65,7 @@ namespace MadMax.Animals
 
         void Update()
         {
-            if (!game || !game.Player) return;
+            if (!game || !game.Player || !game.Ready) return;
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient) return;
             if (pending != null) Restore();

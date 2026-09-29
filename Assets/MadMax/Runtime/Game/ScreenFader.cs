@@ -13,7 +13,8 @@ namespace MadMax.Game
         static ScreenFader instance;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => instance = null;
 
-        RawImage black, wheel, flash;
+        RawImage black, wheel, flash, bar, barBack;
+        float progress = -1f;
         float alpha, target, spin, flashT, flashLen = 1f;
         Color flashColor = Color.white;
         bool spinning;
@@ -55,7 +56,22 @@ namespace MadMax.Game
             var wr = wheel.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(1f, 0f); wr.pivot = new Vector2(0.5f, 0.5f);
             wr.sizeDelta = new Vector2(96, 96); wr.anchoredPosition = new Vector2(-80, 80);
             wheel.enabled = false;
+            // loading progress: a pixel bar left of the wheel
+            barBack = new GameObject("ProgressBack").AddComponent<RawImage>();
+            barBack.transform.SetParent(transform, false);
+            barBack.color = new Color(0.16f, 0.13f, 0.12f, 1f); barBack.raycastTarget = false;
+            var bb = barBack.rectTransform; bb.anchorMin = bb.anchorMax = new Vector2(1f, 0f); bb.pivot = new Vector2(1f, 0.5f);
+            bb.sizeDelta = new Vector2(220, 8); bb.anchoredPosition = new Vector2(-140, 80);
+            bar = new GameObject("Progress").AddComponent<RawImage>();
+            bar.transform.SetParent(barBack.transform, false);
+            bar.color = new Color(0.86f, 0.62f, 0.25f, 1f); bar.raycastTarget = false;
+            var br = bar.rectTransform; br.anchorMin = new Vector2(0f, 0f); br.anchorMax = new Vector2(0f, 1f); br.pivot = new Vector2(0f, 0.5f);
+            br.offsetMin = new Vector2(2f, 2f); br.offsetMax = new Vector2(2f, -2f);
+            barBack.enabled = bar.enabled = false;
         }
+
+        /// <summary>World loading progress 0..1 (shown beside the wheel while it spins; 1 hides it).</summary>
+        public static void Progress(float p) { if (Application.isBatchMode) return; I.progress = p >= 1f ? -1f : p; }
 
         /// <summary>Pixel-art tyre wrapped in snow chains (48 px, point filtered).</summary>
         static Texture2D WheelTexture()
@@ -101,6 +117,9 @@ namespace MadMax.Game
             black.color = new Color(0, 0, 0, alpha);
             if (flashT > 0f) { flashT -= Time.unscaledDeltaTime; flash.color = new Color(flashColor.r, flashColor.g, flashColor.b, Mathf.Clamp01(flashT / flashLen)); }
             wheel.enabled = spinning;
+            bool showBar = spinning && progress >= 0f;
+            barBack.enabled = bar.enabled = showBar;
+            if (showBar) { bar.rectTransform.sizeDelta = new Vector2(Mathf.Round(216f * Mathf.Clamp01(progress) / 4f) * 4f, -4f); barBack.color = new Color(0.16f, 0.13f, 0.12f, Mathf.Clamp01(alpha * 1.5f)); }
             if (spinning)
             {
                 spin += dt * 360f;

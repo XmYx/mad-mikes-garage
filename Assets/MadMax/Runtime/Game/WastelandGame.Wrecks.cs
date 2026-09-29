@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MadMax.Net;
 using MadMax.Vehicles;
 using UnityEngine;
 
@@ -10,23 +11,41 @@ namespace MadMax.Game
     {
         float sleepCheck;
 
-        void SpawnWrecks(Vector3 spawn)
+        // ---- wrecks are planned up front (deterministic from the seed) and spawned as the player comes near them
+        struct WreckPlan { public int prefab; public Vector3 pos, dir; public int seed; public bool cold; }
+        readonly List<WreckPlan> wreckPlans = new List<WreckPlan>();
+        /// <summary>Plan indices not spawned yet (saved: a load keeps spawning them lazily).</summary>
+        readonly List<int> wrecksPending = new List<int>();
+        bool wrecksPlanned;
+        float wreckCheck;
+
+        List<GameObject> WreckPrefabs()
         {
-            var rnd = new System.Random(seed * 31 + 7);
             var prefabs = new List<GameObject>(vehiclePrefabs);
             prefabs.AddRange(trailerPrefabs);
             prefabs.RemoveAll(pf => !pf || pf.GetComponent<FlightModel>());       // aircraft turn up at airfields, not by the road
+            return prefabs;
+        }
+
+        /// <summary>Where every wreck of this world lies (no objects yet): a few at the back of the start yard, some
+        /// around town squares, the rest on the verges, and four in each scrapyard.</summary>
+        void PlanWrecks()
+        {
+            wreckPlans.Clear();
+            wrecksPlanned = true;
+            var rnd = new System.Random(seed * 31 + 7);
+            var prefabs = WreckPrefabs();
             var roads = World.roads.roads;
             for (int i = 0; i < wreckCount; i++)
             {
                 Vector3 pos, dir;
-                var prefab = prefabs[rnd.Next(prefabs.Count)];
+                int pf = rnd.Next(prefabs.Count);
                 if (i < 3)
                 {
                     // a few at the back of the start yard so scavenging begins right away (cold: no fuel to cook off)
                     World.Yard(out var yo, out var ya, out var ys);
                     dir = Quaternion.Euler(0, 40f + i * 55f, 0) * ya;
-                    pos = FindClearSpot(yo + ya * (46f + i * 9f) + ys * 30f, ya, HalfExtents(prefab), Quaternion.LookRotation(dir));
+                    pos = yo + ya * (46f + i * 9f) + ys * 30f;
                 }
                 else if (i % 4 == 0)
                 {
@@ -51,24 +70,90 @@ namespace MadMax.Game
                     pos = a + side * (road.width * 0.5f + 3f + (float)rnd.NextDouble() * 4f);                 // on the verge
                     dir = Quaternion.Euler(0, (float)rnd.NextDouble() * 70f - 35f, 0) * along;
                 }
+                int wseed = rnd.Next();
                 if (i >= 3 && (World.YardWeight(pos.x, pos.z) > 0f || World.Sample(pos.x, pos.z).roadDist < 4.5f)) continue;   // never on a lane or in the yard
-                if (i >= 3) pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
-                var go = Instantiate(prefab, pos, Quaternion.LookRotation(dir));
-                go.name = "Wreck " + prefab.name;
-                var v = go.GetComponent<VehicleDriver>();
-                if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = rnd.NextDouble() < 0.3;
-                Register(v, v.driveable ? wrecks : null);
-                Ruin(v, rnd);
-                if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
-                if (go.TryGetComponent<VehicleSystems>(out var sys))
-                {
-                    sys.fuel = i < 3 ? 0f : sys.fuelCapacity * (float)rnd.NextDouble() * 0.35f;
-                    sys.oil = sys.oilCapacity * (float)rnd.NextDouble() * 0.8f;
-                    sys.coolant = sys.coolantCapacity * (float)rnd.NextDouble() * 0.8f;
-                }
-                v.Body.isKinematic = true;
+                wreckPlans.Add(new WreckPlan { prefab = pf, pos = pos, dir = dir, seed = wseed, cold = i < 3 });
             }
-            SpawnScrapyardWrecks(rnd, prefabs);
+            // four in each scrapyard lot
+            var yards = new List<(Vector3 pos, float yaw)>();
+            MadMax.World.BiomeProps.Scrapyards(World, yards);
+            foreach (var (c, yaw) in yards)
+            {
+                var q = Quaternion.Euler(0f, yaw, 0f);
+                for (int i = 0; i < 4; i++)
+                {
+                    int pf = rnd.Next(prefabs.Count);
+                    if (!prefabs[pf].GetComponent<VehicleDriver>().driveable) continue;
+                    var pos = c + q * new Vector3(-6f + (i % 2) * 11f, 0f, -3f + (i / 2) * 9f);
+                    var dir = q * Quaternion.Euler(0f, 80f + (float)rnd.NextDouble() * 20f, 0f) * Vector3.forward;
+                    wreckPlans.Add(new WreckPlan { prefab = pf, pos = pos, dir = dir, seed = rnd.Next(), cold = true });
+                }
+            }
+        }
+
+        /// <summary>New game: plan the wrecks, place the yard ones now; the rest spawn as the player comes near.</summary>
+        void SpawnWrecks(Vector3 spawn)
+        {
+            PlanWrecks();
+            wrecksPending.Clear();
+            for (int i = 0; i < wreckPlans.Count; i++) { if (i < 3 && wreckPlans[i].cold && i < wreckCount) SpawnWreck(i); else wrecksPending.Add(i); }
+        }
+
+        /// <summary>Spawn the next pending wreck within 220 m of the player (one every quarter second).</summary>
+        void UpdateWreckStreaming()
+        {
+            if (wrecksPending.Count == 0 || Time.time < wreckCheck || (NetSession.Instance && NetSession.Instance.IsClient)) return;
+            wreckCheck = Time.time + 0.25f;
+            bool Near(Vector3 p, Vector3 f) { float dx = p.x - f.x, dz = p.z - f.z; return dx * dx + dz * dz < 220f * 220f; }
+            for (int k = 0; k < wrecksPending.Count; k++)
+            {
+                var plan = wreckPlans[wrecksPending[k]];
+                bool near = !Dedicated && Near(plan.pos, FocusPos);
+                if (!near && terrain) foreach (var f in terrain.extraFoci) if (f && Near(plan.pos, f.position)) { near = true; break; }   // other players
+                if (!near) continue;
+                int idx = wrecksPending[k];
+                wrecksPending.RemoveAt(k);
+                SpawnWreck(idx);
+                return;
+            }
+        }
+
+        void SpawnWreck(int index)
+        {
+            if (index < 0 || index >= wreckPlans.Count) return;
+            var plan = wreckPlans[index];
+            var prefabs = WreckPrefabs();
+            if (plan.prefab >= prefabs.Count) return;
+            var prefab = prefabs[plan.prefab];
+            var rnd = new System.Random(plan.seed);
+            var pos = plan.pos;
+            var rot = Quaternion.LookRotation(plan.dir.sqrMagnitude > 0.01f ? plan.dir : Vector3.forward);
+            if (index < 3 && plan.cold && index < wreckCount) pos = FindClearSpot(pos, plan.dir, HalfExtents(prefab), rot);
+            else pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
+            var go = Instantiate(prefab, pos, rot);
+            go.name = "Wreck " + prefab.name;
+            var v = go.GetComponent<VehicleDriver>();
+            if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = rnd.NextDouble() < 0.3;
+            Register(v, v.driveable ? wrecks : null);
+            Ruin(v, rnd);
+            if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
+            if (go.TryGetComponent<VehicleSystems>(out var sys))
+            {
+                sys.fuel = plan.cold ? 0f : sys.fuelCapacity * (float)rnd.NextDouble() * 0.35f;
+                sys.oil = sys.oilCapacity * (float)rnd.NextDouble() * 0.8f;
+                sys.coolant = sys.coolantCapacity * (float)rnd.NextDouble() * 0.8f;
+            }
+            v.Body.isKinematic = true;
+        }
+
+        void SaveWreckPlan(SaveData d) { d.wrecksPlanned = wrecksPlanned; d.wrecksPending = new List<int>(wrecksPending); }
+
+        void LoadWreckPlan(SaveData d)
+        {
+            wrecksPending.Clear();
+            if (!d.wrecksPlanned) return;                                                        // older saves spawned every wreck up front
+            PlanWrecks();
+            if (d.wrecksPending != null) wrecksPending.AddRange(d.wrecksPending);
         }
 
         /// <summary>A wreck left by a fight on the road (off-screen skirmishes): ruined, dry, asleep until the player
@@ -88,33 +173,6 @@ namespace MadMax.Game
             if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = sys.fuelCapacity * 0.05f; }
             v.Body.isKinematic = true;
             return v;
-        }
-
-        /// <summary>A few wrecks in every scrapyard lot (landmarks): cars to strip, parts lying about.</summary>
-        void SpawnScrapyardWrecks(System.Random rnd, List<GameObject> prefabs)
-        {
-            var yards = new List<(Vector3 pos, float yaw)>();
-            MadMax.World.BiomeProps.Scrapyards(World, yards);
-            foreach (var (c, yaw) in yards)
-            {
-                var q = Quaternion.Euler(0f, yaw, 0f);
-                for (int i = 0; i < 4; i++)
-                {
-                    var prefab = prefabs[rnd.Next(prefabs.Count)];
-                    if (!prefab.GetComponent<VehicleDriver>().driveable) continue;
-                    var pos = c + q * new Vector3(-6f + (i % 2) * 11f, 0f, -3f + (i / 2) * 9f);
-                    pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
-                    var go = Instantiate(prefab, pos, q * Quaternion.Euler(0f, 80f + (float)rnd.NextDouble() * 20f, 0f));
-                    go.name = "Wreck " + prefab.name;
-                    var v = go.GetComponent<VehicleDriver>();
-                    if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = false;
-                    Register(v, wrecks);
-                    Ruin(v, rnd);
-                    if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
-                    if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = 0f; sys.oil *= 0.3f; }
-                    v.Body.isKinematic = true;
-                }
-            }
         }
 
         void Ruin(VehicleDriver v, System.Random rnd)

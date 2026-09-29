@@ -91,6 +91,7 @@ namespace MadMax.Game
         public int starter = -1;                                        // FIRST STEPS step (-1 = off)
         public List<string> lastEngine = new List<string>();            // LastEngine flags
         public List<string> records = new List<string>();               // Racing best times, "hang"
+        public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;

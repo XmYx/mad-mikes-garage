@@ -98,7 +98,9 @@ namespace MadMax.Vehicles
         void Update()
         {
             if (heads == null) return;
-            bool on = mode == 1 || (mode == 0 && driver.Occupied && DayNight.Darkness > 0.3f);
+            var g = MadMax.Game.WastelandGame.Instance;
+            bool driven = driver.Occupied && (driver.aiDriven || (g && g.Current == driver));             // a stale occupied flag never lights a parked car
+            bool on = mode == 1 || (mode == 0 && driven && DayNight.Darkness > 0.3f);
             On = on;
             heads[0].enabled = on && LightBudget.Allowed(heads[0], true);
             UpdateBeams(on);

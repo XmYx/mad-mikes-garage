@@ -166,7 +166,7 @@ namespace MadMax.Game
 
         void Update()
         {
-            if (!game || !game.Player) return;
+            if (!game || !game.Player || !game.Ready) return;
             HangTime();
             if (cleanupAt > 0f && Time.time > cleanupAt) Cleanup(false);
             if (Active == null) return;

@@ -41,7 +41,7 @@ namespace MadMax.World
         {
             var g = WastelandGame.Instance;
             var t = DeformableTerrain.Instance;
-            if (!g || !g.Player || !t) return;
+            if (!g || !g.Player || !t || !g.Ready) return;
             float dt = Time.deltaTime;
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
             var biome = t.BiomeAt(focus.x, focus.z);

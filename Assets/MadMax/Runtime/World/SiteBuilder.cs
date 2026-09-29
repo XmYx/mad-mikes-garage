@@ -28,7 +28,10 @@ namespace MadMax.World
             public VoxelGrid grid;
             public Mesh mesh;
             public List<Extra> extras;
+            public Task bake;                // the collider cooked on a worker before the piece spawns
         }
+
+        static int lastSpawnFrame = -1;
 
         static readonly Dictionary<string, Piece> pieces = new Dictionary<string, Piece>();
         static readonly List<Site> near = new List<Site>();
@@ -37,7 +40,7 @@ namespace MadMax.World
         const float BunkerVoxel = 0.2f, TunnelVoxel = 0.25f, SegmentLen = 8f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { pieces.Clear(); worldSeed = int.MinValue; nextPrewarm = 0f; }
+        static void ResetStatics() { pieces.Clear(); worldSeed = int.MinValue; nextPrewarm = 0f; lastSpawnFrame = -1; }
 
         static void CheckWorld(WorldGen world)
         {
@@ -127,8 +130,7 @@ namespace MadMax.World
                     var p = Get(world, s, i);
                     if (DeformableTerrain.ChunkOf(p.pos) != c) continue;
                     Start(world, p);
-                    if (Ready(p)) Spawn(terrain, p, parent, mat);
-                    else parent.gameObject.AddComponent<SitePending>().Init(p.id, mat);
+                    parent.gameObject.AddComponent<SitePending>().Init(p.id, mat);       // spawned over the next frames, one piece a frame
                 }
         }
 
@@ -140,7 +142,8 @@ namespace MadMax.World
             void Update()
             {
                 if (!pieces.TryGetValue(id, out var p)) { Destroy(this); return; }
-                if (!Ready(p)) return;
+                if (!Ready(p) || Time.frameCount == lastSpawnFrame) return;                     // one big piece per frame
+                lastSpawnFrame = Time.frameCount;
                 if (DeformableTerrain.Instance) Spawn(DeformableTerrain.Instance, p, transform, mat);
                 Destroy(this);
             }
@@ -148,14 +151,22 @@ namespace MadMax.World
 
         static bool Ready(Piece p)
         {
-            if (p.grid != null && p.mesh) return true;
+            if (p.grid != null && p.mesh)
+            {
+                if (p.bake == null) return true;
+                if (!p.bake.IsCompleted) return false;
+                p.bake = null;
+                return true;
+            }
             if (p.job == null || !p.job.IsCompleted) return false;
             if (p.job.IsFaulted) { Debug.LogException(p.job.Exception); p.job = null; return false; }
             var r = p.job.Result;
             p.grid = r.grid; p.extras = r.extras;
             p.mesh = VoxelMesher.ToMesh(r.data, p.id);
             p.job = null;
-            return true;
+            var id = p.mesh.GetEntityId();
+            p.bake = Task.Run(() => Physics.BakeMesh(id, false));                                   // PhysX cooking off the main thread
+            return false;
         }
 
         static void Spawn(DeformableTerrain terrain, Piece p, Transform parent, Material mat)
