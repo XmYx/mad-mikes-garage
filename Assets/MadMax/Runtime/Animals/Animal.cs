@@ -163,10 +163,37 @@ namespace MadMax.Animals
 
         // ------------------------------------------------------------------ update
 
+        // ------------------------------------------------------------------ network proxy (a client's copy of a host animal)
+        [System.NonSerialized] public ushort netId;
+        [System.NonSerialized] public bool proxy;
+        Vector3 proxyPos; float proxyYaw, proxySpeed;
+
+        public State NetState => state;
+        public float NetSpeed => speed;
+        public float NetSize => Size;
+
+        public void ProxyState(Vector3 pos, float yaw, float sp, State st)
+        {
+            if (!proxy) return;
+            if (proxyPos == Vector3.zero) transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+            proxyPos = pos; proxyYaw = yaw; proxySpeed = sp;
+            if (st == State.Dead && state != State.Dead) Die(WastelandGame.Instance, false, -transform.right);
+            else if (state != State.Dead) state = st == State.Ridden ? State.Wander : st;
+        }
+
+        void ProxyTick(float dt)
+        {
+            transform.position = Vector3.Lerp(transform.position, proxyPos, 1f - Mathf.Exp(-12f * dt));
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, proxyYaw, 0f), 1f - Mathf.Exp(-10f * dt));
+            speed = proxySpeed;
+            Animate(dt);
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
             var g = WastelandGame.Instance;
+            if (proxy) { if (dt > 0f && state != State.Dead && proxyPos != Vector3.zero) ProxyTick(dt); return; }
             if (dt <= 0f || !g || !g.Player || state == State.Dead) return;
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
             if (state == State.Ridden && (!g.Player.Sitting || g.Player.SeatedOn != seat)) { state = State.Stay; order = 2; home = transform.position; Mounted = null; }
@@ -860,6 +887,7 @@ namespace MadMax.Animals
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
             if (!Alive) return;
+            if (proxy) { BloodStains.Splash(transform.position, Mathf.Clamp01(power * 0.5f)); MadMax.Net.NetSession.Instance?.SendActorHit(netId, point, direction, power, radius); return; }
             var g = WastelandGame.Instance;
             float dmg = power * 28f;
             health -= dmg;

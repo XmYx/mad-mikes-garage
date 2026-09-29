@@ -144,10 +144,62 @@ namespace MadMax.Npc
 
         // ------------------------------------------------------------------ brain
 
+        // ------------------------------------------------------------------ network proxy (a client's copy of a host NPC)
+        /// <summary>Host-assigned network id (0 = not replicated yet).</summary>
+        [System.NonSerialized] public ushort netId;
+        /// <summary>A client's copy: no brain, posed from the host's snapshots; hits are sent to the host.</summary>
+        [System.NonSerialized] public bool proxy;
+        Vector3 proxyPos; float proxyYaw, proxySpeed; byte proxyFlags;
+
+        public const byte FlagDead = 1, FlagSitting = 2, FlagSurrender = 4, FlagSwing = 8, FlagAsleep = 16;
+
+        /// <summary>Replication flags for the host's snapshot.</summary>
+        public byte NetFlags => (byte)((mode == Mode.Dead ? FlagDead : 0) | (seated ? FlagSitting : 0) | (mode == Mode.Surrender ? FlagSurrender : 0) | (swing >= 0f ? FlagSwing : 0) | (asleep ? FlagAsleep : 0));
+        public float NetSpeed => Flat(lastVelocity).magnitude;
+
+        public void ProxyState(Vector3 pos, float yaw, float speed, byte flags)
+        {
+            if (!proxy) return;
+            if (proxyFlags == 0 && proxyPos == Vector3.zero) transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+            proxyPos = pos; proxyYaw = yaw; proxySpeed = speed; proxyFlags = flags;
+            if ((flags & FlagDead) != 0 && mode != Mode.Dead) ProxyDie();
+        }
+
+        void ProxyTick(float dt)
+        {
+            if (proxyPos != Vector3.zero)
+            {
+                transform.position = Vector3.Lerp(transform.position, proxyPos, 1f - Mathf.Exp(-12f * dt));
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, proxyYaw, 0f), 1f - Mathf.Exp(-10f * dt));
+            }
+            bool sit = (proxyFlags & (FlagSitting | FlagAsleep)) != 0;
+            if ((proxyFlags & FlagSwing) != 0 && swing < 0f) swing = 0f;
+            if (swing >= 0f) { swing += dt / (tool ? tool.swingDuration : 0.5f); if (swing >= 1f) swing = -1f; }
+            anim.Tick(dt, new HumanAnimator.State
+            {
+                speed = proxySpeed, grounded = true, sitting = sit, lounging = sit,
+                tool = (proxyFlags & FlagSurrender) != 0 ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null,
+                twoHanded = tool && tool.TwoHanded
+            });
+        }
+
+        /// <summary>The host says this one died: go limp here too; the body is searchable (same deterministic loot).</summary>
+        void ProxyDie()
+        {
+            mode = Mode.Dead;
+            cc.enabled = false;
+            if (tool) { tool.transform.SetParent(null, true); DropPhysics(tool.gameObject); Destroy(tool.gameObject, 60f); }
+            Ragdoll.For(rig).Go(-transform.forward * 60f, transform.position + Vector3.up * 1.1f, Vector3.zero);
+            var loot = rig.bones[BodyPart.Pelvis].gameObject.AddComponent<Lootable>();
+            loot.key = "N" + Profile.id; loot.table = Profile.Raider ? "raider" : Profile.Vendor ? "shop" : "house";
+            loot.title = Profile.Name + "'S BODY";
+        }
+
         void Update()
         {
             if (mode == Mode.Dead) return;
             float dt = Time.deltaTime;
+            if (proxy) { ProxyTick(dt); return; }
             var g = WastelandGame.Instance;
             if (!g || g.Player == null) return;
             if (Time.time < bleedUntil)
@@ -248,7 +300,7 @@ namespace MadMax.Npc
                 {
                     if ((stuck += dt) > 1f)
                     {
-                        stuck = 0f; hasGoal = false; repath = 0f;
+                        stuck = 0f; hasGoal = false; repath = 0f; routeCheck = 0f;
                         var side = Vector3.Cross(Vector3.up, move).normalized * (Random.value < 0.5f ? 1f : -1f);
                         detour = side + move.normalized * 0.3f; detourUntil = Time.time + 1.4f;
                     }
@@ -271,7 +323,42 @@ namespace MadMax.Npc
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
-        Vector3 Toward(Vector3 p) => Flat(p - transform.position);
+        // ---- pathfinding (NpcPath): straight at the goal when the way is clear, else along a grid route
+        readonly List<Vector3> route = new List<Vector3>();
+        Vector3 routeGoal;
+        int routeIndex;
+        float routeCheck, doorCheck;
+        bool routing;
+
+        Vector3 Toward(Vector3 p)
+        {
+            var me = transform.position;
+            var direct = Flat(p - me);
+            if (direct.sqrMagnitude < 0.36f) return direct;
+            if (Time.time >= routeCheck || Flat(p - routeGoal).sqrMagnitude > 9f)
+            {
+                routeCheck = Time.time + 0.8f + Random.value * 0.6f;                              // staggered across people
+                routeGoal = p; routeIndex = 0;
+                routing = !NpcPath.Clear(me, p, transform);
+                if (routing && !NpcPath.Find(me, p, route, transform)) { routing = false; routeCheck = Time.time + 0.25f; }   // out of budget: soon again
+            }
+            if (!routing) return direct;
+            while (routeIndex < route.Count - 1 && Flat(route[routeIndex] - me).sqrMagnitude < 0.45f * 0.45f) routeIndex++;
+            if (routeIndex >= route.Count) return direct;
+            var step = Flat(route[routeIndex] - me);
+            if (Time.time > doorCheck) { doorCheck = Time.time + 0.5f; OpenDoorAhead(me, step); }
+            return step;
+        }
+
+        /// <summary>A closed, unlocked door right ahead swings open for the walker.</summary>
+        void OpenDoorAhead(Vector3 me, Vector3 dir)
+        {
+            foreach (var d in Placeable.All)
+            {
+                if (!d || (d.transform.position - me).sqrMagnitude > 2.2f * 2.2f || !d.TryGetComponent<Door>(out var door) || door.open || door.locked) continue;
+                if (Vector3.Dot(Flat(d.transform.position - me), dir) > 0f) { door.Toggle(); return; }
+            }
+        }
 
         void Face(Vector3 dir, float dt)
         {
@@ -770,6 +857,12 @@ namespace MadMax.Npc
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
             if (mode == Mode.Dead) return;
+            if (proxy)                                                                         // the host decides; blood here at once
+            {
+                BloodStains.Splash(point, Mathf.Clamp01(power * 0.5f));
+                MadMax.Net.NetSession.Instance?.SendActorHit(netId, point, direction, power, radius);
+                return;
+            }
             // their armour: gunfire (player guns, vehicle weapons) or blows
             var gp = WastelandGame.Instance;
             int kind = (int)DamageKind.Melee;

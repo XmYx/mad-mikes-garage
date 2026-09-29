@@ -16,7 +16,7 @@ namespace MadMax.World
         public static float CloudCover { get; private set; }
         public static bool SkyVisible;             // set by CameraRig: perspective views show the puffs
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Fog = 0f; CloudCover = 0f; SkyVisible = false; flash = 0f; bolts = 0; }
+        static void ResetStatics() { Fog = 0f; CloudCover = 0f; SkyVisible = false; flash = 0f; bolts = 0; forcedStrike = null; }
 
         static readonly int CloudsId = Shader.PropertyToID("_MadMaxClouds"), OffsetId = Shader.PropertyToID("_MadMaxCloudOffset");
         const float CloudScale = 1f / 70f;         // noise cells per metre
@@ -131,6 +131,11 @@ namespace MadMax.World
         /// <summary>A lightning strike: the scene flashes (twice), and in the perspective views a bolt stands in the sky.</summary>
         public static void Lightning() { flash = 1f; bolts++; }
 
+        /// <summary>A strike rolled by the host at <paramref name="ground"/> (network clients): flash and bolt only, the
+        /// host ran its effects.</summary>
+        public static void LightningAt(Vector3 ground) { forcedStrike = ground; Lightning(); }
+        static Vector3? forcedStrike;
+
         void UpdateLightning(Camera cam, float dt)
         {
             if (bolts > 0)
@@ -140,8 +145,9 @@ namespace MadMax.World
                 // a real strike near the player (it seeks tall things, lights fires, electrifies metal)
                 var g = MadMax.Game.WastelandGame.Instance;
                 var focusPos = g && g.Current ? g.Current.transform.position : g && g.Player ? g.Player.transform.position : cam ? cam.transform.position : Vector3.zero;
-                var ground = Storms.PickStrike(focusPos);
-                Storms.Strike(ground);
+                Vector3 ground;
+                if (forcedStrike.HasValue) { ground = forcedStrike.Value; forcedStrike = null; }
+                else { ground = Storms.PickStrike(focusPos); Storms.Strike(ground); }
                 if (cam)
                 {
                     if (!bolt) bolt = BuildBolt();

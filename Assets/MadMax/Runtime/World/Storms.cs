@@ -85,6 +85,7 @@ namespace MadMax.World
         void Begin(WastelandGame g, int k, float seconds)
         {
             kind = k; start = Time.time; end = Time.time + seconds;
+            MadMax.Net.NetSession.Instance?.SendWeather();                                       // clients get the storm with the weather
             g.Toast(k == 1 ? "A DUST STORM IS ROLLING IN - COVER YOUR FACE" : "RADIATION STORM! GET UNDER A ROOF");
             MadMax.Audio.Sfx.Play2D(k == 1 ? "wind" : "static", 0.5f, 0.8f);
         }

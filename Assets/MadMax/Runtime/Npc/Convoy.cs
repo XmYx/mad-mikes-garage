@@ -197,6 +197,14 @@ namespace MadMax.Npc
             return true;
         }
 
+        /// <summary>Beaten on the road far from the player (a skirmish): gone until the next generation, no toast.</summary>
+        public void WipeOffscreen()
+        {
+            if (Spawned) return;
+            save.deadDay = DayNight.Day;
+            phase = Phase.Gone;
+        }
+
         void Wiped()
         {
             foreach (var w in walkers) if (w) w.convoy = null;

@@ -22,9 +22,11 @@ namespace MadMax.Audio
             crickets = Mathf.MoveTowards(crickets, insects ? 1f : 0f, Time.deltaTime * 0.2f);
             Sfx.Loop(this, "insects", crickets * 0.22f * amb, 1f, 30f, true);
             Sfx.Loop(this, "wind", Mathf.Clamp(0.05f + MadMax.World.WindDust.Strength * 0.04f + MadMax.World.WindDust.Gust * 0.08f, 0.05f, 0.45f) * amb, 0.8f + MadMax.World.WindDust.Gust * 0.25f, 30f, true);
-            if (raining && Time.time > nextThunder)
+            var net = MadMax.Net.NetSession.Instance;
+            if (raining && Time.time > nextThunder && !(net && net.IsClient))                   // clients get the host's strikes
             {
                 nextThunder = Time.time + Random.Range(25f, 70f);
+                net?.SendStrikes();
                 var cam = Camera.main;
                 MadMax.World.Atmosphere.Lightning();                                         // the flash comes first
                 if (cam) Sfx.Play("thunder", cam.transform.position + Random.onUnitSphere * 20f, Random.Range(0.4f, 0.8f), Random.Range(0.85f, 1.05f), 200f, 5f);

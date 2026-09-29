@@ -224,6 +224,80 @@ namespace MadMax.Npc
             return best;
         }
 
+        // ------------------------------------------------------------------ road life (gaps list: off-screen skirmishes)
+        float skirmishAt;
+        readonly HashSet<string> skirmished = new HashSet<string>();
+
+        /// <summary>Raiders meet a trader convoy far from the player: a fight is rolled (gang size against the escort).
+        /// The loser is gone until its next generation (raiders that lose are thinned too); the wrecks and a spilled
+        /// crate stay on the verge, and WasteTalk carries the news.</summary>
+        void Skirmishes(Vector3 focus)
+        {
+            foreach (var r in convoys)
+            {
+                if (!r.raiders || r.Spawned || r.phase != Convoy.Phase.Travel || r.Friendly) continue;
+                var rp = r.Position;
+                if (Flat(rp - focus) < 350f) continue;
+                foreach (var t in convoys)
+                {
+                    if (t.raiders || t.Spawned || t.phase == Convoy.Phase.Gone) continue;
+                    var tp = t.Position;
+                    if (Flat(tp - rp) > 120f || Flat(tp - focus) < 350f) continue;
+                    string key = r.id + "|" + t.id + "|" + DayNight.Day;
+                    if (!skirmished.Add(key)) continue;
+                    var rnd = new System.Random(key.GetHashCode());
+                    float raiders = r.designs.Count, escort = t.designs.Count + 1.5f;
+                    bool raidersWin = rnd.NextDouble() < raiders / (raiders + escort) + 0.1;
+                    t.PointAt(t.travel, out var dir);
+                    var side = Vector3.Cross(Vector3.up, dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.forward);
+                    var at = tp + side * 7f;
+                    var town = game.World.settlements.Count > 0 ? NearestTown(tp) : null;
+                    string where = town != null ? " NEAR " + Market.TownName(town) : "";
+                    if (raidersWin)
+                    {
+                        t.WipeOffscreen();
+                        if (t.designs.Count > 0) game.SpawnRoadWreck(t.designs[0], at, Quaternion.LookRotation(dir.sqrMagnitude > 0.01f ? dir : Vector3.forward) * Quaternion.Euler(0f, 35f, 0f), rnd.Next());
+                        SpillCrate(at + dir.normalized * 5f, key);
+                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + r.Gang + " HIT A GUILD CONVOY" + where + ". DRIVE CAREFUL.");
+                    }
+                    else
+                    {
+                        r.save.losses = Mathf.Min(3, r.save.losses + 1);
+                        if (rnd.NextDouble() < 0.5) r.WipeOffscreen();
+                        if (r.designs.Count > 0) game.SpawnRoadWreck(r.designs[r.designs.Count - 1], at, Quaternion.LookRotation(side), rnd.Next());
+                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: A GUILD CONVOY SHOT ITS WAY PAST THE " + r.Gang + where + ".");
+                    }
+                    MadMax.Game.Journal.Add("NEWS", (raidersWin ? "RAIDERS HIT A CONVOY" : "A CONVOY BEAT OFF RAIDERS") + where);
+                    break;
+                }
+            }
+        }
+
+        Settlement NearestTown(Vector3 p)
+        {
+            Settlement best = null; float bd = float.MaxValue;
+            foreach (var st in game.World.settlements) { float d = Vector2.Distance(st.pos, new Vector2(p.x, p.z)); if (d < bd) { bd = d; best = st; } }
+            return best;
+        }
+
+        /// <summary>What the traders were carrying, split open on the verge (searchable once).</summary>
+        void SpillCrate(Vector3 at, string key)
+        {
+            var def = MadMax.Building.FurnitureLibrary.Get("crate");
+            if (def == null) return;
+            var t = DeformableTerrain.Instance;
+            at.y = t ? t.HeightNoLoad(at.x, at.z) : at.y;
+            var go = new GameObject("SpilledCargo", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.position = at;
+            go.GetComponent<MeshFilter>().sharedMesh = def.mesh;
+            go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
+            var box = go.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
+            var loot = go.AddComponent<Lootable>();
+            loot.key = "K" + key.GetHashCode(); loot.table = "shop"; loot.title = "SPILLED CARGO";
+        }
+
+        static float Flat(Vector3 v) { v.y = 0f; return v.magnitude; }
+
         public Convoy NearestRaiders(Vector3 at, out float dist)
         {
             dist = float.MaxValue; Convoy best = null;
@@ -286,6 +360,7 @@ namespace MadMax.Npc
             float dt = Time.deltaTime;
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.Convoys");
             foreach (var c in convoys) c.Tick(game, focus, dt);
+            if (Time.time >= skirmishAt) { skirmishAt = Time.time + 5f; Skirmishes(focus); }
             UnityEngine.Profiling.Profiler.EndSample();
             if (game.Menus.IsOpen && game.Menus.TalkingTo) game.Menus.TalkingTo.Attend(game.Player.transform.position);
 

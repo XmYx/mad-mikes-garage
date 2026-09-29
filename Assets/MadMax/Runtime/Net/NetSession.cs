@@ -19,7 +19,8 @@ namespace MadMax.Net
         Hello = 1, Welcome, WorldChunk, Ready, PlayerJoined, PlayerLeft, Snapshot, OwnerState, RequestVehicle, OwnerChanged,
         Carve, Impact, PartDetached, PartMounted, PartCarried, PartDropped, LooseSpawn, Placed, PlaceBroken, Couple,
         VehicleMeta, Weather, Appearance, Salvage, Denied,
-        PlaceState, Searched, VehicleSpawn, FireIgnite, Throw, Terraform
+        PlaceState, Searched, VehicleSpawn, FireIgnite, Throw, Terraform,
+        ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks
     }
 
     /// <summary>
@@ -31,10 +32,10 @@ namespace MadMax.Net
     /// (~25 bytes per entity). Remote entities render ~120 ms in the past with snapshot interpolation.
     /// The world itself is deterministic from the seed; joining clients receive the save diff (gzip JSON).
     /// </summary>
-    public class NetSession : MonoBehaviour
+    public partial class NetSession : MonoBehaviour
     {
         public static NetSession Instance { get; private set; }
-        public const int ProtocolVersion = 2;
+        public const int ProtocolVersion = 3;
         public const ushort DefaultPort = 7777;
         public const ushort HostPlayerId = 1;
 
@@ -259,7 +260,8 @@ namespace MadMax.Net
 
             if (IsServer && (snapTimer += Time.deltaTime) >= 1f / snapshotRate) { SendSnapshots(snapTimer); snapTimer = 0f; }
             if (IsClient && (ownerTimer += Time.deltaTime) >= 1f / ownerRate) { ownerTimer = 0f; SendOwnerState(); }
-            if ((metaTimer += Time.deltaTime) >= 1f) { metaTimer = 0f; SendMetaForDriven(); }
+            if ((metaTimer += Time.deltaTime) >= 1f) { metaTimer = 0f; SendMetaForDriven(); SendLooks(); }
+            if (IsServer && (worldStateTimer += Time.deltaTime) >= 10f) { worldStateTimer = 0f; SendWorldState(); }
             Flush();
         }
 
@@ -306,6 +308,7 @@ namespace MadMax.Net
             var p = PeerOf(c);
             if (p == null) return;
             peers.Remove(p);
+            known.Remove(p);
             if (p.avatar) Destroy(p.avatar.gameObject);
             if (game)
                 foreach (var v in game.AllVehicles)
@@ -370,6 +373,7 @@ namespace MadMax.Net
                     var other = o;
                     Consider(1L << 40 | o.id, 3f, w => WriteAvatar(w, other));
                 }
+                ConsiderActors(p, Consider);
                 foreach (var part in VehiclePart.Registry)
                 {
                     if (!part || part.netId == 0 || part.Socket || part.transform.parent) continue;
@@ -554,6 +558,7 @@ namespace MadMax.Net
                             var s = ReadPlayer(r, out var id, st);
                             if (avatars.TryGetValue(id, out var av) && av) av.Push(s);
                         }
+                        else if (kind == 3 || kind == 4) ReadActor(r, kind);
                         else
                         {
                             uint id = r.UInt(); var pos = r.Pos(); var rot = r.Rot();
@@ -624,6 +629,12 @@ namespace MadMax.Net
                 }
 
                 // ---- world events (applied locally, relayed by the server)
+                case Msg.ActorSpawn when IsClient: ReadActorSpawn(r); break;
+                case Msg.ActorGone when IsClient: ReadActorGone(r); break;
+                case Msg.ActorHit when IsServer: ReadActorHit(r, peer); break;
+                case Msg.Strike when IsClient: ReadStrike(r); break;
+                case Msg.WorldState when IsClient: ReadWorldState(r); break;
+                case Msg.VehicleLooks: ReadVehicleLooks(r, peer); break;
                 default:
                     ApplyEvent(type, r, peer);
                     break;
@@ -813,7 +824,9 @@ namespace MadMax.Net
         public void SendWeather()
         {
             if (!ShouldSend || !IsServer) return;
-            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); });
+            int storm = 0; float left = 0f, total = 0f;
+            if (Storms.Instance) Storms.Instance.SaveState(out storm, out left, out total);
+            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); w.Byte((byte)storm); w.Float(left); w.Float(total); });
         }
 
         public void SendAppearance()
@@ -1020,7 +1033,8 @@ namespace MadMax.Net
                     {
                         bool rain = r.Bool(); float wet = r.Float(), snow = r.Float(), temp = r.Float(), rise = r.Float(), hours = r.Float();
                         int day = r.Int();
-                        if (IsClient) { Weather.Restore(rain, wet, snow, temp, rise); DayNight.SetHours(hours); DayNight.SetDay(day); }
+                        int storm = r.Byte(); float left = r.Float(), total = r.Float();
+                        if (IsClient) { Weather.Restore(rain, wet, snow, temp, rise); DayNight.SetHours(hours); DayNight.SetDay(day); if (Storms.Instance && !r.Failed) Storms.Instance.Restore(storm, left, total); }
                         break;
                     }
                 }

@@ -615,12 +615,14 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       global.
 
 ### NPCs & animals
-- [ ] **NPCs cannot path.** They walk straight at a goal and sidestep when stuck (`Npc.Blocked` checks only water
+- [x] **NPCs cannot path.** They walk straight at a goal and sidestep when stuck (`Npc.Blocked` checks only water
       and cliffs), so fences, walls and buildings trap them, including companions and raid parties. They need a
       path grid (terrain plus structure occupancy, doors as portals) or a NavMesh.
-- [ ] **Road life is one-sided**: raider convoys hunt the player and town raids happen, but raiders never
+      *Done:* `Npc/NpcPath`: when the straight line is blocked, A* on a 0.5 m grid (≤ 48 m window, knee-to-head overlap tests against buildings, fences, pieces, vehicles; shallow water only; steps under 0.6 m; no corner cutting), string-pulled; `Npc.Toward` follows it (all on-foot modes), unlocked doors open on the way, locked doors are walls; 3 searches per frame, re-planned when stuck.
+- [x] **Road life is one-sided**: raider convoys hunt the player and town raids happen, but raiders never
       ambush trader convoys or pack traders on the road unless you are there. Off-screen skirmishes, and the wrecks
       they leave, would make the roads feel alive.
+      *Done:* `NpcDirector.Skirmishes`: a raider gang meeting a trader convoy far from the player (both > 350 m away) rolls a fight (gang size vs escort); the loser is gone until its next generation (beaten raiders also thin out), a wreck and spilled cargo stay on the verge (`SpawnRoadWreck`, searchable crate), and WasteTalk / the journal carry the news.
 - [x] **Vulture flocks outlive the scene**: a flock keeps circling a far carcass after the player leaves (flocks
       are only culled by count). Fold them away with their carcass.
       *Done:* a flock leaves with its meal: carcass gone, picked clean, or the scene left beyond fold range.
@@ -634,16 +636,19 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       *Done:* ruts still healing (sparse cells, the 300 rutted chunks nearest the player) ride in `ChunkEdit.rut`; dents per mesh (`DeformableMesh.SaveState`, `VehicleSave.dents` by child path); crates pushed off their spot (`DestructibleVoxels.Moved`, applied when they stream back in); the storm in progress (`Storms.SaveState/Restore`); fires not on vehicles (`SaveData.fires`).
 
 ### Multiplayer
-- [ ] **NPCs and animals are host-only.** `NpcDirector` and `AnimalDirector` run on the authority, and `Net/` has
+- [x] **NPCs and animals are host-only.** `NpcDirector` and `AnimalDirector` run on the authority, and `Net/` has
       no NPC or animal messages. Clients see no shopkeepers, traders, convoys, raiders, herds or livestock, and
       cannot trade, tame, ride or hunt.
-- [ ] **Storms and lightning are per machine.** Clients never roll storms, so `Storms.Dust/Rad` stay 0 there;
+      *Done:* `NetSession.Actors`: people and animals within 160 m reach clients as proxies (`ActorSpawn` with the deterministic profile / species, then snapshot entries: position, yaw, speed, flags — dead, sitting, surrender, swing — or the animal state; `ActorGone` when out of range); proxies animate, ragdoll / fall on death with the same searchable loot, and hits on them go to the host (`ActorHit`). Talking and trading on a client act on the local copy; taming and riding still need the host.
+- [x] **Storms and lightning are per machine.** Clients never roll storms, so `Storms.Dust/Rad` stay 0 there;
       every peer rolls its own lightning, and `Fire.Ignite` broadcasts fires from any peer. Fix: host-only strikes
       replicated by position, and Dust/Rad added to `SendWeather`.
-- [ ] Armour plates, tuning, grime, gun rounds, fish records, market state, faction standing and aircraft found at
+      *Done:* storms ride in the weather message (sent when one begins), clients never roll thunder: the host rolls a strike near each player (`SendStrikes`: effects run on the host, `Strike` shows the flash and bolt there).
+- [x] Armour plates, tuning, grime, gun rounds, fish records, market state, faction standing and aircraft found at
       airfields reach other players only through the join snapshot.
 
 ### Controls
+      *Done:* `WorldState` every 10 s (faction standing, market prices, fish records, aircraft found) and `VehicleLooks` (armour, tuning, paint, grime) sent by whoever simulates the vehicle when they change, relayed by the host. Gun rounds stay per player (each keeps their own).
 - [x] **Keys are overloaded by context and cannot be rebound**: G service/repair, X 4WD/dismantle, E/Q gear
       shift/take/drop part, R reload/research/weather debug, T recover/second action/parley, Shift run/wheelie/
       sprint/gallop, Space handbrake/jump/pull up. Suggest a controls page with rebinding, and moving the debug keys

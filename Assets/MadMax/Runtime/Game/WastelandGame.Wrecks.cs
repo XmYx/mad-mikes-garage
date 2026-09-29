@@ -71,6 +71,25 @@ namespace MadMax.Game
             SpawnScrapyardWrecks(rnd, prefabs);
         }
 
+        /// <summary>A wreck left by a fight on the road (off-screen skirmishes): ruined, dry, asleep until the player
+        /// comes; saved like any wreck.</summary>
+        public VehicleDriver SpawnRoadWreck(string design, Vector3 pos, Quaternion rot, int seed)
+        {
+            var prefab = PrefabFor(design);
+            if (!prefab) return null;
+            pos.y = terrain.HeightNoLoad(pos.x, pos.z) + 0.8f;
+            var go = Instantiate(prefab, pos, rot);
+            go.name = "Wreck " + prefab.name;
+            var v = go.GetComponent<VehicleDriver>();
+            if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = false;
+            Register(v, v.driveable ? wrecks : null);
+            Ruin(v, new System.Random(seed));
+            if (go.TryGetComponent<VehicleDamage>(out var settle)) { settle.graceUntil = Time.time + 4f; settle.AddFrameDamage(0.5f, 1f); }
+            if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = sys.fuelCapacity * 0.05f; }
+            v.Body.isKinematic = true;
+            return v;
+        }
+
         /// <summary>A few wrecks in every scrapyard lot (landmarks): cars to strip, parts lying about.</summary>
         void SpawnScrapyardWrecks(System.Random rnd, List<GameObject> prefabs)
         {
