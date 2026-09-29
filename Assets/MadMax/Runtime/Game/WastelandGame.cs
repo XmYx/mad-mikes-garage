@@ -627,7 +627,13 @@ namespace MadMax.Game
                 Player.run = shift;
                 if (spaceDown) Player.jump = true;
                 bool attack = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
-                if (attack && cameraRig && !(Build && Build.Active)) Player.Attack(cameraRig.mode == ViewMode.ThirdPerson || cameraRig.mode == ViewMode.FirstPerson);
+                if (Player.Tool is FishingRodTool rod && rod.Busy)
+                {
+                    // line out: the button strikes a bite, reels in, and is held to reel against a hooked fish
+                    rod.reel = (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed);
+                    if (attack) rod.Click();
+                }
+                else if (attack && cameraRig && !(Build && Build.Active)) Player.Attack(cameraRig.mode == ViewMode.ThirdPerson || cameraRig.mode == ViewMode.FirstPerson);
                 if (cameraRig)
                 {
                     Player.viewYaw = cameraRig.ViewYaw;

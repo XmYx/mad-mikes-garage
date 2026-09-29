@@ -9,6 +9,7 @@ namespace MadMax.Items
         public float hunger, thirst, heal;
         public float sickChance;          // food poisoning chance when eaten (raised by dirty hands)
         public float spoilMinutes;        // 0 = keeps forever
+        public float rads;                // health lost to radiation when eaten (mutant fish)
         public string spoilsTo = "food_rotten";
         public Color32 color;
     }
@@ -78,6 +79,8 @@ namespace MadMax.Items
                 F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
                 F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),
                 F("food_mushroom", "MUSHROOMS", 6, 1, 20, H("b8a888"), 0.05f),
+                Rad(F("food_fish_glow", "GLOWING FISH", 10, 2, 15, H("8aff5a"), 0.5f), 14f),
+                Rad(F("food_glowfish_cooked", "GRILLED GLOWFISH", 28, 2, 25, H("a0c050")), 8f),
                 F("food_mushsoup", "MUSHROOM SOUP", 34, 16, 30, H("8a7050"), 0f, 3f),
                 F("food_beet", "SUGAR BEET", 8, 2, 70, H("7a2440")),
                 F("food_sugar", "SUGAR", 8, -3, 0, H("eeeadc")),
@@ -112,6 +115,7 @@ namespace MadMax.Items
             new CropDef { seed = seed, name = name, growMinutes = minutes, height = height, leaf = leaf, fruit = fruit, yields = yields };
 
         static CropDef Dark(CropDef c) { c.dark = true; return c; }
+        static FoodDef Rad(FoodDef f, float rads) { f.rads = rads; return f; }
 
         static CropDef Tree(string seed, string name, float minutes, float regrow, Color32 leaf, Color32 fruit, int height, params (string, int, int)[] fruitYield) =>
             new CropDef { seed = seed, name = name, growMinutes = minutes, regrowMinutes = regrow, tree = true, leaf = leaf, fruit = fruit, height = height, yields = fruitYield, seedChance = 0.35f };

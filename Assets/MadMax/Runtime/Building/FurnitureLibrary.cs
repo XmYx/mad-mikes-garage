@@ -125,6 +125,7 @@ namespace MadMax.Building
                 D("composter", "COMPOSTER", Ga, BuildPieces.Composter(), 4, false, go => Station(go, "composter", "COMPOSTER", 0f), (W, 6)),
                 D("greenhouse", "GREENHOUSE", Ga, BuildPieces.Greenhouse(), 10, true, null, (W, 12), (G, 16)),
                 D("scarecrow", "SCARECROW", Ga, BuildPieces.Scarecrow(), 2, false, go => go.AddComponent<Scarecrow>(), (W, 3), (C, 3)),
+                D("fish_trap", "FISH TRAP", Ga, BuildPieces.FishTrap(), 3, false, go => go.AddComponent<FishTrap>(), (Fe, 2), (S, 2), (C, 1)),
 
                 // industry
                 D("furnace", "FURNACE", In, BuildPieces.Furnace(false), 20, false, go => { Station(go, "furnace", "SMELT (FURNACE)", 0f).output = new Vector3(0, 0.6f, 0.8f); Glow(go, new Vector3(0, 0.3f, 0.6f), new Color(1f, 0.5f, 0.2f), 4f, 2f, false, 0f); }, (St, 20), (ResourceType.Clay, 6)),

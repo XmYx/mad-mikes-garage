@@ -162,6 +162,7 @@ namespace MadMax.Building
                 {
                     if (!g.Vitals.Spend(8f)) return;
                     Weed(); g.Stats.Practice(Skill.Farming, 1f); g.Soil(3f); g.Toast("PULLED THE WEEDS");
+                    g.FindWorms(transform.position, 0.3f);
                 }
                 else if (fertility < 0.9f && g.Inventory.TakeItem(ItemIds.Fertilizer))
                 {

@@ -10,7 +10,7 @@ namespace MadMax.Game
     {
         // index = network tool id: append only
         public static readonly string[] Order = { ItemIds.Sledgehammer, ItemIds.Wrench, ItemIds.Cutter, ItemIds.PipeClub, ItemIds.Machete, ItemIds.Shotgun, ItemIds.ClawHammer, "tool_shovel", "tool_axe", "tool_pickaxe", "tool_torch", "tool_gas_torch", "tool_lantern",
-            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector", "tool_hoe", "tool_watering_can" };
+            "tool_crowbar", "tool_welder", "tool_jack", "tool_binoculars", "tool_geiger", "tool_flashlight", "tool_detector", "tool_hoe", "tool_watering_can", "tool_fishing_rod" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         const float S = VoxelMesher.DefaultSize;
 
@@ -127,6 +127,12 @@ namespace MadMax.Game
                     g.Tube(new Vector3(0, -6, 2), new Vector3(0, -3, 6), 0.4f, Pal.Ramp(Pal.Moss, 2));         // spout
                     g.Box(-1, -3, 6, 1, -2, 7, Pal.Ramp(Pal.Chrome, 2));                                     // rose
                     break;
+                case "tool_fishing_rod":
+                    g.Box(0, -3, 0, 0, 1, 0, Pal.Ramp(Pal.Sand, 3));                                          // cork grip
+                    g.Box(0, -24, 0, 0, -4, 0, p => p.y % 6 == 0 ? Pal.Chrome[2] : p.y < -16 ? Pal.Crimson[3] : Pal.Crimson[2]);   // rod, guides
+                    g.CylX(-2, 1, 1.2f, 1, 2, Pal.Ramp(Pal.Chrome, 2));                                       // reel
+                    g.Set(3, -2, 1, Pal.Solid(Pal.Black[1]));                                                 // crank
+                    break;
                 case "tool_flashlight":
                     g.CylY(0, 0, 1.2f, -6, 0, Pal.Ramp(Pal.Metal, 1, 722));
                     g.CylY(0, 0, 1.7f, -8, -7, Pal.Ramp(Pal.Chrome, 2));
@@ -193,6 +199,13 @@ namespace MadMax.Game
                 var w = go.AddComponent<WateringCanTool>();
                 w.swingDuration = 0.9f; w.strikeAt = 0.45f; w.style = ToolStyle.Twist;
                 tool = w;
+            }
+            else if (id == "tool_fishing_rod")
+            {
+                var f = go.AddComponent<FishingRodTool>();
+                f.tip = tip; tip.localPosition = new Vector3(0, -24f * S, 0);
+                f.swingDuration = 0.7f; f.strikeAt = 0.5f; f.style = ToolStyle.Slash;
+                tool = f;
             }
             else if (id == "tool_geiger")
             {

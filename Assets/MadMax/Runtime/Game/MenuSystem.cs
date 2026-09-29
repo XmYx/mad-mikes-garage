@@ -342,6 +342,12 @@ namespace MadMax.Game
                     foreach (var id in st.traits) { var t = MadMax.RPG.Traits.Get(id); if (t != null) items.Add(new Item { label = t.name, value = () => "TRAIT", hint = t.description }); }
                     foreach (var k in st.knowledge) items.Add(new Item { label = k.Replace("k_", "").Replace('_', ' ').ToUpperInvariant(), value = () => "KNOWN" });
                     items.Add(new Item { label = "CARRYING", value = () => game.CarriedWeight.ToString("0.0") + " / " + st.CarryCapacity.ToString("0") + " KG" });
+                    foreach (var kv in game.FishRecords)
+                    {
+                        var fd = MadMax.Items.FishLibrary.Get(kv.Key);
+                        float kg = kv.Value;
+                        if (fd != null) items.Add(new Item { label = "BEST " + fd.name, value = () => kg.ToString("0.00") + " KG", enabled = () => false });
+                    }
                     break;
                 }
                 case Page.Container:

@@ -63,6 +63,7 @@ namespace MadMax.Game
         public List<string> toolWearIds = new List<string>(); public List<float> toolWear = new List<float>();
         public List<string> clothWearIds = new List<string>(); public List<float> clothWear = new List<float>();
         public List<string> itemQualityIds = new List<string>(); public List<float> itemQuality = new List<float>();
+        public List<string> fishRecordIds = new List<string>(); public List<float> fishRecordKg = new List<float>();
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
         public int cameraMode;

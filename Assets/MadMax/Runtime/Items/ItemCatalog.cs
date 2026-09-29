@@ -11,7 +11,7 @@ namespace MadMax.Items
         {
             if (id.StartsWith("tool_pipe") || id == ItemIds.Machete) return ItemCategory.Weapon;
             if (id.StartsWith("tool_")) return ItemCategory.Tool;
-            if (id.StartsWith("ammo_")) return ItemCategory.Ammo;
+            if (id.StartsWith("ammo_") || id.StartsWith("bait_")) return ItemCategory.Ammo;
             if (id.StartsWith("throw_")) return ItemCategory.Throwable;
             if (id.StartsWith("food_") || id.StartsWith("drink_")) return ItemCategory.Food;
             if (id.StartsWith("use_") || id.StartsWith("med_") || id.StartsWith("farm_") || id.StartsWith("dye_") || id.StartsWith("bp_")) return ItemCategory.Consumable;
@@ -27,7 +27,7 @@ namespace MadMax.Items
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
             ItemCategory.Weapon => 2.5f,
-            ItemCategory.Ammo => id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
+            ItemCategory.Ammo => id.StartsWith("bait_") ? 0.05f : id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
             ItemCategory.Throwable => 0.8f,
             ItemCategory.Food => 0.4f,
             ItemCategory.Consumable => id == "use_battery" ? 8f : 0.3f,

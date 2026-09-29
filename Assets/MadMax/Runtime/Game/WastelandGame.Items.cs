@@ -98,6 +98,9 @@ namespace MadMax.Game
                     else Player.Equip(ToolLibrary.Create(id, propMaterial));
                     break;
                 case ItemCategory.Media: StartMedia(id); break;
+                case ItemCategory.Ammo:
+                    if (id.StartsWith("bait_")) { FishingRodTool.PreferredBait = id; Toast("BAIT ON THE HOOK NEXT: " + FishLibrary.BaitName(id)); }
+                    break;
                 case ItemCategory.Throwable: Throw(id); break;
                 case ItemCategory.Food: Eat(id); break;
                 case ItemCategory.Consumable: UseConsumable(id); break;

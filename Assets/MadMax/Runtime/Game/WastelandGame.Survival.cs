@@ -73,6 +73,7 @@ namespace MadMax.Game
             if (Rules.survival) Stats.waste += Mathf.Max(0f, f.hunger) * 0.5f;
             float sick = f.sickChance + (Stats.hygiene < 30f ? 0.15f : 0f) - Stats.Level(Skill.Survival) * 0.01f;
             float table = f.hunger >= 15f && !Current ? DiningTable.Near(Player.transform.position) : 0f;
+            if (f.rads > 0f && Vitals) { Vitals.Hurt(f.rads, "RADIATION"); Toast("IT TASTES OF METAL"); }
             if (Random.value < sick) Poison("FOOD POISONING");
             else if (table > 0f)
             {
@@ -135,6 +136,42 @@ namespace MadMax.Game
         }
 
         /// <summary>A shovel stab into bare ground: a small dig, soil into the pack.</summary>
+        /// <summary>Heaviest fish per species (saved).</summary>
+        public readonly Dictionary<string, float> FishRecords = new Dictionary<string, float>();
+
+        /// <summary>Note a catch; true when it beats the record for its species.</summary>
+        public bool RecordFish(string species, float kg)
+        {
+            if (FishRecords.TryGetValue(species, out var best) && best >= kg) return false;
+            FishRecords[species] = kg;
+            return true;
+        }
+
+        void SaveFishing(SaveData d)
+        {
+            d.fishRecordIds = new List<string>(); d.fishRecordKg = new List<float>();
+            foreach (var kv in FishRecords) { d.fishRecordIds.Add(kv.Key); d.fishRecordKg.Add(kv.Value); }
+        }
+
+        void RestoreFishing(SaveData d)
+        {
+            FishRecords.Clear();
+            if (d.fishRecordIds == null) return;
+            for (int i = 0; i < d.fishRecordIds.Count && i < d.fishRecordKg.Count; i++) FishRecords[d.fishRecordIds[i]] = d.fishRecordKg[i];
+        }
+
+        /// <summary>Worms turn up in moist ground (bait for the fishing rod and traps).</summary>
+        public void FindWorms(Vector3 at, float chance)
+        {
+            var b = terrain ? terrain.BiomeAt(at.x, at.z) : Biome.Desert;
+            chance *= b switch { Biome.Forest => 1.2f, Biome.Tropical => 1.4f, Biome.Desert => 0.2f, Biome.Nuclear => 0.4f, _ => 0.8f };
+            if (Weather.Raining) chance *= 1.5f;
+            if (Random.value > chance) return;
+            int n = Random.Range(1, 3);
+            Inventory.AddItem("bait_worms", n);
+            Toast("FOUND " + n + " WORM" + (n > 1 ? "S" : ""));
+        }
+
         public void ShovelDig(Vector3 at)
         {
             var p = new Vector3(at.x, terrain.Height(at.x, at.z), at.z);
@@ -147,6 +184,7 @@ namespace MadMax.Game
             Inventory.Add(terrain.SoilAt(p.x, p.z, depth), units);
             Stats.Practice(Skill.Survival, 0.5f);
             Soil(0.6f);
+            if (depth < 0.8f) FindWorms(p, 0.22f);
         }
 
         /// <summary>Pickaxe on rock: a chance of ore that depends on the region.</summary>

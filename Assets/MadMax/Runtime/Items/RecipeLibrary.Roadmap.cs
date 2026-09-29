@@ -147,6 +147,15 @@ namespace MadMax.Items
                 yield return porridge;
             }
 
+            // ---- 10. fishing: rod, cut bait, dough balls, grilled glowfish
+            yield return Itm("fishing_rod", "FISHING ROD", RecipeCategory.Tools, "workbench", "tool_fishing_rod", 1, "CAST, STRIKE ON A BITE, HOLD TO REEL", null, (W, 2), (S, 1), (C, 1));
+            yield return Itm("bait_meat", "CUT BAIT X4", RecipeCategory.Supplies, "workbench", "bait_meat", 4, "CATFISH AND PIKE BITE ON MEAT", new[] { ("food_meat_raw", 1) });
+            yield return Itm("bait_maggots", "CUT BAIT X2 (ROTTEN)", RecipeCategory.Supplies, "workbench", "bait_meat", 2, "ROTTEN SCRAPS STILL CATCH FISH", new[] { ("food_rotten", 1) });
+            yield return Itm("bait_corn", "CORN DOUGH X4", RecipeCategory.Supplies, "workbench", "bait_corn", 4, "CARP LOVE IT", new[] { ("food_corn", 1) });
+            yield return Itm("bait_bread", "CORN DOUGH X4 (BREAD)", RecipeCategory.Supplies, "workbench", "bait_corn", 4, "CARP LOVE IT", new[] { ("food_bread", 1) });
+            foreach (var st in new[] { "stove", "oven" })
+                yield return Cook(st, "glowfish", "GRILLED GLOWFISH", "food_glowfish_cooked", 1, st == "stove" ? ResourceType.Wood : ResourceType.None, ("food_fish_glow", 1));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

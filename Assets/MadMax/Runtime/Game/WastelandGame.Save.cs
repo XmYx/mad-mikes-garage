@@ -69,6 +69,7 @@ namespace MadMax.Game
             SaveTools(d);
             SaveClothes(d);
             SaveCrafting(d);
+            SaveFishing(d);
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
@@ -233,6 +234,7 @@ namespace MadMax.Game
             RestoreTools(d);
             RestoreClothes(d);
             RestoreCrafting(d);
+            RestoreFishing(d);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.LoadConvoys(d.convoys);
             if (d.searched != null) foreach (var k in d.searched) Lootable.Searched.Add(k);
             if (d.hasSpawn) spawnPoint = d.spawn;

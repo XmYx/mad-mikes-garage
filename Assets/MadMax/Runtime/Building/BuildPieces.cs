@@ -490,6 +490,19 @@ namespace MadMax.Building
             return g;
         }
 
+        /// <summary>Wire fish trap (a funnel-mouthed cylinder on the lake bed) with a rope up to a red float.</summary>
+        public static VoxelGrid FishTrap()
+        {
+            var g = new VoxelGrid().Mat(Iron);
+            g.CylZ(0, 4, 4f, -6, 6, p => ((p.x + p.y + p.z) & 1) == 0 ? Pal.Metal[2] : Pal.Rust[2], 3f);                    // mesh drum
+            g.CylZ(0, 4, 4f, -6, -6, p => ((p.x + p.y) & 1) == 0 ? Pal.Metal[1] : Pal.Rust[1]);                                   // closed end
+            g.CylZ(0, 4, 4f, 6, 6, Pal.Ramp(Pal.Metal, 1), 1.6f);                                                                  // funnel mouth
+            g.Box(-4, 0, -5, 4, 0, 5, Pal.Ramp(Pal.Metal, 0, 1095));                                                               // skid
+            g.Mat((byte)ResourceType.Cloth); g.Box(0, 9, 0, 0, 14, 0, Pal.Ramp(Pal.Sand, 3));                                       // rope
+            g.Mat((byte)ResourceType.Rubber); g.Box(-1, 15, -1, 1, 16, 1, Pal.Ramp(Pal.Crimson, 3));                                 // float
+            return g;
+        }
+
         /// <summary>Drip line: a hose along a bed with an emitter every 24 cm and an inlet riser with its valve.</summary>
         public static VoxelGrid DripLine()
         {

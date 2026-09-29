@@ -45,6 +45,8 @@ namespace MadMax.Items
             { "use_battery", "CAR BATTERY" }, { "med_antibiotics", "ANTIBIOTICS" }, { "med_painkillers", "PAINKILLERS" }, { "use_fuel_additive", "FUEL ADDITIVE" }, { "use_sewing_kit", "SEWING KIT" },
             { "throw_dynamite", "DYNAMITE" }, { "throw_pipebomb", "PIPE BOMB" }, { "tool_detector", "METAL DETECTOR" },
             { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
+            { "bait_worms", "WORMS" }, { "bait_insects", "INSECTS" }, { "bait_meat", "CUT BAIT" }, { "bait_corn", "CORN DOUGH BAIT" }, { "tool_fishing_rod", "FISHING ROD" },
+            { "trophy_fish", "MOUNTED FISH" }, { "trophy_fish_mutant", "MOUNTED MUTANT FISH" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 

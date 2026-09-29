@@ -183,10 +183,19 @@ decorative turret.
 *Ties:* gardening, survival (drinking, washing), furniture, refining.
 
 ## 10. Fishing `T2`
-- [ ] **Fishing rod** + bait (worms dug with a shovel, insects, meat)
-- [ ] **Cast & reel**: bite timing by species, time and weather; tension minigame on the HUD
-- [ ] **Species** per biome and lake (toxic lakes: glowing mutants); size records
-- [ ] **Cooking & smoking** fish; **fish traps** in shallow water
+- [x] **Fishing rod** + bait (worms dug with a shovel, insects, meat)
+- [x] **Cast & reel**: bite timing by species, time and weather; tension minigame on the HUD
+- [x] **Species** per biome and lake (toxic lakes: glowing mutants); size records
+- [x] **Cooking & smoking** fish; **fish traps** in shallow water
+      *Done:* `FishingRodTool` (swing casts onto water 7 m + Survival, float + sagging line, bite window → click to
+      strike, hold to reel against bursts; snap / thrown hook / run-off; pose), `FishLibrary` (7 species by biome,
+      3 toxic-lake mutants, boot / can / lockbox with its own loot table; bite rate by favourite bait, dawn/dusk,
+      night or day feeders, rain, cold; weight skewed small, deep water for big ones), HUD status + tension bar, records
+      per species (saved, listed on the skills page), `trophy_fish` / `trophy_fish_mutant` for the trophy mount;
+      bait: worms from shovel digs and weeding (moist biomes, rain), insects shaken from bushes / logs / trees, cut bait
+      from raw or rotten meat, corn dough from corn or bread (use a bait item to put it on the hook next); glowing fish
+      (radiation when eaten, grilled, collectors pay 18 scrap); `fish_trap` piece (baited, catches on its own in
+      0.15 m+ water); existing smokehouse / stove recipes cook the catch.
 
 *Ties:* survival, economy, gardening (worms), smokehouse.
 

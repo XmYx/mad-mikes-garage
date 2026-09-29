@@ -64,6 +64,12 @@ namespace MadMax.Game
                             WastelandGame.Instance.Inventory.AddItem(sap); WastelandGame.Instance.Toast("FOUND A " + ItemCatalog.Name(sap));
                         }
                         if (stone && stoneMult > 1f && WastelandGame.Instance && user == WastelandGame.Instance.Player) WastelandGame.Instance.MineOre(point);
+                        if (wood && WastelandGame.Instance && user == WastelandGame.Instance.Player && Random.value < (n.StartsWith("Log") ? 0.2f : n.StartsWith("Bush") ? 0.12f : 0.04f))
+                        {
+                            int bugs = Random.Range(1, 4);                                         // grubs and beetles: bait
+                            WastelandGame.Instance.Inventory.AddItem("bait_insects", bugs);
+                            WastelandGame.Instance.Toast("SHOOK OUT " + bugs + " INSECTS");
+                        }
                     }
                     MadMax.Audio.Sfx.Play(hitSound, point, 0.8f, Random.Range(0.9f, 1.1f));
                     target.ApplyHit(point, dir, pw * mult, carveRadius * Mathf.Sqrt(mult), user.gameObject);

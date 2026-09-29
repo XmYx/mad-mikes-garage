@@ -226,6 +226,25 @@ namespace MadMax.Game
                 canvas.Text(x0 + n * (slot + 2) + 4, y + 1, s, r > 0.5f ? Green : r > 0.15f ? Amber : Dim);
             }
             if (BinocularsTool.Looking) DrawSpotting();
+            if (FishingRodTool.Active && FishingRodTool.Active.Busy) DrawFishing(FishingRodTool.Active);
+        }
+
+        /// <summary>Fishing: the rod's status line, and the line tension bar while a fish is on (snaps at the red mark).</summary>
+        void DrawFishing(FishingRodTool rod)
+        {
+            string s = rod.Status ?? "";
+            bool hooked = rod.phase == FishingRodTool.Phase.Hooked;
+            int w = Mathf.Max(PixelCanvas.TextWidth(s) + 8, 90);
+            int x = (canvas.w - w) / 2, y = canvas.h - 68;
+            var red = new Color32(230, 70, 40, 255);
+            canvas.Panel(x, y, w, hooked ? 20 : 11);
+            canvas.Text(x + 4, y + 3, s, rod.phase == FishingRodTool.Phase.Bite ? red : Amber);
+            if (!hooked) return;
+            int bw = w - 8, bx = x + 4, by = y + 13;
+            canvas.Rect(bx, by, bw, 4, new Color32(10, 6, 4, 230));
+            var col = rod.Tension > 0.85f ? red : rod.Tension > 0.6f ? Amber : rod.Tension < 0.1f ? Dim : Green;
+            canvas.Rect(bx, by, Mathf.Max(1, Mathf.RoundToInt(bw * rod.Tension)), 4, col);
+            canvas.Rect(bx + Mathf.RoundToInt(bw * 0.9f), by - 1, 1, 6, red);
         }
 
         /// <summary>Binoculars: name what is in view out to 350 m (people, vehicles, landmarks) at its screen position.</summary>
