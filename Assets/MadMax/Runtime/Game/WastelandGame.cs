@@ -35,11 +35,14 @@ namespace MadMax.Game
 
         /// <summary>When true, device input is ignored for the current vehicle/player (automation writes inputs directly).</summary>
         public static bool ExternalInput;
+        /// <summary>Automation: hold the aim (RMB) with a ranged weapon; <see cref="ForceAimViewport"/> is the cursor.</summary>
+        public static bool ForceAim;
+        public static Vector2 ForceAimViewport = new Vector2(0.5f, 0.5f);
         public static WastelandGame Instance { get; private set; }
 
         // Enter Play Mode Options may skip domain reload; statics must be reset explicitly.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { ExternalInput = false; VehiclePart.Registry.Clear(); }
+        static void ResetStatics() { ExternalInput = false; ForceAim = false; VehiclePart.Registry.Clear(); }
 
         public WorldGen World { get; private set; }
         /// <summary>All driveable vehicles (fleet + wrecks).</summary>
@@ -521,7 +524,9 @@ namespace MadMax.Game
 
             if (Pressed(Key.H)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
             if (ShowHelp && Time.time > helpUntil) ShowHelp = false;
-            if (Pressed(Key.R) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
+            UpdateAim(mouse, pad);
+            if (Pressed(Key.R) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
+            else if (Pressed(Key.R) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
             if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame)) && fleet.Count > 0)
             {
                 int i = fleet.IndexOf(Current);
@@ -638,7 +643,7 @@ namespace MadMax.Game
                 {
                     Player.viewYaw = cameraRig.ViewYaw;
                     Player.lookPitch = cameraRig.LookPitch;
-                    Player.faceView = cameraRig.mode == ViewMode.FirstPerson;
+                    Player.faceView = cameraRig.mode == ViewMode.FirstPerson || (Aiming && cameraRig.mode == ViewMode.ThirdPerson);
                 }
             }
         }

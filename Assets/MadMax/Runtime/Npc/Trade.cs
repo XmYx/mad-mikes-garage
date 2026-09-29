@@ -32,8 +32,8 @@ namespace MadMax.Npc
                 float v = 12f + d.mass * 0.25f + d.sizeClass * 8f;
                 return d.category == MadMax.Vehicles.PartCategory.Engine ? v * 1.8f : v;
             }
-            if (id.StartsWith("tool_")) return id.Contains("shotgun") ? 70f : id.Contains("gas_torch") || id.Contains("cutter") ? 45f : id.Contains("wrench") ? 30f : id.Contains("lantern") ? 18f : id.Contains("torch") ? 6f : 22f;
-            if (id.StartsWith("ammo_")) return 2f;
+            if (id.StartsWith("tool_")) return id == "tool_bolt_rifle" ? 120f : id == "tool_revolver" ? 90f : id == "tool_crossbow" ? 60f : id == "tool_pipe_pistol" ? 45f : id == "tool_flare_gun" ? 35f : id == "tool_bow" || id == "tool_leaf_blade" ? 30f : id.Contains("shotgun") ? 70f : id.Contains("gas_torch") || id.Contains("cutter") ? 45f : id.Contains("wrench") ? 30f : id.Contains("lantern") ? 18f : id.Contains("torch") ? 6f : 22f;
+            if (id.StartsWith("ammo_")) return id == "ammo_flare" ? 8f : id == "ammo_rifle" ? 4f : id == "ammo_cartridge" ? 3f : id == "ammo_arrow" ? 1f : 2f;
             if (id.StartsWith("bait_")) return 1f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
             if (id.StartsWith("trophy_fish")) return id.EndsWith("mutant") ? 60f : 25f;

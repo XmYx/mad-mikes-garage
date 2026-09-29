@@ -35,7 +35,11 @@ namespace MadMax.Npc
         HumanAnimator anim;
         CharacterController cc;
         HandTool tool;
-        float health, maxHealth, vy, swing = -1f, attackCd, repath, fleeUntil, faceUntil, stuck, lastHurt;
+        float health, maxHealth, vy, swing = -1f, attackCd, repath, fleeUntil, faceUntil, stuck, lastHurt, bleedUntil;
+        bool lastByPlayer;
+
+        /// <summary>An open wound (arrows, bolts, blades): loses health for a while, leaving a blood trail.</summary>
+        public void Bleed(float seconds) { if (mode != Mode.Dead) bleedUntil = Mathf.Max(bleedUntil, Time.time + seconds); }
         Vector3 goal, lastPos, detour, lastBlow, lastVelocity;
         float detourUntil;
         bool hasGoal;
@@ -88,6 +92,12 @@ namespace MadMax.Npc
             float dt = Time.deltaTime;
             var g = WastelandGame.Instance;
             if (!g || g.Player == null) return;
+            if (Time.time < bleedUntil)
+            {
+                health -= 3f * dt;
+                if (Random.value < dt * 3f) BloodStains.Splash(transform.position, 0.15f);
+                if (health <= 0f) { Die(lastByPlayer); return; }
+            }
             var terrain = DeformableTerrain.Instance;
             // wanderers light a torch after dark
             if (Profile.role == NpcRole.Wanderer && Profile.tool == null && (DayNight.Darkness > 0.45f) != (tool is LightTool))
@@ -313,6 +323,7 @@ namespace MadMax.Npc
             MadMax.Audio.Sfx.Play("punch", point, 0.7f, Random.Range(0.8f, 1.1f));
             var g = WastelandGame.Instance;
             bool byPlayer = g && source && (source.transform.IsChildOf(g.Player.transform) || (g.Current && source.transform.IsChildOf(g.Current.transform)));
+            lastByPlayer = byPlayer;
             if (health <= 0f) { Die(byPlayer); return; }
             if (!byPlayer) return;
             State.disposition = Mathf.Max(-100, State.disposition - 30);

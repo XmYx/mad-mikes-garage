@@ -6,13 +6,26 @@ namespace MadMax.World
     public class Molotov : MonoBehaviour
     {
         public bool authority = true;
+        public bool rock;                 // a thrown stone: a knock, and a noise where it lands (a distraction)
         float armed = 0.08f;
         void Update() { armed -= Time.deltaTime; if (transform.position.y < -200f) Destroy(gameObject); }
         void OnCollisionEnter(Collision c)
         {
             if (armed > 0f) return;
-            if (!authority) { Fx.Sparks(transform.position, Vector3.up, 12, new Color(1f, 0.7f, 0.3f)); Destroy(gameObject); return; }
             var p = transform.position;
+            if (rock)
+            {
+                MadMax.Audio.Sfx.Play("hit_wood", p, 0.6f, 1.6f, 25f);
+                if (authority)
+                {
+                    c.collider.GetComponentInParent<MadMax.Items.IDamageable>()?.ApplyHit(p, c.relativeVelocity.normalized * -1f, 0.25f, 0.06f, MadMax.Game.WastelandGame.Instance ? MadMax.Game.WastelandGame.Instance.Player.gameObject : null);
+                    MadMax.Npc.NpcDirector.Instance?.Noise(p, 16f);
+                    PickupSystem.Instance?.Spawn(MadMax.Items.ResourceType.Stone, 1, p + Vector3.up * 0.1f, Vector3.up);
+                }
+                Destroy(gameObject);
+                return;
+            }
+            if (!authority) { Fx.Sparks(transform.position, Vector3.up, 12, new Color(1f, 0.7f, 0.3f)); Destroy(gameObject); return; }
             MadMax.Audio.Sfx.Play("glass_break", p, 0.9f);
             MadMax.Audio.Sfx.Play("explosion", p, 0.5f, 1.3f, 60f);
             var terrain = DeformableTerrain.Instance;

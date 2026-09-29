@@ -97,13 +97,66 @@ namespace MadMax.Game
         {
             d.toolWearIds = new List<string>(); d.toolWear = new List<float>();
             foreach (var kv in ToolWear) if (kv.Value > 0f) { d.toolWearIds.Add(kv.Key); d.toolWear.Add(kv.Value); }
+            d.gunRoundIds = new List<string>(); d.gunRounds = new List<int>();
+            foreach (var kv in GunRounds) if (kv.Value > 0) { d.gunRoundIds.Add(kv.Key); d.gunRounds.Add(kv.Value); }
         }
 
         void RestoreTools(SaveData d)
         {
-            ToolWear.Clear();
-            if (d.toolWearIds == null) return;
-            for (int i = 0; i < d.toolWearIds.Count && i < d.toolWear.Count; i++) ToolWear[d.toolWearIds[i]] = d.toolWear[i];
+            ToolWear.Clear(); GunRounds.Clear();
+            if (d.toolWearIds != null)
+                for (int i = 0; i < d.toolWearIds.Count && i < d.toolWear.Count; i++) ToolWear[d.toolWearIds[i]] = d.toolWear[i];
+            if (d.gunRoundIds != null)
+                for (int i = 0; i < d.gunRoundIds.Count && i < d.gunRounds.Count; i++) GunRounds[d.gunRoundIds[i]] = d.gunRounds[i];
+        }
+
+        // ------------------------------------------------------------------ guns (roadmap 13)
+        /// <summary>Rounds in each gun's magazine, per tool id (saved).</summary>
+        public readonly Dictionary<string, int> GunRounds = new Dictionary<string, int>();
+        public int Rounds(string id) => GunRounds.TryGetValue(id, out var n) ? n : 0;
+        public void SetRounds(string id, int n) => GunRounds[id] = Mathf.Max(0, n);
+
+        /// <summary>Holding RMB with a ranged weapon on foot.</summary>
+        public bool Aiming { get; private set; }
+        /// <summary>Where the aim is (cursor in the top-down views, screen centre in first / third person).</summary>
+        public Vector3 AimPoint { get; private set; }
+        /// <summary>The aim point on the pixel canvas (HUD crosshair); negative when not aiming.</summary>
+        public Vector2 AimScreen { get; private set; } = new Vector2(-1f, -1f);
+
+        void UpdateAim(UnityEngine.InputSystem.Mouse mouse, UnityEngine.InputSystem.Gamepad pad)
+        {
+            bool ranged = !Current && Player && Player.Tool is RangedTool && !Menus.IsOpen;
+            Aiming = ranged && (ForceAim || (mouse != null && mouse.rightButton.isPressed) || (pad != null && pad.leftTrigger.isPressed));
+            Player.aiming = Aiming;
+            AimScreen = new Vector2(-1f, -1f);
+            if (!Aiming || !cameraRig) return;
+            var cam = cameraRig.pixel.GetComponent<Camera>();
+            bool topDown = cameraRig.mode == ViewMode.Isometric || cameraRig.mode == ViewMode.TiltShift;
+            Vector2 view = ForceAim ? (topDown ? ForceAimViewport : new Vector2(0.5f, 0.5f))
+                : topDown && mouse != null ? new Vector2(mouse.position.ReadValue().x / Screen.width, mouse.position.ReadValue().y / Screen.height) : new Vector2(0.5f, 0.5f);
+            var ray = cam.ViewportPointToRay(new Vector3(view.x, view.y, 0f));
+            AimPoint = Physics.Raycast(ray, out var hit, 300f, ~0, QueryTriggerInteraction.Ignore) && !hit.collider.transform.IsChildOf(Player.transform) ? hit.point : ray.GetPoint(60f);
+            if (topDown)
+            {
+                // face the cursor and aim at chest height over flat ground
+                var flat = AimPoint - Player.transform.position; flat.y = 0f;
+                if (flat.sqrMagnitude > 0.04f) Player.transform.rotation = Quaternion.Slerp(Player.transform.rotation, Quaternion.LookRotation(flat), 1f - Mathf.Exp(-14f * Time.deltaTime));
+                if (hit.collider && hit.collider.GetComponentInParent<MadMax.World.DeformableTerrain>()) AimPoint += Vector3.up * 1.1f;
+            }
+            AimScreen = new Vector2(view.x, view.y);
+        }
+
+        /// <summary>Direction of a shot from <paramref name="origin"/>: at the aim point while aiming, along the camera in
+        /// first / third person, else straight ahead.</summary>
+        public Vector3 AimDirection(PlayerCharacter user, Vector3 origin, float range)
+        {
+            if (Aiming) return (AimPoint - origin).normalized;
+            if (cameraRig && (cameraRig.mode == ViewMode.FirstPerson || cameraRig.mode == ViewMode.ThirdPerson))
+            {
+                var cam = cameraRig.pixel.transform;
+                return Physics.Raycast(cam.position, cam.forward, out var ch, range, ~0, QueryTriggerInteraction.Ignore) ? (ch.point - origin).normalized : cam.forward;
+            }
+            return user.transform.forward;
         }
     }
 }

@@ -212,7 +212,18 @@ namespace MadMax.Game
                     }
                 }
             }
-            if (game.Player.Tool is RangedTool rt) canvas.Text(x0 + n * (slot + 2) + 4, y + 8, "SHELLS " + game.Inventory.GetItem(rt.ammo), Text);
+            if (game.Player.Tool is RangedTool rt)
+            {
+                // rounds in the gun / in the pack, and what it is doing
+                string st = game.Rounds(rt.id) + "/" + rt.magazine + " +" + rt.Reserve(game) + (rt.Jammed ? "  JAMMED [R]" : rt.Reloading ? "  RELOADING" : "");
+                canvas.Text(x0 + n * (slot + 2) + 4, y + 8, st, rt.Jammed ? Red : rt.Reloading ? Amber : Text);
+            }
+            if (game.Aiming && game.AimScreen.x >= 0f)
+            {
+                int cx = Mathf.RoundToInt(game.AimScreen.x * canvas.w), cy = Mathf.RoundToInt((1f - game.AimScreen.y) * canvas.h);
+                var col = game.Player.Tool is RangedTool gr && (gr.Jammed || gr.Reloading) ? Red : Amber;
+                canvas.Rect(cx - 5, cy, 3, 1, col); canvas.Rect(cx + 3, cy, 3, 1, col); canvas.Rect(cx, cy - 5, 1, 3, col); canvas.Rect(cx, cy + 3, 1, 3, col);
+            }
             if (GeigerTool.Reading >= 0f)
             {
                 float r = GeigerTool.Reading;

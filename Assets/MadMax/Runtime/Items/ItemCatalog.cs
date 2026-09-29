@@ -7,9 +7,14 @@ namespace MadMax.Items
     /// <summary>Display and weight data for any inventory id (tools, clothing, media, kits, ammo).</summary>
     public static class ItemCatalog
     {
+        static readonly System.Collections.Generic.HashSet<string> weapons = new System.Collections.Generic.HashSet<string>
+        {
+            "tool_spear", "tool_nail_bat", "tool_knife", "tool_leaf_blade", "tool_slingshot", "tool_bow", "tool_crossbow", "tool_revolver", "tool_bolt_rifle", "tool_flare_gun",
+        };
+
         public static ItemCategory Category(string id)
         {
-            if (id.StartsWith("tool_pipe") || id == ItemIds.Machete) return ItemCategory.Weapon;
+            if (id.StartsWith("tool_pipe") || id == ItemIds.Machete || weapons.Contains(id)) return ItemCategory.Weapon;
             if (id.StartsWith("tool_")) return ItemCategory.Tool;
             if (id.StartsWith("ammo_") || id.StartsWith("bait_")) return ItemCategory.Ammo;
             if (id.StartsWith("throw_")) return ItemCategory.Throwable;
@@ -26,8 +31,8 @@ namespace MadMax.Items
         public static float Weight(string id) => Category(id) switch
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
-            ItemCategory.Weapon => 2.5f,
-            ItemCategory.Ammo => id.StartsWith("bait_") ? 0.05f : id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
+            ItemCategory.Weapon => id == "tool_bolt_rifle" ? 4f : id == "tool_crossbow" ? 3.5f : id == "tool_knife" || id == "tool_slingshot" ? 0.3f : id == "tool_bow" || id == "tool_flare_gun" ? 1f : id == "tool_revolver" || id == "tool_pipe_pistol" ? 1.2f : 2.5f,
+            ItemCategory.Ammo => id.StartsWith("bait_") ? 0.05f : id == "ammo_flare" ? 0.15f : id == "ammo_rifle" ? 0.03f : id == "ammo_mg" ? 0.6f : id == "ammo_harpoon" ? 1.5f : id == "ammo_caltrops" ? 2f : id == "ammo_smoke" ? 0.8f : 0.05f,
             ItemCategory.Throwable => 0.8f,
             ItemCategory.Food => 0.4f,
             ItemCategory.Consumable => id == "use_battery" ? 8f : 0.3f,

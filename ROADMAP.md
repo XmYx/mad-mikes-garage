@@ -239,13 +239,24 @@ decorative turret.
 ## 13. Player weapons `T2`
 *Exists:* melee tools, pipe shotgun, molotov.
 
-- [ ] Melee: spear (reach), nail bat, knife (fast, bleeds), leaf-spring blade
-- [ ] Ranged: slingshot, bow & arrows (silent), crossbow, pipe pistol, revolver, bolt rifle, flare gun
-- [ ] **Ammo crafting** (arrows, bolts, shells, cartridges; gunpowder from charcoal + sulfur + saltpeter)
-- [ ] **Aim mode** (hold RMB): crosshair, shoulder aim, iso aims at the cursor
-- [ ] **Reload, magazines, jams** for crude guns
-- [ ] **Noise** alerts NPCs and animals
-- [ ] Throwables: pipe bomb, smoke bomb, rock
+- [x] Melee: spear (reach), nail bat, knife (fast, bleeds), leaf-spring blade
+- [x] Ranged: slingshot, bow & arrows (silent), crossbow, pipe pistol, revolver, bolt rifle, flare gun
+- [x] **Ammo crafting** (arrows, bolts, shells, cartridges; gunpowder from charcoal + sulfur + saltpeter)
+- [x] **Aim mode** (hold RMB): crosshair, shoulder aim, iso aims at the cursor
+- [x] **Reload, magazines, jams** for crude guns
+- [x] **Noise** alerts NPCs and animals
+- [x] Throwables: pipe bomb, smoke bomb, rock
+      *Done:* `RangedTool` generalised (hitscan or `Projectile`; magazine rounds per gun saved in `GunRounds`, drawn
+      guns chamber a round, R reloads / clears a jam (R still cycles rain without a gun), jam chance grows with wear,
+      per-weapon noise to `NpcDirector.Noise`, recoil shake, aim zoom). `Projectile`: arrows / bolts / stones / flares
+      with gravity, stick where they land (arrows and bolts picked up again, stones return as stone), NPCs bleed
+      (`Npc.Bleed`), flares light up, ignite dry ground and are seen 60 m off. Melee: spear and knife use the new
+      `ToolStyle.Thrust`; nail bat, knife, spear, leaf-spring blade open bleeding wounds (`MeleeTool.bleeds`). Aim:
+      RMB (or pad LT) slows you, halves spread, pulls the third-person camera over the shoulder, zooms first person
+      (scoped rifle more), and in the top-down views turns you to the cursor with a crosshair on the HUD; the ammo
+      line shows rounds / magazine + reserve, RELOADING, JAMMED. Smoke bombs (cloud after a fuse) and rocks (a knock
+      and a noise where they land that draws NPCs away; the stone can be picked up). Recipes at the workbench /
+      gunsmith / chem lab (gunpowder already comes from charcoal, sulfur and compost nitre); loot and trade prices.
 
 *Ties:* hunting, raiders, crafting, mining (explosives).
 

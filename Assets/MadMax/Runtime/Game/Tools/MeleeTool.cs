@@ -18,6 +18,7 @@ namespace MadMax.Game
         public bool digs;                 // shovel: digs soil where it hits bare ground
         public float woodMult = 1f, stoneMult = 1f;   // axe / pickaxe
         public bool pries;                // crowbar: forces locked doors, lockers and containers
+        public float bleeds;              // chance a hit on a person opens a bleeding wound (blades, nails)
         /// <summary>Fraction of the tool's life one blow costs (hits cost more than misses).</summary>
         public float wearPerHit = 0.004f;
 
@@ -73,6 +74,7 @@ namespace MadMax.Game
                     }
                     MadMax.Audio.Sfx.Play(hitSound, point, 0.8f, Random.Range(0.9f, 1.1f));
                     target.ApplyHit(point, dir, pw * mult, carveRadius * Mathf.Sqrt(mult), user.gameObject);
+                    if (bleeds > 0f && target is MadMax.Npc.Npc victim && Random.value < bleeds) victim.Bleed(8f);
                     hitSomething = true;
                     stats?.Practice(style == ToolStyle.Overhead ? MadMax.RPG.Skill.Demolition : MadMax.RPG.Skill.Melee, 2f);
                 }

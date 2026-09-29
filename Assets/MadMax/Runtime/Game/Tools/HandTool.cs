@@ -20,7 +20,7 @@ namespace MadMax.Game
         }
     }
 
-    public enum ToolStyle { Overhead, Slash, Twist, Grind, Gun }
+    public enum ToolStyle { Overhead, Slash, Twist, Grind, Gun, Thrust }
 
     /// <summary>Base for tools and weapons held by the on-foot player. PlayerCharacter plays <see cref="Pose"/> over
     /// the action and calls <see cref="Strike"/> once at <see cref="strikeAt"/> (0..1 of the action).</summary>
@@ -34,7 +34,7 @@ namespace MadMax.Game
 
         public abstract void Strike(PlayerCharacter user);
 
-        public bool TwoHanded => style == ToolStyle.Overhead || style == ToolStyle.Grind || style == ToolStyle.Gun;
+        public bool TwoHanded => style == ToolStyle.Overhead || style == ToolStyle.Grind || style == ToolStyle.Gun || style == ToolStyle.Thrust;
 
         // ---- keyframes: (time, pose). Anticipation → strike → follow-through → recovery, whole body involved.
         static readonly (float t, ToolPose p)[] Overhead =
@@ -81,9 +81,18 @@ namespace MadMax.Game
             (1f,    new ToolPose { armRX = -84, foreR = -6, armLX = -78, armLZ = 26, foreL = -40 }),
         };
 
+        static readonly (float t, ToolPose p)[] Thrust =
+        {
+            (0f,    new ToolPose { armRX = -40, foreR = -60, armLX = -45, armLZ = 18, foreL = -60 }),
+            (0.35f, new ToolPose { chestY = -18, armRX = -35, armRY = -10, foreR = -110, armLX = -50, armLZ = 20, foreL = -80, knees = 10 }),   // drawn back
+            (0.5f,  new ToolPose { chestY = 12, chestX = 10, armRX = -88, foreR = -4, armLX = -80, armLZ = 14, foreL = -20, knees = 22 }),      // lunge
+            (0.7f,  new ToolPose { chestY = 8, chestX = 8, armRX = -84, foreR = -8, armLX = -74, armLZ = 14, foreL = -26, knees = 18 }),
+            (1f,    new ToolPose { armRX = -40, foreR = -60, armLX = -45, armLZ = 18, foreL = -60 }),
+        };
+
         (float t, ToolPose p)[] Keys => style switch
         {
-            ToolStyle.Slash => Slash, ToolStyle.Twist => Twist, ToolStyle.Grind => Grind, ToolStyle.Gun => Gun, _ => Overhead
+            ToolStyle.Slash => Slash, ToolStyle.Twist => Twist, ToolStyle.Grind => Grind, ToolStyle.Gun => Gun, ToolStyle.Thrust => Thrust, _ => Overhead
         };
 
         /// <summary>Pose at normalised action time t (smooth-stepped between keys; grinding adds vibration).</summary>

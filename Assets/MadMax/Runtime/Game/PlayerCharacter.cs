@@ -19,6 +19,7 @@ namespace MadMax.Game
         [HideInInspector] public bool run, jump;
         [HideInInspector] public float viewYaw, lookPitch;
         [HideInInspector] public bool faceView;   // first person: body follows the camera yaw
+        [HideInInspector] public bool aiming;     // weapon raised (RMB): slow, steady steps
 
         public Vector3 Velocity { get; private set; }
         public HandTool Tool { get; private set; }
@@ -289,6 +290,7 @@ namespace MadMax.Game
             bool canRun = run && (!vitals || !vitals.Exhausted) && !Encumbered && (!game || game.CanRunInjured);
             float speed = (canRun ? runSpeed : walkSpeed) * (stats != null ? stats.MoveSpeed : 1f);
             if (Encumbered) speed *= 0.7f;
+            if (aiming) speed = Mathf.Min(speed, walkSpeed * 0.7f);
             if (game) speed *= game.InjurySpeed;
             if (Carried) speed *= 0.6f;
             if (terrain) speed *= Mathf.Lerp(1f, 0.6f, terrain.SurfaceAt(transform.position.x, transform.position.z).mud);
@@ -341,6 +343,7 @@ namespace MadMax.Game
         void Face(Vector3 dir, float dt, Quaternion view)
         {
             if (faceView) transform.rotation = view;
+            else if (aiming) return;                                                      // top-down aiming turns us to the cursor
             else if (dir.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 1f - Mathf.Exp(-10f * dt));
         }

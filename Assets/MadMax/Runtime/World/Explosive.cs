@@ -6,6 +6,7 @@ namespace MadMax.World
     public class Explosive : MonoBehaviour
     {
         public float fuse = 4f, radius = 3f, power = 6f, crater = 1f;
+        public bool smoke;                // smoke bomb: a cloud instead of a blast
         public bool authority = true;
         public GameObject source;
         Transform wick;
@@ -21,6 +22,7 @@ namespace MadMax.World
             if (transform.position.y < -200f) { Destroy(gameObject); return; }
             if (fuse > 0f) return;
             MadMax.Audio.Sfx.Loop(this, "sizzle", 0f, 1f, 15f);
+            if (smoke) { SmokeScreen.Pop(transform.position, 5f); MadMax.Audio.Sfx.Play("pop", transform.position, 0.8f, 0.7f, 30f); Destroy(gameObject); return; }
             Explosion.Blast(transform.position, radius, power, crater, source, authority);
             Destroy(gameObject);
         }

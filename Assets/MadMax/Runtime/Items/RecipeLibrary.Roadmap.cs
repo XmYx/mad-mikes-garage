@@ -165,6 +165,32 @@ namespace MadMax.Items
             yield return Armr("shin_guards", "SHIN GUARDS", "workbench", "FOR FALLS AND KICKS", (S, 4), (Le, 1));
             yield return Armr("helmet", "SCRAP HELMET", "workbench", "A POT WITH A STRAP", (S, 4), (C, 1));
 
+            // ---- 13. player weapons, ammunition, throwables
+            var Gp = ResourceType.Gunpowder; var Pb = ResourceType.Lead;
+            yield return Itm("w_spear", "SPEAR", RecipeCategory.Weapons, "workbench", "tool_spear", 1, "REACH: KEEPS THEM AT ARM'S LENGTH", null, (W, 2), (S, 1));
+            yield return Itm("w_nail_bat", "NAIL BAT", RecipeCategory.Weapons, "workbench", "tool_nail_bat", 1, "HEAVY SWING, OPENS WOUNDS", null, (W, 2), (S, 1));
+            yield return Itm("w_knife", "KNIFE", RecipeCategory.Weapons, "workbench", "tool_knife", 1, "FAST, BLEEDS THEM", null, (Fe, 1), (W, 1));
+            yield return Itm("w_leaf_blade", "LEAF-SPRING BLADE", RecipeCategory.Weapons, "workbench", "tool_leaf_blade", 1, "A CAR SPRING GROUND TO AN EDGE", null, (Fe, 3), (ResourceType.Leather, 1));
+            yield return Itm("w_slingshot", "SLINGSHOT", RecipeCategory.Weapons, "workbench", "tool_slingshot", 1, "SILENT; SHOOTS STONES", null, (W, 1), (Rb, 1));
+            yield return Itm("w_bow", "BOW", RecipeCategory.Weapons, "workbench", "tool_bow", 1, "SILENT; ARROWS CAN BE PICKED UP", null, (W, 3), (C, 1));
+            yield return Itm("w_crossbow", "CROSSBOW", RecipeCategory.Weapons, "workbench", "tool_crossbow", 1, "QUIET, HITS HARD, SLOW TO SPAN", null, (W, 3), (Fe, 2), (C, 1));
+            var pistol = Itm("w_pipe_pistol", "PIPE PISTOL", RecipeCategory.Weapons, "gunsmith", "tool_pipe_pistol", 1, "ONE SHOT, JAMS", null, (Fe, 2), (S, 2), (W, 1));
+            yield return pistol;
+            var revolver = Itm("w_revolver", "REVOLVER", RecipeCategory.Weapons, "gunsmith", "tool_revolver", 1, "SIX ROUNDS, RELIABLE", null, (Fe, 4), (Cu, 1), (W, 1));
+            revolver.knowledge = "read_book_gunsmith";
+            yield return revolver;
+            var rifle = Itm("w_bolt_rifle", "BOLT RIFLE", RecipeCategory.Weapons, "gunsmith", "tool_bolt_rifle", 1, "SCOPED, FIVE ROUNDS, LOUD", null, (Fe, 6), (W, 3), (Cu, 1), (G, 1));
+            rifle.knowledge = "read_book_gunsmith";
+            yield return rifle;
+            yield return Itm("w_flare_gun", "FLARE GUN", RecipeCategory.Weapons, "gunsmith", "tool_flare_gun", 1, "LIGHT, SIGNAL, SETS DRY GRASS ALIGHT", null, (S, 2), (Cu, 1));
+            yield return Itm("ammo_arrow", "ARROWS X4", RecipeCategory.Weapons, "workbench", "ammo_arrow", 4, "FOR THE BOW", null, (W, 1), (S, 1));
+            yield return Itm("ammo_bolt", "BOLTS X4", RecipeCategory.Weapons, "workbench", "ammo_bolt", 4, "FOR THE CROSSBOW", null, (Fe, 1), (W, 1));
+            yield return Itm("ammo_cartridge", "PISTOL ROUNDS X6", RecipeCategory.Weapons, "gunsmith", "ammo_cartridge", 6, "PISTOL AND REVOLVER", null, (Cu, 1), (Pb, 1), (Gp, 1));
+            yield return Itm("ammo_rifle", "RIFLE ROUNDS X4", RecipeCategory.Weapons, "gunsmith", "ammo_rifle", 4, "FOR THE BOLT RIFLE", null, (Cu, 1), (Pb, 1), (Gp, 2));
+            yield return Itm("ammo_flare", "FLARES X2", RecipeCategory.Weapons, "chemlab", "ammo_flare", 2, "RED LIGHT FOR HALF A MINUTE", null, (Gp, 1), (ResourceType.Sulfur, 1), (C, 1));
+            yield return Itm("throw_smoke", "SMOKE BOMBS X2", RecipeCategory.Weapons, "chemlab", "throw_smoke", 2, "A CLOUD TO SLIP AWAY IN", null, (ResourceType.Charcoal, 2), (ResourceType.Sulfur, 1), (S, 1));
+            yield return Itm("throw_rock", "THROWING ROCKS X2", RecipeCategory.Weapons, "workbench", "throw_rock", 2, "A KNOCK, AND A NOISE WHERE IT LANDS", null, (ResourceType.Stone, 1));
+
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
         }
 

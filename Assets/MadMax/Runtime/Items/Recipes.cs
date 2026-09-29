@@ -47,6 +47,10 @@ namespace MadMax.Items
             { "ammo_mg", "MG BELT (20)" }, { "ammo_harpoon", "HARPOON BOLT" }, { "ammo_caltrops", "CALTROP BAG" }, { "ammo_smoke", "SMOKE GRENADE" },
             { "bait_worms", "WORMS" }, { "bait_insects", "INSECTS" }, { "bait_meat", "CUT BAIT" }, { "bait_corn", "CORN DOUGH BAIT" }, { "tool_fishing_rod", "FISHING ROD" },
             { "trophy_fish", "MOUNTED FISH" }, { "trophy_fish_mutant", "MOUNTED MUTANT FISH" },
+            { "tool_spear", "SPEAR" }, { "tool_nail_bat", "NAIL BAT" }, { "tool_knife", "KNIFE" }, { "tool_leaf_blade", "LEAF-SPRING BLADE" }, { "tool_slingshot", "SLINGSHOT" },
+            { "tool_bow", "BOW" }, { "tool_crossbow", "CROSSBOW" }, { "tool_pipe_pistol", "PIPE PISTOL" }, { "tool_revolver", "REVOLVER" }, { "tool_bolt_rifle", "BOLT RIFLE" }, { "tool_flare_gun", "FLARE GUN" },
+            { "ammo_arrow", "ARROW" }, { "ammo_bolt", "CROSSBOW BOLT" }, { "ammo_cartridge", "PISTOL ROUND" }, { "ammo_rifle", "RIFLE ROUND" }, { "ammo_flare", "FLARE" },
+            { "throw_smoke", "SMOKE BOMB" }, { "throw_rock", "ROCK" },
             { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
