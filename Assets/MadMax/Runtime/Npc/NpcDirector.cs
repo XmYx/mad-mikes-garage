@@ -179,7 +179,7 @@ namespace MadMax.Npc
         {
             pendingConvoys = list;
             if (list == null) return;
-            foreach (var c in convoys) foreach (var s in list) if (s.id == c.id) { c.save.generation = s.generation; c.save.deadDay = s.deadDay; }
+            foreach (var c in convoys) foreach (var s in list) if (s.id == c.id) { c.save.generation = s.generation; c.save.deadDay = s.deadDay; c.save.spareUntil = s.spareUntil; c.save.losses = s.losses; }
         }
 
         /// <summary>The convoy a vehicle drives with, or null.</summary>
@@ -208,6 +208,20 @@ namespace MadMax.Npc
         }
 
         public IReadOnlyList<Convoy> Convoys => convoys;
+
+        /// <summary>The raider gang whose road passes nearest <paramref name="at"/> (gangs wiped out and not back yet are
+        /// skipped): the one that raids there.</summary>
+        public Convoy RaidersByRoad(Vector3 at)
+        {
+            Convoy best = null; float bd = float.MaxValue;
+            foreach (var c in convoys)
+            {
+                if (!c.raiders || c.phase == Convoy.Phase.Gone) continue;
+                float d = c.RoadDistance(at);
+                if (d < bd) { bd = d; best = c; }
+            }
+            return best;
+        }
 
         public Convoy NearestRaiders(Vector3 at, out float dist)
         {

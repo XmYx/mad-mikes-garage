@@ -100,7 +100,7 @@ namespace MadMax.Building
                 D("radio", "RADIO", Fu, Radio(), 2, false, go => go.AddComponent<RadioSet>(), (S, 3), (Cu, 2), (G, 1)),
                 D("lamp", "OIL LAMP", Fu, Lamp(), 2, false, go => Glow(go, new Vector3(0, 0.4f, 0), new Color(1f, 0.82f, 0.55f), 6f, 2.2f, false, 0f), (S, 2), (G, 1)),
                 D("light_ceiling", "CEILING LIGHT", Fu, BuildPieces.CeilingLight(), 2, false, go => { Node(go, UtilityKind.Power, 0.05f); Glow(go, new Vector3(0, -0.3f, 0), new Color(1f, 0.9f, 0.75f), 8f, 7f, true, 40f); }, (S, 1), (G, 1), (Cu, 1)),
-                Kit("floodlight", "FLOODLIGHT", Floodlight(), ItemIds.FloodlightKit, Fu).With(go => { Node(go, UtilityKind.Power, 1.6f); Glow(go, new Vector3(0, 1.72f, 0.3f), new Color(1f, 0.95f, 0.85f), 18f, 40f, true, 200f); }),
+                Kit("floodlight", "FLOODLIGHT", Floodlight(), ItemIds.FloodlightKit, Fu).With(go => { Node(go, UtilityKind.Power, 1.6f); Glow(go, new Vector3(0, 1.72f, 0.3f), new Color(1f, 0.95f, 0.85f), 18f, 40f, true, 200f); go.GetComponent<PoweredLight>().canSense = true; }),
                 D("lamppost", "LAMP POST", Fu, BuildPieces.LampPost(), 10, false, go => { Node(go, UtilityKind.Power, 3.6f); Glow(go, new Vector3(0, 3.6f, 0.64f), new Color(1f, 0.8f, 0.5f), 16f, 30f, true, 120f); }, (Fe, 3), (G, 1), (Cu, 1)),
                 D("sink", "SINK", Fu, BuildPieces.Sink(), 4, false, go => { Node(go, UtilityKind.Water, 1.0f).waterCapacity = 5f; go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Sink; }, (S, 4), (Fe, 1)),
                 D("shower", "SHOWER", Fu, BuildPieces.Shower(), 4, false, go => { Node(go, UtilityKind.Water, 2.3f).waterCapacity = 5f; go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Shower; }, (S, 6), (Fe, 1), (C, 2)),

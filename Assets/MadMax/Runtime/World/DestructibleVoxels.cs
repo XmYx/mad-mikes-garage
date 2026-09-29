@@ -49,8 +49,22 @@ namespace MadMax.World
         static readonly Dictionary<string, DestructibleVoxels> byKey = new Dictionary<string, DestructibleVoxels>();
         static readonly Dictionary<string, List<(Vector3 p, Vector3 d, float r, float power)>> pendingCarves = new Dictionary<string, List<(Vector3, Vector3, float, float)>>();
 
+        /// <summary>Where loose props (crates) were pushed to, by key: applied when they stream back in; saved.</summary>
+        public static readonly Dictionary<string, (Vector3 p, Quaternion r)> Moved = new Dictionary<string, (Vector3, Quaternion)>();
+        Vector3 spawnedAt;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { byKey.Clear(); pendingCarves.Clear(); All.Clear(); }
+        static void ResetStatics() { byKey.Clear(); pendingCarves.Clear(); All.Clear(); Moved.Clear(); }
+
+        /// <summary>Note where this loose prop is now when it was moved from where the world put it.</summary>
+        void NoteMoved()
+        {
+            if (stateKey == null || anchored || !this) return;
+            if ((transform.position - spawnedAt).sqrMagnitude > 0.3f * 0.3f) Moved[stateKey] = (transform.position, transform.rotation);
+        }
+
+        /// <summary>Record the loose props in the world now (before a save).</summary>
+        public static void CaptureMoved() { foreach (var d in All) if (d) d.NoteMoved(); }
 
         /// <summary>Apply a carve that happened on another peer (no pickups here). Unloaded props queue it until they spawn.</summary>
         public static void ApplyRemoteCarve(string key, Vector3 point, Vector3 dir, float radius, float power)
@@ -61,7 +75,7 @@ namespace MadMax.World
         }
 
         void OnEnable() { All.Add(this); if (stateKey != null) byKey[stateKey] = this; }
-        void OnDisable() { All.Remove(this); if (stateKey != null && byKey.TryGetValue(stateKey, out var d) && d == this) byKey.Remove(stateKey); }
+        void OnDisable() { NoteMoved(); All.Remove(this); if (stateKey != null && byKey.TryGetValue(stateKey, out var d) && d == this) byKey.Remove(stateKey); }
 
         /// <summary>Spawn an instance. Returns null if the saved state says it was destroyed completely.</summary>
         public static DestructibleVoxels Spawn(string name, VoxelGrid template, Mesh sharedMesh, Material mat, Transform parent,
@@ -82,8 +96,10 @@ namespace MadMax.World
             d.groundY = template.MinY();
             d.grid = saved ?? template;
             d.owned = saved != null;
+            d.spawnedAt = position;
             if (dynamicBody)
             {
+                if (key != null && Moved.TryGetValue(key, out var mv)) go.transform.SetPositionAndRotation(mv.p + Vector3.up * 0.05f, mv.r);
                 d.col = go.AddComponent<BoxCollider>();
                 var rb = go.AddComponent<Rigidbody>();
                 rb.mass = Mathf.Max(5f, template.Count * size * size * size * 600f);

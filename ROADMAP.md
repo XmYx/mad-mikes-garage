@@ -550,17 +550,23 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] **No racing or arena activity in a driving game.** Suggest: point-to-point races between towns against
       rival drivers (entry fee and purse, tuning matters), bike trials on the mesas, air races between airfields,
       a scrap-metal arena with bets, and jump ramps with a hang-time score.
-- [ ] **Raids by territory** (from base building): the raiding gang should be the one whose road stretch is
+- [x] **Raids by territory** (from base building): the raiding gang should be the one whose road stretch is
       nearest; recruited or bribed gangs skip the base; wiping a raid party dents its next convoy generation.
-- [ ] **Radio warns of raids**: WasteTalk FM names settlements (and your claim) on a gang's warpath an hour ahead.
-- [ ] **Base upkeep**: pieces weather slowly (rain on wood, sand on everything) unless roofed or repaired; a claim
+      *Done:* `NpcDirector.RaidersByRoad` picks the gang whose road passes nearest (base raids and town raids); `Convoy.SparesBases` (recruited, allied, or a toll paid: `ConvoySave.spareUntil`, 3 days paid / 1 day scared or fooled); a party wiped out adds `ConvoySave.losses` (fewer cars in the gang's next generation, smaller raids; heals one per generation).
+- [x] **Radio warns of raids**: WasteTalk FM names settlements (and your claim) on a gang's warpath an hour ahead.
+      *Done:* `RadioNetwork.Flash`: an hour before a base raid and before a dusk town raid (the held town, or tonight's roll on the town you are in) the talk station breaks in with a NEWSFLASH line (journal entry when listening), other stations hint "NEWSFLASH ON WASTETALK".
+- [x] **Base upkeep**: pieces weather slowly (rain on wood, sand on everything) unless roofed or repaired; a claim
       shows what needs the hammer.
-- [ ] **Garage as the fleet's home**: vehicles parked on a claim repair slowly with a garage piece, refuel from its
+      *Done:* `Building/BaseUpkeep`: every in-game hour, pieces in the open may lose a hit (never below one): wood and cloth rot in rain, metal rusts, stone barely ages, sand scours everything in the desert (×16 in a dust storm); a roof overhead protects. Build mode marks worn pieces (amber, red at one hit); the claim flag counts what needs the hammer.
+- [x] **Garage as the fleet's home**: vehicles parked on a claim repair slowly with a garage piece, refuel from its
       tanks, and come first in the Tab cycle; raiders go for parked vehicles.
-- [ ] **Companions man the base**: companions posted at a claim use turrets and ring the bell; motion-sensor
+      *Done:* `WastelandGame.Garage`: fleet vehicles parked within 14 m of a GARAGE on a claim mend parts, dents and frame hourly and fill from the claim's built fuel pumps; Tab visits them first. Raiders: a third of a live raid party are car breakers (siphon, smash), and off-screen raids siphon and strip parked vehicles.
+- [x] **Companions man the base**: companions posted at a claim use turrets and ring the bell; motion-sensor
       floodlights ([T] SENSOR) that raiders avoid.
-- [ ] **Animals × gardens**: livestock gives milk, eggs and hides, but no manure. Pens could yield dung for the
+      *Done:* a guarding companion (`Npc.ManPost`) runs to ring the claim's bell when hostiles come within 70 m, then takes the nearest free turret (`AutoTurret.gunner`: a manned gun fires without power, faster and truer). Floodlights have a [T] SENSOR mode (dark until something moves within 18 m, then 30 s on); raiders pick siege targets outside lit floodlights.
+- [x] **Animals × gardens**: livestock gives milk, eggs and hides, but no manure. Pens could yield dung for the
       composter, and grazing animals could trample or eat crops without a fence.
+      *Done:* fed cows, horses, goats and pigs leave manure at their trough ([T] SHOVEL MANURE, saved), the composter makes fertilizer from it (`fertilizer_m`); hoofed plant-eaters wander onto unfenced beds and eat them (`GardenPlot.Grazers`, `Animal.Grazer`); any fence within 4 m protects a bed.
 
 ### Driving, riding, flying
 - [x] **Hill starts**: heavy cars (Scavenger, 2.7 t) cannot pull away on a 10° slope at part throttle; add launch
@@ -619,7 +625,8 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       deletes the only file. Suggest: autosave on sleep and every N minutes (a setting), save on quit, three slots
       plus a rolling backup.
       *Done:* three save slots plus an autosave (`SaveSystem.Slots`), the previous file kept as .bak (written via a temp file; a damaged save falls back to it), a slot list with day/place, autosave every N minutes (setting), after sleeping and on quit; permadeath deletes the run's slot and the autosave.
-- [ ] Not saved: ruts, dents, crate positions (known), storm state and lightning fires in flight.
+- [x] Not saved: ruts, dents, crate positions (known), storm state and lightning fires in flight.
+      *Done:* ruts still healing (sparse cells, the 300 rutted chunks nearest the player) ride in `ChunkEdit.rut`; dents per mesh (`DeformableMesh.SaveState`, `VehicleSave.dents` by child path); crates pushed off their spot (`DestructibleVoxels.Moved`, applied when they stream back in); the storm in progress (`Storms.SaveState/Restore`); fires not on vehicles (`SaveData.fires`).
 
 ### Multiplayer
 - [ ] **NPCs and animals are host-only.** `NpcDirector` and `AnimalDirector` run on the authority, and `Net/` has
@@ -693,8 +700,9 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       IL2CPP for release builds.
 - [ ] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
       spread `SiteBuilder.Populate` over frames.
-- [ ] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
+- [x] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
       before the async remesh. Dent mesh updates could batch per frame.
+      *Done:* `DeformableMesh.Dent` only moves the vertex targets; one snap + upload + normals per mesh in `LateUpdate`, however many contacts and hits landed that frame.
 - [ ] **Big bases**: every built piece is its own GameObject and collider (mesh colliders for walls and floors).
       Merge static pieces per structure cell into combined meshes, rebuilt when a piece changes.
 

@@ -15,7 +15,22 @@ namespace MadMax.World
         public static float Dust { get; private set; }
         public static float Rad { get; private set; }
         public static string Name => Rad > 0.15f ? "RAD STORM" : Dust > 0.15f ? "DUST STORM" : null;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Dust = Rad = 0f; electrified.Clear(); }
+        public static Storms Instance { get; private set; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Dust = Rad = 0f; electrified.Clear(); Instance = null; }
+
+        void Awake() => Instance = this;
+
+        /// <summary>The storm in progress (kind 0 = none) for the save.</summary>
+        public void SaveState(out int k, out float left, out float total) { k = kind; left = kind != 0 ? end - Time.time : 0f; total = end - start; }
+
+        /// <summary>Resume a saved storm where it was (no warning toast; it is already blowing).</summary>
+        public void Restore(int k, float left, float total)
+        {
+            if (k == 0 || left <= 1f) return;
+            kind = k; end = Time.time + left; start = end - Mathf.Max(total, left);
+            float envelope = Mathf.Clamp01(Mathf.Min((Time.time - start) / 45f, left / 60f));
+            if (k == 1) Dust = envelope; else Rad = envelope;
+        }
 
         int kind;                    // 0 none, 1 dust, 2 radiation
         float start, end, nextCheck = 90f, sandblastToast;

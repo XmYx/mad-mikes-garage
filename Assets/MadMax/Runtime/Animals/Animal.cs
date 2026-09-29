@@ -25,6 +25,8 @@ namespace MadMax.Animals
         public enum State { Idle, Graze, Wander, Flee, Alert, Charge, Stalk, Attack, Follow, Stay, Sleep, Ridden, Circle, Land, Perch, Coiled, Dead }
 
         public static readonly List<Animal> All = new List<Animal>();
+        /// <summary>Eats crops off unfenced garden beds (hoofed plant-eaters).</summary>
+        public bool Grazer => Def != null && !Def.flies && Def.plan == BodyPlan.Quadruped && (Def.nature == Nature.Livestock || Def.nature == Nature.Prey) && Def.id != "chicken" && Def.id != "dog" && state != State.Ridden;
         /// <summary>The animal the local player is riding.</summary>
         public static Animal Mounted { get; private set; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { All.Clear(); Mounted = null; }
@@ -249,6 +251,9 @@ namespace MadMax.Animals
             {
                 var off = Random.insideUnitCircle * radius;
                 goal = home + new Vector3(off.x, 0f, off.y);
+                if (Grazer && Random.value < 0.4f)                                                // a vegetable bed nobody fenced
+                    foreach (var plot in MadMax.Building.GardenPlot.All)
+                        if (plot && plot.Tempting && Flat(plot.transform.position - me).magnitude < 16f) { goal = plot.transform.position; break; }
                 state = State.Wander; stateUntil = Time.time + 14f;
             }
             else { state = State.Idle; stateUntil = Time.time + Random.Range(2f, 5f); }

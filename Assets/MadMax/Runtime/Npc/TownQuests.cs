@@ -19,11 +19,11 @@ namespace MadMax.Npc
         static readonly HashSet<int> accepted = new HashSet<int>();
         static readonly HashSet<int> won = new HashSet<int>();                       // the raid on this town was beaten
         static readonly List<Npc> attackers = new List<Npc>();
-        static int defending = -1, eventDay = -1;
+        static int defending = -1, eventDay = -1, warnDay = -1;
         static bool eventRaid;
         static float nextCheck;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { stage.Clear(); accepted.Clear(); won.Clear(); attackers.Clear(); defending = -1; nextCheck = 0f; eventDay = -1; eventRaid = false; }
+        static void ResetStatics() { stage.Clear(); accepted.Clear(); won.Clear(); attackers.Clear(); defending = -1; nextCheck = 0f; eventDay = -1; warnDay = -1; eventRaid = false; }
 
         static WorldGen World => DeformableTerrain.Instance ? DeformableTerrain.Instance.World : null;
 
@@ -44,6 +44,12 @@ namespace MadMax.Npc
 
         static string Gang(int town)
         {
+            var st = Town(town);
+            if (st != null && NpcDirector.Instance)                                           // the gang whose road passes nearest
+            {
+                var c = NpcDirector.Instance.RaidersByRoad(new Vector3(st.pos.x, 0f, st.pos.y));
+                if (c != null) return c.Gang;
+            }
             var gangs = NpcDirector.Instance ? NpcDirector.Instance.RaiderGangs() : new List<(string, string)>();
             return gangs.Count > 0 ? gangs[Rng(town, 1).Next(gangs.Count)].Item2 : NpcLore.Gangs[Rng(town, 1).Next(NpcLore.Gangs.Length)];
         }
@@ -203,6 +209,7 @@ namespace MadMax.Npc
                 }
                 return;
             }
+            if (DayNight.Hours >= 16.5f && DayNight.Hours < 17.5f && warnDay != DayNight.Day) WarnDusk(me);
             if (DayNight.Hours < 17.5f || DayNight.Hours > 21.5f) return;
             foreach (var t in accepted)
             {
@@ -221,6 +228,27 @@ namespace MadMax.Npc
             if (Rng(here.index, 50 + DayNight.Day).NextDouble() > 0.3) return;
             eventRaid = true;
             Raid(g, here);
+        }
+
+        /// <summary>WasteTalk FM names the town a gang means to hit at dusk (the one you hold for its boss, or tonight's
+        /// raid on the town you are in), an hour ahead.</summary>
+        static void WarnDusk(Vector3 me)
+        {
+            warnDay = DayNight.Day;
+            var w = World;
+            if (w == null) return;
+            Settlement target = null;
+            foreach (var t in accepted)
+            {
+                var st = Town(t);
+                if (Stage(t) == 3 && !won.Contains(t) && st != null && Vector2.Distance(st.pos, new Vector2(me.x, me.z)) < 1500f) { target = st; break; }
+            }
+            if (target == null)
+            {
+                var here = w.SettlementAt(me.x, me.z);
+                if (here != null && eventDay != DayNight.Day && Rng(here.index, 50 + DayNight.Day).NextDouble() <= 0.3) target = here;
+            }
+            if (target != null) MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + Gang(target.index) + " MEAN TO HIT " + Market.TownName(target) + " AT DUSK");
         }
 
         static void Raid(WastelandGame g, Settlement st)

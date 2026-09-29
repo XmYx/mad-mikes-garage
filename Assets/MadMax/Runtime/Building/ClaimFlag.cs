@@ -18,7 +18,8 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             string who = string.IsNullOrEmpty(Owner) ? "" : Owner.ToUpperInvariant() + "'S ";
-            return who + "CLAIM: " + Pieces() + " PIECES, DEFENCE " + Defence() + "  [T] RESPAWN HERE";
+            int worn = BaseUpkeep.WornIn(this);
+            return who + "CLAIM: " + Pieces() + " PIECES, DEFENCE " + Defence() + (worn > 0 ? ", " + worn + " NEED THE HAMMER" : "") + "  [T] RESPAWN HERE";
         }
         public void Use(MadMax.Game.WastelandGame g, bool secondary) { if (secondary) g.SetSpawn(transform.position + transform.forward * 1.5f + Vector3.up * 0.2f); }
 

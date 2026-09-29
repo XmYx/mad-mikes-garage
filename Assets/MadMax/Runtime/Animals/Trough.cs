@@ -24,11 +24,24 @@ namespace MadMax.Animals
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
-        public string Prompt(WastelandGame g) => "[E] FILL TROUGH (FEED " + Mathf.FloorToInt(feed) + "/" + Cap + ", WATER " + Mathf.FloorToInt(water) + " L)";
+        /// <summary>Dung shovelled up around the pen (for the composter).</summary>
+        public int manure;
+        public const int ManureCap = 30;
+
+        public string Prompt(WastelandGame g) => "[E] FILL TROUGH (FEED " + Mathf.FloorToInt(feed) + "/" + Cap + ", WATER " + Mathf.FloorToInt(water) + " L)" + (manure > 0 ? "  [T] SHOVEL MANURE (" + manure + ")" : "");
 
         public void Use(WastelandGame g, bool secondary)
         {
-            if (secondary) return;
+            if (secondary)
+            {
+                if (manure <= 0) return;
+                g.Inventory.AddItem("farm_manure", manure);
+                g.Toast("+" + manure + " MANURE (COMPOSTER: FERTILIZER)");
+                MadMax.Audio.Sfx.Play("dig", transform.position, 0.5f);
+                manure = 0;
+                GetComponent<Placeable>()?.Dirty();
+                return;
+            }
             int items = 0, litres = 0;
             foreach (var f in Feeds)
                 while (feed <= Cap - 2f && g.Inventory.TakeItem(f)) { feed += f == "food_pumpkin" ? 4f : 2f; items++; }
@@ -55,6 +68,14 @@ namespace MadMax.Animals
             return true;
         }
 
+        /// <summary>The trough nearest a pen's home spot (any fill), or null.</summary>
+        public static Trough Nearest(Vector3 p)
+        {
+            Trough best = null; float bd = Reach * Reach;
+            foreach (var t in All) { if (!t) continue; float d = (t.transform.position - p).sqrMagnitude; if (d < bd) { bd = d; best = t; } }
+            return best;
+        }
+
         public static Trough Near(Vector3 p, float feedNeeded)
         {
             Trough best = null; float bd = Reach * Reach;
@@ -67,7 +88,7 @@ namespace MadMax.Animals
             return best;
         }
 
-        public string SaveState() => feed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + water.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        public string SaveState() => feed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + water.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + manure;
 
         public void LoadState(string s)
         {
@@ -75,6 +96,7 @@ namespace MadMax.Animals
             var p = s.Split('|');
             float.TryParse(p[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out feed);
             if (p.Length > 1) float.TryParse(p[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out water);
+            if (p.Length > 2) int.TryParse(p[2], out manure);
         }
     }
 }

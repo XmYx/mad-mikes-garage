@@ -35,6 +35,9 @@ namespace MadMax.Npc
         /// <summary>Raiding a claimed base (<see cref="BaseRaid"/>): batter the nearest built piece around
         /// <see cref="raidAt"/> unless the player is close enough to fight.</summary>
         public bool raiding;
+        /// <summary>Raiding: goes for parked vehicles (siphons and smashes) before the buildings.</summary>
+        [System.NonSerialized] public bool carBreaker;
+        MadMax.Vehicles.VehicleDriver siegeCar;
         public Vector3 raidAt;
         Placeable siegeTarget;
         float siegeRepick;
@@ -179,6 +182,7 @@ namespace MadMax.Npc
 
             bool sieging = raiding && !foe && (dPlayer > 22f || g.Vitals.Dead);
             if (sieging) Siege(dt, ref move, ref speed);
+            else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
             else switch (mode)
             {
                 case Mode.Stand:
@@ -561,6 +565,7 @@ namespace MadMax.Npc
         /// <summary>Raid: walk to the nearest built piece of the claim and smash it.</summary>
         void Siege(float dt, ref Vector3 move, ref float speed)
         {
+            if (carBreaker && SiegeCar(dt, ref move, ref speed)) return;
             if (!siegeTarget || Time.time > siegeRepick)
             {
                 siegeRepick = Time.time + 3f;
@@ -569,6 +574,7 @@ namespace MadMax.Npc
                 {
                     if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>()) continue;
                     float d = (p.transform.position - transform.position).sqrMagnitude;
+                    if (PoweredLight.FloodlitAt(p.transform.position)) d += 30f * 30f;                  // they keep out of the floodlights
                     if (d < bd) { bd = d; siegeTarget = p; }
                 }
             }
@@ -581,6 +587,78 @@ namespace MadMax.Npc
             swing = 0f; attackCd = 1.4f;
             siegeTarget.ApplyHit(cp, transform.forward, Profile.role == NpcRole.RaiderBoss ? 2f : 1f, 0.2f, gameObject);
             MadMax.Audio.Sfx.Play(siegeTarget.id.Contains("wood") ? "hit_wood" : "hit_metal", cp, 0.7f);
+        }
+
+        // ------------------------------------------------------------------ companions man the base
+        AutoTurret manning;
+        AlarmBell ringing;
+        float postCheck, rangUntil;
+
+        /// <summary>A companion guarding a claim when hostiles come within 70 m of the post: rings the claim's bell first,
+        /// then takes the nearest free turret (manned turrets fire without power, faster and truer). False when there is
+        /// nothing to man (fights as usual).</summary>
+        bool ManPost(Vector3 me, float dt, ref Vector3 move, ref float speed)
+        {
+            if ((postCheck -= dt) <= 0f)
+            {
+                postCheck = 1f;
+                bool threat = false;
+                foreach (var n in All) if (n && n != this && !n.companion && n.Alive && (n.Hostile || n.raiding) && (n.transform.position - home).sqrMagnitude < 70f * 70f) { threat = true; break; }
+                if (!threat) { LeavePost(); return false; }
+                if (!ringing && Time.time > rangUntil)
+                    foreach (var b in AlarmBell.All) if (b && (b.transform.position - home).sqrMagnitude < 40f * 40f) { ringing = b; break; }
+                if (!manning || (manning.gunner && manning.gunner != this && manning.gunner.Alive))
+                {
+                    manning = null; float bd = 30f * 30f;
+                    foreach (var p in Placeable.All)
+                    {
+                        if (!p || !p.TryGetComponent<AutoTurret>(out var t) || !t.on || (t.gunner && t.gunner != this && t.gunner.Alive)) continue;
+                        float d = (p.transform.position - home).sqrMagnitude;
+                        if (d < bd) { bd = d; manning = t; }
+                    }
+                }
+            }
+            if (!ringing && !manning) return false;
+            var at = ringing ? ringing.transform.position : manning.transform.position - manning.transform.forward * 1.1f;   // behind the gun
+            if (Flat(at - me).magnitude > 1.3f) { move = Toward(at); speed = 3.6f; return true; }
+            if (ringing) { ringing.Ring(true); ringing = null; rangUntil = Time.time + 180f; return true; }
+            manning.gunner = this;
+            if (manning.Target) { faceTarget = manning.Target.transform.position; faceUntil = Time.time + 0.5f; }
+            return true;
+        }
+
+        void LeavePost()
+        {
+            if (manning && manning.gunner == this) manning.gunner = null;
+            manning = null; ringing = null;
+        }
+
+        /// <summary>A car breaker's raid: the nearest unattended vehicle within the claim, fuel siphoned and bodywork
+        /// smashed. False when there is none left worth it.</summary>
+        bool SiegeCar(float dt, ref Vector3 move, ref float speed)
+        {
+            var g = WastelandGame.Instance;
+            if (!siegeCar || Time.time > siegeRepick || siegeCar == g.Current)
+            {
+                siegeCar = null; float bd = float.MaxValue;
+                foreach (var v in g.AllVehicles)
+                {
+                    if (!v || v == g.Current || v.aiDriven || v.Occupied || Flat(v.transform.position - raidAt).sqrMagnitude > 45f * 45f) continue;
+                    if (v.TryGetComponent<MadMax.Vehicles.VehicleDamage>(out var vd) && vd.FrameDamage > 0.8f) continue;       // wrecked enough
+                    float d = (v.transform.position - transform.position).sqrMagnitude;
+                    if (d < bd) { bd = d; siegeCar = v; }
+                }
+                if (!siegeCar) { carBreaker = false; return false; }
+            }
+            var cp = siegeCar.Body.ClosestPointOnBounds(transform.position + Vector3.up);
+            if (Flat(cp - transform.position).magnitude > 1.3f) { move = Toward(cp); speed = 2.8f; return true; }
+            faceTarget = cp; faceUntil = Time.time + 0.5f;
+            if ((attackCd -= dt) > 0f || swing >= 0f) return true;
+            swing = 0f; attackCd = 1.6f;
+            if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleSystems>(out var sys)) sys.fuel = Mathf.Max(0f, sys.fuel - 3f);
+            if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleDamage>(out var dmg)) dmg.ApplyHit(cp, transform.forward, Profile.role == NpcRole.RaiderBoss ? 2f : 1f, 0.3f, gameObject);
+            MadMax.Audio.Sfx.Play("hit_metal", cp, 0.8f);
+            return true;
         }
 
         void MeleeHit()

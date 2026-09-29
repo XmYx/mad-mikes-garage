@@ -12,6 +12,11 @@ namespace MadMax.Building
     /// crops unless a scarecrow stands near. Seeds carry the make of the harvest they came from (Farming skill).</summary>
     public class GardenPlot : MonoBehaviour, IPlaceState, IInteractable
     {
+        public static readonly System.Collections.Generic.List<GardenPlot> All = new System.Collections.Generic.List<GardenPlot>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetAll() => All.Clear();
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
+
         public string crop;          // seed id
         public float growth, water, fertilizer;
         public float fertility = 0.8f, health = 1f, weeds, seedQuality = 1f;
@@ -80,6 +85,7 @@ namespace MadMax.Building
                 if (fertilizer > 0f) fertilizer = Mathf.Max(0f, fertilizer - dt / 600f);
                 weeds = Mathf.Min(1f, weeds + dt / (25f * 60f) * (0.4f + fertility * 0.6f));
                 Pests(def, dt);
+                Grazers(def, dt);
             }
             else if (crop == null) weeds = Mathf.Min(1f, weeds + dt / (60f * 60f));
             if (crow && Time.time > crowUntil) { Destroy(crow); crow = null; }
@@ -103,6 +109,39 @@ namespace MadMax.Building
             if (!crow) crow = Crow();
             MadMax.Audio.Sfx.Play("birds", transform.position, 0.6f, 0.8f, 30f);
             Tell("CROWS ARE AT YOUR " + def.name);
+        }
+
+        float grazeT;
+
+        /// <summary>A fence (any fence piece within 4 m) keeps grazing animals off the bed.</summary>
+        public bool Fenced
+        {
+            get
+            {
+                foreach (var p in Placeable.All) if (p && p.id.StartsWith("fence") && (p.transform.position - transform.position).sqrMagnitude < 4f * 4f) return true;
+                return false;
+            }
+        }
+
+        /// <summary>A crop worth grazing, standing open to animals.</summary>
+        public bool Tempting => crop != null && health > 0f && growth > 0.15f && !fenceCached;
+        bool fenceCached; float fenceCheck;
+
+        /// <summary>Goats, cows, horses and deer that wander onto an unfenced bed eat the crop and trample it.</summary>
+        void Grazers(CropDef def, float dt)
+        {
+            if ((fenceCheck -= dt) <= 0f) { fenceCheck = 10f; fenceCached = Fenced; }
+            if ((grazeT -= dt) > 0f || fenceCached) return;
+            grazeT = 4f;
+            foreach (var a in MadMax.Animals.Animal.All)
+            {
+                if (!a || !a.Alive || !a.Grazer || (a.transform.position - transform.position).sqrMagnitude > 2.2f * 2.2f) continue;
+                growth = Mathf.Max(0f, growth - 0.06f);
+                health = Mathf.Max(0.05f, health - 0.1f);
+                GetComponent<Placeable>()?.Dirty();
+                if (Random.value < 0.3f) Tell("A " + a.Label + " IS EATING YOUR " + def.name + " - PUT UP A FENCE");
+                return;
+            }
         }
 
         static Mesh crowMesh;

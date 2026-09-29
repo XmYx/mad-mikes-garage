@@ -280,7 +280,7 @@ namespace MadMax.Game
                 canvas.Panel(x, y, w, 11);
                 canvas.Text(x + 4, y + 3, prompt, Amber);
             }
-            if (!car && game.Build && game.Build.Active) DrawBuildPanel();
+            if (!car && game.Build && game.Build.Active) { DrawWorn(); DrawBuildPanel(); }
             DrawRadio(car);
             if (game.ShowHelp) DrawHelp();
             var toast = game.ToastText;
@@ -947,6 +947,30 @@ namespace MadMax.Game
             if (Weather.Ice > 0.3f) canvas.Text(x, ly, "ICE", new Color32(150, 190, 255, 255));
         }
 
+        /// <summary>Build mode: a hammer mark on every piece nearby that is below full condition (weather, raids), amber when
+        /// worn, red when one more knock breaks it.</summary>
+        void DrawWorn()
+        {
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam || !game.Player) return;
+            var me = game.Player.transform.position;
+            int shown = 0;
+            foreach (var p in MadMax.Building.Placeable.All)
+            {
+                if (!p || shown >= 60 || (p.transform.position - me).sqrMagnitude > 30f * 30f) continue;
+                int max = p.MaxHits;
+                if (p.hits >= max) continue;
+                var world = p.TryGetComponent<Renderer>(out var r) ? r.bounds.center : p.transform.position;
+                var sp = cam.WorldToViewportPoint(world);
+                if (sp.z <= 0f || sp.x < 0f || sp.x > 1f || sp.y < 0f || sp.y > 1f) continue;
+                int px = Mathf.RoundToInt(sp.x * canvas.w), py = Mathf.RoundToInt((1f - sp.y) * canvas.h);
+                var col = p.hits <= 1 ? Bad : Amber;
+                canvas.Rect(px - 2, py - 3, 5, 2, col);                                             // a little hammer: head
+                canvas.Rect(px, py - 1, 1, 3, col);                                                 // and handle
+                shown++;
+            }
+        }
+
         void DrawBuildPanel()
         {
             var b = game.Build;
@@ -974,6 +998,12 @@ namespace MadMax.Game
             canvas.Text(x + 4, y + h - 7, b.Status ?? "", b.Valid ? Green : Amber);
         }
 
+        static string TalkStation(MadMax.Audio.RadioNetwork net)
+        {
+            for (int i = 0; i < net.StationCount; i++) if (net.Station(i).talk) return net.Station(i).name.ToUpperInvariant() + " " + net.Station(i).freq;
+            return "THE TALK STATION";
+        }
+
         /// <summary>Station and title for a few seconds after tuning or when the item on air changes.</summary>
         void DrawRadio(VehicleDriver car)
         {
@@ -981,11 +1011,15 @@ namespace MadMax.Game
             if (car) car.TryGetComponent(out rx);
             else if (game.Focused is MadMax.Building.RadioSet rs) rx = rs.GetComponent<MadMax.Audio.RadioReceiver>();
             if (!rx || !rx.on) return;
-            if (GameSettings.Current.radioCaptions && MadMax.Audio.RadioNetwork.Instance)
+            var net = MadMax.Audio.RadioNetwork.Instance;
+            bool flash = MadMax.Audio.RadioNetwork.FlashOn && net && net.StationCount > 0;
+            if (flash || (GameSettings.Current.radioCaptions && net))
             {
-                // RADIO CAPTIONS: what the DJ, the news or the callers are saying, wrapped over two or three lines
-                var item = MadMax.Audio.RadioNetwork.Instance.Now(rx.station, out float off);
-                var cap = MadMax.Audio.RadioNetwork.Caption(item.file, off);
+                // RADIO CAPTIONS: what the DJ, the news or the callers are saying, wrapped over two or three lines;
+                // a news flash (raids on the warpath) breaks in on the talk station and is hinted at on the others
+                string cap;
+                if (flash) cap = net.Station(rx.station).talk ? "NEWSFLASH: " + MadMax.Audio.RadioNetwork.FlashText : "NEWSFLASH ON " + TalkStation(net);
+                else { var item = net.Now(rx.station, out float off); cap = MadMax.Audio.RadioNetwork.Caption(item.file, off); }
                 if (cap != null)
                 {
                     int maxChars = Mathf.Max(20, (canvas.w - 40) / 4);

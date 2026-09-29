@@ -554,9 +554,9 @@ namespace MadMax.Game
             if (Controls.Down(Controls.Act.DevWeather) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
             if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame && Current)) && fleet.Count > 0)
             {
-                int i = fleet.IndexOf(Current);
                 if (Player.Interior) Player.ExitInterior(Player.transform.position);
-                Enter(fleet[(i + 1) % fleet.Count]);
+                var next = NextFleet();
+                if (next) Enter(next);
             }
             RecipeLibrary.CostMult = Stats.CraftCostMult;
             if (Current)
@@ -636,6 +636,8 @@ namespace MadMax.Game
             UpdateMap();
             UpdateHints();
             UpdateStashes();
+            BaseUpkeep.Tick();
+            UpdateGarage();
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {
                 // back on the wheels: only for a vehicle on its side or roof, or stuck and nearly still

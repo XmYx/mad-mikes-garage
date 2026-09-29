@@ -100,7 +100,7 @@ namespace MadMax.Game
             foreach (var kv in Inventory.Items) if (kv.Value > 0) d.items.Add(new ItemSave { id = kv.Key, count = kv.Value });
             d.hotbar = (string[])Hotbar.Clone();
             foreach (var kv in GasPump.Used) { d.pumpKeys.Add(kv.Key); d.pumpUsed.Add(kv.Value); }
-            d.terrain = terrain.SaveEdits();
+            d.terrain = terrain.SaveEdits(FocusPos);
             d.npcs = MadMax.Npc.NpcRegistry.SaveAll();
             d.reputation = MadMax.Npc.NpcRegistry.Reputation;
             SaveTools(d);
@@ -118,6 +118,12 @@ namespace MadMax.Game
             d.foundAircraft = new List<string>(FoundAircraft); d.scouted = new List<string>(Scouted);
             SaveMap(d);
             SaveStashes(d);
+            DestructibleVoxels.CaptureMoved();
+            foreach (var kv in DestructibleVoxels.Moved) d.moved.Add(new MovedSave { key = kv.Key, position = kv.Value.p, rotation = kv.Value.r });
+            if (MadMax.World.Storms.Instance) MadMax.World.Storms.Instance.SaveState(out d.storm, out d.stormLeft, out d.stormFor);
+            foreach (var f in MadMax.World.Fire.All)
+                if (f && f.fuel > 1f && !f.GetComponentInParent<VehicleDriver>())                  // vehicle fires come from their heat
+                    d.fires.Add(new FireSave { position = f.transform.position, fuel = f.fuel, intensity = f.intensity, ground = f.ground });
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
@@ -139,6 +145,11 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehicleTuning>(out var tun)) vs.tuning = tun.SaveState();
                 if (v.TryGetComponent<VehiclePaint>(out var vp)) vs.paint = vp.SaveState();
                 if (v.TryGetComponent<VehicleSystems>(out var mt)) vs.service = mt.MaintenanceState();
+                foreach (var dm in v.GetComponentsInChildren<DeformableMesh>())
+                {
+                    var st = dm.SaveState();
+                    if (st != null) vs.dents.Add(RelativePath(v.transform, dm.transform) + "\u001f" + st);
+                }
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) vs.towedBy = saved.IndexOf(tc.Tower);
                 d.vehicles.Add(vs);
@@ -183,9 +194,19 @@ namespace MadMax.Game
             return d;
         }
 
+        /// <summary>"a/b/c" from <paramref name="root"/> down to <paramref name="t"/> ("" for the root itself).</summary>
+        static string RelativePath(Transform root, Transform t)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (; t && t != root; t = t.parent) sb.Insert(0, sb.Length > 0 ? t.name + "/" : t.name);
+            return sb.ToString();
+        }
+
         // ------------------------------------------------------------------ restore (called from Start)
         void RestoreDestruction(SaveData d)
         {
+            DestructibleVoxels.Moved.Clear();
+            if (d.moved != null) foreach (var m in d.moved) DestructibleVoxels.Moved[m.key] = (m.position, m.rotation);
             foreach (var ds in d.destroyed)
             {
                 var template = PropLibrary.TemplateGrid(ds.template);
@@ -247,6 +268,15 @@ namespace MadMax.Game
                 if (!string.IsNullOrEmpty(vs.tuning) && go.TryGetComponent<VehicleTuning>(out var tun)) tun.LoadState(vs.tuning);
                 if (!string.IsNullOrEmpty(vs.paint)) VehiclePaint.Of(v).LoadState(vs.paint);
                 if (!string.IsNullOrEmpty(vs.service) && go.TryGetComponent<VehicleSystems>(out var mt)) mt.LoadMaintenance(vs.service);
+                if (vs.dents != null)
+                    foreach (var dent in vs.dents)
+                    {
+                        int cut = dent.IndexOf('\u001f');
+                        var t = cut > 0 ? go.transform.Find(dent.Substring(0, cut)) : cut == 0 ? go.transform : null;
+                        if (!t || !t.GetComponent<MeshFilter>()) continue;
+                        if (!t.TryGetComponent<DeformableMesh>(out var dm)) dm = t.gameObject.AddComponent<DeformableMesh>();
+                        dm.LoadState(dent.Substring(cut + 1));
+                    }
                 if (vs.fourWheel != v.FourWheelDrive) v.ToggleFourWheelDrive();
                 v.diffLocked = vs.diffLocked;
                 if (!string.IsNullOrEmpty(vs.radio)) MadMax.Audio.RadioReceiver.On(v.gameObject).LoadState(vs.radio);
@@ -284,6 +314,8 @@ namespace MadMax.Game
             SyncHotbar();
             terrain.LoadEdits(d.terrain);
             Weather.Restore(d.raining, d.wetness, d.snow, d.temperature, d.lakeRise);
+            if (MadMax.World.Storms.Instance) MadMax.World.Storms.Instance.Restore(d.storm, d.stormLeft, d.stormFor);
+            if (d.fires != null) foreach (var f in d.fires) MadMax.World.Fire.Ignite(f.position, null, f.fuel, f.intensity, f.ground);
             if (d.hours >= 0f) DayNight.SetHours(d.hours);
             DayNight.SetDay(d.day);
             MadMax.Npc.NpcRegistry.Load(d.npcs, d.reputation);

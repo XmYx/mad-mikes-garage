@@ -43,7 +43,32 @@ namespace MadMax.Audio
         const int CacheSize = 10;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Instance = null; Manifest = null; cache.Clear(); lastUse.Clear(); loading.Clear(); captions = null; }
+        static void ResetStatics() { Instance = null; Manifest = null; cache.Clear(); lastUse.Clear(); loading.Clear(); captions = null; FlashText = null; flashUntil = 0f; }
+
+        // ---- news flashes (raids on the warpath): WasteTalk breaks in with a line of text, other stations hint at it
+        /// <summary>The news flash on air (null = none).</summary>
+        public static string FlashText { get; private set; }
+        static float flashUntil;
+        public static bool FlashOn => FlashText != null && Time.time < flashUntil;
+
+        /// <summary>Break into the talk station with <paramref name="text"/> for <paramref name="seconds"/>. Anyone with a
+        /// radio on hears the news beep; it goes in the journal when the player is listening to WasteTalk.</summary>
+        public static void Flash(string text, float seconds = 45f)
+        {
+            FlashText = text; flashUntil = Time.time + seconds;
+            var rx = Heard();
+            if (!rx) return;
+            Sfx.Play2D("beep", 0.25f, 1.6f);
+            if (Instance && Instance.StationCount > 0 && Instance.Station(rx.station).talk) MadMax.Game.Journal.Add("RADIO", text);
+        }
+
+        /// <summary>The receiver the player hears: on, and within its range of the listener.</summary>
+        public static RadioReceiver Heard()
+        {
+            var at = Instance && Instance.listener ? Instance.listener.position : Camera.main ? Camera.main.transform.position : Vector3.zero;
+            foreach (var r in RadioReceiver.All) if (r && r.on && (r.transform.position - at).sqrMagnitude < r.range * r.range) return r;
+            return null;
+        }
 
         // spoken lines per clip (captions.json from audio/export_captions.py), for the RADIO CAPTIONS setting
         static Dictionary<string, List<string>> captions;

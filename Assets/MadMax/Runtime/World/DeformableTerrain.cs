@@ -616,22 +616,46 @@ namespace MadMax.World
 
         // ---- persistence of terraformed chunks
         [System.Serializable]
-        public class ChunkEdit { public int x, z; public string d, pave, cure, compact; }
+        public class ChunkEdit { public int x, z; public string d, pave, cure, compact, rut; public bool rutOnly; }
         readonly Dictionary<Vector2Int, ChunkEdit> savedEdits = new Dictionary<Vector2Int, ChunkEdit>();
 
-        public List<ChunkEdit> SaveEdits()
+        /// <summary>Terraformed chunks in full, plus the ruts still healing in the <paramref name="maxRutted"/> rutted chunks
+        /// nearest <paramref name="focus"/> (sparse cells, so a long drive stays small).</summary>
+        public List<ChunkEdit> SaveEdits(Vector3 focus, int maxRutted = 300)
         {
             var list = new List<ChunkEdit>();
+            var ruts = new List<Chunk>();
             foreach (var kv in chunks)
             {
                 var ch = kv.Value;
-                if (!ch.terraformed) continue;
+                if (!ch.terraformed) { if (ch.rut != null) ruts.Add(ch); continue; }
                 var db = new byte[ch.d.Length * 2]; var cb2 = new byte[ch.cure.Length];
                 for (int i = 0; i < ch.d.Length; i++) { short v = (short)Mathf.Clamp(Mathf.RoundToInt(ch.d[i] * 1000f), short.MinValue, short.MaxValue); db[i * 2] = (byte)v; db[i * 2 + 1] = (byte)(v >> 8); cb2[i] = (byte)Mathf.RoundToInt(ch.cure[i] * 255f); }
-                list.Add(new ChunkEdit { x = kv.Key.x, z = kv.Key.y, d = System.Convert.ToBase64String(db), pave = System.Convert.ToBase64String(ch.pave), cure = System.Convert.ToBase64String(cb2), compact = System.Convert.ToBase64String(ch.compact) });
+                list.Add(new ChunkEdit { x = kv.Key.x, z = kv.Key.y, d = System.Convert.ToBase64String(db), pave = System.Convert.ToBase64String(ch.pave), cure = System.Convert.ToBase64String(cb2), compact = System.Convert.ToBase64String(ch.compact), rut = PackRut(ch.rut) });
+            }
+            float Dist(Chunk ch) { float dx = (ch.c.x + 0.5f) * N * Cell - focus.x, dz = (ch.c.y + 0.5f) * N * Cell - focus.z; return dx * dx + dz * dz; }
+            ruts.Sort((a, b) => Dist(a).CompareTo(Dist(b)));
+            for (int i = 0; i < ruts.Count && i < maxRutted; i++)
+            {
+                string packed = PackRut(ruts[i].rut);
+                if (packed != null) list.Add(new ChunkEdit { x = ruts[i].c.x, z = ruts[i].c.y, rut = packed, rutOnly = true });
             }
             foreach (var e in savedEdits.Values) list.Add(e);                  // never streamed in this session
             return list;
+        }
+
+        /// <summary>Rut cells deeper/higher than 5 mm as (ushort index, short mm) pairs, base64; null when healed.</summary>
+        static string PackRut(float[] rut)
+        {
+            if (rut == null) return null;
+            var bytes = new List<byte>();
+            for (int k = 0; k < rut.Length; k++)
+            {
+                if (rut[k] > -0.005f && rut[k] < 0.005f) continue;
+                short v = (short)Mathf.Clamp(Mathf.RoundToInt(rut[k] * 1000f), short.MinValue, short.MaxValue);
+                bytes.Add((byte)k); bytes.Add((byte)(k >> 8)); bytes.Add((byte)v); bytes.Add((byte)(v >> 8));
+            }
+            return bytes.Count == 0 ? null : System.Convert.ToBase64String(bytes.ToArray());
         }
 
         public void LoadEdits(List<ChunkEdit> edits)
@@ -647,6 +671,21 @@ namespace MadMax.World
 
         void ApplySaved(Chunk ch, ChunkEdit e)
         {
+            if (!string.IsNullOrEmpty(e.rut))
+            {
+                var rb = System.Convert.FromBase64String(e.rut);
+                ch.rut = new float[V * V];
+                for (int i = 0; i + 3 < rb.Length; i += 4)
+                {
+                    int k = rb[i] | (rb[i + 1] << 8);
+                    if (k >= ch.rut.Length) continue;
+                    ch.rut[k] = (short)(rb[i + 2] | (rb[i + 3] << 8)) / 1000f;
+                    if (e.rutOnly) ch.d[k] += ch.rut[k];                          // a terraformed chunk's saved heights hold its ruts already
+                }
+                ch.rutHealAt = Time.time; ch.deformed = true; ch.meshDirty = true; ch.colDirty = true;
+                if (!rutted.Contains(ch)) rutted.Add(ch);
+            }
+            if (e.rutOnly || string.IsNullOrEmpty(e.d)) return;
             var db = System.Convert.FromBase64String(e.d);
             var pv = System.Convert.FromBase64String(e.pave); var cu = System.Convert.FromBase64String(e.cure); var cp = System.Convert.FromBase64String(e.compact);
             for (int i = 0; i < ch.d.Length && i * 2 + 1 < db.Length; i++)

@@ -274,6 +274,7 @@ namespace MadMax.Items
             }
             // farming
             yield return Itm("fertilizer_c", "FERTILIZER", RecipeCategory.Farming, "composter", ItemIds.Fertilizer, 2, "FROM ROTTEN FOOD", new[] { ("food_rotten", 3) });
+            yield return Itm("fertilizer_m", "MANURE FERTILIZER", RecipeCategory.Farming, "composter", ItemIds.Fertilizer, 3, "FROM THE PEN'S DUNG", new[] { ("farm_manure", 2) });
             yield return Itm("fertilizer_a", "ASH FERTILIZER", RecipeCategory.Farming, "composter", ItemIds.Fertilizer, 1, "FROM CHARCOAL ASH", null, (Ch, 2), (ResourceType.Sand, 2));
             var spin = Res("cloth_cotton", "SPIN CLOTH", RecipeCategory.Supplies, "workbench", C, 2, "COTTON TO CLOTH");
             spin.items = new[] { ("crop_cotton", 3) };

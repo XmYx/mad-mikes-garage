@@ -311,6 +311,11 @@ namespace MadMax.Animals
                     a.hungryDays = 0;
                     a.health = Mathf.Min(d.health, a.health + d.health * 0.25f);
                     if (a.Adult && d.product != null) Produce(a);
+                    if (a.Grazer || d.id == "pig")                                                   // the pen yields dung for the composter
+                    {
+                        var tr = Trough.Nearest(a.home);
+                        if (tr) { tr.manure = Mathf.Min(Trough.ManureCap, tr.manure + (d.id == "cow" || d.id == "horse" ? 2 : 1)); tr.GetComponent<Placeable>()?.Dirty(); }
+                    }
                     if (a.Adult) { if (!breeders.TryGetValue(d.id, out var l)) breeders[d.id] = l = new List<Animal>(); l.Add(a); }
                 }
                 else

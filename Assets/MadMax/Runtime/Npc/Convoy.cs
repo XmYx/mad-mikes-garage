@@ -9,7 +9,7 @@ namespace MadMax.Npc
 {
     /// <summary>Saved per convoy: which generation is on the road and when the last one was wiped out.</summary>
     [Serializable]
-    public class ConvoySave { public string id; public int generation, deadDay = -1; }
+    public class ConvoySave { public string id; public int generation, deadDay = -1, spareUntil = -1, losses; }
 
     /// <summary>Vehicles travelling a road together: a trader (one truck, pulls over for customers, the trader steps
     /// out) or a raider horde (armoured cars, a boss). Far from the player a convoy is just a distance along its road
@@ -62,7 +62,7 @@ namespace MadMax.Npc
             if (raiders)
             {
                 designs.Add(r.NextDouble() < 0.35 ? "Hauler" : "Interceptor");
-                int n = 2 + r.Next(3);
+                int n = Mathf.Max(1, 2 + r.Next(3) - save.losses);                              // raid parties lost thin the gang
                 string[] pool = { "Interceptor", "Scavenger", "Coupe", "Pickup", "Sedan", "Scavenger" };
                 for (int i = 0; i < n; i++) designs.Add(pool[r.Next(pool.Length)]);
                 int bikers = r.Next(0, 4);                                                       // outriders (roadmap 24)
@@ -128,7 +128,7 @@ namespace MadMax.Npc
         {
             if (phase == Phase.Gone)
             {
-                if (save.deadDay >= 0 && DayNight.Day - save.deadDay >= (raiders ? 3 : 2)) { save.generation++; save.deadDay = -1; Crew(); phase = Phase.Travel; }
+                if (save.deadDay >= 0 && DayNight.Day - save.deadDay >= (raiders ? 3 : 2)) { save.generation++; save.deadDay = -1; save.losses = Mathf.Max(0, save.losses - 1); Crew(); phase = Phase.Travel; }
                 return;
             }
             if (!Spawned)
@@ -355,6 +355,17 @@ namespace MadMax.Npc
             }
         }
 
+        /// <summary>Flat distance from <paramref name="p"/> to this gang's road.</summary>
+        public float RoadDistance(Vector3 p)
+        {
+            float best = float.MaxValue;
+            foreach (var q in route) { float dx = q.x - p.x, dz = q.z - p.z; best = Mathf.Min(best, dx * dx + dz * dz); }
+            return Mathf.Sqrt(best);
+        }
+
+        /// <summary>This gang leaves the player's bases alone (recruited, allied, or a toll paid lately).</summary>
+        public bool SparesBases => Friendly || DayNight.Day < save.spareUntil;
+
         /// <summary>The player opened the parley with the boss.</summary>
         public void BeginParley() { if (phase == Phase.Confront) phase = Phase.Parley; }
 
@@ -365,6 +376,7 @@ namespace MadMax.Npc
                 case Outcome.Failed: Attack(WastelandGame.Instance); break;
                 default:
                     if (o == Outcome.Recruited) foreach (var p in crew) NpcRegistry.Get(p).disposition = Mathf.Max(NpcRegistry.Get(p).disposition, 55);
+                    else save.spareUntil = Mathf.Max(save.spareUntil, DayNight.Day + (o == Outcome.Paid ? 3 : 1));   // a paid toll buys the base some peace too
                     Leave();
                     break;
             }

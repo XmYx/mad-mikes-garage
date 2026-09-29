@@ -26,12 +26,15 @@ namespace MadMax.Game
         public string tuning;              // VehicleTuning settings
         public string paint;               // VehiclePaint colour,decal
         public string service;             // VehicleSystems maintenance (oil life, air filter, plugs, hours)
+        public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
     }
 
     [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; public int q; }
     [Serializable] public class PlacedSave { public string id; public int vehicle = -1; public Vector3 localPosition; public Quaternion localRotation; public int hits; public uint netId; public string state, owner; }
     [Serializable] public class DestroyedSave { public string key, template; public bool all; public List<Vector3Int> removed = new List<Vector3Int>(); }
     [Serializable] public class ItemSave { public string id; public int count; }
+    [Serializable] public class MovedSave { public string key; public Vector3 position; public Quaternion rotation; }
+    [Serializable] public class FireSave { public Vector3 position; public float fuel, intensity; public bool ground; }
 
     [Serializable]
     public class PlayerSave
@@ -82,6 +85,9 @@ namespace MadMax.Game
         public List<string> discovered = new List<string>(), journal = new List<string>();
         public bool hasWaypoint; public Vector3 waypoint;
         public List<WastelandGame.StashSave> stashes = new List<WastelandGame.StashSave>();
+        public List<MovedSave> moved = new List<MovedSave>();            // crates and other loose props pushed around
+        public int storm; public float stormLeft, stormFor;             // Storms: kind, seconds left, total length
+        public List<FireSave> fires = new List<FireSave>();
         public string animalKills;
         public List<string> searched = new List<string>();
         public bool hasSpawn; public Vector3 spawn;
