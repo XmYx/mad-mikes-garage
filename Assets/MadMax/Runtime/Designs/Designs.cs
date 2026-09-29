@@ -64,6 +64,8 @@ namespace MadMax.Designs
         public Vector3Int? hitch;              // tow ball (voxel coords)
         public Vector3Int? coupler;            // trailer drawbar eye (voxel coords)
         public float pumpLps;                  // fuel tanker: pump rate (litres/s); 0 = not a tanker
+        public bool medical;                   // ambulance: the walk-in bay treats whoever is inside (MedicalBay)
+        public float cargoKg;                  // box trailer / van: a cargo hold of this many kg on the vehicle (Container)
         public VoxelGrid roof;                 // separate mesh, hidden for interior cutaway
         public readonly List<BoundsInt> colliders = new List<BoundsInt>();   // voxel-space boxes; empty = one box around the body
         public InteriorDesign interior;

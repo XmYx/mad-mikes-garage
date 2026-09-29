@@ -93,6 +93,8 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
                 if (v.TryGetComponent<VehicleArmor>(out var arm)) vs.armor = arm.SaveState();
                 if (v.TryGetComponent<VehicleTuning>(out var tun)) vs.tuning = tun.SaveState();
+                if (v.TryGetComponent<VehiclePaint>(out var vp)) vs.paint = vp.SaveState();
+                if (v.TryGetComponent<VehicleSystems>(out var mt)) vs.service = mt.MaintenanceState();
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) vs.towedBy = saved.IndexOf(tc.Tower);
                 d.vehicles.Add(vs);
@@ -199,6 +201,8 @@ namespace MadMax.Game
                 if (go.TryGetComponent<VehicleDamage>(out var dmg)) { dmg.AddFrameDamage(vs.frame, 1f); dmg.salvagePool = vs.salvage; }
                 if (!string.IsNullOrEmpty(vs.armor) && go.TryGetComponent<VehicleArmor>(out var arm)) arm.LoadState(vs.armor);
                 if (!string.IsNullOrEmpty(vs.tuning) && go.TryGetComponent<VehicleTuning>(out var tun)) tun.LoadState(vs.tuning);
+                if (!string.IsNullOrEmpty(vs.paint)) VehiclePaint.Of(v).LoadState(vs.paint);
+                if (!string.IsNullOrEmpty(vs.service) && go.TryGetComponent<VehicleSystems>(out var mt)) mt.LoadMaintenance(vs.service);
                 if (vs.fourWheel != v.FourWheelDrive) v.ToggleFourWheelDrive();
                 v.diffLocked = vs.diffLocked;
                 if (!string.IsNullOrEmpty(vs.radio)) MadMax.Audio.RadioReceiver.On(v.gameObject).LoadState(vs.radio);

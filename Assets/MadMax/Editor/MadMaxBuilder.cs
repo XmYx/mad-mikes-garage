@@ -121,8 +121,9 @@ namespace MadMax.EditorTools
             game.propMaterial = propMat;
             game.vehiclePrefabs = new[] { vehicles["Interceptor"], vehicles["Scavenger"], vehicles["Trabant"], vehicles["Hauler"],
                                           vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"],
-                                          vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"] };
-            game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"] };
+                                          vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"],
+                                          vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"] };
+            game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
             game.cameraRig = rig;
             game.sun = sun;
@@ -200,7 +201,9 @@ namespace MadMax.EditorTools
             foreach (var d in new[] { VehicleDesigns.Interceptor(), VehicleDesigns.Scavenger(), VehicleDesigns.Trabant(), VehicleDesigns.Hauler(), VehicleDesigns.Tanker(), VehicleDesigns.TankerSmall(), VehicleDesigns.CargoTrailer(),
                                       VehicleDesigns.Excavator(), VehicleDesigns.Backhoe(), VehicleDesigns.Bulldozer(), VehicleDesigns.DumpTruck(), VehicleDesigns.Paver(), VehicleDesigns.Roller(),
                                       VehicleDesigns.Wrecker(), VehicleDesigns.CarTrailer(), VehicleDesigns.CarTrailerDouble(),
-                                      VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck() })
+                                      VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck(),
+                                      VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
+                                      VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy() })
             {
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
                 d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
@@ -374,6 +377,7 @@ namespace MadMax.EditorTools
             if (d.machine != null) root.AddComponent<Machine>().kind = (Machine.Kind)System.Enum.Parse(typeof(Machine.Kind), d.machine);
             if (d.coupler.HasValue) root.AddComponent<TowCoupling>();
             if (d.pumpLps > 0f) root.AddComponent<FuelTanker>().flowLps = d.pumpLps;
+            if (d.cargoKg > 0f) { var hold = root.AddComponent<MadMax.Building.Container>(); hold.title = "CARGO HOLD"; hold.capacity = d.cargoKg; }
             if (d.interior != null)
             {
                 var i = d.interior;
@@ -386,6 +390,7 @@ namespace MadMax.EditorTools
                 space.obstacles = i.obstacles.ConvertAll(b => new Bounds(VoxelBoxCenter(b), (Vector3)b.size * S)).ToArray();
                 space.furnishings = i.furniture.ConvertAll(x => new InteriorSpace.Furnishing { id = x.id, position = x.pos * S, euler = x.euler }).ToArray();
                 space.furnitureMaterial = mat;
+                if (d.medical) root.AddComponent<MedicalBay>();
             }
             var result = PrefabUtility.SaveAsPrefabAsset(root, $"{VehicleDir}/{d.name}.prefab");
             Object.DestroyImmediate(root);

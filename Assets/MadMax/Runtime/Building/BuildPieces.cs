@@ -491,6 +491,26 @@ namespace MadMax.Building
         }
 
         /// <summary>Tuning bench: a steel bench with a vice, a tool board and the dyno monitor on a cart.</summary>
+        /// <summary>Paint station (roadmap 19): compressor, spray gun on its hose, a rack of paint tins.</summary>
+        public static VoxelGrid PaintBooth()
+        {
+            var g = new VoxelGrid().Mat(Iron);
+            g.Box(-8, 0, -5, 8, 0, 5, Pal.Ramp(Pal.Metal, 1, 1991));                                               // skid
+            g.CylX(4, 1, 3.2f, -7, 1, Pal.Weathered(Pal.Crimson, 0.3f, 1992, 2, 0));                                // compressor tank
+            g.Box(-6, 8, -1, -3, 10, 2, Pal.Ramp(Pal.Black, 1, 1993));                                              // motor
+            g.Box(-2, 8, 0, -1, 9, 0, Pal.Solid(Pal.Chrome[2]));                                                     // gauge
+            g.Mat(Wood);
+            foreach (int x in new[] { 3, 7 }) g.Box(x, 1, -4, x, 16, -4, Pal.Ramp(Pal.Wood, 1, 1994));             // rack
+            foreach (int y in new[] { 6, 11, 16 }) g.Box(3, y, -5, 7, y, -3, Pal.Ramp(Pal.Wood, 2, 1995));
+            g.Mat(Scrap);
+            var tins = new[] { Pal.Crimson[3], Pal.Navy[3], Pal.Ochre[3], Pal.Moss[3], Pal.Cream[3], Pal.Black[2] };
+            for (int i = 0; i < 6; i++) { int x = 4 + (i % 3), y = i < 3 ? 7 : 12; g.Box(x, y, -4, x, y + 1, -4, Pal.Solid(tins[i])); }
+            g.Tube(new Vector3(-2, 6, 2), new Vector3(2, 3, 5), 0.5f, Pal.Ramp(Pal.Black, 1, 1996));              // hose
+            g.Box(2, 3, 5, 3, 5, 6, Pal.Ramp(Pal.Chrome, 2, 1997));                                                  // spray gun
+            g.Set(3, 6, 6, Pal.Solid(Pal.Crimson[4]));                                                               // a drip of red
+            return g;
+        }
+
         public static VoxelGrid TuningBench()
         {
             var g = new VoxelGrid().Mat(Iron);

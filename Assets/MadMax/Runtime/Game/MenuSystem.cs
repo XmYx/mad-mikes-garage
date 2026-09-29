@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -113,6 +113,58 @@ namespace MadMax.Game
         public void OpenTuning(MadMax.Vehicles.VehicleTuning t) { tuneTarget = t; Open(Page.Tuning); }
         static readonly string[] BrakeNames = { "STOCK", "VENTED DISCS", "RACING" };
 
+        MadMax.Vehicles.VehiclePaint paintTarget;
+        int paintWasColour, paintWasDecal;
+        /// <summary>Paint shop page for a vehicle (paint station): colour and decal preview live, paid on SPRAY.</summary>
+        public void OpenPaint(MadMax.Vehicles.VehiclePaint p)
+        {
+            if (!p) return;
+            paintTarget = p; paintWasColour = p.colour; paintWasDecal = p.decal;
+            Open(Page.Paint);
+        }
+
+        /// <summary>Leaving the paint shop without paying puts the old paint back.</summary>
+        void RevertPaint()
+        {
+            if (!paintTarget || (paintTarget.colour == paintWasColour && paintTarget.decal == paintWasDecal)) return;
+            paintTarget.colour = paintWasColour; paintTarget.decal = paintWasDecal;
+            paintTarget.Apply();
+        }
+
+        string PaintCost(MadMax.Vehicles.VehiclePaint p)
+        {
+            var parts = new List<string>();
+            if (p.colour != paintWasColour)
+            {
+                var dye = MadMax.Vehicles.VehiclePaint.Dye(p.colour);
+                parts.Add(p.colour == 0 ? "2 SCRAP (STRIP)" : dye != null ? "2 " + ItemIds.Name(dye) : "3 SCRAP + 1 OIL");
+            }
+            if (p.decal != paintWasDecal && p.decal != 0) parts.Add("1 SCRAP");
+            return parts.Count == 0 ? "NO CHANGE" : string.Join(" + ", parts);
+        }
+
+        void SprayPaint(MadMax.Vehicles.VehiclePaint p)
+        {
+            var inv = game.Inventory;
+            bool recolour = p.colour != paintWasColour, redecal = p.decal != paintWasDecal && p.decal != 0;
+            var dye = MadMax.Vehicles.VehiclePaint.Dye(p.colour);
+            bool ok = (!recolour || (p.colour == 0 ? inv.Get(ResourceType.Scrap) >= 2 : dye != null ? inv.GetItem(dye) >= 2 : inv.Get(ResourceType.Scrap) >= 3 && inv.Get(ResourceType.Oil) >= 1))
+                      && (!redecal || inv.Get(ResourceType.Scrap) >= (recolour && dye == null ? 4 : 1));
+            if (!ok) { game.Toast("NOT ENOUGH PAINT: " + PaintCost(p)); return; }
+            if (recolour)
+            {
+                if (p.colour == 0) inv.TrySpend(ResourceType.Scrap, 2);
+                else if (dye != null) inv.TakeItem(dye, 2);
+                else { inv.TrySpend(ResourceType.Scrap, 3); inv.TrySpend(ResourceType.Oil, 1); }
+            }
+            if (redecal) inv.TrySpend(ResourceType.Scrap, 1);
+            paintWasColour = p.colour; paintWasDecal = p.decal;
+            game.Stats.Practice(MadMax.RPG.Skill.Mechanics, 2f);
+            MadMax.Audio.Sfx.Play("pour", p.transform.position, 0.6f, 1.6f);
+            game.Toast("FRESH PAINT: " + MadMax.Vehicles.VehiclePaint.ColourNames[p.colour] + (p.decal > 0 ? " WITH " + MadMax.Vehicles.Decals.Names[p.decal] : ""));
+            Rebuild();
+        }
+
         MadMax.Vehicles.VehicleArmor armourTarget;
         readonly int[] armourPlan = new int[MadMax.Vehicles.VehicleArmor.Zones];
         /// <summary>Armour page for a vehicle: pick a material per zone and weld it on (welder in the pack).</summary>
@@ -169,6 +221,7 @@ namespace MadMax.Game
 
         public void Close()
         {
+            if (Current == Page.Paint) RevertPaint();
             if (TitleSequence.Playing && TitleSequence.Instance && !IntroRecorder.Recording) TitleSequence.Instance.Finish();
             if (Current == Page.Settings) GameSettings.Current.Save();
             Current = Page.None;
@@ -513,6 +566,18 @@ namespace MadMax.Game
                             hint = c.Delivery ? "E: TAKE THE HAUL (CRATES APPEAR BY THE BOARD; RAIDERS SMELL CARGO)" : "E: TAKE THE JOB",
                         });
                     }
+                    break;
+                }
+                case Page.Paint:
+                {
+                    var p = paintTarget;
+                    if (!p) { Close(); break; }
+                    int nc = MadMax.Vehicles.VehiclePaint.ColourNames.Length, nd = MadMax.Vehicles.Decals.Names.Length;
+                    items.Add(new Item { label = "COLOUR", value = () => MadMax.Vehicles.VehiclePaint.ColourNames[p.colour], adjust = d => { p.colour = (p.colour + d + nc) % nc; p.Apply(); },
+                        hint = "A/D PICK A COLOUR (PREVIEW). DYES FOR THE PLAIN ONES, SCRAP + OIL FOR THE MIXED" });
+                    items.Add(new Item { label = "DECAL", value = () => MadMax.Vehicles.Decals.Names[p.decal], adjust = d => { p.decal = (p.decal + d + nd) % nd; p.Apply(); },
+                        hint = "A/D PICK AN EMBLEM. A GANG'S EMBLEM FOOLS ITS LOOKOUTS FROM AFAR" });
+                    items.Add(new Item { label = "SPRAY IT", value = () => PaintCost(p), confirm = () => SprayPaint(p), enabled = () => p.colour != paintWasColour || p.decal != paintWasDecal, hint = "E PAY AND SPRAY. LEAVING WITHOUT PAYING KEEPS THE OLD PAINT" });
                     break;
                 }
                 case Page.Tuning:
@@ -895,6 +960,7 @@ namespace MadMax.Game
                 case Page.Salvage: DrawList(c, "SALVAGE", 250); DrawHint(c); break;
                 case Page.Armour: DrawList(c, "ARMOUR", 320); DrawHint(c); break;
                 case Page.Tuning: DrawTuning(c); DrawHint(c); break;
+                case Page.Paint: DrawList(c, "PAINT SHOP - " + (paintTarget ? WastelandGame.Name(paintTarget) : ""), 300); DrawHint(c); break;
                 case Page.Board: DrawList(c, "BOUNTY BOARD - " + (boardTarget ? MadMax.Npc.Market.TownName(boardTarget.Settlement) : ""), 380); DrawHint(c); break;
                 case Page.Trade:
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);

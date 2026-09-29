@@ -200,6 +200,11 @@ namespace MadMax.Items
             yield return nos;
 
             yield return Itm("sewing_kit", "SEWING KIT", RecipeCategory.Supplies, "sewing", "use_sewing_kit", 1, "MEND A WORN GARMENT (+40%) ANYWHERE", null, (C, 2), (Fe, 1));
+
+            // ---- 19. vehicles: service parts for oil changes, clogged filters and worn plugs (G services with them)
+            yield return Itm("oil_filter", "OIL FILTER", RecipeCategory.Supplies, "workbench", "use_oil_filter", 1, "OIL CHANGE: G WITH A FULL SUMP OF OIL IN THE PACK", null, (S, 1), (C, 1));
+            yield return Itm("air_filter", "AIR FILTER", RecipeCategory.Supplies, "workbench", "use_air_filter", 1, "DUST CHOKES ENGINES: SWAP IT (G)", null, (C, 2), (S, 1));
+            yield return Itm("spark_plugs", "SPARK PLUGS", RecipeCategory.Supplies, "workbench", "use_spark_plugs", 1, "WORN PLUGS MISFIRE (PETROL ENGINES): SWAP THEM (G)", null, (Cu, 1), (Fe, 1), (ResourceType.Clay, 1));
         }
 
         static Recipe Armr(string id, string name, string station, string desc, params (ResourceType, int)[] res) =>

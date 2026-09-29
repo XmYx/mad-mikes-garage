@@ -22,6 +22,7 @@ namespace MadMax.Game
         public Material propMaterial;
         [Tooltip("Player's starting vehicles (Tab cycles them).")]
         public GameObject[] vehiclePrefabs;
+        bool hornHeld;
         public GameObject[] trailerPrefabs;
         [Tooltip("Every part prefab (crafting output, save/load).")]
         public GameObject[] partPrefabs;
@@ -549,6 +550,16 @@ namespace MadMax.Game
                 if (Pressed(Key.E) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();
                 if (Pressed(Key.Q) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
                 if (Pressed(Key.N)) { var vl = Current.GetComponent<VehicleLights>(); if (vl) { vl.mode = (vl.mode + 1) % 3; Toast(VehicleLights.ModeNames[vl.mode]); } }
+                // horn (a siren with an emergency bar): Y, middle mouse, right stick
+                bool horn = !ExternalInput && ((kb != null && kb.yKey.isPressed) || (mouse != null && mouse.middleButton.isPressed) || (pad != null && pad.rightStickButton.isPressed));
+                bool siren = horn && EmergencyLights.Fitted(Current);
+                if (siren) MadMax.Audio.Sfx.Loop(Current, "siren", 0.9f, 1f, 160f);
+                if (horn && !hornHeld)
+                {
+                    if (!siren) MadMax.Audio.Sfx.Play("horn", Current.transform.position, 1f, Current.Body && Current.Body.mass > 5000f ? 0.7f : 1.05f, 140f, 0.2f);
+                    MadMax.Npc.NpcDirector.Instance?.Horn(Current.transform.position, Current);
+                }
+                hornHeld = horn;
                 if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
                 if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (kb.leftShiftKey.isPressed ? -1f : 1f) : 0f, kb.leftShiftKey.isPressed);
                 if (Pressed(Key.K) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }

@@ -53,6 +53,7 @@ namespace MadMax.Designs
             yield return SportWheel();
             yield return TrackWheel();
             yield return HoeArm();
+            yield return MonsterWheel();
             foreach (var p in Attachments()) yield return p;
         }
 
@@ -272,6 +273,44 @@ namespace MadMax.Designs
             }
             var part = Make("wheel_truck", PartCategory.Wheel, g, 90, 3, R * VoxelMesher.DefaultSize);
             part.grip = 1.05f; part.mudGrip = 0.7f; part.width = 0.42f;
+            return part;
+        }
+
+        /// <summary>Monster truck tyre (roadmap 19): 1.7 m tall, deep chevron lugs, wide and soft — floats over mud and
+        /// crushes cars, slow to turn and heavy to spin up.</summary>
+        public static PartDesign MonsterWheel()
+        {
+            var g = new VoxelGrid();
+            const float R = 10.6f, rim = 5.2f;
+            for (int x = 0; x <= 8; x++)
+            for (int y = -11; y <= 11; y++)
+            for (int z = -11; z <= 11; z++)
+            {
+                float d = Mathf.Sqrt(y * y + z * z);
+                if (d > R) continue;
+                var p = new Vector3Int(x, y, z);
+                int seg = Mathf.FloorToInt(Angle01(y, z) * 30);
+                bool lug = ((seg + (x < 4 ? 0 : 1)) % 3) == 0;                      // staggered chevrons
+                if (d > R - 1.2f && !lug) continue;
+                Color32 c;
+                if (d > rim) c = x == 8 || x == 0 ? Pal.Tire[1] : Pal.Tire[d > R - 1.5f ? 2 : d > rim + 2f ? 1 : 0];
+                else
+                {
+                    if (x > 6) continue;
+                    if (x < 4) c = Pal.Metal[0];
+                    else if (d < 1.4f) c = Pal.Chrome[3];
+                    else if (d < 2.6f) c = Pal.Chrome[1];
+                    else c = (Mathf.FloorToInt(Angle01(y, z) * 8) % 2 == 0) ? Pal.Chrome[2] : Pal.Pick(Pal.Metal, p, 1911, 2);   // beadlock spokes
+                }
+                g.Set(p, Pal.Solid(c));
+            }
+            for (int i = 0; i < 16; i++)
+            {
+                float a = i / 16f * Mathf.PI * 2;
+                g.Set(6, Mathf.RoundToInt(Mathf.Sin(a) * 4.6f), Mathf.RoundToInt(Mathf.Cos(a) * 4.6f), Pal.Solid(Pal.Chrome[3]));   // bead ring bolts
+            }
+            var part = Make("wheel_monster", PartCategory.Wheel, g, 190, 4, R * VoxelMesher.DefaultSize);
+            part.grip = 0.95f; part.mudGrip = 0.95f; part.width = 0.72f; part.wetGrip = 0.75f; part.rolling = 1.35f; part.wearRate = 0.6f;
             return part;
         }
 

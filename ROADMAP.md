@@ -384,12 +384,29 @@ decorative turret.
 ## 19. Vehicles `T2–T3`
 *Exists:* 21 vehicles and machines, trailers, crane / winch / towing, fuel systems, damage.
 
-- [ ] New: **bus** (walk-in mobile home), **dune buggy**, **APC** 6×6, **semi tractor** + box trailer,
+- [x] New: **bus** (walk-in mobile home), **dune buggy**, **APC** 6×6, **semi tractor** + box trailer,
       **ambulance** (heals inside), **monster truck**
-- [ ] **Paint shop**: repaint (palette swap) and faction decals
-- [ ] **Horn**: NPCs react, raiders read it as a parley signal, animals scatter
-- [ ] **Maintenance**: oil changes, filters, plugs (engine wear)
-- [ ] **Passengers**: companions ride along; ride as a passenger
+- [x] **Paint shop**: repaint (palette swap) and faction decals
+- [x] **Horn**: NPCs react, raiders read it as a parley signal, animals scatter
+- [x] **Maintenance**: oil changes, filters, plugs (engine wear)
+- [x] **Passengers**: companions ride along; ride as a passenger
+      *Done:* `Designs/RoadmapVehicles.cs` — school bus mobile home (walk-in: bed, sofa, table, kitchen, locker),
+      high-roof ambulance (walk-in bay: `MedicalBay` bandages, splints and heals 5× while you are inside; emergency
+      bar `lights_emergency` sweeps red/blue with the lights on and turns the horn into a siren), APC 6×6 (V-hull,
+      front two axles steer, vision blocks, roof MG, smoke dischargers), long-nose semi with sleeper and fifth
+      wheel + box semi-trailer (landing legs, 3 t cargo hold), monster truck (`wheel_monster` 1.7 m tyres, flames),
+      tube-frame dune buggy (air-cooled, rear engine). All join the fleet, wrecks and trailers. Paint station piece
+      (Industry): `VehiclePaint` swaps the vehicle's main paint ramp (bevel shades kept; stripes, crosses and flames
+      stay) for 11 colours (dyes or scrap + oil), previewed live and paid on SPRAY; `Decals` — gang emblems, Fuel
+      Guild, Last Engine, Salt Nomads, Bunker Remnants, red cross, flames, checkers, shark teeth; a gang's emblem cuts
+      that gang's sight range to 35 %. Horn (Y / middle mouse / right stick): people turn and the nervous jump clear,
+      a trader convoy pulls over, a blocking raider gang opens the parley, a friendly gang honks back
+      (`NpcDirector.Horn`; animals hook in with roadmap 23). Maintenance in `VehicleSystems`: oil life, air filter
+      (dust, dust storms) and spark plugs (petrol) wear with running hours → OIL CHANGE DUE (engine wear), AIR FILTER
+      CLOGGED (power), MISFIRING; G services with `use_oil_filter` + a sump of oil, `use_air_filter`,
+      `use_spark_plugs` (workbench recipes, parts traders, garage loot); dashboard lamp S; saved per vehicle.
+      `PassengerSeat` on every drivable vehicle: [E] RIDE ALONG with a trader convoy (10 scrap; the convoy keeps
+      driving its road) or another player's vehicle; F gets out at the door. Companions will use the same seat.
 
 *Ties:* tuning, armour, attachments, NPCs, economy.
 

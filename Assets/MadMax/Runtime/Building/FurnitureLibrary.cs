@@ -141,6 +141,7 @@ namespace MadMax.Building
                 D("still", "DISTILLERY", In, BuildPieces.Still(), 8, false, go => Station(go, "still", "DISTIL (STILL)", 0f), (Cu, 8), (G, 2)),
                 D("garage", "GARAGE", In, BuildPieces.Garage(), 30, true, go => { var st = Station(go, "garage", "GARAGE", 0f); st.output = new Vector3(0, 0.6f, 0); st.tier = 1f; go.AddComponent<TuningBench>(); }, (Co, 20), (Fe, 16), (S, 20)).Deck(2f, 3f, 0.04f, 0.04f),
                 D("tuning_bench", "TUNING BENCH", In, BuildPieces.TuningBench(), 8, false, go => go.AddComponent<TuningBench>(), (Fe, 6), (Cu, 2), (G, 1)),
+                D("paint_booth", "PAINT STATION", In, BuildPieces.PaintBooth(), 6, false, go => go.AddComponent<PaintBooth>(), (Fe, 4), (Cu, 2), (S, 4), (ResourceType.Rubber, 1)),
                 D("player_stall", "MARKET STALL", Fu, MarketStall(), 6, false, go => { Box(go, "STALL GOODS", 80f, false); go.AddComponent<PlayerStall>(); }, (W, 8), (C, 4)),
 
                 // decor

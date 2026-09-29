@@ -50,6 +50,7 @@ namespace MadMax.Vehicles
             if (!TryGetComponent(out armour) && transform.Find("Body")) armour = gameObject.AddComponent<VehicleArmor>();
             if (!GetComponent<VehicleTuning>() && driver && driver.driveable) gameObject.AddComponent<VehicleTuning>();
             if (!GetComponent<VehicleGrime>() && transform.Find("Body")) gameObject.AddComponent<VehicleGrime>();
+            PassengerSeat.For(driver);
         }
 
         void OnCollisionEnter(Collision c) => Handle(c);

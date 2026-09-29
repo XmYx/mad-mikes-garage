@@ -162,6 +162,30 @@ namespace MadMax.Npc
             foreach (var c in convoys) foreach (var s in list) if (s.id == c.id) { c.save.generation = s.generation; c.save.deadDay = s.deadDay; }
         }
 
+        /// <summary>The convoy a vehicle drives with, or null.</summary>
+        public Convoy ConvoyOf(MadMax.Vehicles.VehicleDriver v)
+        {
+            if (!v) return null;
+            foreach (var c in convoys) foreach (var car in c.cars) if (car && car.gameObject == v.gameObject) return c;
+            return null;
+        }
+
+        /// <summary>A horn blast from the player's vehicle (roadmap 19): people nearby look round and the nervous jump
+        /// clear; a trader convoy pulls over, a raider gang blocking the road takes it as the call to parley, a friendly
+        /// gang honks back.</summary>
+        public void Horn(Vector3 at, MadMax.Vehicles.VehicleDriver car)
+        {
+            foreach (var n in Npc.All)
+            {
+                if (!n || !n.Alive) continue;
+                float d = (n.transform.position - at).sqrMagnitude;
+                if (d > 40f * 40f) continue;
+                n.Attend(at);
+                if (d < 14f * 14f && !n.Hostile && n.Profile.temper == Temper.Nervous) n.Scare(3f);
+            }
+            foreach (var c in convoys) c.Horn(game, at);
+        }
+
         public Convoy NearestRaiders(Vector3 at, out float dist)
         {
             dist = float.MaxValue; Convoy best = null;

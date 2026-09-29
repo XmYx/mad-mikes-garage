@@ -78,6 +78,7 @@ namespace MadMax.Vehicles
                 Lamp(15, 20, "F", (f & (Fault.NoFuel | Fault.LowFuel | Fault.FuelLeak)) != 0 ? Amber : Off);
                 Lamp(43, 20, "O", (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : Off);
                 Lamp(48, 20, "T", (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
+                Lamp(53, 20, "S", (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
             }
             canvas.Upload();
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MadMax.Items;
 using MadMax.World;
 using UnityEngine;
@@ -9,7 +10,8 @@ namespace MadMax.Vehicles
     public enum Fault
     {
         None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
-        CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384
+        CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384,
+        ServiceDue = 32768, Clogged = 65536, Misfire = 131072
     }
 
     /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
@@ -53,6 +55,12 @@ namespace MadMax.Vehicles
         [Tooltip("Fuel burn multiplier (1 = realistic, 3 = game pace: a tank lasts ~1 h of driving).")]
         public float consumption = 3f;
         [System.NonSerialized] public float fuelMultiplier = 1f;   // game rules x driver's Survival skill (set each frame)
+
+        /// <summary>Maintenance (roadmap 19), 1 fresh .. 0 worn out: the oil breaks down with running, the air filter
+        /// clogs with dust (dry loose ground at speed, dust storms), spark plugs wear (petrol engines).</summary>
+        public float oilLife = 1f, airFilter = 1f, plugs = 1f;
+        public float hours;                  // engine running hours
+        public bool UsesPlugs => FuelKind != ResourceType.Diesel;
 
         public float Temperature { get; private set; } = 25f;
         public float PowerFactor { get; private set; } = 1f;
@@ -145,6 +153,16 @@ namespace MadMax.Vehicles
                 if (Temperature > CriticalLimit) ep.damage += 0.02f * dt;                                          // head gasket
                 if (!oilInFuel && oil <= 0f) ep.damage += 0.05f * dt;                                                // seizing
                 else if (!oilInFuel && OilFraction < 0.25f) ep.damage += 0.002f * load * dt;                        // wear
+                // maintenance: old oil wears the engine, a clogged filter starves it, worn plugs misfire
+                hours += dt / 3600f;
+                if (!oilInFuel) oilLife = Mathf.Max(0f, oilLife - dt * (0.00002f + 0.0001f * load) * (Temperature > 100f ? 2f : 1f));
+                var ground = terrain ? terrain.SurfaceAt(ePos.x, ePos.z) : default;
+                float dust = (1f - ground.wet) * (1f - ground.road) * Mathf.Clamp01(ground.softness * 1.5f + 0.2f) * Mathf.Clamp01(speed / 12f) + MadMax.World.Storms.Dust * 2f;
+                airFilter = Mathf.Max(0f, airFilter - dt * (0.00001f + 0.00012f * dust));
+                if (UsesPlugs) plugs = Mathf.Max(0f, plugs - dt * 0.000012f * (0.4f + rpmFrac));
+                if (!oilInFuel && oilLife < 0.25f) { f |= Fault.ServiceDue; ep.damage += 0.0008f * (0.3f + load) * dt; }
+                if (airFilter < 0.3f) { f |= Fault.Clogged; power *= 0.7f + airFilter; }
+                if (UsesPlugs && plugs < 0.3f) { f |= Fault.Misfire; if (Mathf.PerlinNoise(Time.time * 9f, 3.3f) < 0.35f - plugs) power *= 0.4f; }
                 power *= 1f - 0.5f * Mathf.Clamp01(engineDamage - 0.5f) * 2f * (0.5f + 0.5f * Mathf.PerlinNoise(Time.time * 6f, 1.7f)); // misfires
             }
             else Cool(dt, speed);
@@ -260,7 +278,41 @@ namespace MadMax.Vehicles
             if ((f & Fault.LowFuel) != 0) return "LOW FUEL";
             if ((f & Fault.LowOil) != 0) return "LOW OIL";
             if ((f & Fault.LowCoolant) != 0) return "LOW COOLANT";
+            if ((f & Fault.Misfire) != 0) return "MISFIRING: WORN SPARK PLUGS";
+            if ((f & Fault.Clogged) != 0) return "AIR FILTER CLOGGED";
+            if ((f & Fault.ServiceDue) != 0) return "OIL CHANGE DUE";
             return null;
+        }
+
+        // ------------------------------------------------------------------ maintenance (roadmap 19)
+        /// <summary>A service part in the pack would help: filter + a sump of oil, an air filter, plugs.</summary>
+        public bool CanMaintain(Inventory inv) =>
+            (!oilInFuel && oilLife < 0.9f && inv.GetItem("use_oil_filter") > 0 && inv.Get(ResourceType.Oil) >= Mathf.CeilToInt(oilCapacity)) ||
+            (airFilter < 0.9f && inv.GetItem("use_air_filter") > 0) ||
+            (UsesPlugs && plugs < 0.9f && inv.GetItem("use_spark_plugs") > 0);
+
+        /// <summary>Oil change, air filter, plugs — whatever is due and in the pack. Returns what was done (or null).</summary>
+        public string Maintain(Inventory inv)
+        {
+            var done = new List<string>();
+            int sump = Mathf.CeilToInt(oilCapacity);
+            if (!oilInFuel && oilLife < 0.9f && inv.GetItem("use_oil_filter") > 0 && inv.Get(ResourceType.Oil) >= sump)
+            { inv.TakeItem("use_oil_filter"); inv.TrySpend(ResourceType.Oil, sump); oil = oilCapacity; oilLife = 1f; done.Add("OIL CHANGED"); }
+            if (airFilter < 0.9f && inv.TakeItem("use_air_filter")) { airFilter = 1f; done.Add("NEW AIR FILTER"); }
+            if (UsesPlugs && plugs < 0.9f && inv.TakeItem("use_spark_plugs")) { plugs = 1f; done.Add("NEW PLUGS"); }
+            return done.Count > 0 ? string.Join(", ", done) : null;
+        }
+
+        public string MaintenanceState() => string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0:0.###},{1:0.###},{2:0.###},{3:0.##}", oilLife, airFilter, plugs, hours);
+
+        public void LoadMaintenance(string s)
+        {
+            var a = s.Split(',');
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            if (a.Length > 0) float.TryParse(a[0], System.Globalization.NumberStyles.Float, ci, out oilLife);
+            if (a.Length > 1) float.TryParse(a[1], System.Globalization.NumberStyles.Float, ci, out airFilter);
+            if (a.Length > 2) float.TryParse(a[2], System.Globalization.NumberStyles.Float, ci, out plugs);
+            if (a.Length > 3) float.TryParse(a[3], System.Globalization.NumberStyles.Float, ci, out hours);
         }
     }
 }

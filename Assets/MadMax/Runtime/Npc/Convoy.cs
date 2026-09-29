@@ -149,13 +149,15 @@ namespace MadMax.Npc
                 case Phase.Travel:
                     if (raiders)
                     {
-                        float sight = (g.Current && Mathf.Abs(g.Current.ForwardSpeed) > 15f ? 110f : 75f) * (Contracts.Hauling ? 1.4f : 1f) * (1f - 0.6f * Storms.Dust);   // cargo draws them, dust blinds them
+                        float sight = (g.Current && Mathf.Abs(g.Current.ForwardSpeed) > 15f ? 110f : 75f) * (Contracts.Hauling ? 1.4f : 1f) * (1f - 0.6f * Storms.Dust)   // cargo draws them, dust blinds them
+                                      * (Disguised(g) ? 0.35f : 1f);                                                                                                 // our own colours on the doors
                         if (Friendly) { if (dist < 30f && Time.time > truceUntil) { truceUntil = Time.time + 120f; MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f); g.Toast("THE " + Gang + " HONK A GREETING"); } }
                         else if (Time.time > truceUntil && !inTown && dist < sight) Confront(g);
                     }
-                    else if (dist < 22f && (!g.Current || Mathf.Abs(g.Current.ForwardSpeed) < 3f)) Stop(g);
+                    else if (dist < 22f && (!g.Current || Mathf.Abs(g.Current.ForwardSpeed) < 3f) && !Carrying(g)) Stop(g);
                     break;
                 case Phase.Stopped:
+                    if (Carrying(g)) { Resume(); break; }                                        // a paying passenger climbed in
                     farT = dist > 35f ? farT + dt : 0f;
                     if (farT > 6f || timer > 240f) Resume();
                     break;
@@ -361,6 +363,37 @@ namespace MadMax.Npc
         }
 
         /// <summary>Someone hit one of them.</summary>
+        /// <summary>The player rides in one of this convoy's cars (roadmap 19 passengers).</summary>
+        bool Carrying(WastelandGame g)
+        {
+            var s = g.Player ? g.Player.SeatedOn : null;
+            if (!s) return false;
+            foreach (var c in cars) if (c && s.transform.IsChildOf(c.transform)) return true;
+            return false;
+        }
+
+        /// <summary>The player's vehicle wears this gang's emblem (roadmap 19 decals).</summary>
+        bool Disguised(WastelandGame g) => g.Current && MadMax.Vehicles.Decals.Gang(MadMax.Vehicles.VehiclePaint.DecalOf(g.Current)) == System.Array.IndexOf(NpcLore.Gangs, Gang);
+
+        float hornBackAt;
+        /// <summary>The player honked nearby (roadmap 19): traders pull over, a blocking gang parleys, friends honk back.</summary>
+        public void Horn(WastelandGame g, Vector3 at)
+        {
+            if (!Spawned || phase == Phase.Gone) return;
+            var lead = Leader();
+            var leadPos = lead ? lead.transform.position : Boss ? Boss.transform.position : at;
+            float dist = Flat(leadPos - at).magnitude;
+            if (dist > 70f) return;
+            if (!raiders) { if (phase == Phase.Travel && dist < 45f) { Stop(g); g.Toast("THE TRADER PULLS OVER"); } return; }
+            if (phase == Phase.Confront && Boss && Boss.Alive && !g.Menus.IsOpen) { g.Menus.OpenTalk(Boss, false); return; }
+            if (Friendly && Time.time > hornBackAt)
+            {
+                hornBackAt = Time.time + 20f;
+                MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f);
+                g.Toast("THE " + Gang + " HONK BACK");
+            }
+        }
+
         public void Provoked()
         {
             if (raiders) { if (phase != Phase.Attack) Attack(WastelandGame.Instance); }

@@ -17,6 +17,7 @@ namespace MadMax.Designs
             yield return WaterTank();
             yield return OnboardGenerator();
             yield return LightBar();
+            yield return EmergencyLights();
             yield return Searchlight();
             yield return Snorkel();
             yield return SideSteps();
@@ -134,6 +135,19 @@ namespace MadMax.Designs
             g.Box(-11, 3, -1, 11, 4, 0, Pal.Ramp(Pal.Black, 1, 1442));
             for (int x = -10; x <= 10; x += 4) g.Box(x, 3, 1, x + 2, 4, 1, p => p.x % 2 == 0 ? Pal.LightW : Pal.LightY);   // lamps
             return Make("lights_bar", PartCategory.Lights, g, 12, 1);
+        }
+
+        /// <summary>Emergency bar (roadmap 19): red and blue beacons that sweep while the lights are on; with it
+        /// mounted the horn becomes a siren. Fits any lights socket.</summary>
+        public static PartDesign EmergencyLights()
+        {
+            var g = new VoxelGrid();
+            foreach (int x in new[] { -7, 7 }) g.Box(x, 0, 0, x, 1, 0, Pal.Ramp(Pal.Metal, 1, 1901));                        // brackets
+            g.Box(-10, 2, -1, 10, 2, 1, Pal.Ramp(Pal.Chrome, 1, 1902));                                                       // base
+            g.Box(-10, 3, -1, -2, 4, 1, p => p.y == 4 && (p.x == -10 || p.x == -2) ? Pal.Crimson[2] : Pal.TailR);             // red dome
+            g.Box(2, 3, -1, 10, 4, 1, p => p.y == 4 && (p.x == 2 || p.x == 10) ? Pal.Navy[2] : Pal.Navy[4]);                  // blue dome
+            g.Box(-1, 3, 0, 1, 3, 1, Pal.Solid(Pal.LightW));                                                                  // take-down lamp
+            return Make("lights_emergency", PartCategory.Lights, g, 10, 1);
         }
 
         public static PartDesign Searchlight()

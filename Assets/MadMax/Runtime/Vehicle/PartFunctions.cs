@@ -37,6 +37,7 @@ namespace MadMax.Vehicles
                     break;
                 }
                 case "lights_bar": case "lights_search": go.AddComponent<PartLight>(); break;
+                case "lights_emergency": go.AddComponent<EmergencyLights>(); break;
                 case "snorkel": go.AddComponent<Snorkel>(); break;
                 case "steps_side": case "steps_ladder": Use(go.AddComponent<RoofAccess>()); break;
                 case "weapon_mg": go.AddComponent<MountedGun>(); break;
