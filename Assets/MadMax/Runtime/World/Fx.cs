@@ -154,7 +154,7 @@ namespace MadMax.World
             var t = DeformableTerrain.Instance;
             if (!t) return default;
             var s = t.SurfaceAt(p.x, p.z);
-            if (Weather.Snow > 0.3f && s.road < 0.5f) { any = true; return new Color32(120, 128, 150, 150); }                  // pressed snow
+            if (Weather.LocalSnow > 0.3f && s.road < 0.5f) { any = true; return new Color32(120, 128, 150, 150); }                  // pressed snow
             if (s.mud > 0.35f) { any = true; return new Color32(40, 26, 16, 150); }
             if (s.softness > 0.35f && t.BiomeAt(p.x, p.z) == Biome.Desert) { any = true; return new Color32(120, 70, 36, 120); } // churned sand
             return default;

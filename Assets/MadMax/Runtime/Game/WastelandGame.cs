@@ -23,6 +23,8 @@ namespace MadMax.Game
         public Material propMaterial;
         [Tooltip("Player's starting vehicles (Tab cycles them).")]
         public GameObject[] vehiclePrefabs;
+        /// <summary>Watercraft (user additions): built at a slipway, found beached on the shores; not part of the land fleet.</summary>
+        public GameObject[] boatPrefabs = new GameObject[0];
         bool hornHeld;
         public GameObject[] trailerPrefabs;
         [Tooltip("Every part prefab (crafting output, save/load).")]
@@ -102,6 +104,7 @@ namespace MadMax.Game
             RecipeLibrary.RegisterParts(partList);
             var vehList = new List<(string, float)>();
             foreach (var pf in vehiclePrefabs) if (pf && pf.TryGetComponent<VehicleChassis>(out var ch)) vehList.Add((pf.name, ch.TotalMass));
+            if (boatPrefabs != null) foreach (var pf in boatPrefabs) if (pf && pf.TryGetComponent<VehicleChassis>(out var ch)) vehList.Add((pf.name, ch.TotalMass));
             RecipeLibrary.RegisterVehicles(vehList);
             var pending = SaveSystem.Pending;
             SaveSystem.Pending = null;
@@ -154,6 +157,8 @@ namespace MadMax.Game
             gameObject.AddComponent<MadMax.World.WindDust>();
             gameObject.AddComponent<MadMax.World.Storms>();
             gameObject.AddComponent<Racing>();
+            gameObject.AddComponent<MadMax.Npc.NpcVoice>();
+            gameObject.AddComponent<Insects>();
             gameObject.AddComponent<MadMax.World.FarTerrain>();
             gameObject.AddComponent<MadMax.World.RiverFoam>();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
@@ -659,6 +664,8 @@ namespace MadMax.Game
             UpdateStarter();
             UpdateWreckStreaming();
             RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
+            UpdatePlanet();
+            UpdateDiving();
             LastEngine.Tick(this);
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {

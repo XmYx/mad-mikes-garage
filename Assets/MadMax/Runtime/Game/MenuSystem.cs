@@ -240,6 +240,7 @@ namespace MadMax.Game
         public void Close()
         {
             if (Current == Page.Paint) RevertPaint();
+            if ((Current == Page.Talk || Current == Page.Trade) && talkNpc && talkNpc.Alive && !talkNpc.Hostile) MadMax.Npc.NpcVoice.Say(talkNpc, "goodbye", true);
             if (TitleSequence.Playing && TitleSequence.Instance && !IntroRecorder.Recording) TitleSequence.Instance.Finish();
             if (Current == Page.Settings) GameSettings.Current.Save();
             Current = Page.None;
@@ -337,6 +338,7 @@ namespace MadMax.Game
                         Opt("LIGHT DETAIL", () => GameSettings.LightNames[s.lightDetail], d => s.lightDetail = Mathf.Clamp(s.lightDetail + d, 0, 2));
                         Opt("OUTLINE", () => s.outline == 0 ? "OFF" : s.outline + " PX", d => s.outline = Mathf.Clamp(s.outline + d, 0, 2));
                         Opt("SHADOWS", () => new[] { "OFF", "LOW", "HIGH" }[s.shadows], d => s.shadows = Mathf.Clamp(s.shadows + d, 0, 2));
+                        Opt("HORIZON CURVE", () => s.flatWorld ? "OFF" : "ON", d => s.flatWorld = !s.flatWorld);
                         Opt("BLOOM", () => s.bloom ? "ON" : "OFF", d => s.bloom = !s.bloom);
                         Opt("BRIGHTNESS", () => Mathf.RoundToInt(s.brightness * 100) + "%", d => s.brightness = Mathf.Clamp(s.brightness + d * 0.1f, 0.5f, 1.8f));
                         Opt("DETAIL / LOD", () => GameSettings.LodNames[s.lod], d => s.lod = Mathf.Clamp(s.lod + d, 0, 3));
@@ -355,6 +357,7 @@ namespace MadMax.Game
                         Opt("INTERFACE VOLUME", () => Mathf.RoundToInt(s.uiVolume * 100) + "%", d => s.uiVolume = Mathf.Clamp01(Mathf.Round((s.uiVolume + d * 0.1f) * 10f) / 10f));
                         Opt("RADIO VOLUME", () => Mathf.RoundToInt(s.radioVolume * 100) + "%", d => s.radioVolume = Mathf.Clamp01(Mathf.Round((s.radioVolume + d * 0.1f) * 10f) / 10f));
                         Opt("RADIO CAPTIONS", () => s.radioCaptions ? "ON" : "OFF", d => s.radioCaptions = !s.radioCaptions);
+                        Opt("SPEECH BUBBLES", () => s.voiceCaptions ? "ON" : "OFF", d => s.voiceCaptions = !s.voiceCaptions);
                     }
                     else
                     {

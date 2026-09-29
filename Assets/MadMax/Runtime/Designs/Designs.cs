@@ -75,6 +75,11 @@ namespace MadMax.Designs
         public float comX;                     // centre of mass offset (m) to the right (sidecar outfits)
         public Vector3Int? passenger;          // pillion / chair passenger eye (voxel coords); null = beside the driver
         public string aircraft;                // "trike" / "gyro": FlightModel flies it (roadmap 25)
+        public string boat;                    // "raft" / "skiff" / "trawler" / "houseboat" / "sub": BoatModel floats and drives it (user additions)
+        public Vector3 boatHull;               // hull width, depth (keel to gunwale), length (m)
+        public float boatDraft = 0.3f, boatThrust = 3000f, boatRudder = 1f;
+        public bool airtight;                  // the walk-in space keeps the water out (submarine): dry and breathable inside
+        public Vector3Int boatDeck;            // where you stand up to off the helm (voxel coords)
         public Vector3? com;                   // explicit centre of mass (m), e.g. ahead of an aircraft's main gear
         public readonly List<(string name, VoxelGrid grid, Vector3Int pivot)> spinners = new List<(string, VoxelGrid, Vector3Int)>();   // propellers, rotors: meshes, no colliders
         public Vector3Int eye;       // driver eye, voxel coordinates

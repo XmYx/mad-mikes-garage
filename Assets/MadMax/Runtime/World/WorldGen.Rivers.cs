@@ -25,12 +25,13 @@ namespace MadMax.World
 
         void BuildRivers(System.Random r)
         {
-            int want = 3;
-            for (int attempt = 0; attempt < 120 && rivers.Count < want; attempt++)
+            int want = 14;
+            float rx = HalfX - Meridian - 500f, rz0 = ZOfLatitude(-60f), rz1 = ZOfLatitude(62f);
+            for (int attempt = 0; attempt < 2500 && rivers.Count < want; attempt++)
             {
-                // a high start away from towns and the start
-                var start = new Vector2(((float)r.NextDouble() * 2f - 1f) * halfSize * 0.7f, ((float)r.NextDouble() * 2f - 1f) * halfSize * 0.7f);
-                if (BaseHeight(start.x, start.y) < 2f || NearTown(start, 80f) || (start - new Vector2(yardP.x, yardP.z)).magnitude < 200f) continue;
+                // a high start on a continent, away from towns and the start
+                var start = new Vector2(((float)r.NextDouble() * 2f - 1f) * rx, Mathf.Lerp(rz0, rz1, (float)r.NextDouble()));
+                if (!Habitable(start.x, start.y, 0.64f) || BaseHeight(start.x, start.y) < 2f || NearTown(start, 80f) || (start - new Vector2(yardP.x, yardP.z)).magnitude < 200f) continue;
                 var pts = new List<Vector2> { start };
                 var dir = -Gradient(start);
                 if (dir.sqrMagnitude < 1e-6f) dir = Vector2.right;
@@ -45,7 +46,8 @@ namespace MadMax.World
                     var side = new Vector2(-dir.y, dir.x);
                     float meander = (Mathf.PerlinNoise(phase + pts.Count * 0.12f, 7.3f) - 0.5f) * 1.1f;
                     var q = p + (dir + side * meander).normalized * RiverStep;
-                    if (Mathf.Max(Mathf.Abs(q.x), Mathf.Abs(q.y)) > halfSize - 130f || NearTown(q, 45f) || (q - new Vector2(yardP.x, yardP.z)).magnitude < 110f) break;
+                    if (BaseHeight(q.x, q.y) < SeaLevel + 0.3f) { pts.Add(q); break; }                   // out to sea
+                    if (!Habitable(q.x, q.y, 0.5f) || NearTown(q, 45f) || (q - new Vector2(yardP.x, yardP.z)).magnitude < 110f) break;
                     uphill = BaseHeight(q.x, q.y) > BaseHeight(p.x, p.y) + 0.2f ? uphill + 1 : 0;
                     if (uphill >= 9) break;                                                         // a basin it cannot leave
                     pts.Add(q);
@@ -63,7 +65,7 @@ namespace MadMax.World
                     // the ground smoothed along the course, the water a little below it and never climbing
                     float sum = 0f; int n = 0;
                     for (int k = Mathf.Max(0, i - 2); k <= Mathf.Min(pts.Count - 1, i + 2); k++) { sum += BaseHeight(pts[k].x, pts[k].y); n++; }
-                    float lvl = Mathf.Min(prev, sum / n - 0.9f);
+                    float lvl = Mathf.Max(SeaLevel, Mathf.Min(prev, sum / n - 0.9f));
                     river.level[i] = prev = lvl;
                     river.half[i] = 3f + 3f * i / (pts.Count - 1f);
                 }

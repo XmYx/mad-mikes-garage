@@ -101,6 +101,9 @@ namespace MadMax.Game
             Player.Teleport(at, Player.transform.eulerAngles.y);
         }
 
+        /// <summary>Into a walk-in space through its first door (a docked submarine, from the base's collar).</summary>
+        public void BoardInterior(InteriorSpace space) => EnterInterior(space, 0);
+
         void EnterInterior(InteriorSpace space, int door)
         {
             Player.EnterInterior(space, space.doors[door].inside);
@@ -111,13 +114,17 @@ namespace MadMax.Game
         {
             var space = Player.Interior;
             var w = space.transform.TransformPoint(space.doors[door].outside);
-            w.y = terrain.Height(w.x, w.z) + 0.05f;
+            if (!space.GetComponent<MadMax.Vehicles.BoatModel>()) w.y = terrain.Height(w.x, w.z) + 0.05f;   // boats: out onto the deck / the sail
+            var collar = space.TryGetComponent<MadMax.Vehicles.Submarine>(out var sub) ? MadMax.Building.DockingCollar.Of(sub) : null;
+            if (collar) w = collar.InsideWorld;                                                   // docked: down through the collar into the base
             Player.ExitInterior(w);
             if (cameraRig) cameraRig.SetTarget(Player.transform);
         }
 
         Vector3 ExitPoint(VehicleDriver car)
         {
+            if (car.TryGetComponent<MadMax.Vehicles.BoatModel>(out var boat) && boat.deckAt != Vector3.zero)
+                return car.transform.TransformPoint(boat.deckAt);                                  // afloat: stand up on the deck, not in the sea
             var eye = car.transform.Find("DriverEye");
             float z = eye ? eye.localPosition.z : 0f;
             float w = HalfExtents(car.gameObject).x + 0.6f;

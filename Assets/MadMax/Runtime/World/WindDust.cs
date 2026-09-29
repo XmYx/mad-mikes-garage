@@ -52,7 +52,7 @@ namespace MadMax.World
                 biome = terrain.BiomeAt(at.x, at.z);
                 float wet = terrain.SurfaceAt(at.x, at.z).wet;
                 dryness = (biome == Biome.Desert ? 1f : biome == Biome.Town || biome == Biome.Nuclear ? 0.7f : biome == Biome.City ? 0.5f : 0.15f)
-                          * Mathf.Clamp01(1f - wet * 1.6f) * (Weather.Snow > 0.3f ? 0f : 1f);
+                          * Mathf.Clamp01(1f - wet * 1.6f) * (Weather.LocalSnow > 0.3f ? 0f : 1f);
             }
 
             Dust(terrain, at, dt);

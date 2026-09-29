@@ -62,11 +62,10 @@ namespace MadMax.World
                 var s = world.Sample(x, z);
                 bool wet = !float.IsNaN(s.water) && s.water > s.height;
                 h[j * Grid + i] = (wet ? s.water : s.height) - Sink;
-                col[j * Grid + i] = DeformableTerrain.FarColor(s, x, z, wet, snow);
+                col[j * Grid + i] = DeformableTerrain.FarColor(s, x, z, wet, Mathf.Max(snow, Weather.SnowAt(z)));
             }
-            // flat-shaded quads like the near terrain; nothing past the rim of the world (its wall climbs steeply)
-            float edge = world.halfSize - 40f;
-            bool Inside(int i, int j) => Mathf.Abs(c.x - half + i * Step) <= edge && Mathf.Abs(c.z - half + j * Step) <= edge;
+            // flat-shaded quads like the near terrain; nothing past the ice walls at the poles (they climb steeply)
+            bool Inside(int i, int j) { float z = c.z - half + j * Step; return z <= WorldGen.ZNorth - 40f && z >= WorldGen.ZSouth + 40f; }
             int quads = 0;
             for (int j = 0; j < Grid - 1; j++) for (int i = 0; i < Grid - 1; i++) if (Inside(i, j) && Inside(i + 1, j + 1)) quads++;
             var v = new Vector3[quads * 6]; var cc = new Color32[quads * 6]; var t = new int[quads * 6];

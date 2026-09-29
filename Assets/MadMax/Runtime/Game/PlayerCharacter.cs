@@ -44,6 +44,10 @@ namespace MadMax.Game
 
         /// <summary>Carrying more than the strength-based capacity: slower, cannot run.</summary>
         public bool Swimming { get; private set; }
+        /// <summary>Under water in a diving helmet with an air tank: sinks on weighted boots and walks the bottom.</summary>
+        public bool Diving { get; private set; }
+        /// <summary>Eyes below the water surface.</summary>
+        public bool HeadUnder { get; private set; }
         public bool Encumbered { get; set; }
         bool struck, firstPerson;
 
@@ -299,11 +303,32 @@ namespace MadMax.Game
             if (MadMax.Building.DefenceHazard.All.Count > 0) speed *= MadMax.Building.DefenceHazard.SlowAt(transform.position);   // barbed wire
             // water: wade (slower), swim (float at the surface, costs stamina), drown when exhausted
             float waterLvl = terrain ? terrain.WaterLevel(transform.position.x, transform.position.z) : float.NaN;
+            if (Interior && Interior.airtight) waterLvl = float.NaN;                            // inside a sealed hull: dry
+            if (!float.IsNaN(waterLvl) && MadMax.Building.AirPocket.Contains(transform.position + Vector3.up)) waterLvl = float.NaN;   // an underwater base module
             float waterDepth = float.IsNaN(waterLvl) ? 0f : waterLvl - transform.position.y;
             Swimming = waterDepth > 1.25f;
+            Diving = Swimming && game && game.DiveReady;
+            HeadUnder = !float.IsNaN(waterLvl) && waterLvl > transform.position.y + 1.6f;
             if (waterDepth > 0.2f) speed *= Mathf.Lerp(1f, 0.45f, Mathf.Clamp01(waterDepth / 1.25f));
             var horizontal = dir * speed;
             if (Sliding) horizontal = SlideVelocity(dt);
+            if (Diving)
+            {
+                // hard-hat diving: the weighted boots sink you, Space kicks up, Ctrl drops faster; walk the bottom
+                float kick = Controls.Held(Controls.Act.Jump) || jump ? 1.6f : 0f, drop = Controls.Held(Controls.Act.Crouch) ? -2.2f : 0f;
+                float target = kick + drop + (kick == 0f && drop == 0f ? -0.9f : 0f);
+                vy = Mathf.MoveTowards(vy, target, 3f * dt);
+                if (cc.isGrounded && vy < 0f) vy = -0.5f;
+                if (transform.position.y + 1.2f > waterLvl && vy > 0f) vy = 0f;                   // the surface: bob there
+                airborne = false; fallSpeed = 0f; jump = false;
+                var dflow = terrain ? terrain.World.RiverFlow(transform.position.x, transform.position.z) : Vector2.zero;
+                cc.Move((horizontal * 0.8f + new Vector3(dflow.x, 0f, dflow.y) * 0.5f + Vector3.up * vy) * dt);
+                Velocity = cc.velocity;
+                Face(dir, dt, Quaternion.Euler(0, viewYaw, 0));
+                if (Random.value < dt * 1.5f) MadMax.World.Fx.Smoke(transform.position + Vector3.up * 1.9f, Vector3.up * 1.2f, 0.12f, new Color(0.85f, 0.95f, 1f, 0.7f), 1.5f);   // exhaust bubbles
+                Animate(dt, new Vector2(Velocity.x, Velocity.z).magnitude * 0.7f, false, 0f);
+                return;
+            }
             if (Swimming)
             {
                 bool tired = vitals && (vitals.Exhausted || !vitals.Spend(4f * dt));
@@ -444,7 +469,7 @@ namespace MadMax.Game
             }
             var t = DeformableTerrain.Instance;
             if (t && t.WaterDepth(foot.x, foot.z) > 0.05f) return "step_water";
-            if (Weather.Snow > 0.35f && s.road < 0.5f) return "step_snow";
+            if (Weather.LocalSnow > 0.35f && s.road < 0.5f) return "step_snow";
             if (s.mud > 0.35f) return "step_mud";
             if (s.road > 0.5f) return "step_road";
             return t && t.BiomeAt(foot.x, foot.z) == Biome.Desert ? "step_sand" : "step_gravel";

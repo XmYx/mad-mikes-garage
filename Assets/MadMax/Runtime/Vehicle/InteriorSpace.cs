@@ -18,6 +18,8 @@ namespace MadMax.Vehicles
         }
 
         public float floorY, ceilingY;
+        /// <summary>Sealed (a submarine): dry and breathable inside even under water.</summary>
+        public bool airtight;
         public Vector2 min, max;
         public Door[] doors;
         public Vector3 seat, stand;

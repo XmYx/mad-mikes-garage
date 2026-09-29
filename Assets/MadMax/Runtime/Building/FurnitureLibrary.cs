@@ -166,6 +166,7 @@ namespace MadMax.Building
             defs.AddRange(Refining());
             defs.AddRange(BaseDefs());
             defs.AddRange(Power());
+            defs.AddRange(Sea());
             Upgrades();
         }
 

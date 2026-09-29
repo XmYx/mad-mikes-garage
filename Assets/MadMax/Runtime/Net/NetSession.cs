@@ -506,7 +506,7 @@ namespace MadMax.Net
                     foreach (var o in peers)
                         if (o != peer && o.ready) { var oo = o; Frame(peer.batch, Msg.PlayerJoined, w => { w.UShort(oo.id); w.String(oo.name); WriteLook(w, oo.look, oo.outfit); }); }
                     Reliable(Msg.PlayerJoined, w => { w.UShort(peer.id); w.String(peer.name); WriteLook(w, peer.look, peer.outfit); }, except: peer);
-                    Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); }, only: peer);
+                    Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.BaseTemperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); }, only: peer);
                     game.Toast(peer.name + " JOINED");
                     break;
                 case Msg.Denied:
@@ -826,7 +826,7 @@ namespace MadMax.Net
             if (!ShouldSend || !IsServer) return;
             int storm = 0; float left = 0f, total = 0f;
             if (Storms.Instance) Storms.Instance.SaveState(out storm, out left, out total);
-            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.Temperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); w.Byte((byte)storm); w.Float(left); w.Float(total); });
+            Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.BaseTemperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); w.Byte((byte)storm); w.Float(left); w.Float(total); });
         }
 
         public void SendAppearance()

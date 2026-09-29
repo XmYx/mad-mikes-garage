@@ -112,6 +112,7 @@ namespace MadMax.Npc
             int got = Change(d);
             S.Set(NpcSave.Met);
             line = NpcLore.ReactionLine(P.temper, got);
+            NpcVoice.Say(npc, got >= 2 ? (t == Tone.Joke ? "laugh" : "thanks") : got <= -2 ? (t == Tone.Threat ? "threatened" : "insulted") : t == Tone.Joke ? "laugh" : "yes", true);
             if (t == Tone.Threat)
             {
                 S.Set(NpcSave.Threatened);
@@ -127,6 +128,7 @@ namespace MadMax.Npc
         {
             choices.Clear();
             line = "GET LOST. I'M DONE TALKING TO YOU.";
+            NpcVoice.Say(npc, "no", true);
             Add("(POLITE) I WAS OUT OF LINE. I'M SORRY.", () =>
             {
                 if (Check(6f + (-S.disposition - 60) / 10f)) { S.disposition = -35; line = "...FINE. ONE MORE CHANCE."; Hub(false); }
@@ -381,8 +383,8 @@ namespace MadMax.Npc
         {
             float difficulty = 6f - S.disposition / 25f + (P.temper == Temper.Greedy ? 2f : 0f) - (P.temper == Temper.Friendly ? 1f : 0f);
             S.haggleDay = Day;
-            if (Check(difficulty)) { Change(2); line = P.temper == Temper.Greedy ? "YOU'RE ROBBING ME. FINE. TODAY ONLY." : "ALRIGHT, ALRIGHT. FRIENDS' PRICES, TODAY."; }
-            else { Change(-4); line = P.temper == Temper.Gruff ? "PRICES ARE PRICES." : "NICE TRY."; }
+            if (Check(difficulty)) { Change(2); line = P.temper == Temper.Greedy ? "YOU'RE ROBBING ME. FINE. TODAY ONLY." : "ALRIGHT, ALRIGHT. FRIENDS' PRICES, TODAY."; NpcVoice.Say(npc, "haggle_win", true); }
+            else { Change(-4); line = P.temper == Temper.Gruff ? "PRICES ARE PRICES." : "NICE TRY."; NpcVoice.Say(npc, "haggle_lose", true); }
             Hub(false);
         }
 
@@ -392,7 +394,7 @@ namespace MadMax.Npc
             var j = NpcLore.Jobs[P.job];
             line = j.ask;
             choices.Clear();
-            Add("I'LL DO IT.", () => { S.jobState = 1; Change(2); line = "GOOD. I'LL BE AROUND."; MadMax.Game.Journal.Add("ERRAND", P.Name + ": " + j.ask); Hub(false); });
+            Add("I'LL DO IT.", () => { S.jobState = 1; Change(2); line = "GOOD. I'LL BE AROUND."; NpcVoice.Say(npc, "thanks", true); MadMax.Game.Journal.Add("ERRAND", P.Name + ": " + j.ask); Hub(false); });
             Add("NOT RIGHT NOW.", () => Hub());
         }
 

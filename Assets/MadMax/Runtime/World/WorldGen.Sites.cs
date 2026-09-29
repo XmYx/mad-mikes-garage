@@ -142,7 +142,7 @@ namespace MadMax.World
                 s.reach = s.halfLen + 4f;
             }
             // keep clear of towns, lakes, roads, the start area and the world edge
-            if (p.magnitude < 150f || Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.y)) > halfSize - 90f) return null;
+            if (p.magnitude < 150f || !Habitable(p.x, p.y, 0.6f)) return null;
             foreach (var st in settlements) if ((st.pos - p).magnitude < st.radius + (kind == SiteKind.Airfield ? s.halfLen * 0.6f : s.reach) + 40f) return null;
             var hits = new List<RoadHit>();
             for (int i = 0; i < 9 && kind != SiteKind.Airfield; i++)                                 // airfields may have a road nearby: only the strip is checked

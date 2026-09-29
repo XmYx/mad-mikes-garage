@@ -25,7 +25,7 @@ namespace MadMax.Game
         PixelCanvas canvas;
         RawImage image;
         GameObject overlay;
-        Color32[] map; int mapSize; float mapHalf;
+        Color32[] map; int mapSize; float mapHalf, mapCz;
 
         static readonly Color32 Text = new Color32(255, 226, 170, 255), Dim = new Color32(190, 140, 90, 255), Amber = new Color32(255, 170, 50, 255),
             Empty = new Color32(70, 45, 30, 255);
@@ -47,23 +47,38 @@ namespace MadMax.Game
             img.raycastTarget = false;
             var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
             image = img;
-            BuildMinimap(g.World, 512);
+            BuildMinimap(g.World, 1024);
         }
 
         void BuildMinimap(WorldGen world, int size)
         {
-            mapSize = size; mapHalf = world.halfSize;
-            map = new Color32[size * size];
+            // the whole planet (user additions): the circumference across, centred on the equator's long axis
+            mapSize = size; mapHalf = WorldGen.HalfX; mapCz = (WorldGen.ZNorth + WorldGen.ZSouth) * 0.5f;
+            var pix = new Color32[size * size];
             float mpp = 2f * mapHalf / size;
-            for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
+            System.Threading.Tasks.Parallel.For(0, size, y =>
             {
-                float wx = -mapHalf + (x + 0.5f) * mpp, wz = -mapHalf + (y + 0.5f) * mpp;
-                float b = world.Basin(wx, wz);
-                float h = world.BaseHeight(wx, wz);
-                byte shade = (byte)Mathf.Clamp(120 + h * 2.2f, 70, 170);
-                map[y * size + x] = b > 0.5f ? new Color32(70, 42, 30, 255) : new Color32(shade, (byte)(shade * 0.55f), (byte)(shade * 0.3f), 255);
-            }
+                for (int x = 0; x < size; x++)
+                {
+                    float wx = -mapHalf + (x + 0.5f) * mpp, wz = mapCz - mapHalf + (y + 0.5f) * mpp;
+                    if (wz > WorldGen.ZNorth || wz < WorldGen.ZSouth) { pix[y * size + x] = new Color32(22, 13, 9, 255); continue; }
+                    float h = world.BaseHeight(wx, wz);
+                    if (h < WorldGen.SeaLevel && world.Ocean(wx, wz))
+                    {
+                        float d = Mathf.Clamp01((WorldGen.SeaLevel - h) / 40f);                    // sea: lighter over the shelf
+                        pix[y * size + x] = new Color32((byte)Mathf.Lerp(52, 18, d), (byte)Mathf.Lerp(88, 38, d), (byte)Mathf.Lerp(104, 70, d), 255);
+                        continue;
+                    }
+                    float lat = Mathf.Abs(WorldGen.Latitude(wz));
+                    byte shade = (byte)Mathf.Clamp(120 + h * 2.2f, 70, 170);
+                    var c = world.Basin(wx, wz) > 0.5f ? new Color32(70, 42, 30, 255) : new Color32(shade, (byte)(shade * 0.55f), (byte)(shade * 0.3f), 255);
+                    var b = world.NaturalBiome(wx, wz);
+                    if (b == Biome.Forest || b == Biome.Tropical) c = Color32.Lerp(c, new Color32(60, (byte)(shade * 0.7f), 40, 255), 0.55f);
+                    if (lat > 64f) c = Color32.Lerp(c, new Color32(200, 205, 210, 255), Mathf.Clamp01((lat - 64f) / 8f));
+                    pix[y * size + x] = c;
+                }
+            });
+            map = pix;
             foreach (var road in world.roads.roads)
             {
                 var col = road.paved ? new Color32(40, 34, 32, 255) : new Color32(120, 70, 40, 255);
@@ -90,7 +105,7 @@ namespace MadMax.Game
             }
         }
 
-        Vector2 ToMap(Vector3 w) => new Vector2((w.x + mapHalf) / (2f * mapHalf) * mapSize, (w.z + mapHalf) / (2f * mapHalf) * mapSize);
+        Vector2 ToMap(Vector3 w) => new Vector2((w.x + mapHalf) / (2f * mapHalf) * mapSize, (w.z - mapCz + mapHalf) / (2f * mapHalf) * mapSize);
 
         public static PixelHud Instance { get; private set; }
         void Awake() => Instance = this;
@@ -110,7 +125,7 @@ namespace MadMax.Game
             for (int i = 0; i < w; i++)
             {
                 float wx = center.x + (i - w / 2) * mpp, wz = center.y - (j - h / 2) * mpp;
-                int mx = Mathf.FloorToInt((wx + mapHalf) / mapMpp), my = Mathf.FloorToInt((wz + mapHalf) / mapMpp);
+                int mx = Mathf.FloorToInt((WorldGen.WrapX(wx) + mapHalf) / mapMpp), my = Mathf.FloorToInt((wz - mapCz + mapHalf) / mapMpp);
                 c.Set(x + i, y + j, (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(22, 13, 9, 255) : map[my * mapSize + mx]);
             }
             Vector2Int P(Vector3 wp) => new Vector2Int(x + w / 2 + Mathf.RoundToInt((wp.x - center.x) / mpp), y + h / 2 - Mathf.RoundToInt((wp.z - center.y) / mpp));
@@ -220,7 +235,16 @@ namespace MadMax.Game
             canvas.Text(6, 13, "VIEW " + ViewName(rig.mode) + "  " + game.CurrentBiome.ToString().ToUpperInvariant() + "  " + clock, Dim);
             if (game.RadiationLevel > 0.02f && (Time.time * (2f + game.RadiationLevel * 6f)) % 1f > 0.35f)
                 canvas.Text(canvas.w / 2 - 20, 34, "RADIATION " + Mathf.RoundToInt(game.RadiationLevel * 100), new Color32(156, 255, 58, 255));
-            if (!car && game.Player.Swimming) canvas.Text(canvas.w / 2 - 16, 26, "SWIMMING", new Color32(150, 190, 255, 255));
+            if (!car && game.Player.Diving)
+            {
+                // the diver's air: a bar that turns red in the last half minute
+                float air = game.TankAir / WastelandGame.TankSize;
+                string label = "AIR " + Mathf.CeilToInt(game.TankAir) + " S";
+                canvas.Text(canvas.w / 2 - PixelCanvas.TextWidth(label) / 2, 26, label, game.TankAir < 30f ? Red : new Color32(150, 190, 255, 255));
+                canvas.Rect(canvas.w / 2 - 30, 34, 60, 3, new Color32(20, 12, 8, 200));
+                canvas.Rect(canvas.w / 2 - 30, 34, Mathf.RoundToInt(60 * Mathf.Clamp01(air)), 3, game.TankAir < 30f ? Red : new Color32(120, 190, 240, 255));
+            }
+            else if (!car && game.Player.Swimming) canvas.Text(canvas.w / 2 - 16, 26, "SWIMMING", new Color32(150, 190, 255, 255));
             var race = Racing.Instance ? Racing.Instance.Status : null;
             if (race != null)
             {
@@ -238,8 +262,9 @@ namespace MadMax.Game
             DrawResources(6, 22);
             if (!car && !(game.Build && game.Build.Active) && !(game.Menus && game.Menus.IsOpen)) DrawToolbar();
             if (!car) DrawVitals(6, canvas.h - 16);
-            else DrawVitalsCompact(6, fps ? canvas.h - 12 : car.GetComponent<MadMax.Vehicles.FlightModel>() ? canvas.h - 80 : canvas.h - 64);
+            else DrawVitalsCompact(6, 31);                                                        // in a car: under the resources, clear of the fault lines
             DrawTemperatureVignette();
+            if (!(game.Menus && game.Menus.IsOpen)) DrawSpeech();
             if (game.LearningId != null) DrawLearning();
             if (game.Build && game.Build.RadialOpen) DrawRadial();
             if (game.RadialOpen) DrawActionRadial();
@@ -255,6 +280,7 @@ namespace MadMax.Game
                 int sy = 30;
                 void Line(string st) { if (st == null) return; int mw = PixelCanvas.TextWidth(st) + 8; canvas.Panel((canvas.w - mw) / 2, sy, mw, 11); canvas.Text((canvas.w - mw) / 2 + 4, sy + 3, st, Amber); sy += 12; }
                 if (car.TryGetComponent<MadMax.Vehicles.Machine>(out var mach)) Line(mach.Status);
+                if (car.TryGetComponent<MadMax.Vehicles.Submarine>(out var subm)) Line(subm.Status);
                 if (car.TryGetComponent<MadMax.Vehicles.Winch>(out var wn) && wn.WinchPart) Line(wn.Status);
                 if (car.TryGetComponent<MadMax.Vehicles.Crane>(out var cr) && cr.CranePart) Line(cr.Status);
                 if (car.TryGetComponent<MadMax.Vehicles.VehicleWeapons>(out var vw) && vw.Armed) Line(vw.Status);
@@ -446,6 +472,7 @@ namespace MadMax.Game
             canvas.Text(x + 4, y + 25, "HDG " + hdg.ToString("000") + " " + pts[Mathf.RoundToInt(hdg / 45f) % 8], Text);
             canvas.Text(x + 4, y + 33, "THR", Dim);
             Bar(x + 18, y + 35, 40, f.Throttle, Amber);
+            if (f.Reversing) canvas.Text(x + 32, y + 33, "REV", Red);
             if (f.kind == MadMax.Vehicles.FlightModel.Kind.Gyro) canvas.Text(x + 62, y + 33, "ROTOR " + Mathf.RoundToInt(f.RotorRpm), f.RotorRpm < 200f && f.Airborne ? Red : Dim);
             // artificial horizon: the ground line tilts with the bank and slides with the pitch
             int hx = x + 88, hy = y + 4, hw = 40, hh = 26;
@@ -1019,19 +1046,58 @@ namespace MadMax.Game
 
         void DrawWeather(int x, int y)
         {
-            string sky = Weather.Snowing ? "SNOW" : Weather.Raining ? "RAIN" : Weather.Snow > 0.2f ? "SNOWY" : "DRY";
+            string sky = Weather.Snowing ? "SNOW" : Weather.Raining ? "RAIN" : Weather.LocalSnow > 0.2f ? "SNOWY" : "DRY";
             canvas.Text(x, y, sky, Weather.Raining ? Amber : Dim);
             canvas.Text(x + 22, y, Weather.SeasonNames[Mathf.Clamp(Weather.Season, 0, 3)], Dim);
             string t = GameSettings.Current.Temp(Weather.Temperature);
             canvas.Text(x + 64 - PixelCanvas.TextWidth(t), y, t, Weather.Temperature < 0f ? new Color32(150, 190, 255, 255) : Dim);
             Bar(x, y + 8, 64, Weather.Wetness, new Color32(110, 120, 140, 255));
-            if (Weather.Snow > 0.01f) Bar(x, y + 11, 64, Weather.Snow, new Color32(230, 230, 240, 255));
+            if (Weather.LocalSnow > 0.01f) Bar(x, y + 11, 64, Weather.LocalSnow, new Color32(230, 230, 240, 255));
             int ly = y + 15;
             if (Storms.Name != null) { canvas.Text(x, ly, Storms.Name, (Time.unscaledTime % 1f) < 0.6f ? Red : Amber); ly += 7; }
             if (Weather.Ice > 0.3f) canvas.Text(x, ly, "ICE", new Color32(150, 190, 255, 255));
         }
 
         /// <summary>The next race gate: a diamond with the distance at its screen position (an arrow at the edge when behind).</summary>
+        /// <summary>Speech bubbles over NPCs that are talking (<see cref="MadMax.Npc.NpcVoice.Captions"/>): wrapped to
+        /// ~110 px, a small tail towards the head, clamped to the screen; hidden behind the camera.</summary>
+        void DrawSpeech()
+        {
+            var cam = rig ? rig.pixel.GetComponent<Camera>() : null;
+            if (!cam || MadMax.Npc.NpcVoice.Captions.Count == 0) return;
+            var bg = new Color32(245, 236, 214, 235); var ink = new Color32(40, 26, 16, 255);
+            foreach (var c in MadMax.Npc.NpcVoice.Captions)
+            {
+                if (!c.at) continue;
+                var sp = cam.WorldToViewportPoint(c.at.position + Vector3.up * 0.45f);
+                if (sp.z <= 0f || sp.x < -0.1f || sp.x > 1.1f || sp.y < -0.1f || sp.y > 1.2f) continue;
+                var rows = Wrap(c.text, 110);
+                int w = 0; foreach (var r in rows) w = Mathf.Max(w, PixelCanvas.TextWidth(r));
+                w += 6; int h = rows.Count * 7 + 4;
+                int px = Mathf.RoundToInt(sp.x * canvas.w), py = Mathf.RoundToInt((1f - sp.y) * canvas.h);
+                int x = Mathf.Clamp(px - w / 2, 2, canvas.w - w - 2), y = Mathf.Clamp(py - h - 4, 2, canvas.h - h - 6);
+                canvas.Rect(x + 1, y, w - 2, h, bg); canvas.Rect(x, y + 1, w, h - 2, bg);
+                int tx = Mathf.Clamp(px, x + 3, x + w - 4);
+                canvas.Rect(tx - 1, y + h, 3, 1, bg); canvas.Rect(tx, y + h + 1, 1, 2, bg);                 // tail
+                for (int i = 0; i < rows.Count; i++) canvas.Text(x + 3, y + 3 + i * 7, rows[i], ink);
+            }
+        }
+
+        static readonly List<string> wrapRows = new List<string>();
+        static List<string> Wrap(string text, int maxW)
+        {
+            wrapRows.Clear();
+            string line = "";
+            foreach (var word in text.Split(' '))
+            {
+                string t = line.Length == 0 ? word : line + " " + word;
+                if (PixelCanvas.TextWidth(t) > maxW && line.Length > 0) { wrapRows.Add(line); line = word; }
+                else line = t;
+            }
+            if (line.Length > 0) wrapRows.Add(line);
+            return wrapRows;
+        }
+
         void DrawGate(Vector3 world)
         {
             var cam = rig ? rig.pixel.GetComponent<Camera>() : null;

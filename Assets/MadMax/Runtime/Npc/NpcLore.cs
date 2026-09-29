@@ -17,6 +17,10 @@ namespace MadMax.Npc
             "SILAS", "VERA", "HOLT", "MAGDA", "EZRA", "LOTTE", "GIDEON", "SUNNY", "BOYD", "ZELDA", "ARLO", "MINA", "CASPER", "ODETTE",
             "LEVI", "GRETA", "TOBIAS", "IRMA", "FINN", "BEA", "MILO", "HESTER", "JONAH", "FREYA", "WALT", "NELL"
         };
+        static readonly HashSet<string> feminine = new HashSet<string> { "MARLA", "TESS", "ROSIE", "JUNO", "PEARL", "NINA", "DELIA", "IMKE", "VERA", "MAGDA", "LOTTE", "SUNNY", "ZELDA", "MINA", "ODETTE", "GRETA", "IRMA", "BEA", "HESTER", "FREYA", "NELL" };
+        /// <summary>First names read as women's (voice choice, no beard).</summary>
+        public static bool Feminine(string first) => first != null && feminine.Contains(first);
+
         public static readonly string[] Nick =
         {
             "SPROCKET", "TWO-STROKE", "RUSTY", "GASKET", "MAMA DIESEL", "BOLT", "THE DEACON", "CHROME", "SALT", "PISTON", "GRIT",

@@ -73,7 +73,16 @@ namespace MadMax.Animals
                 case "chicken": return new Call(850f * p, 700f * p, 0.5f, 0.2f, 0.6f, 3f);
                 case "rat": return new Call(3200f, 2600f, 0.25f, 0.1f, 0.3f, 2f);
                 case "vulture": return new Call(1300f, 900f, 0.6f, 0.7f, 0.5f);
-                case "snake": return new Call(60f, 60f, 1.4f, 1f, 0f, 45f);
+                case "snake": case "cottonmouth": case "python": return new Call(60f, 60f, 1.4f, 1f, 0f, 45f);
+                case "coyote": return kind == 1 ? new Call(420f, 300f, 0.5f, 0.5f, 0.8f, 3f) : new Call(700f, 1100f, 1.6f, 0.1f, 0.4f, 4f, 8f, 0.1f);   // yips and a howl
+                case "deer": return new Call(900f, 600f, 0.3f, 0.6f, 0.4f);
+                case "bear": return kind == 1 ? new Call(70f, 55f, 1.4f, 0.7f, 1f, 0f, 18f, 0.2f) : new Call(110f, 80f, 0.8f, 0.6f, 1f, 2f);
+                case "jackrabbit": case "armadillo": return new Call(2200f, 1800f, 0.15f, 0.4f, 0.2f);
+                case "raccoon": return new Call(1500f, 900f, 0.4f, 0.4f, 0.5f, 3f);
+                case "crow": return new Call(1100f, 800f, 0.35f, 0.6f, 0.6f, 1f);
+                case "turkey": return new Call(700f, 500f, 0.8f, 0.2f, 0.7f, 8f);
+                case "radlizard": case "gila": return new Call(90f, 60f, 1f, 0.95f, 0.2f);                          // a hiss
+                case "radscorpion": case "cavespider": case "radroach": return new Call(3000f, 2400f, 0.4f, 0.9f, 0.1f, 12f);   // chitter
                 default: return new Call(400f, 300f, 0.4f, 0.3f);
             }
         }

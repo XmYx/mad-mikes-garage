@@ -99,7 +99,7 @@ namespace MadMax.World
             if (Time.time < nextCheck && !dirty) return;
             nextCheck = Time.time + 4f + Random.value;
             float level = Level();
-            int li = Mathf.FloorToInt(level), key = (Weather.Temperature < 1f ? 1 : 0) | (Weather.Snow > 0.4f ? 2 : 0);
+            int li = Mathf.FloorToInt(level), key = (Weather.Temperature < 1f ? 1 : 0) | (Weather.LocalSnow > 0.4f ? 2 : 0);
             if (li != shownLevel || key != shownKey || dirty)
             {
                 if (Time.frameCount == lastBuildFrame) { nextCheck = 0f; return; }     // one rebuild per frame, all buildings

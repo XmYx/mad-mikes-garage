@@ -546,7 +546,7 @@ namespace MadMax.World
             var biome = world.BiomeAt(cx, cz);
 
             // ---- wild vegetation
-            int count = biome switch { Biome.Forest => rnd.Next(1, 5), Biome.Tropical => rnd.Next(1, 4), Biome.Nuclear => rnd.Next(0, 3), Biome.Desert => rnd.Next(0, 3), Biome.Village => rnd.Next(0, 2), _ => 0 };
+            int count = biome switch { Biome.Tundra => rnd.Next(0, 2), Biome.Forest => rnd.Next(1, 5), Biome.Tropical => rnd.Next(1, 4), Biome.Nuclear => rnd.Next(0, 3), Biome.Desert => rnd.Next(0, 3), Biome.Village => rnd.Next(0, 2), _ => 0 };
             for (int i = 0; i < count; i++)
             {
                 float x = (c.x + (float)rnd.NextDouble()) * DeformableTerrain.ChunkWorld;
@@ -577,6 +577,11 @@ namespace MadMax.World
                         else { id = "Rock" + variant; name = "Rock"; }
                         break;
                     case Biome.Village: id = "Bush1"; name = "Bush"; break;
+                    case Biome.Tundra:                                                              // stunted pines, frost-split boulders
+                        if (roll < 0.35) { id = "Pine" + variant % 3; name = "Tree"; }
+                        else if (roll < 0.5) { id = "Tree" + variant; name = "Tree"; }
+                        else { id = "Rock" + variant; name = "Rock"; }
+                        break;
                     default:
                         if (roll < 0.3) { id = "Tree" + variant; name = "Tree"; }
                         else if (roll < 0.55) { id = "Cactus" + variant % 2; name = "Cactus"; }

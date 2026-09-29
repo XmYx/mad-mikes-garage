@@ -284,6 +284,14 @@ namespace MadMax.Game
                 if (UseRepairKit()) Inventory.TakeItem(id);
                 return;
             }
+            if (id == O2Bottle) { if (!UseO2Bottle()) Toast("NO O2 BOTTLE"); return; }
+            if (id == "med_antivenom" && Inventory.TakeItem(id))
+            {
+                bool was = Stats.sick > 5f;
+                Stats.sick = 0f;
+                Toast(was ? "ANTIVENOM: THE FEVER BREAKS" : "ANTIVENOM: NOTHING TO FIGHT, BUT YOU FEEL BRAVE");
+                return;
+            }
             if (id == "med_antibiotics" && Inventory.TakeItem(id))
             {
                 int n = 0;

@@ -79,7 +79,7 @@ namespace MadMax.World
         {
             float dt = Time.deltaTime;
             MadMax.Audio.Sfx.Loop(this, "fire", Mathf.Clamp01(0.3f + intensity * 0.6f), 1f, 25f);
-            float wet = Weather.Wetness * (Weather.Raining ? 1f : 0.4f) + Weather.Snow * 0.5f;
+            float wet = Weather.Wetness * (Weather.Raining ? 1f : 0.4f) + Weather.LocalSnow * 0.5f;
             fuel -= dt * (0.4f + intensity) * (1f + wet * 3f);
             intensity = Mathf.MoveTowards(intensity, fuel > 0f ? Mathf.Clamp01(fuel / 10f + 0.3f) * (1f - wet * 0.6f) : 0f, dt * 0.3f);
             if (intensity <= 0.02f && fuel <= 0f) { Destroy(gameObject); return; }
@@ -150,7 +150,7 @@ namespace MadMax.World
                 if (sys && touched.Add(sys)) sys.Heat(intensity * dt);
             }
             // ground fire: creeps across dry forest / meadow / tropical ground
-            if (Authority && ground && intensity > 0.4f && Weather.Wetness < 0.25f && Weather.Snow < 0.1f && Random.value < 0.25f)
+            if (Authority && ground && intensity > 0.4f && Weather.Wetness < 0.25f && Weather.LocalSnow < 0.1f && Random.value < 0.25f)
             {
                 var terrain = DeformableTerrain.Instance;
                 var q = p + Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward * Random.Range(1.2f, 2.2f) + Fx.Wind * 0.3f;

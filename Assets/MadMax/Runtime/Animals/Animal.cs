@@ -101,7 +101,11 @@ namespace MadMax.Animals
                 Part(rig, "Body", Mesh.body, Vector3.zero, mat);
                 head = Part(rig, "Head", Mesh.head, Mesh.neck, mat);
                 legs = new Transform[Mesh.legRoots.Length];
-                for (int i = 0; i < legs.Length; i++) legs[i] = Part(rig, "Leg", Mesh.leg, Mesh.legRoots[i], mat);
+                for (int i = 0; i < legs.Length; i++)
+                {
+                    legs[i] = Part(rig, "Leg", Mesh.leg, Mesh.legRoots[i], mat);
+                    if (Mesh.sprawl && Mesh.legRoots[i].x < 0f) legs[i].localScale = new Vector3(-1f, 1f, 1f);   // sprawled legs: the left ones mirror the right
+                }
                 if (Mesh.tail) tail = Part(rig, "Tail", Mesh.tail, Mesh.tailRoot, mat);
                 if (Mesh.wing)
                 {
@@ -556,6 +560,11 @@ namespace MadMax.Animals
         {
             float dmg = Def.bite * (Def.nature == Nature.Predator && DayNight.Darkness < 0.4f ? 0.8f : 1f);
             g.Vitals.Hurt(dmg, "BITE");
+            if (Def.Has("venom"))
+            {
+                g.Stats.sick = Mathf.Max(g.Stats.sick, 90f + Def.bite * 12f);                      // venom: sick until it wears off or antivenom
+                g.Toast("ENVENOMED: " + Def.name + " BITE. ANTIVENOM HELPS");
+            }
             MadMax.Audio.Sfx.Play("punch", g.Player.transform.position + Vector3.up, 0.8f, Def.mass > 80f ? 0.8f : 1.3f);
             if (Def.nature == Nature.Charger && g.cameraRig) g.cameraRig.Shake(3f);
             Say(1);
@@ -764,6 +773,7 @@ namespace MadMax.Animals
         {
             float s = speed;
             if (Def.plan == BodyPlan.Snake) { AnimateSnake(dt); return; }
+            if (Mesh.sprawl) { AnimateSprawl(dt); return; }
             bool lying = state == State.Sleep;
             float legLen = Mathf.Max(0.05f, Mesh.legLen);
             phase += s / (legLen * 2.6f) * dt;
@@ -825,6 +835,37 @@ namespace MadMax.Animals
 
         static readonly float[] WalkSeq = { 0f, 0.5f, 0.75f, 0.25f }, Trot = { 0f, 0.5f, 0.5f, 0f }, Gallop = { 0f, 0.12f, 0.55f, 0.67f };
 
+        /// <summary>Lizards and arthropods: legs sweep fore and aft in two alternating groups (diagonal pairs / tripods),
+        /// lifting as they swing forward; the body wiggles, a scorpion's tail sways and strikes, the head bobs.</summary>
+        void AnimateSprawl(float dt)
+        {
+            float s = speed;
+            float legLen = Mathf.Max(0.03f, Mesh.legLen);
+            phase += s / (legLen * 5f) * dt;
+            float wphase = phase * Mathf.PI * 2f;
+            float move = Mathf.Clamp01(s / Mathf.Max(0.2f, Def.walk));
+            bool dead = state == State.Dead;
+            for (int i = 0; i < legs.Length; i++)
+            {
+                bool left = Mesh.legRoots[i].x < 0f;
+                int pair = Def.plan == BodyPlan.Arthropod ? i / 2 : (i < 2 ? 0 : 1);
+                float grp = ((pair + (left ? 1 : 0)) & 1) == 0 ? 0f : Mathf.PI;
+                float sweep = Mathf.Sin(wphase + grp) * 22f * move;
+                float lift = Mathf.Max(0f, Mathf.Cos(wphase + grp)) * 22f * move + (dead ? 50f : 0f);
+                float fan = Mesh.legFan != null && i < Mesh.legFan.Length ? Mesh.legFan[i] : 0f;
+                float yaw = (left ? 1f : -1f) * (fan + sweep);
+                legs[i].localRotation = Quaternion.Slerp(legs[i].localRotation, Quaternion.Euler(0f, yaw, left ? -lift : lift), 1f - Mathf.Exp(-25f * dt));
+            }
+            rig.localRotation = Quaternion.Euler(0f, Mathf.Sin(wphase) * 6f * move, 0f);
+            if (head) head.localRotation = Quaternion.Euler(state == State.Attack ? 15f : Mathf.Sin(Time.time * 3f + herd) * 4f, Def.plan == BodyPlan.Arthropod ? 0f : Mathf.Sin(wphase) * -8f * move, 0f);
+            if (tail)
+            {
+                bool strike = state == State.Attack && Time.time < attackCd - 0.4f;
+                if (Def.Has("stinger")) tail.localRotation = Quaternion.Euler(strike ? 35f : Mathf.Sin(Time.time * 2.2f) * 6f, Mathf.Sin(Time.time * 1.3f) * 8f, 0f);
+                else tail.localRotation = Quaternion.Euler(0f, Mathf.Sin(wphase + 1f) * 18f * move + Mathf.Sin(Time.time * 1.5f) * 4f, 0f);
+            }
+        }
+
         void AnimateSnake(float dt)
         {
             bool coiled = state == State.Coiled || state == State.Idle || state == State.Sleep;
@@ -852,7 +893,7 @@ namespace MadMax.Animals
 
         void Say(int kind)
         {
-            if (Time.time < callT) return;
+            if (Time.time < callT || Def.plan == BodyPlan.Arthropod && Def.mass < 5f || Def.id == "lizard" || Def.id == "beetle") return;   // small critters are silent
             callT = Time.time + 2f + Random.value * 3f;
             var g = WastelandGame.Instance;
             if (!g || !g.Player || (transform.position - g.Player.transform.position).sqrMagnitude > 45f * 45f) return;
@@ -912,7 +953,13 @@ namespace MadMax.Animals
             if (g) p.y = Ground(g, p);
             transform.position = p;
             transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
-            if (Def.plan != BodyPlan.Snake)
+            if (Def.plan == BodyPlan.Arthropod)
+            {
+                rig.localRotation = Quaternion.Euler(0f, 0f, 180f);                                   // belly up, legs curled
+                rig.localPosition = new Vector3(0f, (Def.leg + Def.depth) * VoxelMesher.DefaultSize * Def.scale, 0f);
+                AnimateSprawl(1f);
+            }
+            else if (Def.plan != BodyPlan.Snake)
             {
                 // over on its side, legs out
                 float s = VoxelMesher.DefaultSize * Def.scale;

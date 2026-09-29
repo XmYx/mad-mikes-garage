@@ -9,7 +9,9 @@ namespace MadMax.Animals
     {
         public Mesh body, head, leg, tail, wing, saddle, segment, snakeHead, rattle;
         public Vector3 neck, tailRoot, wingRoot, seat;         // local pivots (m)
-        public Vector3[] legRoots;                              // FL FR BL BR (birds: L R)
+        public Vector3[] legRoots;                              // FL FR BL BR (birds: L R; arthropods / lizards: pairs front to back, x < 0 = left, mirrored)
+        public float[] legFan;                                  // sprawled legs: base forward angle per leg (degrees)
+        public bool sprawl;                                     // legs stick out sideways (lizards, arthropods)
         public float legLen, segLen;
         public int segments;
     }
@@ -18,14 +20,14 @@ namespace MadMax.Animals
     /// (barrel torso with belly shading and coat patterns, neck + head with snout, ears, horns, tusks, mane or beard,
     /// four legs with hooves or paws, tail), birds (plump or big-winged, combs, bald heads) and snakes (patterned
     /// segments with a rattle). Pivots come back in metres for the gait animation.</summary>
-    public static class AnimalModels
+    public static partial class AnimalModels
     {
         static readonly Dictionary<string, AnimalMeshes> cache = new Dictionary<string, AnimalMeshes>();
 
         public static AnimalMeshes For(AnimalDef d)
         {
             if (cache.TryGetValue(d.id, out var m) && (m.body || m.segment)) return m;   // meshes die with play mode (snakes have no body)
-            m = d.plan == BodyPlan.Bird ? Bird(d) : d.plan == BodyPlan.Snake ? Snake(d) : Quadruped(d);
+            m = d.plan == BodyPlan.Bird ? Bird(d) : d.plan == BodyPlan.Snake ? Snake(d) : d.plan == BodyPlan.Arthropod ? Arthropod(d) : Quadruped(d);
             cache[d.id] = m;
             return m;
         }
@@ -59,6 +61,8 @@ namespace MadMax.Animals
             Ellipsoid(b, new Vector3(0f, cy, 0f), new Vector3(W * 0.5f, D * 0.5f, L * 0.5f), 2.4f, p =>
             {
                 if (d.Has("spots") && Pal.Hash(p.x / 3, p.y / 3, p.z / 3, seed) > 0.62f) return d.Accent.ramp[Mathf.Min(d.Accent.ramp.Length - 1, 1)];
+                if (d.Has("shell") && p.y >= cy - D * 0.2f) return ((p.z + 64) % 3) == 0 ? accent(p) : coat(p);                       // armadillo bands
+                if (d.Has("beads") && p.y >= cy - D * 0.2f && Pal.Hash(p.x, p.y, p.z, seed) > 0.55f) return accent(p);                  // gila beads
                 if (p.y < cy - D * 0.2f) return belly(p);
                 if (d.id.Contains("boar") && p.x == 0 && p.y >= cy + D * 0.3f) return accent(p);
                 return coat(p);
@@ -89,7 +93,8 @@ namespace MadMax.Animals
             foreach (int sx in new[] { -1, 1 })
             {
                 int x = sx * Mathf.Max(1, Mathf.RoundToInt(hs * 0.3f));
-                if (d.Has("ears_long")) h.Box(x + sx, top - 2, ez0, x + sx * 2, top - 1, ez0 + 1, coat);                            // floppy ears
+                if (d.Has("ears_tall")) h.Box(x, top + 1, ez0 - 1, x, top + 4, ez0, coat);                                            // rabbit ears
+                else if (d.Has("ears_long")) h.Box(x + sx, top - 2, ez0, x + sx * 2, top - 1, ez0 + 1, coat);                            // floppy ears
                 else if (d.Has("ears_up")) h.Box(x, top + 1, ez0, x, top + 2, ez0, coat);
                 if (d.Has("horns"))
                 {
@@ -98,6 +103,14 @@ namespace MadMax.Animals
                     else if (d.id == "goat") { h.Tube(new Vector3(x, top, ez0 + 1), new Vector3(x, top + 3, ez0 - 1), 0.6f, hr); h.Tube(new Vector3(x, top + 3, ez0 - 1), new Vector3(x * 1.4f, top + 1, ez0 - 3), 0.5f, hr); }
                     else h.Tube(new Vector3(x, top - 1, ez0 + 1), new Vector3(x * 2.4f, top + 1, ez0 + 1), 0.6f, hr);
                 }
+                if (d.Has("antlers"))
+                {
+                    var ar = Pal.Ramp(Pal.Wood, 3, 3113);
+                    var b0 = new Vector3(x, top, ez0); var b1 = new Vector3(x * 2.2f, top + 4, ez0 - 1); var b2 = new Vector3(x * 2.6f, top + 7, ez0 - 3);
+                    h.Tube(b0, b1, 0.5f, ar); h.Tube(b1, b2, 0.45f, ar);
+                    h.Tube(b1, b1 + new Vector3(0f, 2f, 2f), 0.4f, ar); h.Tube(Vector3.Lerp(b1, b2, 0.6f), Vector3.Lerp(b1, b2, 0.6f) + new Vector3(-x * 0.3f, 2f, 1.5f), 0.4f, ar);   // tines
+                }
+                if (d.Has("mask")) h.Box(sx * Mathf.Max(1, Mathf.RoundToInt(hs * 0.42f)) - (sx > 0 ? 1 : 0), Mathf.RoundToInt(hc.y + hs * 0.12f) - 1, Mathf.RoundToInt(hc.z + hs * 0.15f) - 1, sx * Mathf.Max(1, Mathf.RoundToInt(hs * 0.42f)) + (sx > 0 ? 0 : 1), Mathf.RoundToInt(hc.y + hs * 0.12f), Mathf.RoundToInt(hc.z + hs * 0.15f), accent);   // bandit mask
                 if (d.Has("tusks"))
                 {
                     var tr = Pal.Ramp(d.Has("glow") ? Pal.Moss : Pal.Cream, d.Has("glow") ? 4 : 3, 3107);
@@ -121,17 +134,33 @@ namespace MadMax.Animals
             int up = Mathf.RoundToInt(D * 0.35f);
             var lg = new VoxelGrid();
             int th = W >= 6 ? 1 : 0;
-            lg.Box(-th, -Lg / 2, -th, th, up, th, coat);
-            lg.Box(0, -Lg + 1, 0, 0, -Lg / 2, 0, coat);
-            lg.Box(-th, -Lg, -th, th, -Lg, th + (paws ? 1 : 0), hoof);
-            m.leg = Build(lg, "AnimalLeg_" + d.id, s);
             float lx = Mathf.Max(1f, W * 0.5f - 1f), lzf = L * 0.5f - Mathf.Max(2f, L * 0.18f), lzb = -L * 0.5f + Mathf.Max(2f, L * 0.18f);
+            if (d.Has("lizard"))
+            {
+                // sprawled: out sideways, elbow, down to splayed toes (right side; the left ones are mirrored)
+                float reach = Mathf.Max(2f, W * 0.45f);
+                lg.Tube(Vector3.zero, new Vector3(reach, 0.4f, 0f), 0.6f, coat);
+                lg.Tube(new Vector3(reach, 0.4f, 0f), new Vector3(reach + 0.8f, -Lg, 0.4f), 0.5f, coat);
+                lg.Box(Mathf.RoundToInt(reach), -Lg, 0, Mathf.RoundToInt(reach) + 2, -Lg, 1, accent);
+                m.sprawl = true; m.legFan = new[] { 30f, 30f, -25f, -25f };
+                lx = W * 0.4f;
+            }
+            else
+            {
+                lg.Box(-th, -Lg / 2, -th, th, up, th, coat);
+                lg.Box(0, -Lg + 1, 0, 0, -Lg / 2, 0, coat);
+                lg.Box(-th, -Lg, -th, th, -Lg, th + (paws ? 1 : 0), hoof);
+            }
+            m.leg = Build(lg, "AnimalLeg_" + d.id, s);
             m.legRoots = new[] { new Vector3(-lx, Lg, lzf) * s, new Vector3(lx, Lg, lzf) * s, new Vector3(-lx, Lg, lzb) * s, new Vector3(lx, Lg, lzb) * s };
             m.legLen = Lg * s;
 
             // tail
             var t = new VoxelGrid();
-            if (d.id == "horse") t.Tube(Vector3.zero, new Vector3(0f, -d.tail * 0.85f, -d.tail * 0.35f), 1.1f, accent);
+            if (d.Has("lizard")) { t.Tube(Vector3.zero, new Vector3(0f, -0.4f, -d.tail * 0.5f), Mathf.Max(0.7f, D * 0.35f), coat); t.Tube(new Vector3(0f, -0.4f, -d.tail * 0.5f), new Vector3(0f, -0.8f, -d.tail), 0.45f, d.Has("beads") ? accent : coat); }
+            else if (d.Has("rings")) for (int i = 0; i < d.tail; i++) t.Tube(new Vector3(0f, i * 0.25f, -i), new Vector3(0f, (i + 1) * 0.25f, -i - 1), 1.1f, i % 2 == 0 ? accent : coat);   // ringed raccoon tail
+            else if (d.Has("shell")) t.Tube(Vector3.zero, new Vector3(0f, -0.5f, -d.tail), 0.6f, accent);
+            else if (d.id == "horse") t.Tube(Vector3.zero, new Vector3(0f, -d.tail * 0.85f, -d.tail * 0.35f), 1.1f, accent);
             else if (d.Has("curl")) { t.Set(0, 0, 0, coat); t.Set(0, 1, -1, coat); t.Set(0, 0, -2, coat); t.Set(0, -1, -1, coat); }
             else if (d.id == "rat") t.Tube(Vector3.zero, new Vector3(0f, -1f, -d.tail), 0.4f, Pal.Ramp(Pal.Pink, 1, 3108));
             else if (paws) t.Tube(Vector3.zero, new Vector3(0f, d.tail * 0.3f, -d.tail * 0.9f), 0.7f, coat);

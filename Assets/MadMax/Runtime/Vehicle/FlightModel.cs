@@ -9,7 +9,10 @@ namespace MadMax.Vehicles
     /// A pusher propeller converts engine rpm into thrust that fades with airspeed. The gyrocopter's rotor spins up
     /// from the airflow (autorotation, pre-rotated on the ground) and lifts along its tilted axis; stick input tilts
     /// the disc. W/S move the throttle lever, A/D bank (with coordinated rudder, nose-wheel steering on the ground),
-    /// Space pulls up, Ctrl pushes down. Hitting anything hard throws the pilot out and wrecks the engine.</summary>
+    /// Space pulls up, Ctrl pushes down. On the ground (user additions): S pulls the lever back fast and brakes, A/D
+    /// steer the nose wheel with differential braking (tight taxi turns, gentler at speed), and holding S at a standstill
+    /// with the lever closed reverses the propeller pitch to back up (<see cref="Reversing"/>, ≤ 3 m/s).
+    /// Hitting anything hard throws the pilot out and wrecks the engine.</summary>
     [DefaultExecutionOrder(-15)]   // before VehicleDriver: throttle, brakes and nose wheel for this step
     public class FlightModel : MonoBehaviour
     {
@@ -33,6 +36,9 @@ namespace MadMax.Vehicles
         /// <summary>Close to the stall (wing AoA over ~13°, or the rotor slowing): the stall horn.</summary>
         public bool StallWarning => Airborne && (Stalled || (kind == Kind.Trike ? AoA > 13f : RotorRpm < 260f));
         public float Heading => transform.eulerAngles.y;
+        /// <summary>Taxiing backwards on reversed propeller pitch.</summary>
+        public bool Reversing { get; private set; }
+        float reverseHold;
 
         struct Surface
         {
@@ -88,20 +94,25 @@ namespace MadMax.Vehicles
             float dt = Time.fixedDeltaTime;
             bool pilot = v.Occupied;
 
-            // the throttle is a lever: W/S move it; on the ground with the lever closed S brakes
-            Throttle = pilot ? Mathf.Clamp01(Throttle + throttleAxis * 0.6f * dt) : 0f;
-            v.throttleInput = Throttle;
-            v.brakeInput = pilot && throttleAxis < -0.5f && Throttle < 0.02f ? 1f : 0f;
-            v.handbrake = !pilot;
-            v.steerInput = rollInput;
-            pilotPitch = Mathf.MoveTowards(pilotPitch, pilot ? pitchInput : 0f, 4f * dt);
-            pilotRoll = Mathf.MoveTowards(pilotRoll, pilot ? rollInput : 0f, 4f * dt);
-
             var terrain = MadMax.World.DeformableTerrain.Instance;
             var pos = transform.position;
             float ground = terrain ? terrain.Height(pos.x, pos.z) : 0f;
             Altitude = pos.y - ground;
             Airborne = Altitude > 1.2f;
+            float rollSpeed = Vector3.Dot(rb.linearVelocity, transform.forward);
+
+            // the throttle is a lever: W/S move it. On the ground S snaps it back and brakes; held at a standstill with
+            // the lever closed it reverses the propeller pitch
+            bool pull = pilot && throttleAxis < -0.1f;
+            Throttle = pilot ? Mathf.Clamp01(Throttle + throttleAxis * (pull && !Airborne ? 2f : 0.6f) * dt) : 0f;
+            reverseHold = pull && !Airborne && Throttle < 0.02f ? reverseHold + dt : 0f;
+            Reversing = pull && !Airborne && Throttle < 0.02f && (Reversing || (rollSpeed < 0.8f && reverseHold > 0.45f));
+            v.throttleInput = Reversing ? 0.35f : Throttle;
+            v.brakeInput = pull && !Reversing && (!Airborne || Throttle < 0.02f) ? Mathf.Clamp01(-throttleAxis) : 0f;
+            v.handbrake = !pilot;
+            v.steerInput = rollInput;
+            pilotPitch = Mathf.MoveTowards(pilotPitch, pilot ? pitchInput : 0f, 4f * dt);
+            pilotRoll = Mathf.MoveTowards(pilotRoll, pilot ? rollInput : 0f, 4f * dt);
             var wind = MadMax.World.Fx.Wind; wind.y = 0f;
             wind *= Mathf.Clamp01(0.25f + Altitude / 25f);                                             // the wind gradient: calmer near the ground
             var vel = rb.linearVelocity;
@@ -115,6 +126,7 @@ namespace MadMax.Vehicles
             float rpmFrac = engine ? Mathf.Clamp01(v.Rpm / engine.maxRpm) : 0f;
             float power = sys ? sys.PowerFactor : 1f;
             float thrust = maxThrust * rpmFrac * rpmFrac * power * Mathf.Clamp01(1f - fwdAir / propSpeed) * (Throttle > 0.02f ? 1f : 0f);
+            if (Reversing) thrust = -maxThrust * 0.3f * power * Mathf.Clamp01(-throttleAxis) * Mathf.Clamp01(1f + rollSpeed / 3f);   // backing up, ≤ 3 m/s
             rb.AddForceAtPosition(transform.forward * thrust, transform.TransformPoint(propAt));
 
             // lifting surfaces
@@ -132,7 +144,13 @@ namespace MadMax.Vehicles
             Sideslip = Airspeed > 3f ? Mathf.Atan2(Vector3.Dot(air, transform.right), Mathf.Max(1f, Vector3.Dot(air, transform.forward))) * Mathf.Rad2Deg : 0f;
             if (StallWarning && GetComponent<VehicleDriver>().Occupied) MadMax.Audio.Sfx.Loop(this, "beep", 0.5f, 1f, 20f);
             if (kind == Kind.Gyro && RotorRpm > 20f) MadMax.Audio.Sfx.Loop(transform, "rotor", Mathf.Clamp01(RotorRpm / 400f) * 0.7f, Mathf.Clamp(RotorRpm / 300f, 0.4f, 2f), 90f);   // blade slap
-            if (!Airborne) rb.AddTorque(-transform.up * yawRate * 4f, ForceMode.Acceleration);
+            if (!Airborne)
+            {
+                // taxiing: nose wheel + differential brakes turn it tightly when slow, gently on the take-off roll
+                float maxRate = Mathf.Lerp(65f, 10f, Mathf.Clamp01(Mathf.Abs(rollSpeed) / 18f)) * Mathf.Deg2Rad;
+                float want = (pilot ? rollInput : 0f) * maxRate * (rollSpeed < -0.2f ? -1f : 1f);
+                rb.AddTorque(transform.up * (want - yawRate) * 5f, ForceMode.Acceleration);
+            }
             else if (Airspeed > 6f && !sim)
             {
                 // turn coordinator: the nose swings onto the flight path (what rudder work does), killing sideslip

@@ -13,7 +13,7 @@ namespace MadMax.World
         public byte feature;         // Site ground: 0 none, 1 rock (mesa slopes), 2 concrete floor (bunker), 3 gravel (tunnel floor)
     }
 
-    public enum Biome { Desert, Forest, Tropical, Nuclear, Village, Town, City }
+    public enum Biome { Desert, Forest, Tropical, Nuclear, Village, Town, City, Tundra }
 
     public class Settlement
     {
@@ -39,14 +39,14 @@ namespace MadMax.World
         public readonly RoadNetwork roads;
         readonly Vector2[] o = new Vector2[8];
 
-        public WorldGen(int seed, float halfSize = 1024f)
+        public WorldGen(int seed, float halfSize = HalfX)
         {
             this.seed = seed;
             this.halfSize = halfSize;
             var r = new System.Random(seed);
             for (int i = 0; i < o.Length; i++) o[i] = new Vector2((float)r.NextDouble() * 5000f, (float)r.NextDouble() * 5000f);
             biomeScale = MadMax.Game.GameRules.Current != null ? Mathf.Max(0.3f, MadMax.Game.GameRules.Current.biomeScale) : 1f;
-            roads = new RoadNetwork(this, r);
+            roads = new RoadNetwork(this, r, 40);
             // settlements on the road network's towns: the start town is a town, at least one city
             for (int i = 0; i < roads.towns.Count; i++)
             {
@@ -94,11 +94,10 @@ namespace MadMax.World
             // keep the start area desert so the opening scene is the classic wasteland
             float start = Mathf.Clamp01(1f - new Vector2(x, z).magnitude / 160f);
             float fallout = Mathf.PerlinNoise(x * f * 1.3f + o[4].x + 311f, z * f * 1.3f + o[4].y);
-            if (fallout > 0.73f && start <= 0f) return Biome.Nuclear;
-            float moist = Mathf.PerlinNoise(x * f + o[7].x, z * f + o[7].y) - start * 0.5f;
+            if (fallout > 0.73f && start <= 0f && Mathf.Abs(Latitude(z)) < 60f) return Biome.Nuclear;
+            float moist = Mathf.PerlinNoise(x * f + o[7].x, z * f + o[7].y);
             float heat = Mathf.PerlinNoise(x * f * 0.7f + o[4].x, z * f * 0.7f + o[4].y + 97f);
-            if (moist > 0.56f) return heat > 0.5f ? Biome.Tropical : Biome.Forest;
-            return Biome.Desert;
+            return ClimateBiome(x, z, moist, heat, start);                                      // latitude bands (planet)
         }
 
         /// <summary>Settlement covering this point (null = wilderness). Edge is jittered.</summary>
@@ -150,7 +149,7 @@ namespace MadMax.World
             var b = NaturalBiome(p.x, p.y);
             float chance = b == Biome.Tropical ? 0.8f : b == Biome.Forest ? 0.6f : b == Biome.Nuclear ? 0.45f : 0.1f;
             lake = null;
-            bool clear = SettlementAt(p.x, p.y) == null && p.magnitude > 90f && Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.y)) < halfSize - 120f;
+            bool clear = SettlementAt(p.x, p.y) == null && p.magnitude > 90f && Habitable(p.x, p.y, 0.6f);
             if (clear && rnd.NextDouble() < chance)
             {
                 float radius = b == Biome.Desert ? 12f + (float)rnd.NextDouble() * 10f : 18f + (float)rnd.NextDouble() * 30f;
@@ -207,9 +206,7 @@ namespace MadMax.World
             float b = Basin(x, z);
             h += (P(x, z, 0.11f, 3) - 0.5f) * 0.45f * (1f - b);
             h -= b * 3.5f;
-            float edge = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z)) - (halfSize - 60f);
-            if (edge > 0) h += edge * edge * 0.02f;
-            return h;
+            return PlanetHeight(x, z, h);                                                       // coasts, sea floor, polar walls
         }
 
         public float BaseWetness(float x, float z)
@@ -263,6 +260,7 @@ namespace MadMax.World
                     s.shore = Mathf.Clamp01(1f - Mathf.Abs(t - 1f) / 0.25f);
                     wet = Mathf.Max(wet, Mathf.Clamp01(1.3f - t) * 0.9f);
                 }
+                SeaAt(x, z, h, ref s, ref wet);
                 if (s.biome == Biome.Tropical) wet = Mathf.Clamp01(wet + 0.15f);
                 if (rivers.Count > 0) ford = ShapeRiver(x, z, ref h, ref s, ref wet);
                 var site = SiteAt(x, z);

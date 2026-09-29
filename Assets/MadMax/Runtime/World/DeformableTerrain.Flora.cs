@@ -80,10 +80,10 @@ namespace MadMax.World
             ch.floraGo = null; ch.floraMesh = null; ch.floraKey = -1;
         }
 
-        static int FloraKey()
+        static int FloraKey(float z)
         {
-            int snow = Mathf.RoundToInt(Weather.Snow * 3f);
-            bool frost = Weather.Temperature < 1f;
+            int snow = Mathf.RoundToInt(Weather.SnowAt(z) * 3f);                                  // latitude snow (planet)
+            bool frost = Weather.TemperatureAt(z) < 1f;
             bool bloom = Weather.Wetness > 0.35f;
             return snow | (frost ? 4 : 0) | (bloom ? 8 : 0);
         }
@@ -101,7 +101,7 @@ namespace MadMax.World
                 foreach (var c in focusChunks) if (Mathf.Max(Mathf.Abs(ch.c.x - c.x), Mathf.Abs(ch.c.y - c.y)) <= reach + 1) { near = true; break; }
                 if (!near) DropFlora(ch);
             }
-            int key = FloraKey(), built = 0;
+            int built = 0;
             float now = Time.time;
             var fc0 = focusChunks[0];
             foreach (var o in offsets)
@@ -109,6 +109,7 @@ namespace MadMax.World
                 if (built >= floraBuildsPerFrame) break;
                 if (o.magnitude * ChunkWorld > r + ChunkWorld) continue;
                 if (!chunks.TryGetValue(fc0 + o, out var ch) || !ch.go) continue;
+                int key = FloraKey((ch.c.y + 0.5f) * ChunkWorld);
                 bool need = !ch.floraGo || ch.floraKey != key || ((ch.floraDirty || ch.floraNext > 0f) && now >= ch.floraNext);
                 if (!need) continue;
                 BuildFlora(ch, key);
@@ -118,12 +119,12 @@ namespace MadMax.World
 
         static float RegrowDays(Biome b) => b switch
         {
-            Biome.Tropical => 0.8f, Biome.Forest => 1.2f, Biome.Village => 1f, Biome.Nuclear => 2f, Biome.Town => 2.5f, _ => 3f
+            Biome.Tundra => 5f, Biome.Tropical => 0.8f, Biome.Forest => 1.2f, Biome.Village => 1f, Biome.Nuclear => 2f, Biome.Town => 2.5f, _ => 3f
         };
 
         static float BaseDensity(Biome b) => b switch
         {
-            Biome.Tropical => 0.62f, Biome.Forest => 0.46f, Biome.Village => 0.5f, Biome.Nuclear => 0.2f, Biome.Town => 0.12f, Biome.City => 0.035f, _ => 0.075f
+            Biome.Tundra => 0.1f, Biome.Tropical => 0.62f, Biome.Forest => 0.46f, Biome.Village => 0.5f, Biome.Nuclear => 0.2f, Biome.Town => 0.12f, Biome.City => 0.035f, _ => 0.075f
         };
 
         void BuildFlora(Chunk ch, int key)
@@ -156,9 +157,11 @@ namespace MadMax.World
                 float wetBase = ch.wet[k];
                 float yMin = Mathf.Min(Mathf.Min(ch.h[k] + ch.d[k], ch.h[k + 1] + ch.d[k + 1]), Mathf.Min(ch.h[k + V] + ch.d[k + V], ch.h[k + V + 1] + ch.d[k + V + 1]));
                 float water = ch.water[k];
+                bool sea = !float.IsNaN(water) && Mathf.Abs(water - WorldGen.SeaLevel) < 0.01f;           // salt shores: bare beach sand
+                if (sea && ch.shore[k] > 0.15f) continue;
                 bool wetFoot = !float.IsNaN(water) && yMin < water + Weather.LakeRise + 0.05f;
                 bool shore = !wetFoot && ch.shore[k] > 0.3f && biome != Biome.Desert;
-                if (wetFoot && (yMin < water + Weather.LakeRise - 0.35f || biome == Biome.Desert)) continue;   // open water
+                if (wetFoot && (yMin < water + Weather.LakeRise - 0.35f || biome == Biome.Desert || sea)) continue;   // open water
 
                 // crop rows in village fields (same pattern as the ground colour)
                 bool crop = false;

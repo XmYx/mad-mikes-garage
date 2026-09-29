@@ -98,9 +98,14 @@ namespace MadMax.Vehicles
         }
 
         /// <summary>Turn the key: a second or so on the starter, then it catches or it doesn't.</summary>
+        /// <summary>A sealed hull breathes through its snorkel (submarine): no flooding inside; <see cref="noAir"/> = the
+        /// snorkel is under water, so the diesel can't start (and stops).</summary>
+        [System.NonSerialized] public bool sealedHull, noAir;
+
         public void Crank()
         {
             if (Started || Cranking || Time.time < nextCrank || !driver || !driver.Engine) return;
+            if (noAir) { if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NO AIR FOR THE DIESEL: SURFACE TO RUN IT"); nextCrank = Time.time + 2f; return; }
             var ep = driver.Engine.GetComponent<VehiclePart>();
             if (ep && ep.partId == "engine_pedals") { Started = true; return; }
             crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f);
@@ -202,7 +207,8 @@ namespace MadMax.Vehicles
             float lvl = terrain ? terrain.WaterLevel(ePos.x, ePos.z) : float.NaN;
             if ((snorkelCheck -= dt) <= 0f) { snorkelCheck = 1f; snorkel = GetComponentInChildren<Snorkel>(); }
             float intake = snorkel && snorkel.Mounted ? Mathf.Max(ePos.y + 0.2f, snorkel.Intake.y) : ePos.y + 0.2f;      // a snorkel breathes high
-            bool flooded = !float.IsNaN(lvl) && intake < lvl;
+            bool flooded = !sealedHull && !float.IsNaN(lvl) && intake < lvl;
+            if (noAir && Started) Stop();
             if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
             UpdateFire(dt, ePos, ref f);
             if (Started && (fuel <= 0f || seized || flooded || wrong)) Started = false;                           // stalled

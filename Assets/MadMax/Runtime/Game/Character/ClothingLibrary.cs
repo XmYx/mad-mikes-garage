@@ -22,8 +22,9 @@ namespace MadMax.Game
                 { "duster", (6f, -2f) }, { "poncho", (2f, 0.5f) }, { "hazmat", (3f, -4f) }, { "gasmask", (0.5f, -1f) }, { "sweater", (6f, -2f) }, { "overalls", (2.5f, -0.5f) },
                 { "cowboy", (0.5f, 3f) }, { "bomber", (7f, -2f) }, { "shemagh", (1f, 2f) }, { "fingerless", (0.8f, 0f) }, { "combat_boots", (2f, -0.5f) },
                 { "welding_mask", (0.5f, -1f) }, { "skull_mask", (0.5f, -0.5f) }, { "schoolbag", (0f, -0.3f) }, { "hikingpack", (0.5f, -0.8f) }, { "framepack", (0.5f, -1f) },
-                { "vest_scrap", (1f, -1.5f) }, { "vest_tyre", (1.5f, -1.5f) }, { "vest_kevlar", (1f, -1f) }, { "arm_guards", (0.5f, -0.5f) },
+                { "vest_scrap", (1f, -1.5f) }, { "vest_tyre", (1.5f, -1.5f) }, { "vest_chitin", (1f, -1f) }, { "vest_kevlar", (1f, -1f) }, { "arm_guards", (0.5f, -0.5f) },
                 { "gauntlets", (0.5f, -0.3f) }, { "shin_guards", (0.3f, -0.3f) }, { "moto_helmet", (1f, -1.5f) },
+                { "dive_helmet", (2f, -2f) }, { "dive_suit", (7f, -3f) }, { "air_tank", (0f, -0.5f) },
             };
             foreach (var d in l) if (t.TryGetValue(d.id, out var v)) { d.warmth = v.w; d.cooling = v.c; }
             return l;
@@ -103,6 +104,36 @@ namespace MadMax.Game
                         g.CylZ(0, y, 1.4f, 4, 6, p => p.z == 6 ? Pal.Black[0] : Pal.Pick(Pal.Olive, p, 822, 1));
                         return g;
                     }),
+                // ---- user additions: hard-hat diving (a brass helmet on a bolted collar, a canvas suit, an air tank)
+                Def("dive_helmet", "BRASS DIVING HELMET", ClothingSlot.Head, 2.6f, (v, p, t) => Pal.Pick(Pal.Bronze, v, 890, 3), (BP.Head, Full))
+                    .Gear(waterproof: 1f, durability: 3f, style: "diver").Prop(BP.Head, a =>
+                    {
+                        var g = new VoxelGrid();
+                        float cy = 3.4f * a.height;
+                        for (int x = -6; x <= 6; x++)
+                        for (int y = -3; y <= 10; y++)
+                        for (int z = -6; z <= 6; z++)
+                        {
+                            float r = Mathf.Sqrt(x * x + (y - cy) * (y - cy) + z * z);
+                            if (r > 6.2f || r < 5f) continue;
+                            bool port = (z > 3 && Mathf.Abs(x) <= 2 && Mathf.Abs(y - cy) <= 2) || (Mathf.Abs(x) > 4 && Mathf.Abs(z) <= 1 && Mathf.Abs(y - cy) <= 1);
+                            bool rim = (z > 3 && Mathf.Abs(x) <= 3 && Mathf.Abs(y - cy) <= 3) && !port;
+                            g.Set(x, y, z, port ? Pal.Solid(Pal.Glass[3]) : rim ? Pal.Solid(Pal.Bronze[1]) : p => Pal.Pick(Pal.Bronze, p, 891, 3));
+                        }
+                        for (int x = -7; x <= 7; x++) for (int z = -6; z <= 6; z++) if (x * x + z * z <= 42) g.Set(x, -3, z, (x + z) % 4 == 0 ? Pal.Solid(Pal.Chrome[2]) : Pal.Solid(Pal.Bronze[1]));   // bolted collar
+                        g.Tube(new Vector3(0, cy + 1f, -6), new Vector3(0, cy - 2f, -9), 0.6f, Pal.Solid(Pal.Black[1]));   // air hose
+                        return g;
+                    }),
+                Def("dive_suit", "CANVAS DIVING SUIT", ClothingSlot.Outer, 2.0f, (v, p, t) => (p == BP.FootL || p == BP.FootR) ? Pal.Black[0] : t > 0.9f && (p == BP.ForearmL || p == BP.ForearmR) ? Pal.Black[1] : Weave(v, Pal.Cream, 892, 1),
+                    (BP.Chest, Full), (BP.Pelvis, Full), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, Full), (BP.ForearmR, Full), (BP.HandL, Full), (BP.HandR, Full),
+                    (BP.ThighL, Full), (BP.ThighR, Full), (BP.ShinL, Full), (BP.ShinR, Full), (BP.FootL, Full), (BP.FootR, Full)).Gear(waterproof: 1f, durability: 1.6f, style: "diver"),
+                Def("air_tank", "DIVER'S AIR TANK", ClothingSlot.Pack, 0.7f, Straps(Pal.Black), (BP.Chest, new Vector2(0.3f, 0.98f))).Prop(BP.Chest, a =>
+                    {
+                        var g = new VoxelGrid();
+                        foreach (int x in new[] { -2, 2 }) g.CylY(x, -6, 2.2f, 0, 14, p => p.y == 14 ? Pal.Chrome[3] : p.y % 5 == 0 ? Pal.Black[1] : Pal.Crimson[2]);
+                        g.Box(-3, 15, -6, 3, 15, -6, Pal.Solid(Pal.Chrome[2]));                        // valve bar
+                        return g;
+                    }),
                 Def("sweater", "WOOL SWEATER", ClothingSlot.Torso, 0.9f, (v, p, t) => p == BP.Chest && t > 0.55f && t < 0.7f && ((v.x + v.y) & 1) == 0 ? Pal.Cream[3] : Weave(v, Pal.Moss, 823, 2),
                     (BP.Chest, Full), (BP.Pelvis, new Vector2(0, 0.4f)), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, new Vector2(0, 0.95f)), (BP.ForearmR, new Vector2(0, 0.95f))),
                 Def("overalls", "WORK OVERALLS", ClothingSlot.Legs, 0.8f, (v, p, t) =>
@@ -161,6 +192,14 @@ namespace MadMax.Game
                         return (row + (v.x > 0 ? 1 : 0)) % 2 == 0 ? Pal.Pick(Pal.Metal, v, 850 + row, 2) : Pal.Pick(Pal.Rust, v, 855 + row, 2);
                     },
                     (BP.Chest, Full), (BP.Pelvis, new Vector2(0f, 0.3f))).Gear(durability: 3f, style: "raider").Armor(0.55f, 0.4f, 0.3f, 0.1f, 0.25f, 7f, 0.6f, Scrap),
+                Def("vest_chitin", "CHITIN VEST", ClothingSlot.Vest, 2.3f, (v, p, t) =>
+                    {
+                        if (p == BP.Chest && t > 0.84f) return (Mathf.Abs(v.x) == 2 || Mathf.Abs(v.x) == 3) ? Pal.Wood[0] : default;   // hide straps
+                        int row = Mathf.FloorToInt(t * 6f);
+                        if (((v.x + 64) % 4 == 0) || row % 2 == 0 && v.y % 3 == 0) return Pal.Black[1];                   // plate seams
+                        return Pal.Pick(row % 2 == 0 ? Pal.Rust : Pal.Ochre, v, 865 + row, 2);
+                    },
+                    (BP.Chest, Full), (BP.Pelvis, new Vector2(0f, 0.3f))).Gear(durability: 2.6f, style: "raider").Armor(0.5f, 0.35f, 0.3f, 0.15f, 0.2f, 3.5f, 0.2f, Leather),
                 Def("vest_tyre", "TYRE-RUBBER VEST", ClothingSlot.Vest, 2.4f, (v, p, t) =>
                     {
                         if (p == BP.Chest && t > 0.84f) return (Mathf.Abs(v.x) == 2 || Mathf.Abs(v.x) == 3) ? Pal.Black[0] : default;

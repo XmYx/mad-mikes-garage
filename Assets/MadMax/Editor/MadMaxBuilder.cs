@@ -125,6 +125,7 @@ namespace MadMax.EditorTools
                                           vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
                                           vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"],
                                           vehicles["Ultralight"], vehicles["Gyrocopter"] };
+            game.boatPrefabs = new[] { vehicles["Raft"], vehicles["Skiff"], vehicles["Trawler"], vehicles["Houseboat"], vehicles["IronEel"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
             game.cameraRig = rig;
@@ -207,7 +208,8 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
                                       VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy(),
                                       VehicleDesigns.DirtBike(), VehicleDesigns.Chopper(), VehicleDesigns.Bicycle(), VehicleDesigns.SidecarOutfit(),
-                                      VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter() })
+                                      VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter(),
+                                      VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel() })
             {
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
                 d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
@@ -391,6 +393,20 @@ namespace MadMax.EditorTools
                 var prop = d.spinners.Find(sp => sp.name == "Prop");
                 if (prop.grid != null) fm.propAt = (Vector3)prop.pivot * S;
             }
+            if (d.boat != null)
+            {
+                // watercraft (user additions): the hull floats and the prop pushes; the Eel also dives
+                var bm = root.AddComponent<BoatModel>();
+                bm.kind = d.boat == "raft" ? BoatModel.Kind.Raft : d.boat == "skiff" ? BoatModel.Kind.Skiff : d.boat == "trawler" ? BoatModel.Kind.Trawler : d.boat == "houseboat" ? BoatModel.Kind.Houseboat : BoatModel.Kind.Submarine;
+                bm.hull = d.boatHull; bm.draft = d.boatDraft; bm.maxThrust = d.boatThrust; bm.rudder = d.boatRudder;
+                int minY = int.MaxValue; foreach (var k in d.body.voxels.Keys) minY = Mathf.Min(minY, k.y);
+                bm.keelY = minY * S;
+                var bprop = d.spinners.Find(sp => sp.name == "Prop");
+                var es = d.sockets.Find(sk => sk.accepts == PartCategory.Engine);
+                bm.propAt = bprop.grid != null ? (Vector3)bprop.pivot * S : es != null ? ((Vector3)es.position + new Vector3(0f, -13f, -8f)) * S : Vector3.zero;
+                bm.deckAt = (Vector3)d.boatDeck * S;
+                if (d.boat == "sub") root.AddComponent<Submarine>();
+            }
             if (d.bike) { var bb = root.AddComponent<BikeBalance>(); bb.sidecar = d.sidecar; bb.maxLean = d.name == "Chopper" ? 36f : d.name == "Bicycle" ? 34f : 44f; }
             var sys = root.AddComponent<VehicleSystems>();
             sys.fuelCapacity = d.fuelL; sys.oilCapacity = d.oilL; sys.coolantCapacity = d.coolantL;
@@ -414,6 +430,7 @@ namespace MadMax.EditorTools
                 space.obstacles = i.obstacles.ConvertAll(b => new Bounds(VoxelBoxCenter(b), (Vector3)b.size * S)).ToArray();
                 space.furnishings = i.furniture.ConvertAll(x => new InteriorSpace.Furnishing { id = x.id, position = x.pos * S, euler = x.euler }).ToArray();
                 space.furnitureMaterial = mat;
+                space.airtight = d.airtight;
                 if (d.medical) root.AddComponent<MedicalBay>();
             }
             var result = PrefabUtility.SaveAsPrefabAsset(root, $"{VehicleDir}/{d.name}.prefab");

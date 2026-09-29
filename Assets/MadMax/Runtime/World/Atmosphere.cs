@@ -99,6 +99,7 @@ namespace MadMax.World
                 case Biome.Forest: tint = new Vector3(0.96f, 1.02f, 0.98f); sat = 1.05f; con = 1f; break;
                 case Biome.Tropical: tint = new Vector3(0.97f, 1.03f, 1f); sat = 1.15f; con = 1.02f; break;
                 case Biome.Nuclear: tint = new Vector3(0.95f, 1.06f, 0.86f); sat = 0.85f; con = 1.08f; break;
+                case Biome.Tundra: tint = new Vector3(0.93f, 0.98f, 1.06f); sat = 0.8f; con = 1.04f; break;
                 default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 1f; con = 1.03f; break;
             }
             float rain = Weather.Raining ? 1f : 0f, snow = Weather.Snowing ? 1f : 0f, night = DayNight.Darkness;
@@ -201,23 +202,53 @@ namespace MadMax.World
         {
             if (!cam || Application.isBatchMode) return;
             float dark = DayNight.Darkness;
+            float phase = DayNight.MoonPhase, lit = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI * 2f);
             bool show = SkyVisible && dark > 0.35f && !OccluderFadeUnderground;
             if (show && !stars) BuildSky();
             if (!stars) return;
             bool starsOn = show && CloudCover < 0.75f;
             if (stars.gameObject.activeSelf != starsOn) stars.gameObject.SetActive(starsOn);
-            if (moon.gameObject.activeSelf != show) moon.gameObject.SetActive(show);
+            var dir = DayNight.MoonDirection;
+            bool moonUp = show && dir.y > -0.02f && lit > 0.06f;
+            if (moon.gameObject.activeSelf != moonUp) moon.gameObject.SetActive(moonUp);
             if (!show) return;
             var c = cam.transform.position;
             stars.position = c;
-            // the moon rises in the east at dusk and sets in the west at dawn
-            float h = DayNight.Hours, a = ((h + 24f - 18f) % 24f) / 12f * Mathf.PI;
-            var dir = new Vector3(Mathf.Cos(a), Mathf.Sin(a) * 0.8f + 0.12f, 0.35f).normalized;
+            if (!moonUp) return;
+            // the moon on its orbit (DayNight), lit on the sun's side: eight phase meshes from crescent to full
+            int pi = Mathf.Clamp(Mathf.RoundToInt(phase * 8f) % 8, 0, 7);
+            if (moonPhaseShown != pi) { moonPhaseShown = pi; moon.GetComponent<MeshFilter>().sharedMesh = MoonMesh(pi); }
             moon.position = c + dir * 100f;
             moon.rotation = Quaternion.LookRotation(-dir);
         }
 
         static bool OccluderFadeUnderground => MadMax.Game.OccluderFade.Underground;
+
+        int moonPhaseShown = -1;
+        static readonly Mesh[] moonMeshes = new Mesh[8];
+
+        /// <summary>The moon disc at phase index 0..7 (0 new, 4 full): the unlit side is dropped (waxing lit on the right).</summary>
+        static Mesh MoonMesh(int phase)
+        {
+            if (moonMeshes[phase]) return moonMeshes[phase];
+            float t = phase / 8f;                                    // 0..1 through the month
+            float k = Mathf.Cos(t * Mathf.PI * 2f);                  // terminator: +1 new .. -1 full
+            bool waxing = t < 0.5f;
+            var mg = new VoxelGrid();
+            for (int x = -6; x <= 6; x++)
+            for (int y = -6; y <= 6; y++)
+            {
+                if (x * x + y * y > 36) continue;
+                float half = Mathf.Sqrt(Mathf.Max(0f, 36f - y * y));
+                float u = half > 0f ? x / half : 0f;                  // -1 left limb .. +1 right limb
+                bool lit = waxing ? u > k : u < -k;
+                if (!lit) continue;
+                bool mare = (x - 2) * (x - 2) + (y - 1) * (y - 1) < 5 || (x + 2) * (x + 2) + (y + 3) * (y + 3) < 3 || (x + 1) * (x + 1) + (y - 3) * (y - 3) < 2;
+                mg.Set(x, y, 0, Pal.Solid(mare ? Pal.Cream[1] : Pal.Cream[4]));
+            }
+            if (mg.Count == 0) mg.Set(6, 0, 0, Pal.Solid(Pal.Cream[4]));
+            return moonMeshes[phase] = VoxelMesher.Build(mg, "Moon" + phase, 0.5f);
+        }
 
         void BuildSky()
         {

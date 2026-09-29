@@ -17,7 +17,7 @@ namespace MadMax.Building
             {
                 float sun = Mathf.Clamp01(1f - DayNight.Darkness * 1.1f);
                 float sky = (1f - 0.65f * Atmosphere.CloudCover) * (Weather.Raining ? 0.4f : 1f) * (1f - 0.8f * Storms.Dust);
-                float snow = Weather.Snow > 0.5f ? 0.3f : 1f;                                      // snow on the glass
+                float snow = Weather.LocalSnow > 0.5f ? 0.3f : 1f;                                      // snow on the glass
                 return sun * sky * snow;
             }
         }

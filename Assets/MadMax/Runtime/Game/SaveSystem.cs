@@ -22,6 +22,7 @@ namespace MadMax.Game
         public int towedBy = -1;
         public string cargo;               // machine bed / hopper contents
         public string radio;               // RadioReceiver state (on, station, volume)
+        public string sub;                 // Submarine state (battery, air, ballast, lamp)
         public string armor;               // VehicleArmor zones (material, condition)
         public string tuning;              // VehicleTuning settings
         public string paint;               // VehiclePaint colour,decal
@@ -99,6 +100,7 @@ namespace MadMax.Game
         public GameRules rules;
         public MadMax.RPG.CharacterStats stats;
         public string[] hotbar;
+        public float tankAir = -1f;                  // diving tank air (s); -1 = full (older saves)
         public List<string> pumpKeys = new List<string>(); public List<float> pumpUsed = new List<float>();
         public List<MadMax.World.DeformableTerrain.ChunkEdit> terrain = new List<MadMax.World.DeformableTerrain.ChunkEdit>();
     }

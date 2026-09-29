@@ -39,12 +39,14 @@ namespace MadMax.World
         public RoadNetwork(WorldGen world, System.Random rnd, int townCount = 14)
         {
             towns.Add(Vector2.zero);
-            float range = world.halfSize - 140f;
-            for (int tries = 0; towns.Count < townCount && tries < 4000; tries++)
+            // towns on the continents (planet): inland, off the ice, clear of the date line
+            float rx = WorldGen.HalfX - WorldGen.Meridian - 400f, z0 = WorldGen.ZOfLatitude(-64f), z1 = WorldGen.ZOfLatitude(64f);
+            for (int tries = 0; towns.Count < townCount && tries < 12000; tries++)
             {
-                var p = new Vector2(((float)rnd.NextDouble() * 2 - 1) * range, ((float)rnd.NextDouble() * 2 - 1) * range);
+                var p = new Vector2(((float)rnd.NextDouble() * 2 - 1) * rx, Mathf.Lerp(z0, z1, (float)rnd.NextDouble()));
+                if (!world.Habitable(p.x, p.y, 0.62f) || world.BaseHeight(p.x, p.y) < WorldGen.SeaLevel + 3f) continue;
                 bool ok = true;
-                foreach (var t in towns) if ((t - p).sqrMagnitude < 260f * 260f) { ok = false; break; }
+                foreach (var t in towns) if ((t - p).sqrMagnitude < 300f * 300f) { ok = false; break; }
                 if (ok) towns.Add(p);
             }
 
@@ -63,7 +65,7 @@ namespace MadMax.World
                     if (d < best) { best = d; bi = i; bo = o; }
                 }
                 edges.Add((Mathf.Min(bi, bo), Mathf.Max(bi, bo)));
-                Build(world, rnd, towns[bi], towns[bo], true);
+                if (Dry(world, towns[bi], towns[bo])) Build(world, rnd, towns[bi], towns[bo], true);   // no roads across the sea
                 inTree.Add(bo); outTree.Remove(bo);
             }
             // extra loops -> dirt tracks
@@ -76,12 +78,19 @@ namespace MadMax.World
                     float d = (towns[i] - towns[j]).sqrMagnitude;
                     if (d < best) { best = d; bj = j; }
                 }
-                if (bj >= 0 && rnd.NextDouble() < 0.5)
+                if (bj >= 0 && rnd.NextDouble() < 0.5 && Dry(world, towns[i], towns[bj]))
                 {
                     edges.Add((Mathf.Min(i, bj), Mathf.Max(i, bj)));
                     Build(world, rnd, towns[i], towns[bj], false);
                 }
             }
+        }
+
+        /// <summary>The straight line between two towns stays on land (islands are reached by boat).</summary>
+        static bool Dry(WorldGen world, Vector2 a, Vector2 b)
+        {
+            for (int i = 1; i < 24; i++) { var p = Vector2.Lerp(a, b, i / 24f); if (world.ContinentNoise(p.x, p.y) < 0.54f) return false; }
+            return true;
         }
 
         void Build(WorldGen world, System.Random rnd, Vector2 a, Vector2 b, bool paved)

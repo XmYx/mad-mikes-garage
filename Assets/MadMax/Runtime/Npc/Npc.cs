@@ -274,6 +274,7 @@ namespace MadMax.Npc
                     break;
             }
             if (asleep) return;                                                               // indoors till morning
+            if (Time.time < chatUntil && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Gather) && !seated) { move = Vector3.zero; speed = 0f; faceTarget = chatAt; faceUntil = chatUntil; }   // chatting with a neighbour
             if (mode != Mode.Fight && mode != Mode.Surrender && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
             if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
 
@@ -850,6 +851,7 @@ namespace MadMax.Npc
                 var cp = v.Body.ClosestPointOnBounds(transform.position + Vector3.up * 0.8f);
                 if ((cp - (transform.position + Vector3.up * 0.8f)).sqrMagnitude > 0.5f * 0.5f) continue;
                 ApplyHit(transform.position + Vector3.up, v.Body.linearVelocity.normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
+                NpcVoice.CarHit(this);
                 if (mode == Mode.Dead) transform.position += v.Body.linearVelocity.normalized * 1.2f;
                 return;
             }
@@ -1028,6 +1030,13 @@ namespace MadMax.Npc
 
         /// <summary>Look at the speaker while a conversation is open.</summary>
         public void Attend(Vector3 at) { faceTarget = at; faceUntil = Time.time + 1f; if (mode == Mode.Wander) hasGoal = false; }
+
+        float chatUntil;
+        Vector3 chatAt;
+        /// <summary>Stop and face <paramref name="at"/> for a while: a chat with a neighbour (<see cref="NpcVoice"/>).</summary>
+        public void Chat(Vector3 at, float seconds) { chatAt = at; chatUntil = Time.time + seconds; }
+        /// <summary>Where the voice comes from.</summary>
+        public Transform Head => rig ? rig.Head : null;
 
         public void Heal() => health = maxHealth;
     }

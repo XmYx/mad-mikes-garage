@@ -38,7 +38,7 @@ namespace MadMax.Game
             if (w == null || resolved == w) return;
             resolved = w;
             var sites = new List<Site>();
-            w.SitesNear(Vector3.zero, w.halfSize * 1.5f, sites);
+            w.SitesNear(Vector3.zero, 2400f, sites);
             sites.Sort((a, b) => a.pos.sqrMagnitude.CompareTo(b.pos.sqrMagnitude));
             Site first = null;
             foreach (var s in sites)
@@ -144,7 +144,7 @@ namespace MadMax.Game
             var w = World;
             if (Has("run") || w == null) return;
             var p = car.transform.position;
-            if (Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.z)) < w.halfSize - 150f) return;
+            if (Mathf.Abs(WorldGen.Latitude(p.z)) < 80f) return;                                   // the edge of the world: the polar ice
             flags.Add("run");
             Journal.Add("RELIC", "THE LAST RUN: DAY " + DayNight.Day + ", THE LAST ENGINE REACHED THE EDGE OF THE WORLD.");
             g.Toast("THE LAST RUN! THE WASTES WILL TELL OF THIS ONE");

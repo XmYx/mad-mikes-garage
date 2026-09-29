@@ -10,7 +10,24 @@ namespace MadMax.World
         public static bool Snowing => Raining && Temperature < 0.5f && SnowAllowed;
         public static float Wetness { get; private set; }
         public static float Snow { get; private set; }           // 0 .. 1 ground cover
-        public static float Temperature { get; private set; } = 25f;
+        /// <summary>Air temperature where the player is (°C): the start latitude's weather plus the planet's climate
+        /// offset for <see cref="FocusZ"/> (colder poleward, seasons flipped in the south).</summary>
+        public static float Temperature => baseTemperature + LatitudeOffset(FocusZ);
+        /// <summary>The weather's temperature at the start latitude (saved and sent over the network).</summary>
+        public static float BaseTemperature => baseTemperature;
+        static float baseTemperature = 25f;
+        /// <summary>World z the local weather is for (the player / the driven vehicle; set by the game every frame).</summary>
+        public static float FocusZ;
+        public static float TemperatureAt(float z) => baseTemperature + LatitudeOffset(z);
+        static float LatitudeOffset(float z)
+        {
+            float s0 = WorldGen.SeasonSign(0f);
+            return WorldGen.ClimateOffset(z) + (SeasonTemp - 13.25f) * (s0 != 0f ? WorldGen.SeasonSign(z) / s0 - 1f : 0f);
+        }
+        /// <summary>Ground snow at a latitude: the weather's cover, or lasting snow wherever the air stays below −2 °C.</summary>
+        public static float SnowAt(float z) => Mathf.Max(Snow, Mathf.Clamp01((-2f - TemperatureAt(z)) / 6f));
+        /// <summary>Snow cover around the player.</summary>
+        public static float LocalSnow => SnowAt(FocusZ);
         /// <summary>0 .. 1 how icy wet / packed-snow ground is.</summary>
         public static float Ice => Temperature < 0f ? Mathf.Clamp01(Mathf.Max(Wetness * 1.2f - 0.15f, Snow * 0.6f)) * Mathf.Clamp01(-Temperature / 3f + 0.4f) : 0f;
         public static bool SnowAllowed = true;
@@ -40,12 +57,12 @@ namespace MadMax.World
         void Awake() { timer = 60f; tempNoise = Random.value * 100f; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { LakeRise = 0f; Wetness = 0; Snow = 0; Raining = false; Temperature = 25f; Frequency = 2; Season = 0; SnowAllowed = true; Auto = true; DaysPerSeason = 4; SeasonStart = 0; SeasonProgress = 0f; }
+        static void ResetStatics() { LakeRise = 0f; Wetness = 0; Snow = 0; Raining = false; baseTemperature = 25f; FocusZ = 0f; Frequency = 2; Season = 0; SnowAllowed = true; Auto = true; DaysPerSeason = 4; SeasonStart = 0; SeasonProgress = 0f; }
 
         public static void Restore(bool raining, float wetness, float snow = 0f, float temperature = float.NaN, float lakeRise = 0f)
         {
             Raining = raining; Wetness = wetness; Snow = snow; LakeRise = Mathf.Clamp(lakeRise, 0f, MaxLakeRise);
-            if (!float.IsNaN(temperature)) Temperature = temperature;
+            if (!float.IsNaN(temperature)) baseTemperature = temperature;
         }
 
         public void Init(Transform camera, Light sunLight)
@@ -157,7 +174,7 @@ namespace MadMax.World
         public static void Configure(int frequency, int season, bool snow, int daysPerSeason = 4)
         {
             Frequency = frequency; Season = season; SeasonStart = season; DaysPerSeason = daysPerSeason; SnowAllowed = snow; Wetness = 0f; Raining = false; LakeRise = 0f;
-            Temperature = SeasonTemp;
+            baseTemperature = SeasonTemp;
             Snow = season == 2 && snow ? 0.6f : 0f;
         }
 
@@ -188,7 +205,7 @@ namespace MadMax.World
             {
                 // temperature drifts slowly around the season value, colder while precipitating
                 float drift = (Mathf.PerlinNoise(Time.time * 0.004f, tempNoise) - 0.5f) * 14f;
-                Temperature = Mathf.MoveTowards(Temperature, SeasonTemp + drift - (Raining ? 3f : 0f), dt * 0.2f);
+                baseTemperature = Mathf.MoveTowards(baseTemperature, SeasonTemp + drift - (Raining ? 3f : 0f), dt * 0.2f);
                 if (Auto && Frequency > 0)
                 {
                     timer -= dt;

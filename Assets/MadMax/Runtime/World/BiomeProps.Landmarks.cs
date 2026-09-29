@@ -129,10 +129,11 @@ namespace MadMax.World
             }
             // one refinery on the richest oil near a road
             Vector2 best = default; float bestOil = 0.35f;
-            for (float x = -w.halfSize + 200f; x < w.halfSize - 200f; x += 96f)
-            for (float z = -w.halfSize + 200f; z < w.halfSize - 200f; z += 96f)
+            for (float x = -WorldGen.HalfX + WorldGen.Meridian + 300f; x < WorldGen.HalfX - WorldGen.Meridian - 300f; x += 96f)
+            for (float z = WorldGen.ZOfLatitude(-62f); z < WorldGen.ZOfLatitude(62f); z += 96f)
             {
                 float oil = w.OilAt(x, z);
+                if (oil <= bestOil || !w.Habitable(x, z, 0.6f)) continue;
                 if (oil <= bestOil) continue;
                 float rd = RoadDistance(w, x, z);
                 if (rd < 25f || rd > 200f || !Open(w, new Vector2(x, z), 25f)) continue;

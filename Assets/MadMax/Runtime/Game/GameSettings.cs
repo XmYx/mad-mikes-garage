@@ -43,6 +43,8 @@ namespace MadMax.Game
         public bool colourBlind;         // blue/orange instead of red/green on bars and lamps
         public bool metric = true;       // km/h and °C (off: mph and °F)
         public bool radioCaptions;       // subtitles for DJ talk, news and weather
+        public bool voiceCaptions = true;   // speech bubbles over talking NPCs
+        public bool flatWorld;              // no horizon curve (the planet stays flat to the eye)
         public bool hints = true;        // context hints (the first times you meet something)
         public int autosaveMinutes = 10; // 0 off
         // audio

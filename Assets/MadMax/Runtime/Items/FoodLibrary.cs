@@ -75,6 +75,8 @@ namespace MadMax.Items
                 F("food_meat_smoked", "SMOKED MEAT", 32, -3, 0, H("6a3a24"), 0f, 3f),
                 F("food_jerky", "JERKY", 20, -5, 0, H("5a2a1a")),
                 F("food_fish_raw", "RAW FISH", 8, 2, 15, H("9ab0b8"), 0.3f),
+                F("food_bugmeat", "BUG MEAT", 6, 1, 12, H("7a8a4a"), 0.5f),
+                F("food_bug_skewer", "FRIED BUG SKEWER", 22, 0, 30, H("8a6a2a"), 0.05f, 2f),
                 F("food_fish_cooked", "GRILLED FISH", 30, 2, 25, H("c09060"), 0f, 3f),
                 F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
                 F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),

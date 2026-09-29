@@ -49,6 +49,7 @@ namespace MadMax.Npc
                 skinTone = r.Next(4), hair = (HairStyle)r.Next(6), hairColor = r.Next(HumanDesign.HairColors.Length), beard = r.Next(3),
                 height = new[] { 0.94f, 1f, 1.06f }[r.Next(3)], build = new[] { 0.9f, 1f, 1.1f }[r.Next(3)]
             };
+            if (NpcLore.Feminine(p.first) && !p.Raider) p.look.beard = 0;                          // matches the voice
             string Pick(params string[] o) => o[r.Next(o.Length)];
             p.outfit.Add(Pick("boots", "boots", null));
             if (p.Raider)

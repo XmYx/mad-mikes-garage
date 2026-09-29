@@ -4,7 +4,7 @@ using MadMax.World;
 
 namespace MadMax.Animals
 {
-    public enum BodyPlan { Quadruped, Bird, Snake }
+    public enum BodyPlan { Quadruped, Bird, Snake, Arthropod }
     /// <summary>How a species reacts to people: prey flee, chargers stand and charge, predators hunt in packs,
     /// scavengers circle the dead, livestock stay calm, vermin scatter, lurkers lie still and strike.</summary>
     public enum Nature { Prey, Charger, Predator, Scavenger, Livestock, Vermin, Lurker }
@@ -28,6 +28,7 @@ namespace MadMax.Animals
         public float scale = 1f;
         public Color32Ramp Coat, Belly, Accent;
         public string features = "";         // horns tusks mane ears_long ears_up comb wattle udder spots beard glow rattle curl bald
+                                             // ears_tall antlers mask rings shell lizard beads fan | arthropods: legs6 pincers stinger hairy antennae venom
         public float walk = 1.2f, run = 6f, health = 20f, bite = 6f, mass = 50f, reach = 1.2f;
         public float sight = 30f, hearing = 40f, smell = 50f;
         public int herdMin = 1, herdMax = 1;
@@ -48,7 +49,7 @@ namespace MadMax.Animals
 
     /// <summary>The species of the wastes (roadmap 23): wild (dogs, wolves, boars and rad-boars, antelope, wild horses,
     /// vultures, snakes, rats) and farm (chickens, goats, cows, pigs, guard dogs).</summary>
-    public static class AnimalLibrary
+    public static partial class AnimalLibrary
     {
         static Dictionary<string, AnimalDef> defs;
 
@@ -90,7 +91,7 @@ namespace MadMax.Animals
                 new AnimalDef { id = "wolf", name = "WOLF", pest = "wolf", nature = Nature.Predator, len = 13, depth = 5, width = 4, leg = 7, neck = 3, head = 4, snout = 3, tail = 6,
                     Coat = R(Pal.Fur, 2), Belly = R(Pal.Cream, 1), Accent = R(Pal.Black, 1), features = "ears_up",
                     walk = 1.5f, run = 10f, health = 50f, bite = 13f, mass = 45f, sight = 40f, hearing = 60f, smell = 80f, herdMin = 3, herdMax = 5,
-                    biomes = new[] { Biome.Forest }, density = 0.3f, nocturnal = true, drops = new[] { (meat, 2, 3), (hide, 1, 2), ("misc_bone", 1, 2), ("trophy_pelt", 0, 1) } },
+                    biomes = new[] { Biome.Forest, Biome.Tundra }, density = 0.3f, nocturnal = true, drops = new[] { (meat, 2, 3), (hide, 1, 2), ("misc_bone", 1, 2), ("trophy_pelt", 0, 1) } },
                 new AnimalDef { id = "vulture", name = "VULTURE", nature = Nature.Scavenger, plan = BodyPlan.Bird, len = 8, depth = 5, width = 5, leg = 3, neck = 3, head = 2, snout = 2, tail = 3,
                     Coat = R(Pal.Black, 2), Belly = R(Pal.Metal, 2), Accent = R(Pal.Pink, 2), features = "bald",
                     walk = 0.8f, run = 9f, health = 15f, mass = 8f, sight = 28f, hearing = 30f, smell = 0f, flies = true, drops = new[] { (meat, 1, 1), ("misc_feather", 3, 6) } },
@@ -124,6 +125,7 @@ namespace MadMax.Animals
                     walk = 1.5f, run = 9.5f, health = 70f, bite = 14f, mass = 35f, sight = 40f, hearing = 60f, smell = 80f, drops = new[] { (meat, 1, 2), (hide, 1, 1) },
                     guard = true, adultDays = 3f, feedPerDay = 0.5f, young = "animal_puppy", likes = new[] { "food_meat_raw", "food_meat_cooked", "food_jerky", "misc_bone" } },
             }) defs[d.id] = d;
+            foreach (var d in Wildlife()) defs[d.id] = d;
         }
 
         /// <summary>Wild species that live in a biome.</summary>

@@ -41,6 +41,13 @@ namespace MadMax.Npc
             if (id == "misc_bone") return 1f;
             if (id == "misc_feather") return 0.5f;
             if (id == "trophy_pelt") return 35f;
+            if (id == "trophy_bearskin") return 80f;
+            if (id == "trophy_antlers") return 22f;
+            if (id == "misc_shell" || id == "misc_chitin") return 6f;
+            if (id == "misc_venom") return 12f;
+            if (id == "misc_silk") return 4f;
+            if (id == "use_o2_bottle") return 10f;
+            if (id == "bp_submarine") return 150f;
             if (id == "trophy_tusks" || id == "trophy_horns") return 20f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
             if (id.StartsWith("trophy_fish")) return id.EndsWith("mutant") ? 60f : 25f;
@@ -156,7 +163,7 @@ namespace MadMax.Npc
             int cost = o.price * n;
             // the Fuel Guild's chits pay at fuel vendors, worth a little more than their scrap
             int chits = vendor.Profile.kind == "fuel" ? Mathf.Min(g.Inventory.GetItem(Contracts.Chit), cost / ChitValue) : 0;
-            if (g.Inventory.Get(ResourceType.Scrap) < cost - chits * ChitValue) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); return false; }
+            if (g.Inventory.Get(ResourceType.Scrap) < cost - chits * ChitValue) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); NpcVoice.Say(vendor, "broke", true); return false; }
             if (o.id.StartsWith("part:"))
             {
                 var at = vendor.transform.position + vendor.transform.right * 1.2f + Vector3.up * 0.6f;
@@ -172,6 +179,7 @@ namespace MadMax.Npc
             Market.Bought(Town, o.id, n);
             vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);
+            NpcVoice.Say(vendor, "sell");
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.5f * n);
             MadMax.Audio.Sfx.Play2D("cash", 0.6f);
             return true;
@@ -187,6 +195,7 @@ namespace MadMax.Npc
             if (!ok) return false;
             if (id.StartsWith("tool_")) g.UpdateHotbarNow();
             g.Inventory.Add(ResourceType.Scrap, price * n);
+            NpcVoice.Say(vendor, "buy");
             Market.Sold(Town, id, n);                                                          // selling floods the market
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.3f * n);
             MadMax.Audio.Sfx.Play2D("cash", 0.5f);

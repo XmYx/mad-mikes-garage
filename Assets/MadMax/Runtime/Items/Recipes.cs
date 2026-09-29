@@ -56,6 +56,9 @@ namespace MadMax.Items
             { "throw_smoke", "SMOKE BOMB" }, { "throw_rock", "ROCK" },
             { "coin_chit", "GUILD CHIT" }, { "part:cargo_crate", "GUILD CRATE" },
             { "kit_turbo", "TURBO KIT" }, { "kit_supercharger", "SUPERCHARGER KIT" }, { "use_nitrous", "NITROUS BOTTLE" },
+            { "use_o2_bottle", "O2 BOTTLE" }, { "bp_submarine", "BLUEPRINT: SUBMARINE" },
+            { "trophy_antlers", "DEER ANTLERS" }, { "trophy_bearskin", "BEARSKIN" }, { "misc_shell", "ARMADILLO SHELL" }, { "misc_venom", "VENOM SAC" },
+            { "misc_chitin", "CHITIN PLATE" }, { "misc_silk", "SPIDER SILK" }, { "med_antivenom", "ANTIVENOM" },
             { "misc_coil", "GENERATOR COIL" }, { "misc_blade", "TURBINE BLADE" }, { "misc_solar_cell", "SOLAR CELL" },
             { "kit_solar_panel", "SOLAR PANEL KIT" }, { "kit_wind_large", "LARGE WIND TURBINE KIT" }, { "kit_water_turbine", "WATER WHEEL KIT" },
             { "relic_block", "RELIC: V12 BLOCK" }, { "relic_heads", "RELIC: V12 HEADS" }, { "relic_crank", "RELIC: V12 CRANKSHAFT" }, { "relic_blower", "RELIC: TWIN BLOWERS" },
@@ -130,6 +133,16 @@ namespace MadMax.Items
             }
         }
 
+        /// <summary>Watercraft (user additions): name, what it is for, knowledge gate and cost; built at a slipway.</summary>
+        static readonly Dictionary<string, (string name, string desc, string knowledge, (ResourceType, int)[] res)> Boats = new Dictionary<string, (string, string, string, (ResourceType, int)[])>
+        {
+            { "Raft", ("OIL-DRUM RAFT", "SIX DRUMS AND A DECK: PADDLE IT, OR CLAMP ON AN OUTBOARD", null, new[] { (ResourceType.Scrap, 30), (ResourceType.Wood, 24), (ResourceType.Cloth, 4) }) },
+            { "Skiff", ("SCRAP SKIFF", "ALUMINIUM FISHING BOAT WITH AN OUTBOARD", null, new[] { (ResourceType.Aluminium, 24), (ResourceType.Scrap, 20), (ResourceType.Wood, 6), (ResourceType.Rubber, 2) }) },
+            { "Trawler", ("RUST TRAWLER", "WORKBOAT WITH A WHEELHOUSE, FISH HOLD AND TRAWL NET [1]", "k_truck_parts", new[] { (ResourceType.Iron, 120), (ResourceType.Scrap, 90), (ResourceType.Glass, 10), (ResourceType.Cloth, 20), (ResourceType.Copper, 12), (ResourceType.Rubber, 12) }) },
+            { "Houseboat", ("SHANTY BOAT", "A FLOATING SHACK TO LIVE ON: BED, STOVE, PORCH", null, new[] { (ResourceType.Scrap, 80), (ResourceType.Wood, 90), (ResourceType.Iron, 30), (ResourceType.Glass, 8) }) },
+            { "IronEel", ("IRON EEL SUBMARINE", "DIVES ON BATTERIES, BREATHES THROUGH O2 BOTTLES; A BASE UNDER THE SEA", "bp_submarine", new[] { (ResourceType.Iron, 220), (ResourceType.Scrap, 120), (ResourceType.Copper, 40), (ResourceType.Glass, 16), (ResourceType.Rubber, 24), (ResourceType.Aluminium, 30) }) },
+        };
+
         /// <summary>Garage recipes that build a whole vehicle (bare, fluids empty).</summary>
         public static void RegisterVehicles(IEnumerable<(string design, float mass)> vehicles)
         {
@@ -138,6 +151,15 @@ namespace MadMax.Items
             {
                 if (list.Exists(r => r.output == design && r.kind == OutputKind.Vehicle)) continue;
                 int m = Mathf.RoundToInt(mass / 25f);
+                if (Boats.TryGetValue(design, out var boat))
+                {
+                    list.Add(new Recipe
+                    {
+                        id = "veh_" + design, name = boat.name, category = RecipeCategory.Vehicles, kind = OutputKind.Vehicle, output = design,
+                        description = boat.desc + " (BUILT AT A SLIPWAY)", station = "slipway", knowledge = boat.knowledge, resources = boat.res
+                    });
+                    continue;
+                }
                 if (design == "Ultralight" || design == "Gyrocopter")
                 {
                     list.Add(new Recipe
@@ -217,6 +239,7 @@ namespace MadMax.Items
             };
             list.AddRange(Extra());
             list.AddRange(Roadmap());
+            list.AddRange(Wildlife());
             foreach (var r in list)
             {
                 if (r.category == RecipeCategory.Clothing) r.station = "sewing";                        // all clothes at the sewing table

@@ -269,9 +269,9 @@ namespace MadMax.World
             return new Surface
             {
                 wet = wet, road = road, rut = Mathf.Max(0f, -d),
-                softness = (0.1f + 0.9f * wet * soak) * (1f - hard) + Weather.Snow * 0.25f,
+                softness = (0.1f + 0.9f * wet * soak) * (1f - hard) + Weather.SnowAt(ch.c.y * N * Cell) * 0.25f,
                 mud = wet * soak * (1f - road * (paved ? 1f : 0.5f)) * (Weather.Temperature < 0f ? 0.3f : 1f),
-                ice = Mathf.Clamp01(Weather.Ice * (0.6f + hard * 0.5f) + Mathf.Clamp01(-d * 8f) * Weather.Snow * 0.3f * (Weather.Temperature < 0f ? 1f : 0f))
+                ice = Mathf.Clamp01(Weather.Ice * (0.6f + hard * 0.5f) + Mathf.Clamp01(-d * 8f) * Weather.SnowAt(ch.c.y * N * Cell) * 0.3f * (Weather.Temperature < 0f ? 1f : 0f))
             };
         }
 
@@ -449,7 +449,7 @@ namespace MadMax.World
             foreach (var ch in active)
             {
                 if (ch.waterGo) ch.waterGo.transform.localPosition = new Vector3(0f, Weather.LakeRise, 0f);
-                if (rebuilt < rebuildsPerFrame && (ch.meshDirty || Mathf.Abs(ch.colorWet - Weather.Wetness) > 0.05f || Mathf.Abs(ch.colorSnow - Weather.Snow) > 0.06f))
+                if (rebuilt < rebuildsPerFrame && (ch.meshDirty || Mathf.Abs(ch.colorWet - Weather.Wetness) > 0.05f || Mathf.Abs(ch.colorSnow - Weather.SnowAt(ch.c.y * N * Cell)) > 0.06f))
                 {
                     FillMesh(ch);
                     rebuilt++;
@@ -770,9 +770,10 @@ namespace MadMax.World
                 var b = (Biome)ch.biome[k];
                 int gi = ch.c.x * N + i, gj = ch.c.y * N + j;
                 float hs = Hash(gi + 11, gj + 5);
-                Color32 deep = b == Biome.Nuclear ? C(0x1e3a0c) : b == Biome.Tropical ? C(0x0c3c46) : C(0x122a3a);
-                Color32 shallow = b == Biome.Nuclear ? C(0x3e6a14) : b == Biome.Tropical ? C(0x1e6a6a) : C(0x284a5a);
-                var col = Color32.Lerp(shallow, deep, Mathf.Round(Mathf.Clamp01(depth / 1.5f) * 3f) / 3f);
+                bool sea = Mathf.Abs(lvl - WorldGen.SeaLevel) < 0.01f;                                   // the ocean has its own blues, darkening with depth
+                Color32 deep = sea ? C(0x0a2236) : b == Biome.Nuclear ? C(0x1e3a0c) : b == Biome.Tropical ? C(0x0c3c46) : C(0x122a3a);
+                Color32 shallow = sea ? (b == Biome.Tropical ? C(0x1e7070) : C(0x2a5a6a)) : b == Biome.Nuclear ? C(0x3e6a14) : b == Biome.Tropical ? C(0x1e6a6a) : C(0x284a5a);
+                var col = Color32.Lerp(shallow, deep, Mathf.Round(Mathf.Clamp01(depth / (sea ? 6f : 1.5f)) * 3f) / 3f);
                 if (hs > 0.97f) col = Color32.Lerp(col, C(0x9ab8c0), 0.4f);                  // glints
                 col.a = (byte)(depth < 0.15f ? 170 : 225);
                 int v = verts.Count;
@@ -782,7 +783,11 @@ namespace MadMax.World
                 tris.Add(v); tris.Add(v + 1); tris.Add(v + 2); tris.Add(v); tris.Add(v + 2); tris.Add(v + 3);
             }
             if (verts.Count == 0) return;
-            if (!waterMat) waterMat = Fx.TransparentMaterial(null);
+            if (!waterMat)
+            {
+                var sh = Fx.RuntimeShader("Water", "MadMax/Water");                                 // bends with the planet's horizon
+                waterMat = sh ? new Material(sh) { renderQueue = 3000, name = "Water" } : Fx.TransparentMaterial(null);
+            }
             var m = new Mesh { name = "Water " + ch.c };
             m.SetVertices(verts); m.SetColors(cols); m.SetTriangles(tris, 0);
             m.RecalculateNormals(); m.RecalculateBounds();
@@ -822,7 +827,7 @@ namespace MadMax.World
             ch.mesh.RecalculateBounds();
             ch.meshDirty = false;
             ch.colorWet = Weather.Wetness;
-            ch.colorSnow = Weather.Snow;
+            ch.colorSnow = Weather.SnowAt(ch.c.y * N * Cell);
         }
 
         // ------------------------------------------------------------------ colours
@@ -834,6 +839,7 @@ namespace MadMax.World
         static readonly Color32 SnowCol = C(0xe8e6ee), SnowShade = C(0xc4c6d8), IceCol = C(0x8aa0b8);
         static readonly Color32[] ForestG = { C(0x26301a), C(0x303c1e), C(0x3c4824), C(0x4a5428), C(0x5a6030) };
         static readonly Color32[] TropicG = { C(0x2a4e1e), C(0x346026), C(0x40742c), C(0x508834), C(0x649c3c) };
+        static readonly Color32[] TundraG = { C(0x484c44), C(0x575a4f), C(0x66695c), C(0x77796a), C(0x8b8b7b) };   // lichen and frost-bitten grass
         static readonly Color32[] NukeG = { C(0x3e3c26), C(0x4c4a2c), C(0x5c5830), C(0x6c6636), C(0x7e763c) };
         static readonly Color32[] MeadowG = { C(0x44501e), C(0x505e24), C(0x5e6a2a), C(0x6e7832), C(0x80883a) };
         static readonly Color32[] Gravel = { C(0x5a4636), C(0x6a5440), C(0x7a624a), C(0x8a7056), C(0x9a7e62) };
@@ -902,6 +908,7 @@ namespace MadMax.World
                     case Biome.Tropical: col = TropicG[bi]; break;
                     case Biome.Nuclear: col = NukeG[bi]; break;
                     case Biome.Village: col = MeadowG[bi]; break;
+                    case Biome.Tundra: col = TundraG[bi]; break;
                     case Biome.Town: col = Gravel[bi]; break;
                     case Biome.City: col = Concrete[bi]; break;
                     default: col = Sand[bi]; break;
@@ -916,7 +923,7 @@ namespace MadMax.World
         static bool Puddle(float gx, float gz)
         {
             float w = Weather.Wetness;
-            if (w < 0.2f || Weather.Snow > 0.4f) return false;
+            if (w < 0.2f || Weather.SnowAt(gz) > 0.4f) return false;
             float pn = Mathf.PerlinNoise(gx * 0.45f + 13f, gz * 0.45f + 7f) * 0.8f + Mathf.PerlinNoise(gx * 1.3f + 5f, gz * 1.3f + 29f) * 0.2f;
             return pn < w * 0.42f - 0.06f;
         }
@@ -962,6 +969,7 @@ namespace MadMax.World
                 switch ((Biome)ch.biome[k])
                 {
                     case Biome.Forest: col = hs > 0.93f ? Litter : ForestG[bi]; break;
+                    case Biome.Tundra: col = hs > 0.95f ? Gravel[1] : TundraG[bi]; break;
                     case Biome.Tropical: col = TropicG[bi]; break;
                     case Biome.Nuclear:
                         col = NukeG[bi];
@@ -1004,7 +1012,8 @@ namespace MadMax.World
                 if (ch.compact[k] == 0 && set >= 1f && hs > 0.8f) baseC = asphalt ? Asphalt[3] : Concrete[0];   // rough, unrolled finish
                 col = set < 1f ? Color32.Lerp(asphalt ? C(0x1a1614) : Concrete[0], baseC, set * 0.7f) : baseC;
                 if (set >= 1f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, 0.3f);
-                if (Weather.Snow > 0.3f && set >= 1f) col = Color32.Lerp(col, SnowCol, Mathf.Round(Weather.Snow * 2f) / 3f);
+                float psnow = Weather.SnowAt(gz);
+                if (psnow > 0.3f && set >= 1f) col = Color32.Lerp(col, SnowCol, Mathf.Round(psnow * 2f) / 3f);
                 return col;
             }
             var s = MakeSurface(ch, k);
@@ -1022,7 +1031,7 @@ namespace MadMax.World
             if (d < -0.015f) col = Color32.Lerp(col, Mud, Mathf.Clamp(-d * 3f, 0.12f, 0.45f));
             else if (d > 0.015f) col = Color32.Lerp(col, Sand[4], 0.12f);
             // snow cover: patchy at first, thinner on roads, ruts cut through to the ground
-            float snow = Weather.Snow;
+            float snow = Weather.SnowAt(gz);                                                         // weather cover or the latitude's lasting snow
             if (snow > 0.02f)
             {
                 float patch = Mathf.PerlinNoise(gx * 0.25f + 31f, gz * 0.25f + 11f) * 0.6f + hs * 0.4f;

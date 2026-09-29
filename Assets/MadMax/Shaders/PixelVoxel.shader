@@ -47,6 +47,8 @@ Shader "MadMax/PixelVoxel"
         float _MadMaxNight;      // 0 day .. 1 night
         float _MadMaxUnderFill;  // 0 .. 1 under a cave / bunker roof: faint fill light
         float _MadMaxSnow;       // snow dusting on upward faces
+        float4 _MadMaxSnowLat;   // polar snow: x equator z, y distance where it starts, z ramp (m); z = 0 disables
+        float _MadMaxCurve;      // planet horizon: drop per squared metre from the camera (1 / 2R)
         float _MadMaxAutumn;     // 0..1 foliage turning gold and rust (swaying materials: trees, grass)
         float4 _MadMaxClouds;    // x coverage 0..1, y shadow strength, z 1/scale (1/m); x = 0 disables
         float4 _MadMaxCloudOffset; // xy drift (noise space)
@@ -70,18 +72,33 @@ Shader "MadMax/PixelVoxel"
         float4 _MadMaxWind;      // xz wind (m/s), y gust 0..1, w time
         float4 _MadMaxCut;       // underground cutaway: xy centre (world xz), z radius (0 = off), w height
 
-        // wind bend: trees by height above their origin (_Sway), grass and vines by vertex alpha (_SwayTip, 255 = rooted)
+        // the planet's horizon: everything sinks with the square of its distance from the camera
+        float3 Curve(float3 ws)
+        {
+            float2 d = ws.xz - _WorldSpaceCameraPos.xz;
+            ws.y -= dot(d, d) * _MadMaxCurve;
+            return ws;
+        }
+
+        // wind bend: trees by height above their origin (_Sway), grass and vines by vertex alpha (_SwayTip, 255 = rooted); then the horizon curve
         float3 WindSway(float3 ws, float3 os, half a)
         {
             float h = max(os.y, 0.0);
             float w = _Sway * h * h + _SwayTip * (1.0 - a);
-            if (w <= 0.0) return ws;
+            if (w <= 0.0) return Curve(ws);
             float2 wind = _MadMaxWind.xz;
             float2 origin = float2(UNITY_MATRIX_M._m03, UNITY_MATRIX_M._m23);
             float ph = _MadMaxWind.w * 1.9 + dot(ws.xz, float2(0.31, 0.23)) + dot(origin, float2(0.73, 1.37));
             float wave = 0.55 + 0.35 * sin(ph) + 0.2 * sin(ph * 2.7 + 1.3);
             float2 off = wind * (w * wave * (0.35 + _MadMaxWind.y));
-            return ws + float3(off.x, -dot(off, off) * 0.6, off.y);
+            return Curve(ws + float3(off.x, -dot(off, off) * 0.6, off.y));
+        }
+
+        // snow on up faces: the weather's dusting, or the polar snow of the latitude
+        half SnowAmount(float3 ws)
+        {
+            half lat = _MadMaxSnowLat.z > 0.0 ? saturate((abs(ws.z - _MadMaxSnowLat.x) - _MadMaxSnowLat.y) / _MadMaxSnowLat.z) : 0.0h;
+            return max(_MadMaxSnow, lat);
         }
 
         // > 0 keeps the fragment: per-renderer building cutaway (_CutY) and the radial underground cutaway
@@ -158,11 +175,12 @@ Shader "MadMax/PixelVoxel"
                 }
                 // light snow dusting: a scatter of voxels on upward faces
                 half3 nW = normalize(i.normalWS);
-                if (_MadMaxSnow > 0.001h && nW.y > 0.55h)
+                half snowAmt = SnowAmount(i.positionWS);
+                if (snowAmt > 0.001h && nW.y > 0.55h)
                 {
                     float3 cell = floor(i.positionWS * 12.5 + 0.01);
                     half h = frac(sin(dot(cell, float3(12.9898, 78.233, 37.719))) * 43758.5453);
-                    if (h < _MadMaxSnow * 0.32h * _SnowMask) albedo = lerp(albedo, half3(0.82h, 0.84h, 0.9h), 0.85h);
+                    if (h < snowAmt * 0.32h * _SnowMask) albedo = lerp(albedo, half3(0.82h, 0.84h, 0.9h), 0.85h);
                 }
                 half night = _MadMaxNight;
                 half3 shade = _ShadowTint.rgb * (1.0h - night * 0.85h);

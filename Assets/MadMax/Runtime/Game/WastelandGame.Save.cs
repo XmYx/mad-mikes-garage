@@ -95,10 +95,11 @@ namespace MadMax.Game
         /// <summary>Snapshot of the world (also the join payload for network clients).</summary>
         public SaveData CaptureSave(bool forNetwork = false)
         {
-            var d = new SaveData { seed = seed, raining = Weather.Raining, wetness = Weather.Wetness, snow = Weather.Snow, temperature = Weather.Temperature, lakeRise = Weather.LakeRise, hours = DayNight.Hours, day = DayNight.Day, searched = new List<string>(Lootable.Searched), hasSpawn = spawnPoint.HasValue, spawn = spawnPoint ?? Vector3.zero, resources = Inventory.ResourceArray, rules = Rules, stats = Stats };
+            var d = new SaveData { seed = seed, raining = Weather.Raining, wetness = Weather.Wetness, snow = Weather.Snow, temperature = Weather.BaseTemperature, lakeRise = Weather.LakeRise, hours = DayNight.Hours, day = DayNight.Day, searched = new List<string>(Lootable.Searched), hasSpawn = spawnPoint.HasValue, spawn = spawnPoint ?? Vector3.zero, resources = Inventory.ResourceArray, rules = Rules, stats = Stats };
             if (cameraRig) d.cameraMode = (int)cameraRig.mode;
             foreach (var kv in Inventory.Items) if (kv.Value > 0) d.items.Add(new ItemSave { id = kv.Key, count = kv.Value });
             d.hotbar = (string[])Hotbar.Clone();
+            d.tankAir = TankAir;
             foreach (var kv in GasPump.Used) { d.pumpKeys.Add(kv.Key); d.pumpUsed.Add(kv.Value); }
             d.terrain = terrain.SaveEdits(FocusPos);
             d.npcs = MadMax.Npc.NpcRegistry.SaveAll();
@@ -134,6 +135,7 @@ namespace MadMax.Game
                 {
                     design = v.GetComponent<VehicleChassis>().vehicleName, position = v.transform.position, rotation = v.transform.rotation,
                     fleet = fleet.Contains(v), wreck = wrecks.Contains(v), fourWheel = v.FourWheelDrive, diffLocked = v.diffLocked, radio = v.TryGetComponent<MadMax.Audio.RadioReceiver>(out var rr) ? rr.SaveState() : null,
+                    sub = v.TryGetComponent<Submarine>(out var subm) ? subm.SaveState() : null,
                     netId = v.netId, owner = v.owner,
                     cargo = v.TryGetComponent<Container>(out var cg) ? cg.SaveState() : null
                 };
@@ -223,6 +225,7 @@ namespace MadMax.Game
         {
             foreach (var p in vehiclePrefabs) if (p.name == design) return p;
             foreach (var p in trailerPrefabs) if (p.name == design) return p;
+            if (boatPrefabs != null) foreach (var p in boatPrefabs) if (p && p.name == design) return p;
             return null;
         }
 
@@ -265,6 +268,7 @@ namespace MadMax.Game
                 if (!string.IsNullOrEmpty(vs.cargo) && go.TryGetComponent<Container>(out var cargo)) cargo.LoadState(vs.cargo);
                 if (go.TryGetComponent<VehicleDamage>(out var dmg)) { dmg.AddFrameDamage(vs.frame, 1f); dmg.salvagePool = vs.salvage; }
                 if (!string.IsNullOrEmpty(vs.armor) && go.TryGetComponent<VehicleArmor>(out var arm)) arm.LoadState(vs.armor);
+                if (!string.IsNullOrEmpty(vs.sub) && go.TryGetComponent<Submarine>(out var sub)) sub.LoadState(vs.sub);
                 if (!string.IsNullOrEmpty(vs.tuning) && go.TryGetComponent<VehicleTuning>(out var tun)) tun.LoadState(vs.tuning);
                 if (!string.IsNullOrEmpty(vs.paint)) VehiclePaint.Of(v).LoadState(vs.paint);
                 if (!string.IsNullOrEmpty(vs.service) && go.TryGetComponent<VehicleSystems>(out var mt)) mt.LoadMaintenance(vs.service);
@@ -310,6 +314,7 @@ namespace MadMax.Game
         void RestorePlayer(SaveData d)
         {
             Inventory.Restore(d.resources, d.items.ConvertAll(i => new KeyValuePair<string, int>(i.id, i.count)));
+            if (d.tankAir >= 0f) TankAir = d.tankAir;
             if (d.hotbar != null && d.hotbar.Length == HotbarSize) { Hotbar = d.hotbar; for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] == "") Hotbar[i] = null; }
             SyncHotbar();
             terrain.LoadEdits(d.terrain);
