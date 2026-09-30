@@ -324,6 +324,7 @@ namespace MadMax.Game
                         Opt("SIDECAR HANDLING", () => s.vintageSidecar ? "VINTAGE" : "ASSISTED", d => s.vintageSidecar = !s.vintageSidecar);
                         Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
                         Opt("GET IN / OUT ANIMATION", () => s.boardingAnimation ? "ON" : "OFF", d => s.boardingAnimation = !s.boardingAnimation);
+                        Opt("WORK ANIMATION", () => s.workAnimation ? "ON" : "OFF", d => s.workAnimation = !s.workAnimation);
                         Opt("CAR DEFORMATION", () => GameSettings.DeformationNames[Mathf.Clamp(s.deformation, 0, GameSettings.DeformationNames.Length - 1)],
                             d => s.deformation = Mathf.Clamp(s.deformation + d, 0, GameSettings.DeformationScales.Length - 1));
                         Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
