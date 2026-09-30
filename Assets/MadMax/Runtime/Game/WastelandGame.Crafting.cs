@@ -57,6 +57,7 @@ namespace MadMax.Game
         /// <summary>Turn a paid recipe into goods (items to the crafter if near the station, else the tray).</summary>
         void Produce(Recipe r, CraftingStation station)
         {
+            MadMax.Story.Story.Note("craft:" + (r.kind == OutputKind.Resource ? "res:" + (int)r.outputResource : r.output));
             int q = RollQuality(r, station);
             bool near = !station || (Player && Vector3.Distance(Player.transform.position, station.transform.position) < 6f);
             string make = q >= 0 ? " (" + QualityNames[q] + ")" : "";

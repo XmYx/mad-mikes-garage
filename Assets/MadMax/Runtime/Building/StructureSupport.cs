@@ -16,6 +16,8 @@ namespace MadMax.Building
         /// <summary>A piece at <paramref name="at"/> was broken or dismantled: collapse whatever lost its support.</summary>
         public static void Removed(Placeable gone, Vector3 at, Transform root)
         {
+            var game = MadMax.Game.WastelandGame.Instance;
+            if (gone && game && game.IsStoryProp(gone)) MadMax.Story.Story.Note("removed_story:" + gone.id);
             if (!root || root.GetComponentInParent<Rigidbody>() || (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient)) return;   // pieces on vehicles ride on the chassis
             near.Clear(); boxes.Clear();
             foreach (var p in Placeable.All)

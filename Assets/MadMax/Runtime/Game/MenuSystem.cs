@@ -456,9 +456,10 @@ namespace MadMax.Game
                     void R(string label, System.Func<string> v, System.Action<int> change) => items.Add(new Item { label = label, value = v, adjust = change, confirm = () => change(1) });
                     items.Add(new Item { label = "SEED", text = () => draftSeed, setText = v => { draftSeed = new string(System.Array.FindAll(v.ToCharArray(), char.IsDigit)); r.randomSeed = draftSeed.Length == 0; } });
                     R("RANDOM SEED", () => r.randomSeed ? "YES" : "NO", d => r.randomSeed = !r.randomSeed);
+                    R("MODE", () => r.story ? "STORY: KEEP THE LIGHT ON" : "SANDBOX", d => r.story = !r.story);
                     R("DIFFICULTY", () => GameRules.DifficultyNames[r.difficulty], d => r.difficulty = Mathf.Clamp(r.difficulty + d, 0, 3));
-                    R("STARTING KIT", () => GameRules.KitNames[r.startingKit], d => r.startingKit = Mathf.Clamp(r.startingKit + d, 0, 2));
-                    R("VEHICLES", () => GameRules.FleetNames[r.fleet], d => r.fleet = (r.fleet + d + 4) % 4);
+                    R("STARTING KIT", () => r.story ? "WHAT YOU CAN FIND" : GameRules.KitNames[r.startingKit], d => { if (!r.story) r.startingKit = Mathf.Clamp(r.startingKit + d, 0, 2); });
+                    R("VEHICLES", () => r.story ? "ONE STRANDED CAR" : GameRules.FleetNames[r.fleet], d => { if (!r.story) r.fleet = (r.fleet + d + 4) % 4; });
                     R("RESOURCE YIELD", () => "X" + r.yield.ToString("0.0"), d => r.yield = Mathf.Clamp(r.yield + d * 0.25f, 0.25f, 3f));
                     R("FUEL USE", () => "X" + r.fuelUse.ToString("0.0"), d => r.fuelUse = Mathf.Clamp(r.fuelUse + d * 0.25f, 0.25f, 3f));
                     R("SKILL LEARNING", () => "X" + r.learning.ToString("0.0"), d => r.learning = Mathf.Clamp(r.learning + d * 0.25f, 0.25f, 4f));

@@ -102,9 +102,21 @@ namespace MadMax.Vehicles
         /// snorkel is under water, so the diesel can't start (and stops).</summary>
         [System.NonSerialized] public bool sealedHull, noAir;
 
+        /// <summary>A loose battery lead (the story's stranded car): the starter doesn't even click until someone with a
+        /// wrench reconnects it (<see cref="Reconnect"/>, on the service key). Saved with the vehicle.</summary>
+        public bool disconnected;
+
+        public void Reconnect() { disconnected = false; nextCrank = 0f; }
+
         public void Crank()
         {
             if (Started || Cranking || Time.time < nextCrank || !driver || !driver.Engine) return;
+            if (disconnected)
+            {
+                nextCrank = Time.time + 2f;
+                if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NOTHING. NOT EVEN A CLICK: A BATTERY LEAD HANGS LOOSE (" + MadMax.Game.Controls.Name(MadMax.Game.Controls.Act.Service) + " WITH A WRENCH)");
+                return;
+            }
             if (noAir) { if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NO AIR FOR THE DIESEL: SURFACE TO RUN IT"); nextCrank = Time.time + 2f; return; }
             var ep = driver.Engine.GetComponent<VehiclePart>();
             if (ep && ep.partId == "engine_pedals") { Started = true; return; }

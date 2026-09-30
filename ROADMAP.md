@@ -1108,3 +1108,26 @@ Order: A (cooking) → B (fields and tractor) → C (roads) → D (metal + parts
 - [x] 17 new foods and drinks, tins priced higher by traders. Recipes 440 → 491, station types 22 → 25. Scenario `cooking.ladder` cooks one dish on every rung (6/6).
 - Found: the small generator (1.5 kW) cannot run the electric oven (2 kW) on its own — batteries or a steam generator are needed. Consider showing the draw next to the station name.
 
+## Storyline (storyline.md) in tandem with the depth ladders
+The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladders: each story stage needs verbs a depth stage delivers, so they ship together. The missing-system register (`Story/Systems.cs`) is the single list of what a quest still waits for; `story.contract` reports it.
+
+| Story stage | Quests | Needs from the depth ladders | Status |
+|---|---|---|---|
+| **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
+| **N1 first hour** | A1, B1 (done); A2, S03, S09, S24 | evidence records (A2); **B fields** for the gardener beats | A1 + B1 playable, `story.first_hour`; A2 / S03 / S09 / S24 next |
+| **N2 parallel lives** | A3-A4, B2-B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | outline |
+| **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
+| **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
+| **N5 delivery** | voices, captions, pacing, multiplayer ledger | — | — |
+
+Order of work: N1 remainder with stage B (fields and tractor) → N2 with stages C and F → N3 with G and the remaining story verbs → N4 with E, H, I.
+
+### N0/N1 (done 2026-09-30)
+- [x] **Story mode**: NEW GAME → MODE: STORY. You wake beside a box trailer on its side out on the road 450-900 m from the first town, with worn clothes and nothing else; one stranded Fiat 126p (loose battery lead, empty tank) 13 m away; FIRST STEPS is off; a radio line in the journal.
+- [x] **Anchors** bound per seed along the road network (wreck, satchel, badge, car, Nell's stop, first town, garage at the bend, relay mast, depot bunker, dispatch city), with clearings that keep wild props (cactus, bushes, ore) off the scenes. Checked on 8 seeds.
+- [x] **Quest engine**: Reach / Talk / Have / Build / Craft / Drive / Event conditions, alternatives per step (route recorded), optional steps in parallel, rewards through a once-only ledger (save/load pays nothing twice), journal lines, waypoints, the HUD objective line, saves in `SaveData.story`.
+- [x] **Cast**: Nell Mercer at her stop (authored name, title, temper, outfit, female voice), story topics in her dialogue hub.
+- [x] **A1 SOMEONE LEFT THE RADIO ON**: satchel (wrench, knife, canteen, tin, bandage) → Nell's stop → talk (she lends a claw hammer and patch tin) → patch her rain collector in build mode (or build a new one) → 8 L fuel → reconnect the battery lead ([G] with a wrench), fill up and drive 150 m, or walk to the town → optional convoy badge.
+- [x] **B1 THE SIGN STILL STANDS**: Nell offers the garage at the bend (brick walls, garage doorway, half a roof, junk, a sign); break or dismantle the barricade, build a workbench inside, plant a claim flag.
+- Found while testing: the start yard sits 40 m from the start town (the story start moved out on the road); a wreck spawned on its side inside the ground was thrown 70 m up when physics woke it (wrecks at an angle are now rested on the ground first); the player spawned against a cactus and bled out (scene clearings).
+

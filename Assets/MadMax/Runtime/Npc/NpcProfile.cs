@@ -19,8 +19,13 @@ namespace MadMax.Npc
         public Appearance look;
         public List<string> outfit = new List<string>();
 
-        public string Name => role == NpcRole.Raider || role == NpcRole.RaiderBoss ? nick : first + " '" + nick + "'";
-        public string Title => role switch
+        /// <summary>Authored story characters (<see cref="MadMax.Story.StoryCast"/>): their own full name, title and voice.</summary>
+        public string fullName, title;
+        public bool female;
+        public bool Cast => fullName != null;
+
+        public string Name => fullName ?? (role == NpcRole.Raider || role == NpcRole.RaiderBoss ? nick : first + " '" + nick + "'");
+        public string Title => title ?? role switch
         {
             NpcRole.Shopkeeper or NpcRole.Stallkeeper or NpcRole.Trader or NpcRole.Packer => NpcLore.TradeName(kind),
             NpcRole.Leader => "TOWN BOSS",

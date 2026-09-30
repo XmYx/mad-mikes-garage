@@ -77,7 +77,7 @@ namespace MadMax.Npc
         /// the same.</summary>
         public string VoiceOf(NpcProfile p)
         {
-            bool female = NpcLore.Feminine(p.first) && !p.Raider;
+            bool female = p.female || (NpcLore.Feminine(p.first) && !p.Raider);
             string temper = p.temper.ToString().ToLowerInvariant();
             int count = 0, matched = 0;
             foreach (var v in manifest.voices)

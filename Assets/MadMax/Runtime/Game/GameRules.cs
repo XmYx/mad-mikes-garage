@@ -28,6 +28,7 @@ namespace MadMax.Game
         public bool survival = true;        // hunger, thirst, hygiene on/off
         public int loot = 1;                // 0 scarce, 1 normal, 2 plenty, 3 hoarder: loot rolls, crates, wreck stripping
         public int raids = 2;               // raids on claimed bases: 0 never, 1 rare, 2 normal, 3 often (BaseRaid.Intervals)
+        public bool story;                  // STORY start (the campaign, storyline.md) instead of SANDBOX
 
         public static readonly float[] DayLengths = { 0f, 12f, 24f, 48f, 96f };
         public static readonly string[] DayLengthNames = { "ENDLESS DAY", "12 MIN", "24 MIN", "48 MIN", "96 MIN" };

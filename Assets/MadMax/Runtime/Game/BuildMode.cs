@@ -422,7 +422,7 @@ namespace MadMax.Game
         }
 
         /// <summary>Hammer a damaged piece back to full: a share of its cost for the missing condition.</summary>
-        void Repair(Placeable p)
+        public void Repair(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
             if (def == null || p.hits >= def.hits) { game.Toast("NOTHING TO REPAIR"); return; }
@@ -432,6 +432,7 @@ namespace MadMax.Game
             foreach (var (t, n) in need) if (game.Inventory.Get(t) < n) { game.Toast("REPAIR NEEDS " + n + " " + ResourceInfo.Name(t)); return; }
             foreach (var (t, n) in need) game.Inventory.TrySpend(t, n);
             p.hits = def.hits; p.Dirty();
+            MadMax.Story.Story.Note("repaired:" + p.id);
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 2f);
             MadMax.Audio.Sfx.Play("hammer", p.transform.position, 0.7f);
             game.Toast("REPAIRED " + def.name);

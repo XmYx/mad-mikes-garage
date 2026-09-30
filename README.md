@@ -10,6 +10,11 @@ parts, and most of the world can be dug up, knocked down or burnt. Made with Uni
 
 ## What's in the game
 
+There are two ways to start. **Sandbox** gives you a yard of cars, a homestead and a short FIRST STEPS chain, then leaves
+you to it. **Story** (early, in development) starts you with nothing next to a wrecked convoy trailer: a radio voice,
+a neighbour called Nell with a cracked rain collector, a small car that won't start, and a derelict garage down the
+road. The first two chapters are playable; the rest of the campaign is written out in `storyline.md`.
+
 ### Driving and repairing
 - Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doors, hoods, bumpers, rams, spikes, armour plates, roof racks, winches, cranes, lights, snorkels and weapons. Most parts fit most vehicles.
 - Raycast suspension, open or locked differentials, switchable 4WD, automatic or manual gearbox, launch and hill-start assists.

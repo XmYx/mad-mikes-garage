@@ -62,7 +62,7 @@ namespace MadMax.Items
             { "misc_coil", "GENERATOR COIL" }, { "misc_blade", "TURBINE BLADE" }, { "misc_solar_cell", "SOLAR CELL" },
             { "kit_solar_panel", "SOLAR PANEL KIT" }, { "kit_wind_large", "LARGE WIND TURBINE KIT" }, { "kit_water_turbine", "WATER WHEEL KIT" },
             { "relic_block", "RELIC: V12 BLOCK" }, { "relic_heads", "RELIC: V12 HEADS" }, { "relic_crank", "RELIC: V12 CRANKSHAFT" }, { "relic_blower", "RELIC: TWIN BLOWERS" },
-            { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
+            { "keepsake_badge", "CONVOY ENAMEL BADGE" }, { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
         public static string Name(string id)

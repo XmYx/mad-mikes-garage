@@ -136,10 +136,10 @@ namespace MadMax.Game.Acceptance
                     if (!sc.NeedsWorld) continue;
                     if (world.outcome != Outcome.Pass) { lock (gate) results.Add(new ScenarioContext { id = sc.Id, outcome = Outcome.Blocked, reason = "no world: " + world.reason }); continue; }
                     // isolation: every scenario gets the same fresh fixed-seed world (a new game loads in a few seconds)
-                    if (!first)
+                    if (!first || sc.WorldRules != null)
                     {
                         var fresh = new ScenarioContext { id = "setup.fresh_world", resultsDir = resultsDir, startedAt = Time.realtimeSinceStartup };
-                        yield return StartWorld(fresh);
+                        yield return StartWorld(fresh, sc.WorldRules);
                         if (fresh.outcome != Outcome.Pass) { lock (gate) results.Add(new ScenarioContext { id = sc.Id, outcome = Outcome.Blocked, reason = "fresh world failed: " + fresh.reason }); continue; }
                     }
                     first = false;
@@ -151,14 +151,14 @@ namespace MadMax.Game.Acceptance
         }
 
         /// <summary>A fixed-seed new game with the standard rules; waits until the player can act.</summary>
-        IEnumerator StartWorld(ScenarioContext c)
+        IEnumerator StartWorld(ScenarioContext c, GameRules rules = null)
         {
             float t0 = Time.realtimeSinceStartup;
             while ((!WastelandGame.Instance || !WastelandGame.Instance.Ready || ScreenFader.Busy) && Time.realtimeSinceStartup - t0 < 180f) yield return null;
             if (!c.Check(WastelandGame.Instance && WastelandGame.Instance.Ready, "world loads within 180 s")) yield break;
             WastelandGame.ExternalInput = false;
             var menu = WastelandGame.Instance;
-            menu.StartNewGame(new GameRules { randomSeed = false }, new MadMax.RPG.CharacterStats(), new Appearance(), false);
+            menu.StartNewGame(rules ?? new GameRules { randomSeed = false }, new MadMax.RPG.CharacterStats(), new Appearance(), false);
             while ((WastelandGame.Instance == menu || !WastelandGame.Instance || !WastelandGame.Instance.Ready || TitleSequence.Playing || ScreenFader.Busy) && Time.realtimeSinceStartup - t0 < 300f) yield return null;
             var g = WastelandGame.Instance;
             if (!c.Check(g && g != menu && g.Ready, "new game (seed " + (g ? g.seed : -1) + ") ready within 300 s")) yield break;

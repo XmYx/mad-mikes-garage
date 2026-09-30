@@ -18,7 +18,7 @@ namespace MadMax.Game
         public List<SocketSave> sockets = new List<SocketSave>();
         public float fuel, oil, coolant, frame, salvage = -1f, additive;
         public int tank;                   // ResourceType in the tank (0: whatever the engine burns)
-        public bool fourWheel, diffLocked;
+        public bool fourWheel, diffLocked, disconnected;
         public int towedBy = -1;
         public string cargo;               // machine bed / hopper contents
         public string radio;               // RadioReceiver state (on, station, volume)
@@ -93,6 +93,8 @@ namespace MadMax.Game
         public int starter = -1;                                        // FIRST STEPS step (-1 = off)
         public List<uint> homestead = new List<uint>();                 // placed-piece ids that came with the homestead
         public List<string> lastEngine = new List<string>();            // LastEngine flags
+        public List<string> story = new List<string>();                 // campaign state (MadMax.Story.Story.Save)
+        public List<uint> storyProps = new List<uint>();                // placed-piece ids set up by the campaign (Nell's stop, the garage)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

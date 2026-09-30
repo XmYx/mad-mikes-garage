@@ -19,6 +19,8 @@ namespace MadMax.Game.Acceptance
         public virtual float Timeout => 60f;
         /// <summary>Needs a loaded world (false: pure data checks).</summary>
         public virtual bool NeedsWorld => true;
+        /// <summary>Rules for this scenario's fresh world (null = the standard sandbox rules, seed 7).</summary>
+        public virtual GameRules WorldRules => null;
         public abstract IEnumerator Run(ScenarioContext c);
     }
 

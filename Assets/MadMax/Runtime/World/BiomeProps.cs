@@ -557,6 +557,7 @@ namespace MadMax.World
                 var s = world.Sample(x, z);
                 if (s.roadDist < 7f || !float.IsNaN(s.water) || s.shore > 0.3f || s.feature != 0) continue;
                 if (world.SettlementAt(x, z) != null && biome != Biome.Village) continue;
+                if (world.Reserved(x, z)) continue;                                                // campaign scenes stay clear
                 string id; string name; bool dyn = false;
                 switch (biome)
                 {
@@ -603,7 +604,7 @@ namespace MadMax.World
                     float z = (c.y + 0.2f + 0.6f * (float)rnd.NextDouble()) * DeformableTerrain.ChunkWorld;
                     int variant = rnd.Next(2), yawSteps = rnd.Next(4);
                     var s = world.Sample(x, z);
-                    if (s.roadDist < 6f || !float.IsNaN(s.water) || s.feature != 0) continue;
+                    if (s.roadDist < 6f || !float.IsNaN(s.water) || s.feature != 0 || world.Reserved(x, z)) continue;
                     var d = SpawnById(terrain, "Ore_" + oreKind + variant, "Rock", parent, mat, new Vector3(x, terrain.Height(x, z) - 0.15f, z), yawSteps * 90f, false, store, $"o{c.x},{c.y},{i}", legacy);
                     if (d && oreKind == ResourceType.UraniumOre) d.gameObject.AddComponent<Hazard>().radiation = 0.35f;
                 }

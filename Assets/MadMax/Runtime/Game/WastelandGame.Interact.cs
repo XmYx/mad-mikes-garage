@@ -411,6 +411,21 @@ namespace MadMax.Game
                 if (K) tanker.Toggle(FuelTanker.Mode.Drain);
                 return text;
             }
+            if (sys.disconnected)
+            {
+                bool wrench = Inventory.GetItem(ItemIds.Wrench) > 0;
+                text = wrench ? "[G] RECONNECT THE BATTERY LEAD" : "A BATTERY LEAD HANGS LOOSE (NEEDS A WRENCH)";
+                if (G && wrench)
+                {
+                    sys.Reconnect();
+                    Stats.Practice(MadMax.RPG.Skill.Mechanics, 4f);
+                    MadMax.Audio.Sfx.Play("ratchet", v.transform.position, 0.6f);
+                    Toast("BATTERY LEAD TIGHTENED: " + Name(v) + " WILL CRANK NOW");
+                    MadMax.Story.Story.Note("reconnected");
+                    MadMax.Net.NetSession.Instance?.SendVehicleMeta(v);
+                }
+                return text;
+            }
             if (sys.NeedsService(Inventory) || sys.CanMaintain(Inventory))
             {
                 text = "[G] REFUEL/SERVICE";

@@ -71,6 +71,25 @@ namespace MadMax.World
         public void Yard(out Vector3 origin, out Vector3 along, out Vector3 side) { origin = yardP; along = yardDir; side = yardSide; }
 
         /// <summary>1 inside the start yard, fading to 0 over 12 m outside it.</summary>
+        volatile Vector3[] clearings = new Vector3[0];
+
+        /// <summary>Keep wild props off a circle (x, z, radius): the campaign's scenes (the convoy wreck, Nell's stop,
+        /// the garage). Set before those chunks generate; read on worker threads (the array is swapped, never edited).</summary>
+        public void Reserve(Vector3 circle)
+        {
+            var old = clearings;
+            var n = new Vector3[old.Length + 1];
+            old.CopyTo(n, 0); n[old.Length] = circle;
+            clearings = n;
+        }
+
+        public bool Reserved(float x, float z)
+        {
+            var c = clearings;
+            for (int i = 0; i < c.Length; i++) { float dx = x - c[i].x, dz = z - c[i].y; if (dx * dx + dz * dz < c[i].z * c[i].z) return true; }
+            return false;
+        }
+
         public float YardWeight(float x, float z)
         {
             float dx = x - yardP.x, dz = z - yardP.z;

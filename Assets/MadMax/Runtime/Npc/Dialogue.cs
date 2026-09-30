@@ -40,6 +40,7 @@ namespace MadMax.Npc
             if (npc.Surrendered) { SurrenderTalk(); return; }
             if (P.Raider) { Parley(); return; }
             if (npc.Hostile) { Hostile(); return; }
+            if (P.Cast && !S.Has(NpcSave.Met)) { S.Set(NpcSave.Met); S.disposition = Mathf.Max(S.disposition, 10); }   // story characters skip the sizing-up
             line = NpcLore.Greeting(P.temper, S.Has(NpcSave.Met), S.disposition);
             if (!S.Has(NpcSave.Met)) FirstLook();
             if (S.disposition < -60) { Refuse(); return; }
@@ -160,6 +161,11 @@ namespace MadMax.Npc
         {
             if (setLine) line = NpcLore.Greeting(P.temper, true, S.disposition);
             choices.Clear();
+            foreach (var t in MadMax.Story.StoryTalk.Topics(g, npc))
+            {
+                var topic = t;
+                Add(topic.say, () => { line = topic.reply; topic.act?.Invoke(); Change(2); Hub(false); });
+            }
             Add("WHO ARE YOU?", About);
             Add("WHAT'S HAPPENING AROUND HERE?", Rumours);
             if (P.Vendor) Add("SHOW ME WHAT YOU'VE GOT.", () =>

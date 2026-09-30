@@ -255,7 +255,7 @@ namespace MadMax.Game
                 canvas.Text((canvas.w - rw) / 2 + 4, 27, race, Amber);
                 if (Racing.Instance.NextGatePos(out var gp)) DrawGate(gp);
             }
-            var starter = game.StarterLine;
+            var starter = game.StoryLine ?? game.StarterLine;
             if (starter != null && !(game.Menus && game.Menus.IsOpen))
             {
                 starter = Controls.Localize(starter);

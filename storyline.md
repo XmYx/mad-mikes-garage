@@ -2,7 +2,7 @@
 
 **Working campaign title: KEEP THE LIGHT ON**
 
-**Status:** narrative and gameplay proposal; no quests, characters, rewards or campaign rules below are claimed to be implemented. Names and balance values are provisional. This report builds on the current README, roadmap, factions, skills and vehicle systems. It proposes a separate STORY start alongside SANDBOX, preserving the latter's freedom.
+**Status:** in development. Stage N0 (the quest contract: stable ids, prerequisite graph, missing-system register) and the first part of N1 (story start, A1 and B1) are playable; everything else is data-only outline. Progress is tracked in ROADMAP.md, "Storyline in tandem with the depth ladders". Names and balance values are provisional. This report builds on the current README, roadmap, factions, skills and vehicle systems. It proposes a separate STORY start alongside SANDBOX, preserving the latter's freedom.
 
 > You wake under an overturned convoy trailer with a canteen, a bent wrench and a radio that only works when you hold its wires together. Somebody has taken the vehicles, the cargo and everyone you travelled with. At sunset, a familiar voice comes through the static: “If you made it, keep the light on.” Three towns away, a freight ledger says you died yesterday.
 

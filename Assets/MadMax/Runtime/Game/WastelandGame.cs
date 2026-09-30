@@ -5,6 +5,7 @@ using MadMax.Items;
 using MadMax.Net;
 using MadMax.RPG;
 using MadMax.Vehicles;
+using MadMax.Story;
 using MadMax.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -144,6 +145,13 @@ namespace MadMax.Game
             pickups.Init(propMaterial, Inventory);
 
             World.roads.SpawnPoint(out var p, out var dir);
+            if (pending != null && !joining && pending.story != null && pending.story.Contains("campaign")) StoryAnchors.Bind(World);   // clearings before the terrain builds
+            if (Rules.story && pending == null && !joining)
+            {
+                // the campaign starts at the convoy wreck out on the road, not in the start yard
+                StoryAnchors.Bind(World);
+                if (StoryAnchors.Has("wreck")) { p = StoryAnchors.Get("wreck"); p.y = World.Sample(p.x, p.z).height; }
+            }
             WorldSpawn = p;
             SpawnDir = dir;
             Player = PlayerCharacter.Create(propMaterial, SaveSystem.PendingLook);
@@ -191,15 +199,20 @@ namespace MadMax.Game
                 ScreenFader.Progress(0.6f);
                 yield return null;
                 UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fleet");
-                SpawnFleet(p, dir);
+                if (!Rules.story) SpawnFleet(p, dir);
                 UnityEngine.Profiling.Profiler.EndSample();
                 UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
                 SpawnWrecks(p);
                 UnityEngine.Profiling.Profiler.EndSample();
-                GiveStartingKit(Rules.startingKit);
-                SpawnHomestead();
+                if (Rules.story) StoryNewGame();
+                else
+                {
+                    MadMax.Story.Story.Clear(); MadMax.Story.Story.Campaign = false;
+                    GiveStartingKit(Rules.startingKit);
+                    SpawnHomestead();
+                }
             }
-            Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
+            if (!(Rules.story && pending == null)) Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
             ScreenFader.Progress(0.85f);
             yield return null;
 
@@ -214,10 +227,11 @@ namespace MadMax.Game
             }
             if (joining) { JoinAsClient(); played = true; }
             else if (pending != null) { RestorePlayer(pending); played = true; Toast("GAME LOADED"); }
+            else if (Rules.story && !Dedicated) { }                                               // StoryNewGame placed the player by the wreck
             else if (fleet.Count == 0 && !Dedicated) { Player.gameObject.SetActive(true); var sp = p + Vector3.Cross(Vector3.up, dir) * 6f; sp.y = terrain.Height(sp.x, sp.z) + 0.1f; Player.Teleport(sp, 0f); terrain.focus = Player.transform; if (cameraRig) cameraRig.SetTarget(Player.transform); }
             else if (!Dedicated) Enter(fleet[0]);
             GameSettings.Current.Apply(this);
-            if (!joining && pending == null && !Dedicated) BeginStarter();                        // FIRST STEPS for a fresh world
+            if (!joining && pending == null && !Dedicated && !Rules.story) BeginStarter();        // FIRST STEPS for a fresh sandbox world
             if (Dedicated) StartDedicated();
             else if (pending == null && !SaveSystem.SkipMenu && LaunchOptions.NoMenu)
             {
@@ -704,6 +718,7 @@ namespace MadMax.Game
             BaseUpkeep.Tick();
             UpdateGarage();
             UpdateStarter();
+            UpdateStory();
             UpdateWreckStreaming();
             RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
             UpdatePlanet();
