@@ -13,6 +13,9 @@ This roadmap grows every system so they **feed each other**. The core loop it ai
 Cross-links are called out per system under *Ties*. Status: `[x]` implemented, `[ ]` planned.
 Systems are listed in implementation order (by complexity: T1 data-driven additions → T3 new simulation).
 
+Next quality programme: [unattended acceptance stages Q0–Q8](#26-quality-of-life--unattended-acceptance-playtests-t2t3--planned)
+and [world-coherence audit W0–W3](#27-world-coherence--gaps-to-investigate-and-close-t2t3--planned).
+
 ---
 
 ## Phase 0 — fixes from the latest review `[done]`
@@ -786,7 +789,7 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] **Store the harvest, sell the winter**: the seasonal price swing only pays if food keeps. Give preserved foods (smoked, dried, canned, pickled) near-zero spoilage and a recipe chain from the garden and the smokehouse, and let a root cellar / cold store piece slow spoilage in containers. Turns farming + crafting + trading into one loop across the year.
 - [ ] **Seasonal stock and chores**: vendors carry seeds and saplings in spring, preserves and firewood in winter, fishing gear in summer; residents work the village fields at harvest (`NpcLore` errands: bring in the crop, cut firewood before the first snow).
 - [ ] **Hemisphere seasons** (goes with the deferred regional weather): south of `ZEquator` the seasons should run half a year out of phase, and markets with them, so a long haul across the equator is a trade run.
-- [ ] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. Its spot sits close to the parked machines in the start yard (the excavator arm reaches the awning): move it to the yard's open side.
+- [ ] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. The machine-clearance part is complete: it has moved behind the machine row (see User fixes below); home-service and progression integration remain planned.
 - [ ] **Station sounds**: only workbenches have a working sound; stoves (sizzle), furnaces (roar), mixers (churn), stills (bubble) and sewing (clack) would let a base be heard working, through `ProceduralSfx`.
 - [ ] **Town notice boards as a news digest**: the bounty board could also post the last few journal/radio headlines about that town (raids beaten, skirmish wrecks, season prices), so what happens off-screen is visible where the player trades.
 
@@ -800,3 +803,229 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] **Real cars modelled in Blender**: Fiat 126p, Renault 5, Citroën BX, XM, Xantia, Lancia Ypsilon (843), Fiat 500, Peugeot 205, 206, 207 CC, 405, 406 Break, Fiat Multipla. *Done:* `tools/blender/cars.py` lofts each body from its real dimensions (profile, beltline, plan rounding, tumblehome, pillars, doors, lamps, bumpers), voxelizes it at 0.08 m with material codes and renders side / 3/4 previews; `Designs/ModelCars.cs` builds the vehicles (shell, interior, seams, cut doors and hood, sockets); new `wheel_compact` (0.31 m). They join the fleet, wrecks and garage recipes.
 - [ ] Real cars: the Blender 3/4 preview camera is off-frame; the BX rear wheel spats and the Multipla's split windscreen line are not modelled yet; engines are the generic i4 / i6 / diesel (no flat-twin for the 126p and 500).
 
+## 26. Quality of life & unattended acceptance playtests `T2–T3` — planned
+
+The README describes the public feature contract. An implemented checkbox above is not evidence that a
+feature is tested. This programme adds a second, traceable acceptance layer: every advertised feature must
+work, explain its state, survive the transitions it promises, and leave the player a sensible next action.
+All stages below are **planned**, including the runner and CI gates; none is claimed to exist yet.
+
+**Starting point:** `Game/FrameStats` already provides `-autotest`, `-towtest`, frame logging, profiling and
+screenshots. Its road pilot starts a fixed-seed game, can recover a stuck/flipped car, and quits after a timed
+run. That is useful performance infrastructure, but a normal quit is not an assertion that the journey or
+other features passed. `Controls.Inject` supplies an action press, not a complete held/released keyboard,
+mouse or gamepad test driver. Extend these seams without replacing their existing profiling use.
+
+**Unattended means:** one repository command builds or selects the matching player, creates disposable test
+profiles, launches every required process, supplies all input, collects evidence and exits. No clicks, focus
+changes, controller, Unity MCP session, dialog dismissal, save selection or human judgement may be needed
+for a run to finish. Unity MCP remains useful for developing and debugging scenarios, not a prerequisite
+for the acceptance runner. A clean machine still needs documented Unity modules, licensing and display
+prerequisites; missing infrastructure must produce a bounded, explicit failure rather than prompt or hang.
+
+Automation can demonstrate usability and comfort proxies, not prove subjective enjoyment. Measure clear
+feedback, predictable controls, readable information, recoverable mistakes and uninterrupted progress.
+Screenshots alone do not establish that crafting, driving or trading works; state assertions alone do not
+establish that the player can see and understand it.
+
+### Q0 — Feature coverage contract and measurable budgets
+- [ ] Create a versioned feature-to-scenario manifest from **every README feature group**, roadmap systems
+      1–25 and the content registries. Each entry names its prerequisites, supported modes, observable success,
+      expected failure, recovery, persistence/authority requirements, timeout and evidence. New registered
+      content without coverage fails validation; intentionally unsupported combinations are explicit gaps.
+- [ ] Separate catalogue checks (all recipes, vehicles, items, stations and blueprints resolve) from behavioural
+      checks (each distinct mechanic succeeds through gameplay). Use pairwise combinations for interacting
+      settings and terrain, plus mandatory regressions; do not mistake one representative car for all vehicles.
+- [ ] Define budgets before implementing each scenario: completion time, input-to-feedback latency, action
+      count, rollback distance, readability constraints and performance on a named hardware/settings profile.
+      Distinguish in-game time from wall time. Record baseline and target; fail on the target, not a silently
+      moving average. Only explicitly reviewed changes may replace a baseline.
+- [ ] Classify outcomes as PASS, FAIL or BLOCKED, with a reason. Missing prerequisites, unexpected skips,
+      unsupported advertised behaviour and missing evidence cannot count as PASS for a required suite.
+
+*Exit evidence:* a coverage report with zero unassigned advertised features; unresolved gaps stay visible.
+
+### Q1 — Reproducible runner, input and isolation
+- [ ] Add a CLI entry point and process supervisor with per-step and whole-run watchdogs. Exit code 0 means
+      every required assertion passed; crashes, timeouts, assertion failures and blocked required scenarios
+      exit nonzero. A separate watchdog must still report a hung Unity main thread or failed startup.
+- [ ] Use temporary saves, preferences, output folders and multiplayer ports; never read or overwrite the
+      player's slots or autosave. Record seed, commit/build hash, scenario version, platform, settings and
+      random streams. Restore input, clocks, audio settings and processes even after failure.
+- [ ] Add full press/hold/release, pointer, scroll and gamepad input through the production input path, with
+      observable menu focus and readiness conditions. Keep semantic adapters for fixture setup and state
+      inspection. A UI scenario must actually navigate its UI, not invoke the success method directly.
+- [ ] Seed fixtures before the observed segment; disclose granted resources, teleports and clock changes in
+      the report. End-to-end progression scenarios obtain resources and travel normally. Never let the road
+      pilot's automatic recovery hide a mobility failure; test player recovery as a separate explicit action.
+- [ ] Emit machine-readable JSON and JUnit results, step timings, logs and replayable input traces, plus
+      screenshots/state snapshots on failure. Validate the harness itself with an intentional failed assertion,
+      crash and hang: each must produce a bounded nonzero result and useful evidence.
+
+*Exit evidence:* the same scenario passes from a cold player and repeated editor Play sessions with domain
+reload disabled; deliberately broken runs reliably fail without user input.
+
+### Q2 — First session, navigation and everyday comfort
+- [ ] Run boot/title → new game → FIRST STEPS → scavenge → drive → craft → place/use a home piece → trade →
+      return home → save → restart/load. Cover starting-kit and no-kit rules separately; a prebuilt homestead
+      must not accidentally complete or block objectives. Exercise all three slots and autosave in test profiles.
+- [ ] Check that interaction prompts identify the actual target, show the rebound key/gamepad action and
+      explain why an action is unavailable. Repeated use, cancel/back, full inventory and opening a menu
+      while moving must neither lose items nor leave controls captured or the player trapped.
+- [ ] Exercise inventory, crafting, build placement, health, skills, map/waypoint, journal, garage, help and
+      settings through their real controls. Cover long names/lists, empty states, queued actions and scrolling;
+      measure action counts for common tasks so adding polish does not add needless steps.
+- [ ] Exercise walking, sprinting, crouching, vaulting, mantling, sliding, rolling and grappling, including low
+      ceilings, failed ledge clearance and moving platforms. Verify input release/cancel and safe landing.
+- [ ] Check all seven camera modes, pixel-height extremes, independent HUD sizes, colour-blind mode, unit
+      changes, shake disabled and keyboard/gamepad rebinding. Assert essential text stays on-screen, selected
+      items remain visible and warnings remain distinguishable without colour or audio alone.
+
+*Exit evidence:* both first-session routes finish from the menu with no fixture grants after starting;
+all navigation paths can be cancelled safely and saved settings survive a fresh process.
+
+### Q3 — Driving, machinery and every way of travelling
+- [ ] Run every registered vehicle, including the 13 Blender cars, through spawn, enter, start, move, steer,
+      stop, reverse, exit and reload. Add dedicated suites for bikes/sidecars, horses, tracked machines,
+      aircraft, boats and submarines; their control models need their own acceptance criteria.
+- [ ] Lock in the recent fixes: machine wheel contact/body clearance, cars separating after contact, forward
+      and reverse from rest, hill hold and automatic gears, ride height and tyre/arch clearance. Compare dry
+      and wet slopes with suitable tyres and loads. The skinny-tyre Trabant on wet 15° sand should hold safely
+      when grip is insufficient; do not demand impossible climbing from every vehicle.
+- [ ] Measure pedal/steering response, the 0.35 s forward/reverse hold, braking distance, camera settling and
+      low-speed manoeuvring. Test digital and analogue input, manual/automatic transmission, damaged parts,
+      cold starts, wrong/empty fuel, fluids, punctures and service. Warnings must precede avoidable stranding.
+- [ ] Fit/remove compatible parts, armour, attachments and mounted weapons; tune, paint and apply decals.
+      Check actual handling/weapon effects, shown stats, costs, sockets and saved/networked appearance.
+- [ ] Test winch, crane, towing, tanker transfer and transporter loading with conservation and attachment
+      assertions across saving and streaming. Dig → visibly fill bucket → dump into tipper → unload/use soil
+      must transfer the same resource quantity; visual heaps and clods must agree with useful cargo.
+- [ ] Test taxi/take-off/land/reverse, shore launch/mooring, dive/surface, cabin oxygen/power, underwater dock
+      and safe dismount. Include a blocked exit, overturned vehicle and depleted air/fuel recovery route with
+      clear feedback; no silent teleport or invulnerability during the measured segment.
+
+*Exit evidence:* vehicle coverage is complete, known regressions are deterministic tests, and each mobility
+family has a successful journey plus a deliberate failure and supported recovery.
+
+### Q4 — Crafting, survival and the productive home
+- [ ] Validate the recipe/blueprint/resource dependency graph for missing IDs, unreachable unlocks and circular
+      gates. Execute each distinct station mechanic; test every recipe's inputs, outputs and requirements.
+      Require end-to-end chains for food, medicine/clothing, vehicle service, soil → metal → road, electricity,
+      irrigation → harvest, and slipway/diving/sea-base construction without mid-chain inventory grants.
+- [ ] Assert conservation for storage transfers, queues, output collection, cancellation and reload. Cover fuel
+      substitution, fuel also used as an ingredient, actual paid-fuel refunds, quality, knowledge, full queues,
+      nearby container range boundaries, missing power and interrupted work. The displayed blocked reason
+      must agree with the actual gate, and finishing a job must give visible/audible feedback once.
+- [ ] Exercise foundations, plans, doors, furniture, claim/home services, structural damage and salvage. Check
+      costs and refunds, reachable stations, moving cargo and collision clearance. Build power/water networks,
+      disconnect/reconnect a branch and confirm only the affected consumers stop and recover.
+- [ ] Run hunger/thirst, spoilage/sickness, injury treatment, radiation, temperature, wet clothing, shelter and
+      diving air through warning → action → recovery. Verify armour/tool wear, repair, research/books/VHS and
+      skill progression. Use accelerated simulation clocks only where appropriate; do not change physics time
+      scale to make a driving or responsiveness test pass.
+- [ ] Test gardening, pests, greenhouses, irrigation, fishing/trawling, livestock feeding/breeding/products and
+      hunting/butchery. Follow outputs into actual recipes and trade; a decorative animation is not completion.
+
+*Exit evidence:* the resource ledger balances with declared sinks/sources, all required production chains
+finish, and interruptions explain themselves without losing work or trapping progression.
+
+### Q5 — World journeys, persistence and long-range consistency
+- [ ] Keep seed 7 as a regression anchor and add a checked-in corpus of at least 20 seeds covering difficult
+      roads, rivers, coastlines, settlements and site placement. Run a rotating additional seed nightly and log
+      it for exact replay. Validate reachability with actual player/vehicle clearance, not only map connectivity.
+- [ ] Travel from home through town trade, a dangerous site and a different biome, then return with useful
+      cargo. Cover equator, poles, the ocean date line, altitude and underwater space. Assert destinations,
+      waypoints and interactions remain meaningful across streaming and coordinate wrapping.
+- [ ] Save/restart while crafting, towing, carrying soil, injured, farming, in a storm/fire and aboard a boat/sub.
+      Compare canonical state by stable identity with documented float/time tolerances, then resume the action.
+      Include interrupted/corrupt saves and prior supported save versions; fail safely with an actionable message.
+- [ ] Leave and revisit a settled area after days/seasons: inventories, terrain/ruts, damage, crops, animals,
+      production, jobs and faction consequences must obey a documented off-screen policy. Test the boundary
+      of bounded persistence (such as saved rut chunks) and prevent disappearing player-owned progress.
+- [ ] Exercise day/night, seasons, rain/snow, drying/puddles, fire, radiation, decay and overgrowth together.
+      Check that effects agree with traction, visibility, shelter and resource use, including after reload.
+
+*Exit evidence:* all fixed-corpus journeys complete within their budgets, save/reload resumes meaningful
+activity, and any intentional simulation/persistence limits are recorded rather than hidden by test fixtures.
+
+### Q6 — People, wildlife, conflict and shared-world authority
+- [ ] Complete dialogue, trade, errands, contracts, town chains, faction reputation, companions and escorts;
+      test acceptance, refusal, expiry, abandonment and reload. Check race and Last Engine objectives/rewards.
+      Rewards, inventory and standing must change exactly once, including repeated interaction attempts.
+- [ ] Test combat, weapon/ammo/reload, armour, surrender/parley, alarms/defences, companion commands, taming
+      and riding. Verify perception and wildlife reactions, friendly/hostile distinctions and corpse loot;
+      threats must leave understandable feedback and a supported escape or recovery path.
+- [ ] Launch a host plus two scripted clients and a separate dedicated-server suite automatically. Exercise
+      joining, simultaneous trade/build/loot, travel, reconnect and authority transfer where supported, under
+      declared latency/loss/duplicate-packet conditions. Assert ownership and resource conservation at authority.
+- [ ] Turn documented multiplayer limitations into explicit failing/blocked coverage entries: client dialogue
+      and trading currently act on local copies; taming/riding still require the host. Close the authority gaps
+      before claiming those advertised loops pass in multiplayer; never silently substitute a host-only test.
+
+*Exit evidence:* social/combat objectives pass solo, supported shared actions converge without duplication,
+and unsupported client actions remain visible in the release coverage report until implemented.
+
+### Q7 — Coherent feedback, presentation and performance
+- [ ] Capture deterministic rendered checkpoints at noon, dusk, night, rain/snow, indoors, in a moving car and
+      underwater. Check missing/pink materials, clipped HUD, unreadable prompts, camera obstruction and effect
+      density. Use tolerance/masks for intentional motion; a golden image cannot replace gameplay assertions.
+- [ ] Verify engine, wheel, tool, station, weather, wildlife, NPC and radio events select the correct audio
+      channels, stop when their source stops and respect settings. Test captions and radio coverage/schedules;
+      roof/cabin attenuation must agree with shelter. Add clipping/overlap and repeated-loop diagnostics.
+- [ ] Measure input-to-visible response and blocked-action feedback against Q0 budgets. Record camera jerk,
+      repeated prompt changes, forced recovery, unnecessary menu actions and unexplained idle time as comfort
+      regressions. Keep subjective art/audio review optional and separate from the unattended gate.
+- [ ] Benchmark built Development players on a declared reference machine at fixed resolution/settings:
+      60 fps target, median/p95/p99 frame times, worst stalls, allocations and memory after warm-up. Include
+      towns, big bases, streaming, collisions/destruction, machinery and aircraft. Set explicit per-scene budgets;
+      keep screenshot capture and profiler instrumentation separate from normal timing runs.
+
+*Exit evidence:* rendered and audio checks pass on a graphics-capable worker, timing budgets pass on the
+reference profile, and headless simulation success is never reported as visual/audio coverage.
+
+### Q8 — Continuous gates and unattended soak
+- [ ] Add a fast PR suite (target ≤5 minutes after build), nightly full feature/seed coverage and a release
+      suite on supported Linux, Windows and macOS players. Build/license/display failures report infrastructure
+      failure; the existing release workflow must not publish a tested badge just because compilation passed.
+- [ ] Add a ≥2-hour soak combining travel, production, combat, weather, saves and reconnects. Separately
+      advance world days/seasons to expose off-screen progression errors. Check bounded memory/object/audio
+      growth by returning to the same warmed-up scene, finite physics values and no repeated exceptions.
+- [ ] Publish coverage, results and failure artifacts with retention and an exact replay command. Re-run to
+      diagnose flakes, but retain the first failure; retries and quarantine must not make a required test green.
+- [ ] Gate release on complete required coverage, no data-loss/duplication/soft-lock/crash failures and agreed
+      QoL/performance budgets. Report remaining optional gaps explicitly. Teardown all test processes/profiles
+      and verify the runner needs no input from launch through final report.
+
+*Exit evidence:* a scheduled run and a clean-machine release run both finish unattended with trustworthy
+exit codes; deliberately injected faults block release. Implement stages in Q0 → Q1 → Q2–Q6 → Q7 → Q8 order.
+
+## 27. World coherence — gaps to investigate and close `T2–T3` — planned
+
+The world already has broad systems. Tighten their shared rules before adding more content. The candidates
+below are **audit questions, not confirmed defects**, except where the roadmap already states a limitation.
+First reproduce the gap in a Q-stage scenario, then implement the smallest coherent improvement and retain
+the regression. Regional weather remains deliberately deferred; this plan does not reopen that scope.
+
+| Priority / area | Potential gap and tightening work | Broadening only when the connection works | Unattended evidence |
+|---|---|---|---|
+| P1 · Home and journey rhythm | The homestead has moved safely behind the machines; first-home garage service, bed/respawn, raid ownership and FIRST STEPS integration remain suggested. Audit rest, water, repair and turning space along ordinary journeys so maintenance does not become surprise stranding. | A clear return-home milestone and useful roadside rest/service stops, driven by measured travel gaps. | Q2/Q3/Q5: first return, loaded truck access, service, sleep and respawn without overlapping machinery or losing the route. |
+| P1 · Recipe and exploration gates | Do every blueprint, ingredient and required station have an attainable source under the promised loot/start rules? Audit low-loot progression, tools needed to obtain their own ingredients, and land/sea construction dependencies. | Multiple believable salvage/trade/research sources for critical bottlenecks, with journal clues. | Q0/Q4: dependency validation plus no-grant progression under scarce and standard rules. |
+| P1 · Roads, rivers and access | A connected road graph may still have unusable grades, fords, doorways, moorings or site entrances. Audit physical access for loaded trucks, pedestrian routes, current and boats; road crossings must not silently block waterways. | Bridges, marked fords, slipways and settlement-specific parking where measured access needs them. | Q3/Q5: clearance and journey corpus, including water crossings and alternatives when one route is impassable. |
+| P1 · Shared shelter and water rules | Audit agreement between roof/cabin sound attenuation, rain exposure, warmth, greenhouse conditions, air pockets and submarine oxygen. Shoreline/river surface, flow, buoyancy and wet-ground feedback should describe the same place. | Better seals, ventilation or drainage only when players can understand and inspect the underlying rule. | Q4/Q5/Q7: cross a doorway, waterline and docking collar; compare HUD, effects, audio and actual resource/health changes. |
+| P1 · Persistence, streaming and the seam | Audit everything carried across the date line or out of simulation: trailers, cargo, companions, jobs, claims, utilities and map routes. Define what persists, approximates or expires; review active escort restoration and bounded terrain history explicitly. | An event/state ledger for off-screen work and consequences if existing snapshots cannot preserve causal continuity. | Q5/Q6: leave, wrap, reload and return with stable ownership, conserved cargo and resumable objectives. |
+| P1 · Multiplayer truth | Client-local dialogue/trade and host-required taming/riding are documented limitations. Resolve authoritative transactions and ownership before describing the whole survival loop as shared. | Cooperative home/companion roles after basic client actions are equivalent and duplication-safe. | Q6: two clients compete for one item/animal/job; exactly one authoritative result persists after reconnect. |
+| P2 · Seasonal production and trade | Seasonal prices already exist. Audit whether spoilage, storage capacity, physical vendor stock and travel cost permit the advertised harvest-to-winter loop. A price multiplier alone may offer no practical player choice. | Preserves/cold storage, seasonal stock/chores and shortage-driven deliveries, as suggested above; local-season markets stay dependent on the deferred hemisphere/weather decision. | Q4/Q5: harvest, preserve/store, transport and sell across a season; report net costs, spoilage and available demand. |
+| P2 · Ecology and resource renewal | Audit whether biome fauna, fish, crops, water and mineable resources support local livelihoods. Check hunted-herd recovery, livestock feeding and whether fence protection reflects a real enclosure; avoid both infinite free output and irreversible early depletion. | Distinct regional specialities and renewable alternatives where scarcity creates a dead end rather than a useful trade journey. | Q4/Q5/Q6: repeated harvest/hunt/return cycles, enclosure breach and sustained farm inputs/outputs. |
+| P2 · Town identity and visible consequences | Existing factions, markets, jobs, radio and journal should agree on who lives here and what changed. Audit repeated/contradictory news, quest destinations after streaming, shortages without causes and settlements with identical practical roles. | Notice-board news digest, occupation-based stock and local repair/rebuilding work tied to actual events. | Q5/Q6/Q7: complete or fail a local job, revisit and compare prices/standing, NPC response, journal and radio without duplicate rewards. |
+| P2 · Damage, maintenance and a calm home | Audit how raids, fire, decay, weather, spoilage and personal needs compound while away. Ensure warning and repair options precede avoidable losses; existing cosy props should support a usable rest space amid those pressures. | Configurable pressure/recovery windows and rebuilding services if measured upkeep crowds out exploration and crafting. | Q2/Q4/Q8: an ordinary expedition returns to understandable, recoverable consequences within declared upkeep budgets. |
+| P2 · One visual and acoustic language | Audit the new Blender cars against voxel scale, palette, interaction highlights, collision silhouettes and damage feedback. Machinery soil, station progress, weather and environmental sounds should communicate actual state, with room for radio/dialogue. | Remaining vehicle identity details and station-specific sound families once readability and source/state agreement pass. | Q3/Q7: tyre/body clearance, load/progress readability, camera/weather matrix and competing audio events. |
+
+- [ ] **W0 — Audit:** map each row to a concrete existing implementation, reproducible scenario and player-facing
+      consequence. Close non-issues with evidence; distinguish defects, intentional limits and design choices.
+- [ ] **W1 — Tighten:** fix P1 contradictions first and add their Q-stage regressions. Keep the current 9.6 km
+      world and existing content useful before increasing map size or adding more unrelated systems.
+- [ ] **W2 — Broaden:** choose P2 additions only where the audit demonstrates a broken or thin connection;
+      attach resource costs, feedback, persistence and authority requirements before implementation.
+- [ ] **W3 — Re-run the whole loop:** scavenge → build/tune → travel/trade → conflict/dialogue → settle/produce
+      → standing → farther travel, with no fixture shortcuts. Compare task budgets and consequences against Q0,
+      and publish what improved and what remains unresolved rather than ticking off content volume.
