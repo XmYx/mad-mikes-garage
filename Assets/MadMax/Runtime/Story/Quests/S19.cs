@@ -79,6 +79,15 @@ namespace MadMax.Story
     {
         /// <summary>The nearest good lake to the first town (deep enough to dive, not toxic), Ester's yard on its shore
         /// facing the town, the ruin near the middle, her skiff between them, and a spot in town for the bell.</summary>
+        /// <summary><see cref="Open"/> for the lake margin: <c>Sample.water</c> keeps the lake level past the shoreline, so dry
+        /// ground is judged by <see cref="WorldGen.WaterLevel"/>.</summary>
+        static bool ShoreOpen(WorldGen w, Vector3 p)
+        {
+            var s = w.Sample(p.x, p.z);
+            return s.roadDist >= 6f && float.IsNaN(w.WaterLevel(p.x, p.z)) && (float.IsNaN(s.water) || s.height > s.water + 0.3f) && s.feature == 0 && w.SettlementAt(p.x, p.z) == null
+                   && w.YardWeight(p.x, p.z) <= 0f && w.SiteAt(p.x, p.z) == null && !w.RiverAt(p.x, p.z, out _, out _, out _);
+        }
+
         static partial void Anchors_S19(WorldGen world, Settlement town)
         {
             var tc = Q3Town(world, town);
@@ -118,7 +127,7 @@ namespace MadMax.Story
                     if (edge < 0f) continue;
                     var shore = centre + d * (edge + 1.5f);
                     var yard = centre + d * (edge + 7f);
-                    if (!Open(world, yard) || !float.IsNaN(world.Sample(shore.x, shore.z).water) || !Q3Free(yard, 30f) || !Q3Level(world, yard, 3f, 1.4f)) continue;
+                    if (!ShoreOpen(world, yard) || !float.IsNaN(world.WaterLevel(shore.x, shore.z)) || !Q3Free(yard, 30f) || !Q3Level(world, yard, 3f, 1.4f)) continue;
                     Q3Set(world, "ester", yard, ang + 180f);
                     Q3Set(world, "s19_shore", shore, ang + 180f);
                     var ruin = centre + d * (edge * 0.12f);
