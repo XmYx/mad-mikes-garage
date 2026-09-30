@@ -10,7 +10,8 @@ namespace MadMax.Game
     /// <summary>Items block: every item and resource can be out in the world as a <see cref="WorldItem"/> — dropped from
     /// the pack page or the hand (Q), placed with a preview (pack page PLACE, rotate, LMB), taken back with [E], saved in
     /// <c>SaveData.blockItems</c> — and the HUD item feed (<see cref="ItemFeed"/>) of everything that enters or leaves the
-    /// pack. World items are local to each peer online (not replicated; the host saves its own).</summary>
+    /// pack. Online the host owns the items (<c>Net/NetSession.Items</c>): drops and PLACE are announced, a client's [E]
+    /// asks the host and the pack fills when it is granted; joiners get them with the world.</summary>
     public partial class WastelandGame
     {
         bool feedHooked, carriedLastFrame;
@@ -88,14 +89,17 @@ namespace MadMax.Game
             using (Inventory.Source(null, "DROPPED")) if (!TakeFromPack(key, n)) return null;
             LetGoOf(key);
             DropSpot(out var at, out var vel);
+            var net = MadMax.Net.NetSession.Instance;
+            bool client = net && net.IsClient;                                                     // a client never grows the host's stacks (a pick-up may be under way)
             foreach (var w in WorldItem.All)
             {
-                if (!w || w.key != key || w.placed || w.OnVehicle || Mathf.Abs(w.quality - q) > 0.01f) continue;
+                if (client || !w || w.key != key || w.placed || w.OnVehicle || Mathf.Abs(w.quality - q) > 0.01f) continue;
                 var d = w.transform.position - at;
                 if (d.y > -2f && d.y < 0.5f && new Vector2(d.x, d.z).sqrMagnitude < 1f)
                 {
                     w.count += n; w.Refresh(); w.Body.WakeUp();
                     MadMax.Audio.Sfx.Play("pickup", at, 0.3f, 0.7f, 15f);
+                    net?.SendItemSpawn(w, Vector3.zero);
                     return w;
                 }
             }
@@ -103,6 +107,7 @@ namespace MadMax.Game
             item.Body.linearVelocity = vel;
             item.Body.angularVelocity = Random.insideUnitSphere * 2f;
             MadMax.Audio.Sfx.Play("pickup", at, 0.3f, 0.7f, 15f);
+            net?.SendItemSpawn(item, vel);
             return item;
         }
 
@@ -164,12 +169,24 @@ namespace MadMax.Game
         public bool PickUpItem(WorldItem w)
         {
             if (!w || w.count <= 0) return false;
+            var net = MadMax.Net.NetSession.Instance;
+            if (net && net.IsClient && w.netId != 0) return net.RequestItemTake(w);                // the host hands it over (once)
             using (Inventory.Source("PICKED UP")) GiveToPack(w.key, w.count, w.quality);
             MadMax.Audio.Sfx.Play("pickup", w.transform.position, 0.5f, 1.1f, 20f);
+            uint id = w.netId;
             w.count = 0;
             w.gameObject.SetActive(false);
             Destroy(w.gameObject);
+            if (net && id != 0) net.SendItemGone(id);
             return true;
+        }
+
+        /// <summary>A stack the host granted to this client's [E] (online): into the pack as a pick-up.</summary>
+        public void ReceivePickedItem(string key, int count, float quality, Vector3 at)
+        {
+            if (string.IsNullOrEmpty(key) || count <= 0) return;
+            using (Inventory.Source("PICKED UP")) GiveToPack(key, count, quality);
+            MadMax.Audio.Sfx.Play("pickup", at, 0.5f, 1.1f, 20f);
         }
 
         /// <summary>Near the player: offered to [E]; far away: frozen (the ground has no colliders out there), woken on the
@@ -375,25 +392,30 @@ namespace MadMax.Game
             if (placeKey == key) CancelPlacing();
             placeFrame = Time.frameCount;
             MadMax.Audio.Sfx.Play("hit_wood", point, 0.3f, 1.5f, 15f);
+            MadMax.Net.NetSession.Instance?.SendItemSpawn(w, Vector3.zero);
             return w;
         }
 
         // ------------------------------------------------------------------ save
         /// <summary>One line per world item: "i1|key|count|quality|placed|vehicle netId|world pos|world rot|local pos|local rot"
-        /// (local = on the vehicle; the world pose is the fallback when that vehicle is gone).</summary>
+        /// (local = on the vehicle; the world pose is the fallback when that vehicle is gone), plus "|item net id" online
+        /// (the host numbers every item so a joining client's copies match).</summary>
         public void SaveWorldItems(SaveData d)
         {
             if (d.blockItems == null) d.blockItems = new List<string>();
+            var net = MadMax.Net.NetSession.Instance;
+            bool host = net && net.IsServer;
             foreach (var w in WorldItem.All)
             {
                 if (!w || w.count <= 0) continue;
+                if (host && w.netId == 0) w.netId = net.NewEntityId();
                 var drv = w.OnVehicle ? w.GetComponentInParent<VehicleDriver>() : null;
                 bool onCar = drv && !drv.aiDriven;
                 var t = w.transform;
                 var lp = onCar ? drv.transform.InverseTransformPoint(t.position) : t.position;
                 var lr = onCar ? Quaternion.Inverse(drv.transform.rotation) * t.rotation : t.rotation;
                 d.blockItems.Add(string.Join("|", "i1", w.key, w.count.ToString(ItemsInv), w.quality.ToString("0.###", ItemsInv), w.placed ? "1" : "0", (onCar ? drv.netId : 0).ToString(ItemsInv),
-                    ItemsV(t.position), ItemsQ(t.rotation), ItemsV(lp), ItemsQ(lr)));
+                    ItemsV(t.position), ItemsQ(t.rotation), ItemsV(lp), ItemsQ(lr)) + (w.netId != 0 ? "|" + w.netId.ToString(ItemsInv) : ""));
             }
         }
 
@@ -413,6 +435,8 @@ namespace MadMax.Game
         {
             ClearWorldItems();
             if (d == null || d.blockItems == null) return;
+            var net = MadMax.Net.NetSession.Instance;
+            bool joined = net && net.IsClient;                                                   // ids only mean something in the host's session
             float[] wp = new float[3], wr = new float[4], lp = new float[3], lr = new float[4];
             foreach (var line in d.blockItems)
             {
@@ -435,6 +459,7 @@ namespace MadMax.Game
                         }
                 var w = SpawnWorldItem(f[1], count, q, pos, rot, car);
                 w.placed = f[4] == "1";
+                if (joined && f.Length > 10 && uint.TryParse(f[10], NumberStyles.Integer, ItemsInv, out uint nid)) w.netId = nid;
                 if (w.Body) w.Body.isKinematic = true;                                           // woken near the player
             }
             worldItemTick = 0f;

@@ -191,7 +191,7 @@ namespace MadMax.World
         }
 
         // ---- the player's roads on the map
-        struct RoadMark { public int loose, hard; }
+        struct RoadMark { public int loose, hard; public long sx, sz; }   // sx/sz: sums of the paved cells' indices (centroid)
         readonly Dictionary<Vector2Int, RoadMark> roadMarks = new Dictionary<Vector2Int, RoadMark>();
 
         static Vector2Int MarkOf(int ix, int iz) => new Vector2Int(FloorDiv(ix, 16), FloorDiv(iz, 16));   // 16 cells = 4 m
@@ -202,8 +202,14 @@ namespace MadMax.World
             roadMarks.TryGetValue(key, out var m);
             if (old == PaveGravel) m.loose--; else if (old != 0) m.hard--;
             if (kind == PaveGravel) m.loose++; else if (kind != 0) m.hard++;
+            if (old != 0) { m.sx -= ix; m.sz -= iz; }
+            if (kind != 0) { m.sx += ix; m.sz += iz; }
             if (m.loose <= 0 && m.hard <= 0) roadMarks.Remove(key); else roadMarks[key] = m;
+            if ((old == 0) != (kind == 0)) PlayerRoadVersion++;
         }
+
+        /// <summary>Bumped whenever a cell of the player's roads is laid or lost (route caches rebuild on a change).</summary>
+        public int PlayerRoadVersion { get; private set; }
 
         /// <summary>Recount the paved cells of saved chunk edits (the chunks stream in later without SetPave).</summary>
         void RoadMarksFrom(List<ChunkEdit> edits)
@@ -231,6 +237,18 @@ namespace MadMax.World
             if (m.loose + m.hard < 6) return false;
             gravel = m.loose > m.hard;
             return true;
+        }
+
+        /// <summary>Route nodes of the player's roads: per 4 m map cell with 6+ paved cells, the centroid of its paving
+        /// (on the road even where a narrow road crosses the cell off-centre) and the map cell (neighbours join).</summary>
+        public IEnumerable<(Vector3 pos, Vector2Int cell, bool gravel)> PlayerRoadNodes()
+        {
+            foreach (var kv in roadMarks)
+            {
+                int n = kv.Value.loose + kv.Value.hard;
+                if (n < 6) continue;
+                yield return (new Vector3(kv.Value.sx / (float)n * Cell, 0f, kv.Value.sz / (float)n * Cell), kv.Key, kv.Value.loose > kv.Value.hard);
+            }
         }
 
         /// <summary>Map cells holding any of the player's paving.</summary>
