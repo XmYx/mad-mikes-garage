@@ -111,6 +111,9 @@ namespace MadMax.Items
                 F("food_can_fruit", "TINNED FRUIT", 26, 14, 0, H("d06040"), 0f, 2f),
                 F("drink_beer", "BEER", 8, 22, 0, H("d8a030")),
                 F("drink_cider", "CIDER", 6, 26, 0, H("e0c060")),
+                // depth stage E: the beehive
+                F("food_honey", "JAR OF HONEY", 22, -2, 0, H("e0a030"), 0f, 3f),
+                F("drink_mead", "MEAD", 10, 20, 0, H("d8a040")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>

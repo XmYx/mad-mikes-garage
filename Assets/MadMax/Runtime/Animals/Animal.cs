@@ -20,7 +20,7 @@ namespace MadMax.Animals
     /// guard dogs fight what threatens you. Wild horses and dogs are tamed by a calm approach and treats; a saddled
     /// horse is ridden (walk / trot / gallop on stamina, jumps, saddlebags). Butchered through <see cref="Carcass"/>.</summary>
     [DefaultExecutionOrder(-40)]   // before the rider's PlayerCharacter, so the saddle never lags a frame
-    public class Animal : MonoBehaviour, IDamageable, IInteractable
+    public partial class Animal : MonoBehaviour, IDamageable, IInteractable
     {
         public enum State { Idle, Graze, Wander, Flee, Alert, Charge, Stalk, Attack, Follow, Stay, Sleep, Ridden, Circle, Land, Perch, Coiled, Dead }
 
@@ -199,6 +199,8 @@ namespace MadMax.Animals
             var g = WastelandGame.Instance;
             if (proxy) { if (dt > 0f && state != State.Dead && proxyPos != Vector3.zero) ProxyTick(dt); return; }
             if (dt <= 0f || !g || !g.Player || state == State.Dead) return;
+            CareTick(g, dt);                                                                          // wounds, wool, stable rest (Animal.Husbandry)
+            if (state == State.Dead) return;
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
             if (state == State.Ridden && (!g.Player.Sitting || g.Player.SeatedOn != seat)) { state = State.Stay; order = 2; home = transform.position; Mounted = null; }
             if (state != State.Ridden && (transform.position - focus).sqrMagnitude > 170f * 170f) return;     // far away (a distant pen): frozen
@@ -206,7 +208,7 @@ namespace MadMax.Animals
             {
                 thinkT = 0.2f + Random.value * 0.1f;
                 if (state != State.Ridden) Think(g, focus);
-                List(!Def.flies && state != State.Ridden && (owned || (Def.tameable && town < 0 && state != State.Attack && state != State.Stalk)));
+                List(!Def.flies && state != State.Ridden && (owned || CareListed(g) || (Def.tameable && town < 0 && state != State.Attack && state != State.Stalk)));
             }
             if (state == State.Ridden) RideTick(g, dt);
             else if (Def.flies && (state == State.Circle || state == State.Land || air > 0.05f)) FlyTick(dt);
@@ -216,7 +218,7 @@ namespace MadMax.Animals
             if ((runT -= dt) <= 0f) { runT = 0.1f; RunOver(g); }
         }
 
-        void SetMove(Vector3 dir, float sp) { dir.y = 0f; moveDir = dir; moveSpeed = dir.sqrMagnitude > 0.0001f ? sp : 0f; }
+        void SetMove(Vector3 dir, float sp) { dir.y = 0f; moveDir = dir; moveSpeed = dir.sqrMagnitude > 0.0001f ? sp * Gait : 0f; }
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
 
         // ------------------------------------------------------------------ thinking
@@ -227,6 +229,7 @@ namespace MadMax.Animals
             bool onFoot = !inCar && !g.Player.SeatedIn;
             float d = Flat(focus - transform.position).magnitude;
             bool aware = Senses(g, focus, d, onFoot, inCar) || Time.time < hurtUntil;
+            if (CareThink()) return;                                                                  // down with its wounds
             if (owned || town >= 0) { ThinkKept(g, focus); return; }
             switch (Def.nature)
             {
@@ -581,7 +584,7 @@ namespace MadMax.Animals
         /// <summary>A loud noise: prey and vermin bolt, predators scatter from gunfire, livestock startle, vultures lift.</summary>
         public void Hear(Vector3 at, float loud)
         {
-            if (!Alive || state == State.Ridden) return;
+            if (!Alive || state == State.Ridden || Calm) return;
             if (owned || town >= 0) { if (!Def.guard && loud > 30f) Flee(at, 2.5f); return; }
             switch (Def.nature)
             {
@@ -725,7 +728,7 @@ namespace MadMax.Animals
             float target = rideMove.y > 0.1f ? (rideRun && !winded ? Def.run : Mathf.Lerp(Def.walk, 4.2f, rideMove.y)) : rideMove.y < -0.1f ? -1.1f : 0f;
             speed = Mathf.MoveTowards(speed, target, (Mathf.Abs(target) > Mathf.Abs(speed) ? 3.2f : 7f) * dt);
             transform.Rotate(0f, rideMove.x * Mathf.Lerp(110f, 55f, Mathf.Abs(speed) / Def.run) * dt, 0f);
-            if (speed > 6f) { stamina -= 11f * dt; if (stamina <= 0f) { stamina = 0f; winded = true; g.Toast("YOUR HORSE IS WINDED"); } }
+            if (speed > 6f) { stamina -= 11f * dt * StaminaUse; if (stamina <= 0f) { stamina = 0f; winded = true; g.Toast("YOUR HORSE IS WINDED"); } }
             else stamina = Mathf.Min(100f, stamina + (speed < 2f ? 9f : 3f) * dt);
             if (winded && stamina > 35f) winded = false;
             if (rideJump && !jumping && stamina > 8f) { vy = 6.2f; jumping = true; stamina -= 8f; Say(1); }
@@ -934,6 +937,7 @@ namespace MadMax.Animals
             health -= dmg;
             hurtUntil = Time.time + 8f;
             hurter = source ? source.transform : null;
+            Wounded(dmg, source);                                                                     // bleeding, a limp
             BloodStains.Splash(transform.position, Mathf.Clamp01(dmg / 40f));
             MadMax.Audio.Sfx.Play("punch", point, 0.6f, Random.Range(0.9f, 1.2f));
             bool byPlayer = g && g.Player && source && (source.transform.IsChildOf(g.Player.transform) || (g.Current && source.transform.IsChildOf(g.Current.transform)));
@@ -998,6 +1002,8 @@ namespace MadMax.Animals
         public string Prompt(WastelandGame g)
         {
             if (!Alive || g.Current || state == State.Ridden || Def.flies) return null;
+            var care = CarePrompt(g);                                                                 // treat, shear, fit saddlebags
+            if (care != null) return care;
             if (!owned)
             {
                 if (!Def.tameable || town >= 0 || state == State.Attack || state == State.Stalk) return null;
@@ -1019,6 +1025,7 @@ namespace MadMax.Animals
         public void Use(WastelandGame g, bool secondary)
         {
             if (!Alive || g.Current) return;
+            if (!secondary && CareUse(g)) return;
             if (secondary)
             {
                 if (!owned) return;

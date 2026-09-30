@@ -115,7 +115,7 @@ namespace MadMax.Npc
                               ("animal_puppy", 0, 1), ("animal_calf", 0, 1), ("use_saddle", 0, 1) } },
             { "food", new[] { ("food_can", 2, 8), ("food_ration", 1, 5), ("drink_water", 3, 10), ("drink_soda", 1, 6), ("food_potato", 2, 8), ("food_corn", 2, 8), ("food_stew", 0, 3),
                               ("seed_corn", 0, 4), ("seed_tomato", 0, 4), ("seed_potato", 0, 4), ("res:28", 10, 40),
-                              ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
+                              ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("animal_lamb", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
             { "salvage", new[] { ("med_bandage", 1, 5), ("med_pills", 0, 3), ("med_splint", 0, 2), ("med_disinfectant", 0, 2), ("ammo_shells", 5, 20), ("throw_molotov", 0, 3),
                                  ("tool_torch", 1, 3), ("tool_lantern", 0, 2), ("tool_gas_torch", 0, 1), ("tool_pipe_shotgun", 0, 1), ("tool_machete", 0, 1),
                                  ("book_charm", 0, 1), ("book_mechanics_1", 0, 1), ("vhs_salesman", 0, 1), ("vhs_driving", 0, 1), ("kit_floodlight", 0, 1) } },

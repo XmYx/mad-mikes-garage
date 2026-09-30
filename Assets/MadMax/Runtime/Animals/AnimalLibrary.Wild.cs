@@ -19,7 +19,8 @@ namespace MadMax.Animals
             yield return new AnimalDef { id = "jackrabbit", name = "JACKRABBIT", nature = Nature.Prey, len = 6, depth = 4, width = 3, leg = 3, neck = 1, head = 3, snout = 1, tail = 1, scale = 0.8f,
                 Coat = R(Pal.Sand, 2), Belly = R(Pal.Cream, 2), Accent = R(Pal.Black, 1), features = "ears_tall",
                 walk = 1f, run = 11f, health = 6f, mass = 3f, sight = 25f, hearing = 45f, smell = 30f, herdMin = 1, herdMax = 2,
-                biomes = new[] { Biome.Desert, Biome.Forest, Biome.Village }, density = 0.9f, drops = new[] { (meat, 1, 1), (hide, 0, 1) } };
+                biomes = new[] { Biome.Desert, Biome.Forest, Biome.Village }, density = 0.9f, drops = new[] { (meat, 1, 1), (hide, 0, 1) },
+                young = "animal_rabbit", adultDays = 2f, feedPerDay = 0.2f, likes = new[] { "food_carrot", "food_cabbage", "crop_wheat", "food_beet" } };   // a live one from a cage trap can be kept
             yield return new AnimalDef { id = "coyote", name = "COYOTE", pest = "dog", nature = Nature.Predator, len = 11, depth = 4, width = 3, leg = 7, neck = 3, head = 3, snout = 3, tail = 5, scale = 0.85f,
                 Coat = R(Pal.Sand, 1), Belly = R(Pal.Cream, 2), Accent = R(Pal.Fur, 1), features = "ears_up",
                 walk = 1.4f, run = 10f, health = 30f, bite = 8f, mass = 15f, sight = 35f, hearing = 55f, smell = 70f, herdMin = 2, herdMax = 4,
