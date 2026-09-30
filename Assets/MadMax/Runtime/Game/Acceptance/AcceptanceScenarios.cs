@@ -32,6 +32,7 @@ namespace MadMax.Game.Acceptance
             yield return new SaveRoundTrip();
             yield return new GlassAndLamps();
             yield return new DeformationSetting();
+            yield return new ExhaustSmoke();
             yield return new ScrapeMarks();
             yield return new SunAndMoon();
             yield return new CrawlerMud("Bulldozer");
@@ -582,6 +583,51 @@ namespace MadMax.Game.Acceptance
             c.Fixture("dented the coupe's right side directly (0.2 m, 0.6 m radius)");
             c.Check(!dentedOff, "OFF: no dents");
             c.Check(dentedOn, "NORMAL: the same knock dents the body");
+        }
+    }
+
+    /// <summary>The tailpipe smokes while the engine runs; a worn engine smokes thicker and blacker than a healthy one.</summary>
+    class ExhaustSmoke : Scenario
+    {
+        public override string Id => "vehicle.exhaust_smoke";
+        public override float Timeout => 40f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game; var v = TestWorld.Vehicle("Sedan");
+            if (!v) { c.Block("sedan missing"); yield break; }
+            if (!TestWorld.Pad(10f, out var pad)) { c.Block("no pad"); yield break; }
+            yield return TestWorld.Place(c, v, pad, Vector3.forward, 0.5f);
+            g.Enter(v); yield return new WaitForSeconds(0.3f);
+            yield return TestWorld.StartEngine(c, v);
+            if (c.Failed) yield break;
+            var sys = v.GetComponent<VehicleSystems>();
+            var ep = v.Engine.GetComponent<VehiclePart>();
+            v.handbrake = true; v.throttleInput = 0.6f;
+            yield return new WaitForSeconds(1f);
+            float cleanDark = sys.ExhaustDarkness, cleanRate = sys.ExhaustRate;
+            ep.damage = 0.8f;
+            yield return new WaitForSeconds(1f);
+            float wornDark = sys.ExhaustDarkness, wornRate = sys.ExhaustRate;
+            c.Metric("exhaust_dark_healthy", cleanDark, ""); c.Metric("exhaust_dark_worn", wornDark, "");
+            c.Note("outlet (local) " + v.transform.InverseTransformPoint(sys.LastOutlet) + ", exhaust sockets: " + string.Join(", ", v.GetComponentsInChildren<MountSocket>().Where(k => k.accepts == PartCategory.Exhaust).Select(k => k.name + "=" + (k.Current ? k.Current.partId : "-"))));
+            c.Screenshot("worn_engine_smoke");
+            yield return null;
+            // a holed radiator steams at the front
+            var radSock = v.GetComponentsInChildren<MountSocket>().FirstOrDefault(k => k.accepts == PartCategory.Radiator);
+            if (radSock && radSock.Current)
+            {
+                ep.damage = 0f; radSock.Current.damage = 0.9f; v.throttleInput = 0.2f;
+                yield return new WaitForSeconds(1.2f);
+                c.Check((sys.Faults & Fault.CoolantLeak) != 0, "a holed radiator leaks coolant");
+                c.Screenshot("radiator_steam");
+                yield return null;
+                radSock.Current.damage = 0f;
+            }
+            else c.Note("no radiator socket on the sedan: steam not checked");
+            ep.damage = 0f; v.throttleInput = 0f;
+            c.Check(cleanRate > 0f, $"a running engine smokes ({cleanRate:0.0} puffs/s, darkness {cleanDark:0.00})");
+            c.Check(wornDark > cleanDark + 0.4f && wornRate > cleanRate * 2f, $"a worn engine smokes blacker and thicker ({wornRate:0.0} puffs/s, darkness {wornDark:0.00})");
         }
     }
 

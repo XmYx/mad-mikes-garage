@@ -1075,4 +1075,5 @@ Still failing in the fast suite (kept visible, not skipped):
 - [x] **Quieter prompts**: the context prompt is a small list on the left (key cap, icon where the action has one, label) instead of a bar across the bottom.
 - [x] **Far view in first and third person** (also hood / bumper cameras): the far terrain carries the view to ~450 m (fog end) instead of the chunk radius.
 - [x] **Flight controls**: arrows pitch (setting FLIGHT PITCH: up climbs, or stick style), Q/E roll, left/right and A/D rudder, W/S throttle; Space / Ctrl still pull up / push down.
+- [x] **Exhaust smoke by engine condition**: a thin haze from the tailpipe (exhaust part outlet, else under the rear bumper) that grows with load; engine wear, worn plugs, a clogged filter and old/low oil turn it thicker and blacker, diesels soot up under load, two-strokes always smoke a little, cold air adds white vapour, a cough when it catches. Worn engines also smoke from the engine bay, and a leaking or missing radiator steams at the front while warm (`vehicle.exhaust_smoke`).
 

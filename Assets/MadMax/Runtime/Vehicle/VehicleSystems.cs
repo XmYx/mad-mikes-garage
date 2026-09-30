@@ -127,6 +127,19 @@ namespace MadMax.Vehicles
         MountSocket radiatorSocket;
         float fxTimer, snorkelCheck;
         Snorkel snorkel;
+        readonly System.Collections.Generic.List<MountSocket> exhaustSockets = new System.Collections.Generic.List<MountSocket>();
+        Vector3 tailpipe;                    // local outlet when no exhaust part is mounted (under the rear bumper)
+        bool tailpipeKnown, wasStarted;
+        float smokeAcc;
+        int smokeRound;
+
+        /// <summary>Exhaust smoke right now, 0 clean .. 1 thick black (engine wear, worn plugs, clogged filter, old or low
+        /// oil, diesel under load). Diagnostics and the dashboard read it.</summary>
+        public float ExhaustDarkness { get; private set; }
+        /// <summary>Where the last exhaust puff left (world).</summary>
+        public Vector3 LastOutlet { get; private set; }
+        /// <summary>Exhaust puffs per second right now.</summary>
+        public float ExhaustRate { get; private set; }
 
         const float Ambient = 25f, HotLimit = 110f, CriticalLimit = 125f;
 
@@ -136,7 +149,11 @@ namespace MadMax.Vehicles
             damage = GetComponent<VehicleDamage>();
             bike = GetComponent<BikeBalance>();
             chassis = GetComponent<VehicleChassis>();
-            foreach (var s in chassis.Sockets) if (s.accepts == PartCategory.Radiator) radiatorSocket = s;
+            foreach (var s in chassis.Sockets)
+            {
+                if (s.accepts == PartCategory.Radiator) radiatorSocket = s;
+                if (s.accepts == PartCategory.Exhaust) exhaustSockets.Add(s);
+            }
             hasRadiatorSocket = radiatorSocket;
         }
 
@@ -213,6 +230,8 @@ namespace MadMax.Vehicles
             UpdateFire(dt, ePos, ref f);
             if (Started && (fuel <= 0f || seized || flooded || wrong)) Started = false;                           // stalled
             if (!Started) f |= Fault.EngineOff;
+            if (Started && !wasStarted) smokeAcc += 6f + 14f * engineDamage;                                       // the cough as it catches
+            wasStarted = Started;
             bool running = driver.Occupied && Started && fuel > 0f && !seized && !flooded && !wrong;
             float power = running ? 1f : 0f;
             if (running)
@@ -254,6 +273,91 @@ namespace MadMax.Vehicles
             PowerFactor = power;
             Faults = f;
             Effects(engine, running, engineDamage);
+            Exhaust(engine, running, engineDamage, dt);
+        }
+
+        /// <summary>Tailpipe smoke: a faint haze when healthy that thickens with load; worn engines, misfiring plugs, a
+        /// choked filter and burning oil make it denser and blacker, diesels soot up under load. Emitted from each
+        /// mounted exhaust part's outlet, else from under the rear bumper.</summary>
+        void Exhaust(EngineStats engine, bool running, float engineDamage, float dt)
+        {
+            if (!running) { ExhaustRate = 0f; ExhaustDarkness = 0f; smokeAcc = Mathf.Min(smokeAcc, 20f); if (!Started) return; }
+            float load = running ? driver.DriveCommand : 0f;
+            float rpm = running ? Mathf.Clamp01(driver.Rpm / Mathf.Max(1f, engine.maxRpm)) : 0f;
+            float wear = engineDamage;
+            if (UsesPlugs) wear = Mathf.Max(wear, (0.4f - plugs) * 1.5f);
+            wear = Mathf.Max(wear, (0.35f - airFilter) * 1.4f);
+            if (!oilInFuel) wear = Mathf.Max(wear, Mathf.Max((0.3f - oilLife) * 1.2f, (0.25f - OilFraction) * 1.6f));
+            else wear = Mathf.Max(wear, 0.25f);                                                          // two-strokes burn their oil
+            wear = Mathf.Clamp01(wear);
+            bool diesel = FuelKind == ResourceType.Diesel;
+            float dark = Mathf.Clamp01(0.08f + wear * 0.95f + (diesel ? 0.35f * load * (0.5f + rpm) : 0f));
+            float rate = running ? (1.2f + 6f * load * (0.4f + rpm)) * (1f + 3f * wear) + (diesel ? 4f * load : 0f) : 0f;
+            ExhaustDarkness = dark; ExhaustRate = rate;
+
+            // only near the player (the isometric camera itself hangs far off)
+            var game = MadMax.Game.WastelandGame.Instance;
+            var near = game ? (game.Current ? game.Current.transform : game.Player ? game.Player.transform : null) : null;
+            if (near && (near.position - transform.position).sqrMagnitude > 140f * 140f) { smokeAcc = 0f; return; }
+            smokeAcc = Mathf.Min(smokeAcc + rate * dt, 30f);
+            if (smokeAcc < 1f) return;
+            if (!tailpipeKnown) FindTailpipe();
+            var weather = MadMax.World.Weather.Temperature;
+            // cold air: white vapour mixes into a healthy engine's plume
+            Color clean = weather < 5f ? new Color(0.92f, 0.93f, 0.95f, 0.5f) : new Color(0.72f, 0.72f, 0.74f, 0.28f);
+            Color soot = new Color(0.05f, 0.045f, 0.04f, 1f);
+            Color c = Color.Lerp(clean, soot, dark);
+            float size = 0.3f + 0.9f * dark + 0.2f * load;
+            float life = 1.4f + 2f * dark;
+            Vector3 vel = driver.Body ? driver.Body.linearVelocity * 0.4f : Vector3.zero;
+            int outlets = 0;
+            while (smokeAcc >= 1f)
+            {
+                smokeAcc -= 1f;
+                Vector3 at, dir;
+                Outlet(smokeRound++, out at, out dir);
+                LastOutlet = at;
+                Vector3 v = vel + dir * (1.2f + 2.5f * load * rpm) + Vector3.up * (0.5f + 0.5f * dark) + UnityEngine.Random.insideUnitSphere * 0.2f;
+                MadMax.World.Fx.Smoke(at, v, size * UnityEngine.Random.Range(0.8f, 1.25f), c, life);
+                if (++outlets > 12) { smokeAcc = 0f; break; }
+            }
+        }
+
+        void Outlet(int i, out Vector3 at, out Vector3 dir)
+        {
+            int n = exhaustSockets.Count;
+            for (int k = 0; k < n; k++)
+            {
+                var s = exhaustSockets[(i + k) % n];
+                var part = s ? s.Current : null;
+                if (!part) continue;
+                var t = part.transform;
+                const float v = 0.08f;
+                if (part.partId == "exhaust_stack") { at = t.TransformPoint(0f, 33 * v, -3 * v); dir = (t.up * 0.8f - t.forward * 0.4f).normalized; return; }
+                if (part.partId == "exhaust_side_pipes") { at = t.TransformPoint(0.5f * v, 0.5f * v, -15.5f * v); dir = -t.forward; return; }
+                at = t.position; dir = -transform.forward; return;
+            }
+            at = transform.TransformPoint(tailpipe); dir = -transform.forward;
+        }
+
+        /// <summary>Under the rear bumper, a little right of centre, from the vehicle's mesh bounds (local space).</summary>
+        void FindTailpipe()
+        {
+            tailpipeKnown = true;
+            bool any = false;
+            var b = new Bounds();
+            foreach (var mf in GetComponentsInChildren<MeshFilter>())
+            {
+                if (!mf.sharedMesh || mf.GetComponentInParent<VehiclePart>()) continue;
+                var mb = mf.sharedMesh.bounds;
+                for (int k = 0; k < 8; k++)
+                {
+                    var corner = mb.center + Vector3.Scale(mb.extents, new Vector3((k & 1) == 0 ? -1 : 1, (k & 2) == 0 ? -1 : 1, (k & 4) == 0 ? -1 : 1));
+                    var p = transform.InverseTransformPoint(mf.transform.TransformPoint(corner));
+                    if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p);
+                }
+            }
+            tailpipe = any ? new Vector3(b.center.x + b.extents.x * 0.4f, b.min.y + Mathf.Min(0.3f, b.size.y * 0.15f), b.min.z + 0.05f) : new Vector3(0.3f, 0.3f, -2f);
         }
 
         void Cool(float dt, float speed) => Temperature = Mathf.MoveTowards(Temperature, Ambient, (0.3f + speed * 0.05f) * dt);
@@ -268,6 +372,16 @@ namespace MadMax.Vehicles
                 fx.EmitPuff(at + UnityEngine.Random.insideUnitSphere * 0.3f, new Color32(235, 230, 220, 255), 0.12f, Vector3.up * 1.8f + UnityEngine.Random.insideUnitSphere * 0.4f, 1.1f);
             if (running && engineDamage > 0.5f)
                 fx.EmitPuff(at + UnityEngine.Random.insideUnitSphere * 0.2f, new Color32(30, 26, 24, 255), 0.14f, Vector3.up * 1.2f + UnityEngine.Random.insideUnitSphere * 0.3f, 1.6f);
+            // a leaking or missing radiator steams at the front while the engine is warm (and goes on a while after)
+            if ((Faults & Fault.CoolantLeak) != 0 && (running || Temperature > 55f))
+            {
+                var rad = radiatorSocket ? radiatorSocket.transform.position : engine.transform.position + transform.forward * 0.6f;
+                float hot = Mathf.Clamp01((Temperature - 40f) / 60f);
+                for (int i = 0; i < 2; i++)
+                    MadMax.World.Fx.Smoke(rad + transform.up * 0.2f + UnityEngine.Random.insideUnitSphere * 0.25f,
+                        Vector3.up * (1.2f + hot) + transform.forward * 0.4f + UnityEngine.Random.insideUnitSphere * 0.3f,
+                        0.3f + 0.35f * hot, new Color(0.95f, 0.96f, 0.97f, 0.35f + 0.3f * hot), 1.1f);
+            }
             if ((Faults & (Fault.OilLeak | Fault.CoolantLeak | Fault.FuelLeak)) != 0 && UnityEngine.Random.value < 0.25f)
             {
                 var col = (Faults & Fault.CoolantLeak) != 0 ? new Color32(80, 200, 150, 255) : (Faults & Fault.FuelLeak) != 0 ? new Color32(200, 170, 60, 255) : new Color32(40, 28, 16, 255);
