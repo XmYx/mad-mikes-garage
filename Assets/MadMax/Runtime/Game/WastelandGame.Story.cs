@@ -343,6 +343,7 @@ namespace MadMax.Game
             if (Story.Story.StateOf("A3") == Story.Story.State.Active && Time.frameCount % 15 == 0 && RelayPowered()) Story.Story.Note("a3:power");
             if (Story.Story.StateOf("A4") == Story.Story.State.Active && Time.frameCount % 15 == 0 && GuardsDown()) Story.Story.Note("a4:guards_down");
             if (Story.Story.Flag("masts_known") && !Story.Story.Flag("masts_marked")) { MarkMasts(); Story.Story.SetFlag("masts_marked"); }
+            QuestHooks();
             Story.Story.Tick(this);
             if (Time.time < castCheck) return;
             castCheck = Time.time + 1f;
@@ -364,7 +365,7 @@ namespace MadMax.Game
                 if (want && !body && d < 110f)
                 {
                     var p = StoryCast.Profile(m.key, World.seed);
-                    int slot = System.Array.FindIndex(StoryCast.All, x => x.key == m.key) % 5;                 // several at one anchor stand apart
+                    int slot = StoryCast.All.FindIndex(x => x.key == m.key) % 5;                 // several at one anchor stand apart
                     var pos = at + Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f) * new Vector3(0.6f + (slot - 2) * 1.3f, 0f, 0.8f + (slot % 2) * 0.9f);
                     pos.y = terrain.Height(pos.x, pos.z) + 0.05f;
                     var n = MadMax.Npc.Npc.Spawn(p, pos, StoryAnchors.Yaw(anchor), null, propMaterial);
@@ -384,6 +385,8 @@ namespace MadMax.Game
             if (key == "nell") return Story.Story.Campaign;
             if (key == "guard2") return CastPresent("guard1");
             if (key == "vic" || key == "ezra") return SupperTime || (key == "ezra" && Story.Story.Route("B2", "welcome") != null && Story.Story.Route("B2", "welcome").StartsWith("EZRA"));
+            var mem = StoryCast.Find(key);
+            if (mem != null && mem.Value.present != null) return mem.Value.present();
             foreach (var q in StoryLibrary.All)
             {
                 if (!Story.Story.Runs(q) || Story.Story.StateOf(q.id) == Story.Story.State.Locked) continue;
@@ -406,7 +409,7 @@ namespace MadMax.Game
         }
 
         /// <summary>Where a cast member stands right now (Nell comes to the garage for supper).</summary>
-        static string CastAnchor(StoryCast.Member m) => m.key == "nell" && SupperTime ? "garage_yard" : m.anchor;
+        static string CastAnchor(StoryCast.Member m) => m.key == "nell" && SupperTime ? "garage_yard" : m.anchorNow != null ? m.anchorNow() : m.anchor;
 
         /// <summary>The spawned body of a cast member (null when not around).</summary>
         public MadMax.Npc.Npc CastBody(string key) => castBodies.TryGetValue(key, out var n) && n ? n : null;

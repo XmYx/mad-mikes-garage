@@ -8,7 +8,7 @@ namespace MadMax.Story
     /// convoy wreck and the stranded car in the start yard, Nell's roadside stop down the road, the nearest town, the
     /// garage at the bend, the relay mast nearest that town, the depot (a bunker) and the dispatch city. A place that
     /// cannot be found is reported by <see cref="Validate"/> instead of silently dropping a chapter.</summary>
-    public static class StoryAnchors
+    public static partial class StoryAnchors
     {
         static readonly Dictionary<string, Vector3> at = new Dictionary<string, Vector3>();
         static readonly Dictionary<string, float> yaw = new Dictionary<string, float>();
@@ -131,9 +131,14 @@ namespace MadMax.Story
                 }
             }
 
+            // places the individual quests add (Anchors_<id> hooks); they may add clearings
+            extraClearings.Clear();
+            AnchorsExtra(world, town);
+
             // clear ground for the scenes (wild props skip these circles)
             foreach (var (k, r) in new[] { ("wreck", 26f), ("car", 14f), ("nell", 18f), ("garage", 16f), ("una", 12f), ("gus", 8f), ("a2_stall", 9f), ("hearse", 12f), ("jo", 22f) })
                 if (at.ContainsKey(k)) world.Reserve(new Vector3(at[k].x, at[k].z, r));
+            foreach (var (k, r) in extraClearings) if (at.ContainsKey(k)) world.Reserve(new Vector3(at[k].x, at[k].z, r));
 
             // the relay: the radio mast nearest the first town
             float md = float.MaxValue;
@@ -203,6 +208,10 @@ namespace MadMax.Story
             return s.roadDist >= 6f && float.IsNaN(s.water) && s.feature == 0 && w.SettlementAt(p.x, p.z) == null && w.YardWeight(p.x, p.z) <= 0f
                    && w.SiteAt(p.x, p.z) == null && !w.RiverAt(p.x, p.z, out _, out _, out _);
         }
+
+        static readonly List<(string, float)> extraClearings = new List<(string, float)>();
+        /// <summary>Keep wild props off a quest's place (call from an Anchors_&lt;id&gt; hook after setting it).</summary>
+        static void Clearing(string key, float radius) => extraClearings.Add((key, radius));
 
         static bool Away(Vector3 p, float d, params string[] keys)
         {

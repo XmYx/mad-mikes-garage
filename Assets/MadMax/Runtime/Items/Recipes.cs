@@ -65,11 +65,17 @@ namespace MadMax.Items
             { "keepsake_badge", "CONVOY ENAMEL BADGE" }, { "misc_delivery_chit", "DELIVERY CHIT" }, { "misc_relay_module", "RELAY RECORDING MODULE" }, { "misc_receiver", "JUNE'S RECEIVER" }, { "evidence_receipt", "FUEL RECEIPT (EVIDENCE)" }, { "evidence_manifest", "FORGED MANIFEST (EVIDENCE)" }, { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
+        /// <summary>Names for items added by quests and blocks without editing this table (<see cref="Register"/>).</summary>
+        static readonly Dictionary<string, string> registered = new Dictionary<string, string>();
+        public static void Register(string id, string name) => registered[id] = name;
+
         public static string Name(string id)
         {
             var food = FoodLibrary.Get(id);
             if (food != null) return food.name;
             if (extraNames.TryGetValue(id, out var extra)) return extra;
+            if (registered.TryGetValue(id, out var reg)) return reg;
+            if (id.StartsWith("story_") && MadMax.Story.StoryLibrary.All.Count > 0 && registered.TryGetValue(id, out reg)) return reg;   // quest items register when the catalogue is authored
             var seed = FoodLibrary.SeedName(id);
             if (seed != null) return seed;
             foreach (var r in RecipeLibrary.All) if (r.output == id && r.amount == 1) return r.name;

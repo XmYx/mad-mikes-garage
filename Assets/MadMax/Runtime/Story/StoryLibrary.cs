@@ -22,6 +22,7 @@ namespace MadMax.Story
             quests = new List<QuestDef>();
             Main();
             Side();
+            foreach (var q in quests) Author(q);
             byId = new Dictionary<string, QuestDef>();
             foreach (var q in quests) byId[q.id] = q;
         }
@@ -208,7 +209,7 @@ namespace MadMax.Story
         }
 
         /// <summary>Every step's anchors and every quest's givers the catalogue refers to.</summary>
-        public static readonly string[] Anchors = { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch", "una", "gus",
+        public static readonly List<string> Anchors = new List<string> { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch", "una", "gus",
                                                      "a2_pump", "a2_diner", "a2_office", "a2_stall", "a2_tracks", "chapel", "hearse", "jo", "jo_t1", "jo_t2", "jo_t3", "jo_garden", "jo_digger",
                                                      "relay_gen", "depot_gate", "depot_tunnel", "depot_store", "garage_yard" };
     }

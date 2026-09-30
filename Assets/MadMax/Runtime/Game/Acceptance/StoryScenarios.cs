@@ -23,6 +23,7 @@ namespace MadMax.Game.Acceptance
             yield return new StoryTownQuests();
             yield return new StoryWorkQuests();
             yield return new StoryChapterTwo();
+            foreach (var s in StoryQuestTests.All()) yield return s;
         }
     }
 
