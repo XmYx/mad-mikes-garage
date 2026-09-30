@@ -17,9 +17,13 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g) => "[E] RING THE BELL";
         public void Use(MadMax.Game.WastelandGame g, bool secondary) { if (!secondary) Ring(false); }
 
+        /// <summary>When it last rang (Time.time; -1 never).</summary>
+        public float LastRung { get; private set; } = -1f;
+
         /// <summary>Three clangs; <paramref name="alarm"/> also warns the player (toast) wherever they are nearby.</summary>
         public void Ring(bool alarm)
         {
+            LastRung = Time.time;
             var at = transform.position + transform.up * 2f;
             for (int i = 0; i < 3; i++) Invoke(nameof(Clang), i * 0.55f);
             if (!alarm) return;
