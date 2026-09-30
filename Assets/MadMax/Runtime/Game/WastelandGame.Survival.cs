@@ -334,6 +334,7 @@ namespace MadMax.Game
                 Toast(n > 0 ? $"SCRUBBED {n} STAIN{(n == 1 ? "" : "S")}" : "NOTHING TO CLEAN HERE");
                 return;
             }
+            if (id == MetalItems.Horseshoes) { ShoeHorse(); return; }
             if (id == ItemIds.Pills && Inventory.TakeItem(id)) { Stats.sick = 0f; Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + 10f); Toast("FEELING BETTER"); return; }
             if (id == ItemIds.Fertilizer) Toast("USE ON A GARDEN PLOT [T]");
             if (id.StartsWith("dye_")) DyePiece(id);

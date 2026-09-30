@@ -757,6 +757,11 @@ namespace MadMax.Game
                     Slider("DAMPERS", 2, () => t.damping, v => t.damping = v, -1f, 1f, 0.25f, v => Signed(v, 35f, "%"), "MORE DAMPING: LESS BOUNCE, HARSHER RIDE");
                     Slider("BRAKE BIAS", 1, () => t.brakeBias, v => t.brakeBias = v, 0.4f, 0.8f, 0.05f, v => "FRONT " + Mathf.RoundToInt(v * 100) + "%", "REARWARD BIAS TURNS IN, TOO MUCH SPINS YOU");
                     items.Add(new Item { label = "BRAKES" + (mech < 2 ? " [MECH 2]" : ""), value = () => BrakeNames[t.brakeLevel], confirm = () => game.UpgradeBrakes(t), enabled = () => t.brakeLevel < 2, hint = "E UPGRADE: 4 IRON + 2 COPPER (+25% STOPPING)" });
+                    foreach (var kitSlot in MadMax.Vehicles.VehicleTuning.KitSlots)          // depth stage D: machine-shop and forge kits
+                    {
+                        var ks = kitSlot;
+                        items.Add(new Item { label = ks.label + (mech < ks.mech ? " [MECH " + ks.mech + "]" : ""), value = () => game.KitValue(t, ks), confirm = () => game.FitMetalKit(t, ks), hint = ks.hint });
+                    }
                     Slider("TYRE PRESSURE", 0, () => t.pressure, v => t.pressure = v, 0.6f, 1.25f, 0.05f, v => (v * 2.2f).ToString("0.0") + " BAR" + (v < 0.85f ? " SOFT" : v > 1.1f ? " HARD" : ""), "LOW: SAND AND MUD GRIP, SLOWER, WEARS.  HIGH: FAST ON ROADS");
                     items.Add(new Item { label = "BALLAST", value = () => Mathf.RoundToInt(t.ballast) + " KG", adjust = d => game.TuneBallast(t, d), hint = "A/D LOAD OR UNLOAD 25 KG OF STONE (TRACTION, STABILITY)" });
                     items.Add(new Item { label = "INTERIOR", value = () => t.stripped ? "STRIPPED" : "STOCK", confirm = () => game.StripInterior(t), hint = "E STRIP IT (-8% BODY WEIGHT, +SCRAP, CLOTH) OR REFIT IT" });
