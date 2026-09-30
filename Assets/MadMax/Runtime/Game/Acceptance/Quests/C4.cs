@@ -72,14 +72,15 @@ namespace MadMax.Game.Acceptance
             // ---- the test: the loaded tipper over the deck
             var near = StoryAnchors.Get("c4_near"); var far = StoryAnchors.Get("c4_far");
             ArcCT.Put(c, tip, near, dir, "driven to the near side");
-            yield return new WaitForSeconds(1f);
+            yield return ArcCT.Settle(1f);
+            c.Note($"bed {(tip.TryGetComponent<Machine>(out var bedM) ? bedM.BedUnits : -1)} units at the near side");
             var rb = bridge ? bridge.GetComponent<RoadBridge>() : null;
             if (rb)
             {
                 var mid = rb.Middle + dir * 1.5f + Vector3.up * 1f;
                 tip.Body.position = mid; tip.Body.rotation = Quaternion.LookRotation(dir); tip.Body.linearVelocity = Vector3.zero; tip.Body.WakeUp();
                 c.Fixture("the tipper on the deck's middle (placed)");
-                yield return new WaitForSeconds(1.2f);
+                yield return ArcCT.Settle(1.2f);
                 c.Metric("tipper_over_deck", tip.transform.position.y - t.Height(tip.transform.position.x, tip.transform.position.z), "m");
             }
             ArcCT.Put(c, tip, far, dir, "on across to the far side");

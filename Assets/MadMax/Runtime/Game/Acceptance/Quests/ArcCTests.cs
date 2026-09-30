@@ -54,6 +54,14 @@ namespace MadMax.Game.Acceptance
             c.Fixture(v.name + ": " + why + " (placed)");
         }
 
+        /// <summary>Wait at least <paramref name="seconds"/> and <paramref name="frames"/> frames (story hooks tick every 10-30
+        /// frames, so a slow editor needs frames as well as time).</summary>
+        public static IEnumerator Settle(float seconds, int frames = 40)
+        {
+            float t0 = Time.time; int f0 = Time.frameCount;
+            while (Time.time - t0 < seconds || Time.frameCount - f0 < frames) yield return null;
+        }
+
         /// <summary>The anchor's position with an offset in its own frame (+Z toward the road for roadside places).</summary>
         public static Vector3 At(string anchor, Vector3 local) => StoryAnchors.Get(anchor) + Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f) * local;
 

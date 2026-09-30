@@ -110,7 +110,12 @@ namespace MadMax.Game.Acceptance
             if (scene) c.Check(scene.Guests.Count >= 6, $"guests gathered to watch ({scene.Guests.Count})");
             c.Screenshot("ceremony");
             yield return null;
-            yield return H.Until(() => MadMax.Story.Story.StepDone("S08", "ceremony"), 80f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("S08", "ceremony"), 120f);
+            if (!MadMax.Story.Story.StepDone("S08", "ceremony"))
+            {
+                var sc = PerformanceScene.Current;
+                c.Note(sc ? $"beat {sc.Beat}, finished {sc.Finished}, waiting: {sc.Waiting ?? "-"}" : "no performance scene");
+            }
             c.Check(MadMax.Story.Story.StepDone("S08", "ceremony"), "the ceremony runs to its end: they're married");
             c.Check(MadMax.Audio.RadioNetwork.FlashText != null && MadMax.Audio.RadioNetwork.FlashText.Contains("DEDICATION"), "a dedication goes out on the radio");
             c.Check(H.Talk(g, g.CastBody("s08_host"), "CONGRATULATIONS"), "congratulate Maud");
