@@ -26,6 +26,15 @@ namespace MadMax.Game.Acceptance
 
         static float Flat(Vector3 a, Vector3 b) { a.y = b.y = 0f; return Vector3.Distance(a, b); }
 
+        /// <summary>The job and the hands in one line (failure evidence).</summary>
+        static string State(WastelandGame g, MountSocket sock = null)
+        {
+            var carried = g.Player.Carried;
+            return $"working {g.Working} {(g.WorkNow.HasValue ? g.WorkNow.Value.ToString() : "-")} approaching {g.WorkApproaching} progress {g.WorkProgress:0.00}; "
+                 + $"last {g.LastWork} '{g.LastWorkNote}' ({g.LastWorkProgress:0.00}); carried {(carried ? carried.partId : "none")}"
+                 + (sock ? "; socket " + (sock.Current ? sock.Current.partId : "free") : "") + $"; setup: {g.WorkDebug}";
+        }
+
         static void PutPlayer(WastelandGame g, VehicleDriver v, Vector3 local)
         {
             var p = v.transform.TransformPoint(local);
@@ -62,6 +71,7 @@ namespace MadMax.Game.Acceptance
             c.Fixture("player 2.6 m beside the " + name);
             yield return null;
             g.ServiceVehicle(v);
+            c.Note("service: " + State(g));
             if (!c.Check(g.Working && g.WorkNow == WorkKind.Service, "the service is timed work, not instant")) { s.workAnimation = keep; yield break; }
             c.Check(Mathf.Abs(sys.oil - oil0) < 0.01f, "nothing changes when it starts");
             float t0 = Time.time;
@@ -117,6 +127,7 @@ namespace MadMax.Game.Acceptance
                 c.Fixture("player 2.6 m on the far side");
                 yield return null;
                 g.TakePart(part);
+                c.Note("take: " + State(g, sock));
                 if (c.Check(g.Working && g.WorkNow == WorkKind.Take, "taking " + part.partId + " is timed wrench work"))
                 {
                     t0 = Time.time;
@@ -130,28 +141,45 @@ namespace MadMax.Game.Acceptance
                     c.Screenshot("unbolt");
                     yield return null;
                     while (g.Working && Time.time - t0 < 25f) yield return null;
+                    c.Note("after the take: " + State(g, sock));
                     c.Check(g.LastWork == WorkOutcome.Done && !part.Socket && g.Player.Carried == part, "unbolted at the end and carried");
                 }
                 if (g.Player.Carried == part)
                 {
+                    var carPos = v.transform.position;
                     g.MountCarried(sock);
+                    c.Note("mount: " + State(g, sock));
                     c.Check(g.Working && g.WorkNow == WorkKind.Mount, "bolting it back on is timed too");
                     t0 = Time.time;
-                    while (g.Working && g.WorkProgress < 0.5f && Time.time - t0 < 15f) yield return null;
+                    bool wasWorking = g.Working, wasApproaching = g.WorkApproaching;
+                    while (g.Working && g.WorkProgress < 0.5f && Time.time - t0 < 15f)
+                    {
+                        yield return null;
+                        if (g.Working == wasWorking && g.WorkApproaching == wasApproaching) continue;
+                        wasWorking = g.Working; wasApproaching = g.WorkApproaching;
+                        c.Note($"mount +{Time.time - t0:0.00} s: " + State(g, sock));
+                    }
+                    c.Note($"mount mid-way: {State(g, sock)}; the car moved {Vector3.Distance(carPos, v.transform.position):0.00} m, player {Flat(g.Player.transform.position, sock.transform.position):0.00} m from the socket");
                     c.Check(sock.IsFree && g.Player.Carried != part, "held up to the socket, not yet mounted mid-way");
                     while (g.Working && Time.time - t0 < 25f) yield return null;
+                    c.Note("mount end: " + State(g, sock));
                     c.Check(sock.Current == part, "back on its socket at the end");
                 }
+                else c.Note("not carrying the part after the take: " + State(g, sock));
             }
 
             // ---- G for a second service, then walking off: cancelled without effect
             sys.oil = sys.oilCapacity * 0.2f;
             float oil1 = sys.oil;
             c.Fixture("oil drained to 20 % again");
+            if (g.Working) { c.Fixture("stopped a job still running before G: " + State(g)); g.CancelWork(null); }
+            if (g.Player.Carried) { c.Fixture("dropped the still-carried " + g.Player.Carried.partId); g.Player.DropCarried(); }
             PutPlayer(g, v, new Vector3(2.4f, 0f, 0f));
-            yield return new WaitForFixedUpdate();                                                  // before this frame's Update
-            Controls.Inject(Controls.Act.Service);
             yield return null;
+            c.Note($"before G: nearby {(g.NearbyVehicle ? g.NearbyVehicle.name : "none")}, needs service {sys.NeedsService(g.Inventory)}, prompt '{g.Prompt}'");
+            var press = ActionPress.Press(Controls.Act.Service);                                   // G as the keyboard gives it, before the game's Update
+            for (int i = 0; i < 5 && press.Frame < 0; i++) yield return null;
+            c.Note($"G pressed in frame {press.Frame}: prompt '{g.Prompt}'; " + State(g));
             c.Check(g.Working && g.WorkNow == WorkKind.Service, "pressing G at the car starts the timed service");
             if (!g.Working) g.ServiceVehicle(v);
             t0 = Time.time;
@@ -160,6 +188,7 @@ namespace MadMax.Game.Acceptance
             g.Player.moveInput = new Vector2(0f, -1f);
             for (int i = 0; i < 30 && g.Working; i++) yield return null;
             g.Player.moveInput = Vector2.zero;
+            c.Note("walked off: " + State(g));
             c.Check(!g.Working && g.LastWork == WorkOutcome.Cancelled, "walking off cancels it");
             c.Metric("cancelled_at", g.LastWorkProgress, "");
             yield return new WaitForSeconds(0.3f);

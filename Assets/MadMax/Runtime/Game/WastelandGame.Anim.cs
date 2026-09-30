@@ -36,10 +36,10 @@ namespace MadMax.Game
             public Vector3 spotLocal, pointLocal, startPos, stuckAt;
             public Bounds box;                       // vehicle-local extent of every mesh on it
             public bool route, inPlace, working, cancelPending, prop, click;
-            public float duration, t, age, stuckT, approachLimit, fxT, hoodAngle;
+            public float duration, t, age, stuckT, approachLimit, fxT, hoodAngle, movingT;
             public int startFrame, beats;
             public Controls.Act? key;
-            public string label, prompt;
+            public string label, prompt, debug;
             public WorkPose pose;
             public Transform hood;
             public GameObject groundProp;
@@ -76,7 +76,10 @@ namespace MadMax.Game
         public Vector3 WorkPoint => job != null && job.v ? job.v.transform.TransformPoint(job.pointLocal) : Vector3.zero;
         public WorkOutcome LastWork { get; private set; }
         public float LastWorkProgress { get; private set; }
+        /// <summary>Why the last job stopped (cancel reason) or why a verb ran instantly; null after a finished job.</summary>
         public string LastWorkNote { get; private set; }
+        /// <summary>How the running (or last) job was set up: spot choice, distances (automation diagnostics).</summary>
+        public string WorkDebug { get; private set; }
 
         // ------------------------------------------------------------------ the vehicle verbs (G, K, E, repair kit, armour, LMB tools)
 
@@ -267,14 +270,17 @@ namespace MadMax.Game
             if (j == null) return;
             LastWork = WorkOutcome.Cancelled;
             LastWorkProgress = j.working ? Mathf.Clamp01(j.t / Mathf.Max(0.01f, j.duration)) : 0f;
-            LastWorkNote = why;
+            bool quiet = string.IsNullOrEmpty(why) || why[0] == '~';
+            LastWorkNote = quiet ? (why ?? "").TrimStart('~') : why;
+            WorkDebug = j.debug + " | cancelled at t " + j.t.ToString("0.00") + ", age " + j.age.ToString("0.00") + ": " + LastWorkNote;
+            Debug.Log("[work] " + j.kind + " stopped: " + WorkDebug);
             EndJob(j);
-            if (!string.IsNullOrEmpty(why)) Toast(why);
+            if (!quiet) Toast(why);
         }
 
         /// <summary>A verb's key while a job runs stops it — unless the job began this frame (the same press, e.g. a menu
         /// confirm, reaching another handler).</summary>
-        void KeyStopsWork() { if (job != null && job.startFrame != Time.frameCount) CancelWork("STOPPED"); }
+        void KeyStopsWork() { if (job != null && job.startFrame != Time.frameCount) { job.debug += " [a verb key again]"; CancelWork("STOPPED"); } }
 
         bool WorkAnimated(VehicleDriver v) => GameSettings.Current.workAnimation && v && Player && !Current && !Boarding && !Player.SeatedIn
             && !Player.Sitting && !Player.Swimming && !Player.Traversing && !Player.Ragdolled && !v.GetComponent<BoatModel>();
@@ -284,14 +290,20 @@ namespace MadMax.Game
         {
             if (applyingWork) { done(); return; }
             if (job != null) { KeyStopsWork(); return; }
-            if (!WorkAnimated(v) || !Begin(v, kind, target, null, done)) done();
+            if (WorkAnimated(v) && Begin(v, kind, target, null, done)) return;
+            if (GameSettings.Current.workAnimation) { LastWorkNote = kind + " ran instantly: " + (v ? WorkDebug : "no vehicle"); Debug.Log("[work] " + LastWorkNote); }
+            done();
         }
 
         float SkillPace(Skill s) => 1f / (1f + 0.08f * Stats.Level(s));
 
         bool Begin(VehicleDriver v, WorkKind kind, Transform target, Vector3? at, System.Action done)
         {
-            if (!v || !Player || Current || job != null || Player.SeatedIn || Player.Sitting) return false;
+            if (!v || !Player || Current || job != null || Player.SeatedIn || Player.Sitting)
+            {
+                WorkDebug = "not started: " + (!v ? "no vehicle" : !Player ? "no player" : Current ? "in a vehicle" : job != null ? "another job" : "seated");
+                return false;
+            }
             var t = v.transform;
             var j = new WorkJob { kind = kind, v = v, target = target, done = done, startFrame = Time.frameCount, startPos = t.position };
             j.part = kind == WorkKind.Mount ? Player.Carried : target ? target.GetComponent<VehiclePart>() : null;
@@ -301,7 +313,7 @@ namespace MadMax.Game
             j.pointLocal = t.InverseTransformPoint(point);
             if (!FindSpot(v, j, point, out var spot))
             {
-                if (Vector3.Distance(Player.transform.position + Vector3.up, point) > 2.6f) return false;
+                if (Vector3.Distance(Player.transform.position + Vector3.up, point) > 2.6f) { WorkDebug = "not started: " + j.debug; return false; }
                 j.inPlace = true;                                                                   // boxed in: work from where you stand
             }
             j.spotLocal = t.InverseTransformPoint(spot);
@@ -315,6 +327,8 @@ namespace MadMax.Game
             j.click = kind == WorkKind.Weld || kind == WorkKind.Salvage || kind == WorkKind.Jack;
             j.approachLimit = 4f + Vector3.Distance(Player.transform.position, spot) * 2f;          // round the vehicle is longer than straight
             j.stuckAt = Player.transform.position;
+            j.debug = $"{kind} {Name(v)}{(j.part ? " " + j.part.partId : "")}: {j.debug}, walk {Flat(Player.transform.position, spot):0.00} m{(j.inPlace ? " (in place)" : "")}, {j.duration:0.0} s";
+            WorkDebug = j.debug;
             if (Refuelling) StopRefuel(null);
             Player.AutoWalk = Vector3.zero;
             job = j;
@@ -345,18 +359,21 @@ namespace MadMax.Game
             Prompt = j.prompt;
         }
 
-        /// <summary>Why the job can't go on (null = fine; "" = stop quietly).</summary>
+        /// <summary>Why the job can't go on (null = fine; a leading '~' = stop without a toast).</summary>
         string WorkBroken(WorkJob j, bool click)
         {
             if (j.cancelPending) return "STOPPED";
-            if (!Player || !j.v || Current || Player.SeatedIn || Player.Sitting || Player.Ragdolled || (Vitals && Vitals.Dead)) return "";
+            if (!Player || !j.v) return "~GONE";
+            if (Current || Player.SeatedIn || Player.Sitting || Player.Ragdolled || (Vitals && Vitals.Dead)) return "~PLAYER " + (Current ? "DRIVING" : Player.SeatedIn || Player.Sitting ? "SEATED" : "DOWN");
+            // driven or pushed off (not a bounce on the springs after a part change): horizontal drift or sustained speed
             var body = j.v.Body;
-            if ((body && !body.isKinematic && body.linearVelocity.sqrMagnitude > 1f) || (j.v.transform.position - j.startPos).sqrMagnitude > 0.36f)
-                return "THE " + Name(j.v) + " MOVED";
-            if (j.age > 0.3f && Player.moveInput.sqrMagnitude > 0.1f) return "STOPPED";
+            var vel = body && !body.isKinematic ? body.linearVelocity : Vector3.zero; vel.y = 0f;
+            j.movingT = vel.sqrMagnitude > 2.25f ? j.movingT + Time.deltaTime : 0f;
+            if (j.movingT > 0.25f || Flat(j.v.transform.position, j.startPos) > 0.5f) return "THE " + Name(j.v) + " MOVED";
+            if (j.age > 0.3f && Player.moveInput.sqrMagnitude > 0.1f) { j.debug += " [walked off]"; return "STOPPED"; }
             if (Time.frameCount > j.startFrame)
             {
-                if (j.key.HasValue && Controls.Down(j.key.Value)) return "STOPPED";
+                if (j.key.HasValue && Controls.Down(j.key.Value)) { j.debug += " [" + j.key.Value + " again]"; return "STOPPED"; }
                 if (j.click && click) { j.cancelPending = true; return null; }                       // next frame: this click's swing stays held off
             }
             switch (j.kind)
@@ -367,10 +384,10 @@ namespace MadMax.Game
                     break;
                 case WorkKind.Mount:
                     if (!j.socket || !j.socket.IsFree) return "THE SOCKET IS TAKEN";
-                    if (!j.parked && !Player.Carried) return "";
+                    if (!j.parked && !Player.Carried) return "~THE PART LEFT THE HANDS";
                     break;
             }
-            if (j.working && !j.inPlace && Flat(Player.transform.position, SpotWorld(j)) > 1.5f) return "STOPPED";
+            if (j.working && !j.inPlace && Flat(Player.transform.position, SpotWorld(j)) > 1.5f) { j.debug += " [pushed off the spot]"; return "STOPPED"; }
             return null;
         }
 
@@ -467,6 +484,7 @@ namespace MadMax.Game
                 // the part is offered up to its socket and held there while it's bolted on
                 j.parked = Player.TakeCarried();
                 j.parked.transform.SetParent(null, true);
+                foreach (var c in j.parked.GetComponentsInChildren<Collider>(true)) c.enabled = false;   // held in the body: never a static collider in it
                 Park(j);
                 MadMax.Audio.Sfx.Play("hit_metal", j.parked.transform.position, 0.35f, 0.8f, 20f, 0.2f);
             }
@@ -686,13 +704,15 @@ namespace MadMax.Game
             var t = v.transform;
             var feet = Player.transform.position;
             spot = feet;
-            if (Player.Interior) { j.inPlace = true; return true; }
+            if (Player.Interior) { j.inPlace = true; j.debug = "inside"; return true; }
             if (t.up.y < 0.5f)
             {
                 var away = feet - point; away.y = 0f;
                 if (away.sqrMagnitude < 0.01f) away = Vector3.ProjectOnPlane(-t.forward, Vector3.up);
                 var w = Ground(point + away.normalized * 0.65f, v, point.y);
-                if (!Clear(w)) return false;
+                bool clear = Clear(w, out var blocker);
+                j.debug = "on its side, spot " + (clear ? "clear" : "blocked by " + blocker);
+                if (!clear) return false;
                 spot = w;
                 return true;
             }
@@ -713,17 +733,27 @@ namespace MadMax.Game
                 spotScores[i] = Vector2.Distance(new Vector2(lp.x, lp.z), new Vector2(c.x, c.z)) + 0.25f * Vector2.Distance(new Vector2(pl.x, pl.z), new Vector2(c.x, c.z)) + (i == end ? -20f : 0f);
             }
             float groundRef = t.TransformPoint(new Vector3(0f, b.min.y, 0f)).y;
+            int first = -1;
+            var sb = new System.Text.StringBuilder("spots");
             for (int n = 0; n < 4; n++)
             {
                 int best = -1;
                 for (int i = 0; i < 4; i++) if (spotScores[i] < float.MaxValue && (best < 0 || spotScores[i] < spotScores[best])) best = i;
                 if (best < 0) break;
                 spotScores[best] = float.MaxValue;
+                if (first < 0) first = best;
                 var w = Ground(t.TransformPoint(spotCands[best]), v, groundRef);
-                if (Clear(w)) { spot = w; return true; }
+                bool clear = Clear(w, out var blocker);
+                sb.Append(' ').Append(SpotNames[best]).Append(clear ? " clear" : " blocked by " + blocker);
+                if (clear) { spot = w; j.debug = sb.ToString(); return true; }
             }
-            return false;
+            // nothing clear (a loose part, a crate): head for the best side anyway, the walk gives up or works from there
+            spot = Ground(t.TransformPoint(spotCands[first]), v, groundRef);
+            j.debug = sb.Append(", going for ").Append(SpotNames[first]).ToString();
+            return true;
         }
+
+        static readonly string[] SpotNames = { "right", "left", "front", "rear" };
 
         /// <summary>The walkable surface under <paramref name="p"/> (floor, deck or terrain), not the vehicle itself.</summary>
         Vector3 Ground(Vector3 p, VehicleDriver v, float reference)
@@ -741,13 +771,15 @@ namespace MadMax.Game
             return new Vector3(p.x, y, p.z);
         }
 
-        bool Clear(Vector3 w)
+        bool Clear(Vector3 w, out string blocker)
         {
+            blocker = null;
             int n = Physics.OverlapCapsuleNonAlloc(w + Vector3.up * 0.45f, w + Vector3.up * 1.55f, 0.26f, spotHits, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
                 var c = spotHits[i];
-                if (c.transform.IsChildOf(Player.transform) || c.name.StartsWith("Chunk")) continue;
+                if (c.transform.IsChildOf(Player.transform) || c.name.StartsWith("Chunk") || (job != null && job.parked && c.transform.IsChildOf(job.parked.transform))) continue;
+                blocker = c.name + " (" + c.transform.root.name + ")";
                 return false;
             }
             return true;
@@ -772,6 +804,22 @@ namespace MadMax.Game
                 }
             }
             workMeshes.Clear();
+            // and its colliders (a body box may reach past the meshes)
+            v.GetComponentsInChildren(false, workColliders);
+            foreach (var c in workColliders)
+            {
+                if (!c.enabled || c.isTrigger || (Player && c.transform.IsChildOf(Player.transform))) continue;
+                Vector3 centre, ext; Matrix4x4 m;
+                if (c is BoxCollider bc) { centre = bc.center; ext = bc.size * 0.5f; m = inv * c.transform.localToWorldMatrix; }
+                else if (c is MeshCollider mc && mc.sharedMesh) { centre = mc.sharedMesh.bounds.center; ext = mc.sharedMesh.bounds.extents; m = inv * c.transform.localToWorldMatrix; }
+                else { centre = c.bounds.center; ext = c.bounds.extents; m = inv; }
+                for (int k = 0; k < 8; k++)
+                {
+                    var p = m.MultiplyPoint3x4(centre + Vector3.Scale(ext, new Vector3((k & 1) != 0 ? 1f : -1f, (k & 2) != 0 ? 1f : -1f, (k & 4) != 0 ? 1f : -1f)));
+                    if (!any) { b = new Bounds(p, Vector3.zero); any = true; } else b.Encapsulate(p);
+                }
+            }
+            workColliders.Clear();
             return any ? b : new Bounds(new Vector3(0f, 0.75f, 0f), new Vector3(2f, 1.5f, 4.5f));
         }
 
