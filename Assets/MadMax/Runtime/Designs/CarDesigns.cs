@@ -29,8 +29,19 @@ namespace MadMax.Designs
             public bool beacon;                                      // amber roof light (tow truck)
         }
 
+        /// <summary>Tyre radius in voxels of the wheel parts road cars use (PartLibrary).</summary>
+        static float WheelRadiusVox(string key) => key switch
+        {
+            "wheel_offroad" => 6.5f, "wheel_small" => 4.3f, "wheel_truck" => 6.7f, "wheel_sport" => 5.6f, "wheel_mud" => 6.8f, _ => 5.4f,
+        };
+
         static VehicleDesign BuildCar(CarSpec c)
         {
+            // stand the body on its wheels: the belt clears the tyre at full arch bump (radius + 0.8 carve + bump) and the
+            // sills sit well above the ground; everything above the floor moves up together
+            int beltMin = Mathf.FloorToInt(c.wheelY + VehicleDesign.ArchBumpVox + WheelRadiusVox(c.wheel) + 0.8f) + 1;
+            int lift = Mathf.Max(2, beltMin - c.belt);
+            c.floor += lift; c.belt += lift; c.noseY += lift; c.roofY += lift;
             var d = new VehicleDesign
             {
                 name = c.name, mass = c.mass, drive = c.drive, travel = c.travel, finalDrive = c.finalDrive, gears = c.gears,
@@ -87,6 +98,14 @@ namespace MadMax.Designs
             int gw = lx - 3;
             g.Box(-gw, f + 2, zF, gw, belt - 3, zF, p => (p.y + p.x) % 2 == 0 ? Pal.Chrome[1] : Pal.Void);   // grille
             g.Box(-2, f + 2, zR, 2, f + 3, zR, Pal.Solid(Pal.Black[1]));                         // plate recess
+            foreach (int s in new[] { -1, 1 })
+            {
+                g.Repaint(s * W, f + 1, zR + 3, s * W, f + 1, zF - 3, Pal.Ramp(Pal.Black, 1, c.seed + 8));   // rocker panel
+                g.Repaint(s * W, belt - 3, zF - 2, s * W, belt - 3, zF - 2, Pal.Solid(Pal.Amber));           // side markers
+                g.Repaint(s * W, belt - 3, zR + 2, s * W, belt - 3, zR + 2, Pal.Solid(Pal.TailR));
+            }
+            g.Repaint(W, belt - 2, zR + 6, W, belt - 2, zR + 7, trim);                                     // fuel filler cap
+            g.Repaint(-gw, f + 1, zF, gw, f + 1, zF, Pal.Ramp(Pal.Black, 1, c.seed + 9));                  // lower valance
 
             // ---- engine bay under a hood skin (one voxel thick, following the hood slope)
             bool InBay(Vector3Int p) => Abs(p.x) <= W - 3 && p.z > c.zWind + 1 && p.z < zF - 2;
@@ -125,6 +144,11 @@ namespace MadMax.Designs
                     g.Set(x, y, z, m);
                 }
             }
+            // rain gutters along the roof edge, wipers parked at the foot of the windshield, a whip aerial on the fender
+            foreach (int s in new[] { -1, 1 }) g.Repaint(s * cw, roofY - 2, cabRear + 1, s * cw, roofY - 2, c.zRoofF, trim);
+            g.Repaint(-(cw - 2), belt + 1, c.zWind, -1, belt + 1, c.zWind, Pal.Solid(Pal.Black[1]));
+            g.Repaint(1, belt + 1, c.zWind, cw - 2, belt + 1, c.zWind, Pal.Solid(Pal.Black[1]));
+            g.Box(W - 1, belt + 1, c.zWind + 2, W - 1, belt + 6, c.zWind + 2, Pal.Solid(Pal.Chrome[1]));
             if (c.beacon) { g.Box(-2, roofY + 1, c.zRoofF - 3, 2, roofY + 1, c.zRoofF - 3, Pal.Solid(Pal.Amber)); g.Set(0, roofY + 2, c.zRoofF - 3, Pal.Solid(Pal.LightY)); }
 
             // ---- interior

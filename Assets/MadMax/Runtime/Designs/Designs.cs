@@ -70,6 +70,7 @@ namespace MadMax.Designs
         public readonly List<BoundsInt> colliders = new List<BoundsInt>();   // voxel-space boxes; empty = one box around the body
         public InteriorDesign interior;
         public string machine;                 // construction machine behaviour (MadMax.Vehicles.Machine.Kind name)
+        public float archLift;                 // set by CarveWheelArches: how far (m) the wheel meshes may rise into the arches
         public bool crawler;                   // tracked: wheels hide inside the tracks (no arch carving)
         public bool bike, sidecar;             // two-wheeler (BikeBalance leans it); sidecar outfit: three wheels, no lean
         public float comX;                     // centre of mass offset (m) to the right (sidecar outfits)
@@ -102,13 +103,23 @@ namespace MadMax.Designs
                 sockets.Add(new SocketDesign { name = name + "_L", accepts = c, position = new Vector3Int(-x, y, z), part = part, mirrored = true, maxSizeClass = maxSize });
         }
 
-        /// <summary>Carves wheel arches out of the body (and glass): for every wheel socket, the space its default tyre
-        /// sweeps (radius + 1 voxel, full width, suspension travel upward, steering clearance on steered axles) is cleared,
-        /// and the arch rim is darkened like an inner fender. Keeps any design free of tyres poking through panels.</summary>
+        /// <summary>Wheel meshes rise at most this many voxels into their arches (bump beyond it is physics only).</summary>
+        public const float ArchBumpVox = 1f;
+
+        /// <summary>Carves wheel arches out of the body, glass and the panels cut from it (doors, hood): for every wheel
+        /// socket, the space its default tyre sweeps (radius + 0.8 voxel, full width, up to <see cref="ArchBumpVox"/> of bump,
+        /// steering clearance on steered axles) is cleared, and the arch rim is darkened like an inner fender. The runtime
+        /// clamps the wheel mesh to the same bump (<see cref="archLift"/>), so tyres never poke through panels.</summary>
         public void CarveWheelArches(System.Func<string, PartDesign> part)
         {
             if (body == null || crawler || bike || aircraft != null) return;               // bikes and aircraft: fenders / pods clear the gear by design
-            float travelVox = Mathf.Ceil(travel / VoxelMesher.DefaultSize);
+            float travelVox = Mathf.Min(Mathf.Ceil(travel / VoxelMesher.DefaultSize), ArchBumpVox);
+            archLift = travelVox * VoxelMesher.DefaultSize;
+            // panels cut from this body, placed back at their socket (right-hand sockets: the left side mirrors them)
+            var panels = new List<(VoxelGrid grid, Vector3Int at)>();
+            foreach (var pd in parts)
+                foreach (var ps in sockets)
+                    if (!ps.mirrored && ps.part == pd.key && pd.grid != null) panels.Add((pd.grid, ps.position));
             foreach (var s in sockets)
             {
                 if (s.accepts != PartCategory.Wheel || string.IsNullOrEmpty(s.part)) continue;
@@ -122,18 +133,21 @@ namespace MadMax.Designs
                 int x0 = s.position.x, x1 = s.position.x + sign * (width + 1);   // inner face to beyond the outer sidewall
                 if (x0 > x1) (x0, x1) = (x1, x0);
                 float zMargin = driveable && maxSteer > 0f && s.position.z > 0 ? 1.5f : 0.5f;   // steered wheels swing forward/back
-                foreach (var g in new[] { body, glass })
+                var grids = new List<(VoxelGrid grid, Vector3Int at)> { (body, Vector3Int.zero), (glass, Vector3Int.zero) };
+                if (!s.mirrored) grids.AddRange(panels);
+                foreach (var (g, at) in grids)
                 {
                     if (g == null) continue;
                     var clear = new List<Vector3Int>(); var rim = new List<Vector3Int>();
-                    foreach (var p in g.voxels.Keys)
+                    foreach (var local in g.voxels.Keys)
                     {
+                        var p = local + at;
                         if (p.x < x0 || p.x > x1) continue;
                         float dz = Mathf.Max(0f, Mathf.Abs(p.z - s.position.z) - zMargin);
                         float dy = p.y - s.position.y;
                         float ey = dy - Mathf.Clamp(dy, 0f, travelVox);      // capsule: the wheel rises by the suspension travel
                         float d = Mathf.Sqrt(dz * dz + ey * ey);
-                        if (d <= r + 1f) clear.Add(p); else if (d <= r + 2f && g == body) rim.Add(p);
+                        if (d <= r + 0.8f) clear.Add(local); else if (d <= r + 1.8f && g != glass) rim.Add(local);
                     }
                     foreach (var p in clear) g.voxels.Remove(p);
                     foreach (var p in rim)

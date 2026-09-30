@@ -211,8 +211,8 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter(),
                                       VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel() })
             {
+                d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels (cut doors / hood too)
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
-                d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels
                 vehicles[d.name] = SaveVehicle(d, parts, mat);
             }
             lastParts = parts;
@@ -380,6 +380,7 @@ namespace MadMax.EditorTools
             rb.angularDamping = 0.3f;
             var driver = root.AddComponent<VehicleDriver>();
             driver.drive = d.drive; driver.travel = d.travel; driver.finalDrive = d.finalDrive;
+            driver.rideHeight = 0f; driver.archLift = d.archLift > 0f ? d.archLift : 99f;
             driver.frequency = d.frequency; driver.brakeForce = d.brakeForce; driver.maxSteer = d.maxSteer; driver.driveable = d.driveable;
             if (d.gears != null) driver.gears = d.gears;
             driver.awdSelectable = d.awdSelectable; driver.hasDiffLock = d.diffLock;

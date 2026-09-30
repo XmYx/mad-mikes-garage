@@ -19,6 +19,17 @@ namespace MadMax.World
     [DefaultExecutionOrder(-50)]
     public partial class DeformableTerrain : MonoBehaviour
     {
+        static PhysicsMaterial groundMaterial;
+        /// <summary>Terrain keeps full friction against anything (Maximum combine wins over the slick vehicle skin).</summary>
+        public static PhysicsMaterial GroundMaterial
+        {
+            get
+            {
+                if (!groundMaterial) groundMaterial = new PhysicsMaterial("Ground") { dynamicFriction = 0.6f, staticFriction = 0.6f, frictionCombine = PhysicsMaterialCombine.Maximum, bounciness = 0f };
+                return groundMaterial;
+            }
+        }
+
         public const int N = 32;              // cells per chunk side
         public const float Cell = 0.25f;      // metres per cell
         public const float ChunkWorld = N * Cell;
@@ -496,6 +507,7 @@ namespace MadMax.World
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             ch.col = ch.go.AddComponent<MeshCollider>();
             ch.col.sharedMesh = ch.mesh;
+            ch.col.sharedMaterial = GroundMaterial;
             ch.colDirty = false;
             active.Add(ch);
             BuildWater(ch);

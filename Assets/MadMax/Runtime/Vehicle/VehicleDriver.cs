@@ -27,7 +27,8 @@ namespace MadMax.Vehicles
         [System.NonSerialized] public float KeepAwakeUntil;
         /// <summary>Driven by an NPC (<see cref="MadMax.Npc.AiDriver"/>): never frozen far away, not saved, automatic gearbox.</summary>
         [System.NonSerialized] public bool aiDriven;
-        [Tooltip("Extra ground clearance (m) on top of the suspension geometry.")] public float rideHeight = 0.07f;   // driver skill (set by the game for the player's vehicle)
+        [Tooltip("Extra ground clearance (m) on top of the suspension geometry (tuning: lift or drop).")] public float rideHeight = 0f;
+        [Tooltip("Highest the wheel mesh rises into its arch (m above the socket); physics travel continues beyond it.")] public float archLift = 99f;
         [Tooltip("False for trailers: cannot be entered or driven.")]
         public bool driveable = true;
 
@@ -119,6 +120,7 @@ namespace MadMax.Vehicles
             public float maxF, drive, diffSpin, vf, vs, spring;
             public bool broken;          // tyre broke traction last step (kinetic friction is lower)
             public bool deck;            // on a built deck (floor, foundation, ramp): firm, no ruts
+            public float reachBase;      // body below the wheel bottom (crawler tracks, roller drums): extra ray reach
             public Surface surf;
         }
 
@@ -128,6 +130,7 @@ namespace MadMax.Vehicles
         EngineStats engine;
         float steer, massPerWheel, k, c, restComp, shiftTimer, restTimer;
         float steerVelocity, driveFiltered, directionHold;
+        BoxCollider bodyBox; Vector3 bodyBoxCenter, bodyBoxSize;
 
         /// <summary>Wheels touching the ground last step (0 = airborne: jumps, hang time).</summary>
         public int WheelsDown { get { int n = 0; foreach (var w in wheels) if (w.part && w.grounded) n++; return n; } }
@@ -157,6 +160,47 @@ namespace MadMax.Vehicles
 
         void OnDestroy() { if (chassis) chassis.Changed -= Rebuild; }
 
+        static PhysicsMaterial skin;
+        /// <summary>Vehicle colliders: slick against other vehicles (Minimum combine) so stalled cars pressed together
+        /// slide apart; terrain (Maximum) and props (Average) keep their grip.</summary>
+        public static PhysicsMaterial Skin
+        {
+            get
+            {
+                if (!skin) skin = new PhysicsMaterial("VehicleSkin") { dynamicFriction = 0.08f, staticFriction = 0.1f, frictionCombine = PhysicsMaterialCombine.Minimum, bounciness = 0f, bounceCombine = PhysicsMaterialCombine.Minimum };
+                return skin;
+            }
+        }
+
+        void ApplySkin()
+        {
+            var mat = Skin;
+            foreach (var col in GetComponentsInChildren<Collider>(true))
+                if (!col.isTrigger && !col.sharedMaterial) col.sharedMaterial = mat;
+        }
+
+        /// <summary>Crawler tracks and roller drums are body voxels that reach below the hidden wheels: the wheels get
+        /// the extra ray reach to stand the body on them, and the body box stops short of the ground so it never
+        /// takes the machine's weight (a body resting on its collider has no grounded wheels and cannot drive).</summary>
+        void FitUndercarriage(Transform body, Bounds meshBounds)
+        {
+            float bottom = body.localPosition.y + meshBounds.min.y, deepest = 0f, axle = float.MaxValue;
+            foreach (var w in wheels)
+            {
+                w.reachBase = w.part ? Mathf.Min(0.4f, w.socket.transform.localPosition.y - bottom - w.radius) : -1f;
+                deepest = Mathf.Max(deepest, w.reachBase);
+                if (w.part) axle = Mathf.Min(axle, w.socket.transform.localPosition.y);
+            }
+            if (!bodyBox && body.TryGetComponent(out bodyBox)) { bodyBoxCenter = bodyBox.center; bodyBoxSize = bodyBox.size; }
+            if (!bodyBox) return;
+            // the box starts at the axles: the machine can pitch on its springs under full drive without a corner of the
+            // undercarriage catching the ground
+            float boxBottom = bodyBoxCenter.y - bodyBoxSize.y * 0.5f;
+            float lift = deepest > 0.02f ? Mathf.Clamp(axle - 0.04f - boxBottom, 0.14f, bodyBoxSize.y * 0.5f) : 0f;
+            bodyBox.center = bodyBoxCenter + Vector3.up * (lift * 0.5f);
+            bodyBox.size = bodyBoxSize - Vector3.up * lift;
+        }
+
         public void Rebuild()
         {
             wheels.Clear();
@@ -177,6 +221,7 @@ namespace MadMax.Vehicles
                 }
                 else if (!engine && s.Current) engine = s.Current.GetComponent<EngineStats>();
             }
+            ApplySkin();
             rb.mass = chassis.TotalMass;
             massPerWheel = rb.mass / Mathf.Max(1, wheels.Count);
             float w0 = 2f * Mathf.PI * frequency;
@@ -196,6 +241,7 @@ namespace MadMax.Vehicles
                     cx = n > 0 ? cx / n : 0f;
                 }
                 rb.centerOfMass = customCom ? centerOfMass : new Vector3(cx, b.min.y + 0.25f, b.center.z);
+                FitUndercarriage(body, b);
             }
         }
 
@@ -297,7 +343,8 @@ namespace MadMax.Vehicles
                     if (Reversing) Gear = 1;
                     else if (shiftTimer <= 0f)
                     {
-                        if (Rpm > engine.maxRpm * 0.9f && Gear < gears.Length && WheelSlip < 0.3f) { Gear++; shiftTimer = 0.5f; }
+                        // upshift on road speed, not on revs from spinning tyres (a slipping pull-away stays in first)
+                        if (Rpm > engine.maxRpm * 0.9f && wheelRpm * ratio > engine.maxRpm * 0.8f && Gear < gears.Length && WheelSlip < 0.3f) { Gear++; shiftTimer = 0.5f; }
                         else if (Rpm < engine.maxRpm * 0.4f && Gear > 1) { Gear--; shiftTimer = 0.5f; }
                     }
                 }
@@ -313,8 +360,8 @@ namespace MadMax.Vehicles
                 if (!w.part) continue;
 
                 Vector3 outward = transform.right * (w.left ? -1f : 1f);
-                Vector3 anchor = w.socket.transform.position + outward * (w.width * 0.5f) + up * (travel - restComp + rideHeight);
-                float rayLen = travel + w.radius * (w.stats && w.stats.Popped ? 0.78f : 1f);
+                Vector3 anchor = w.socket.transform.position + outward * (w.width * 0.5f) + up * (travel - restComp - rideHeight);
+                float rayLen = travel + w.radius * (w.stats && w.stats.Popped ? 0.78f : 1f) + Mathf.Max(0f, w.reachBase - rideHeight);
                 if (up.y < 0.25f) { w.comp = 0; continue; }
                 float gh = terrain.Height(anchor.x, anchor.z);
                 Vector3 deckN = Vector3.up;
@@ -381,6 +428,11 @@ namespace MadMax.Vehicles
                     weak.diffSpin = spin;
                 }
             }
+            // launch assist: pulling away (a hill, sand) the driver feeds the throttle so the tyres keep static grip
+            // instead of breaking loose, spinning and sliding back; no assist for burnouts (throttle + brake)
+            if (touring && tractionLimit <= 0f && Mathf.Abs(ForwardSpeed) < 4f && brakeCmd < 0.5f)
+                foreach (var w in wheels) if (w.part && w.grounded && IsDriven(w)) w.drive = Mathf.Clamp(w.drive, -w.maxF * 0.97f, w.maxF * 0.97f);
+            DriveForce = 0f; foreach (var w in wheels) DriveForce += w.drive;
 
             // ---- pass 2: tyre forces, ruts, wheel spin
             float slipSum = 0, mudSum = 0, squealSum = 0, looseSum = 0, mudTyreSum = 0, rollSum = 0; int grounded = 0;
@@ -400,6 +452,8 @@ namespace MadMax.Vehicles
                 float bias = tuning ? tuning.BrakeShare(w.front, frontWheels, wheels.Count) : 1f;
                 float brake = (lineLock ? 0f : brakeCmd * brakeForce / wheels.Count * bias) + (handbrake ? (!occupied ? brakeForce : !w.front ? brakeForce * 0.5f : 0f) : 0f);   // parked: every wheel locked
                 brake += Mathf.Clamp01(w.part.damage) * 0.35f * w.spring;       // damaged wheel drags
+                // hill hold: rolling back against the throttle at a crawl, the brakes catch it while the drive takes over
+                if (touring && driveCmd > 0.05f && Mathf.Abs(ForwardSpeed) < 2f && (Reversing ? w.vf > 0.02f : w.vf < -0.02f)) brake += brakeForce / wheels.Count;
                 lng -= Mathf.Clamp(w.vf * massPerWheel / dt, -brake, brake);
                 float press = Pressure(w);
                 float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f) * (tuning ? tuning.RollingFactor : 1f);   // mud and ruts drag
@@ -560,7 +614,7 @@ namespace MadMax.Vehicles
             {
                 if (!w.part || w.part.Socket != w.socket) continue;
                 var t = w.part.transform;
-                t.localPosition = new Vector3(0f, (w.grounded ? w.comp : 0f) - restComp + rideHeight, 0f);
+                t.localPosition = new Vector3(0f, Mathf.Min((w.grounded ? w.comp : 0f) - restComp - rideHeight, archLift), 0f);
                 float wobble = Mathf.Clamp01(w.part.damage) * 9f * Mathf.Sin(w.spin * Mathf.Deg2Rad);
                 t.localRotation = Quaternion.Euler(0f, (w.front ? steer : 0f) * (w.left ? -1f : 1f), wobble) * Quaternion.Euler(w.spin % 360f, 0f, 0f);
             }

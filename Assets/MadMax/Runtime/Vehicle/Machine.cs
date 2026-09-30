@@ -50,10 +50,15 @@ namespace MadMax.Vehicles
         float bed;                                                      // dump truck 0..50
         float screed;                                                   // paver
         Vector3 lastPos;
+        SoilHeap heap, rearHeap, bedHeap;
+        float bedFill, bedScan, trickle;
+        ResourceType bedType = ResourceType.None;
+        static readonly List<DebrisSystem.Chunk> clods = new List<DebrisSystem.Chunk>();
 
         public string Status { get; private set; }
         public float Capacity => kind == Kind.Excavator ? 1.4f : kind == Kind.Backhoe ? 0.8f : kind == Kind.Dozer ? 2.5f : 0f;
         const float RearCapacity = 0.35f;
+        const float BedM3 = 6.5f;                                       // tipper bed volume (2.3 x 3.8 x 0.75 m)
         public Container Store => store;
 
         void Awake()
@@ -256,6 +261,7 @@ namespace MadMax.Vehicles
                 type = terrain.SoilAt(tip.x, tip.z, depth);
                 held = Mathf.Min(cap, held + moved);
                 Fx.Smoke(at + Vector3.up * 0.3f, Vector3.up * 0.8f + Random.insideUnitSphere * 0.5f, 0.6f, DustColor(type), 1.5f);
+                Clods(tip + Vector3.up * 0.15f, type, 3 + Mathf.RoundToInt(bite * 4f), 0.35f, (tip - transform.position).normalized * 0.8f);
             }
             return inSoil;
         }
@@ -272,7 +278,7 @@ namespace MadMax.Vehicles
             foreach (var c in Container.All)
             {
                 if (!c || c == store) continue;
-                float d = Vector3.Distance(c.transform.position, tip);
+                float d = Vector3.Distance(LoadPoint(c), tip);
                 if (d < best && c.Weight + units * ItemCatalog.ResourceWeight(type) <= c.capacity) { best = d; target = c; }
             }
             if (target && units > 0) target.inventory.Add(type, units);
@@ -283,7 +289,32 @@ namespace MadMax.Vehicles
                 Terraform(DeformableTerrain.TerraOp.Dump, at, 1.2f, held / (Mathf.PI * 1.2f * 1.2f * 0.45f));
             }
             for (int i = 0; i < 8; i++) Fx.Smoke(tip + Random.insideUnitSphere * 0.6f, Vector3.down + Random.insideUnitSphere, 0.5f, DustColor(type), 1.2f);
+            Clods(tip, type, Mathf.Clamp(units, 6, 18), 0.5f, Vector3.down * 2f);
+            MadMax.Audio.Sfx.Play("dig", tip, 0.7f, Random.Range(0.8f, 1f), 40f, 0.2f);
             held = 0f;
+        }
+
+        /// <summary>Where a container takes a load: a tipper's bed centre, else the container itself.</summary>
+        static Vector3 LoadPoint(Container c)
+        {
+            var m = c.GetComponent<Machine>();
+            var bed = m && m.store == c ? m.Tool : null;
+            return bed ? bed.TransformPoint(new Vector3(0, 6, 24) * S) : c.transform.position;
+        }
+
+        /// <summary>Soil clods: physical pixel cubes in the soil's colour (pooled debris).</summary>
+        static void Clods(Vector3 at, ResourceType type, int n, float spread, Vector3 impulse)
+        {
+            var ds = DebrisSystem.Instance;
+            if (!ds || n <= 0 || type == ResourceType.None) return;
+            Color32 c = ResourceInfo.Color(type);
+            clods.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                float f = i % 3 == 0 ? 0.8f : i % 3 == 1 ? 1f : 1.12f;                   // three shades: few cached cube meshes
+                clods.Add(new DebrisSystem.Chunk { position = at + Random.insideUnitSphere * spread, color = new Color32((byte)Mathf.Min(255f, c.r * f), (byte)Mathf.Min(255f, c.g * f), (byte)Mathf.Min(255f, c.b * f), 255) });
+            }
+            ds.Emit(clods, 0.07f, impulse, 0.6f);
         }
 
         void FixedUpdate()
@@ -310,13 +341,16 @@ namespace MadMax.Vehicles
                     if (cut > 0f) load += cut;
                     if (load > 1.2f)
                     {
+                        Clods(blade + transform.forward * 1.2f + Vector3.up * 0.6f, loadType, 8, 1f, transform.forward * 1.5f);
                         // an angled blade rolls the pile off its trailing end; square, it piles up ahead
                         var bladeT = Seg(Tool, "blade");
                         var spill = Mathf.Abs(bladeAngle) > 8f && bladeT ? blade + bladeT.right * Mathf.Sign(bladeAngle) * 1.8f + transform.forward * 0.6f : blade + transform.forward * 1.6f;
                         Terraform(DeformableTerrain.TerraOp.Dump, new Vector3(spill.x, terrain.Height(spill.x, spill.z), spill.z), 1.3f, load / (Mathf.PI * 1.69f * 0.45f));
                         load = 0f;
                     }
-                    Fx.Smoke(blade + Vector3.up * 0.4f, transform.forward + Vector3.up, 0.8f, DustColor(terrain.SoilAt(blade.x, blade.z, 0f)), 1.2f);
+                    var soil = terrain.SoilAt(blade.x, blade.z, 0f);
+                    Fx.Smoke(blade + Vector3.up * 0.4f, transform.forward + Vector3.up, 0.8f, DustColor(soil), 1.2f);
+                    if (cut > 0f) { loadType = soil; Clods(blade + Vector3.up * 0.5f + transform.forward * 0.5f, soil, 4, 0.9f, transform.forward * (speed + 1f)); }
                     break;
                 }
                 case Kind.DumpTruck:
@@ -366,12 +400,72 @@ namespace MadMax.Vehicles
             if (target) target.inventory.Add(pick, n);
             else Terraform(DeformableTerrain.TerraOp.Dump, new Vector3(behind.x, terrain.Height(behind.x, behind.z), behind.z), 1.4f, n / UnitsPerM3 / (Mathf.PI * 1.96f * 0.45f));
             Fx.Smoke(behind + Vector3.up * 0.5f, Vector3.down, 0.9f, DustColor(pick), 1.5f);
+            Clods(transform.TransformPoint(new Vector3(0, 10, -50) * S), pick, 8, 0.6f, -transform.forward * 1.5f + Vector3.down);
+            MadMax.Audio.Sfx.Play("dig", behind, 0.6f, Random.Range(0.8f, 1f), 40f, 0.3f);
         }
 
         static void Pose(Transform t, float pitch, float yaw = 0f) { if (t) t.localRotation = Quaternion.Euler(pitch, yaw, 0f); }
 
+        Material HeapMaterial()
+        {
+            var body = transform.Find("Body");
+            return body && body.TryGetComponent<MeshRenderer>(out var r) ? r.sharedMaterial : null;
+        }
+
+        /// <summary>The heap on <paramref name="seg"/> (re-made when the tool was swapped).</summary>
+        SoilHeap HeapOn(ref SoilHeap h, Transform seg, Vector3 at, SoilHeap.Shape shape, Vector3Int size)
+        {
+            if (!seg) { if (h) h.Set(0f, ResourceType.None); return null; }
+            if (!h || h.transform.parent != seg) { if (h) Destroy(h.gameObject); h = SoilHeap.Create(seg, at, shape, size, HeapMaterial()); }
+            return h;
+        }
+
+        /// <summary>Loads you can see: bucket and blade heaps, the tipper bed's contents, clods spilling off a full bucket.</summary>
+        void Heaps()
+        {
+            var tool = Tool;
+            switch (kind)
+            {
+                case Kind.Excavator:
+                    HeapOn(ref heap, Seg(tool, "bucket"), new Vector3(0, -5.2f, -1.5f), SoilHeap.Shape.Bucket, new Vector3Int(4, 3, 3))?.Set(load / Capacity, loadType);
+                    break;
+                case Kind.Backhoe:
+                    HeapOn(ref heap, Seg(tool, "bucket"), new Vector3(0, -3.6f, 0.4f), SoilHeap.Shape.Bucket, new Vector3Int(11, 3, 3))?.Set(load / Capacity, loadType);
+                    HeapOn(ref rearHeap, Seg(Rear, "bucket"), new Vector3(0, -4f, 1f), SoilHeap.Shape.Bucket, new Vector3Int(3, 2, 2))?.Set(rearLoad / RearCapacity, rearType);
+                    break;
+                case Kind.Dozer:
+                    HeapOn(ref heap, Seg(tool, "blade"), new Vector3(0, 0, 8f), SoilHeap.Shape.Blade, new Vector3Int(16, 7, 5))?.Set(load / 1.2f, loadType);
+                    break;
+                case Kind.DumpTruck:
+                    if ((bedScan -= Time.deltaTime) <= 0f && store)
+                    {
+                        bedScan = 0.5f; float units = 0f, best = 0f; bedType = ResourceType.None;
+                        for (int t = 1; t < ResourceInfo.Count; t++)
+                        {
+                            var rt = (ResourceType)t;
+                            int n = store.inventory.Get(rt);
+                            if (n <= 0 || ResourceInfo.IsFluid(rt)) continue;
+                            units += n;
+                            if (n > best) { best = n; bedType = rt; }
+                        }
+                        bedFill = units / (UnitsPerM3 * BedM3);
+                    }
+                    HeapOn(ref bedHeap, tool, new Vector3(0, 2f, 24f), SoilHeap.Shape.Bed, new Vector3Int(13, 8, 22))?.Set(bedFill, bedType);
+                    break;
+            }
+            // a heaped bucket sheds clods while it swings or the machine drives
+            float full = Capacity > 0f ? load / Capacity : 0f;
+            if (heap && heap.gameObject.activeInHierarchy && full > 0.55f && (trickle -= Time.deltaTime) <= 0f)
+            {
+                float speed = driver ? Mathf.Abs(driver.ForwardSpeed) : 0f;
+                trickle = Mathf.Lerp(1.2f, 0.25f, Mathf.Clamp01(speed / 4f)) / full;
+                if (speed > 0.8f || Random.value < 0.3f) Clods(heap.transform.position + Vector3.up * 0.1f, loadType, 1 + (full > 0.9f ? 1 : 0), 0.3f, Vector3.zero);
+            }
+        }
+
         void LateUpdate()
         {
+            Heaps();
             var tool = Tool;
             switch (kind)
             {

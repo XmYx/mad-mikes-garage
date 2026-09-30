@@ -10,7 +10,7 @@ namespace MadMax.Game
         {
             if (Rules.startingKit == 0 || !Build || !Build.Structures) return;
             World.Yard(out var origin, out var along, out var side);
-            var center = origin + along * -7f + side * 7.3f;
+            var center = origin + along * -7f + side * 30f;            // behind the machine row (side 11..~22 m): clear of arms and buckets
             var facing = Quaternion.LookRotation(-side);
             float floor = terrain.Height(center.x, center.z) + 0.04f;
             Placeable Put(string id, float x, float z, float y = 0f, float yaw = 0f)

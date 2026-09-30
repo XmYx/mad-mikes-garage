@@ -111,7 +111,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8315546593480015688}
+  - {fileID: 6160689052229562147}
   m_Father: {fileID: 3886074792194862346}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2083643300106723260
@@ -129,7 +129,7 @@ MonoBehaviour:
   accepts: 0
   maxSizeClass: 4
   mirrored: 0
-  current: {fileID: 6311781810797060405}
+  current: {fileID: 8182512213165519198}
 --- !u!1 &2450913733807459338
 GameObject:
   m_ObjectHideFlags: 0
@@ -424,7 +424,8 @@ MonoBehaviour:
   hasDiffLock: 0
   diffLocked: 0
   manual: 0
-  rideHeight: 0.07
+  rideHeight: 0
+  archLift: 99
   driveable: 1
   travel: 0.05
   frequency: 2.4
@@ -766,7 +767,7 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2400632531517329135, guid: 725032b6a9faa7ba9a53cd4887a4a790, type: 3}
   m_PrefabInstance: {fileID: 2171816306131951756}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &5923925661822726567
+--- !u!1001 &8372165989496889804
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -827,10 +828,15 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 725032b6a9faa7ba9a53cd4887a4a790, type: 3}
---- !u!114 &6311781810797060405 stripped
+--- !u!4 &6160689052229562147 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2400632531517329135, guid: 725032b6a9faa7ba9a53cd4887a4a790, type: 3}
+  m_PrefabInstance: {fileID: 8372165989496889804}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8182512213165519198 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 405877146718245010, guid: 725032b6a9faa7ba9a53cd4887a4a790, type: 3}
-  m_PrefabInstance: {fileID: 5923925661822726567}
+  m_PrefabInstance: {fileID: 8372165989496889804}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -838,11 +844,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
---- !u!4 &8315546593480015688 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2400632531517329135, guid: 725032b6a9faa7ba9a53cd4887a4a790, type: 3}
-  m_PrefabInstance: {fileID: 5923925661822726567}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &8600214054062176419
 PrefabInstance:
   m_ObjectHideFlags: 0
