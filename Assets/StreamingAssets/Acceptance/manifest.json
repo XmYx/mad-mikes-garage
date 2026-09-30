@@ -5,46 +5,42 @@
       "id": "driving_and_repairing.vehicles_are_made_of_parts_in_sockets_wh",
       "group": "Driving and repairing",
       "readme": "Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doo",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "metal.parts",
+        "vehicle.drive.*"
+      ]
     },
     {
       "id": "driving_and_repairing.raycast_suspension_open_or_locked_differ",
       "group": "Driving and repairing",
       "readme": "Raycast suspension, open or locked differentials, switchable 4WD, automatic or m",
       "scenarios": [
-        "vehicle.drive.*",
+        "regression.cars_separate",
         "regression.hill_hold.*",
-        "regression.cars_separate"
-      ],
-      "gap": "partial: 4WD/diff lock/manual box not exercised"
+        "vehicle.crawler_mud.*",
+        "vehicle.drive.*"
+      ]
     },
     {
       "id": "driving_and_repairing.crashes_dent_the_bodywork_bend_the_frame",
       "group": "Driving and repairing",
       "readme": "Crashes dent the bodywork (how much is a setting), bend the frame (the car start",
       "scenarios": [
-        "vehicle.glass_and_lamps",
         "settings.car_deformation",
+        "vehicle.glass_and_lamps",
         "vehicle.scrape_marks"
-      ],
-      "gap": "partial: frame pull and parts knocked off not asserted"
+      ]
     },
     {
       "id": "driving_and_repairing.each_engine_needs_fuel_oil_and_coolant_p",
       "group": "Driving and repairing",
       "readme": "Each engine needs fuel, oil and coolant. Petrol and diesel are separate, and fil",
       "scenarios": [
-        "vehicle.drive.*"
-      ],
-      "gap": "partial: cranking only; fluids, wrong fuel and faults not exercised"
-    },
-    {
-      "id": "driving_and_repairing.servicing_oil_changes_air_filters_spark_",
-      "group": "Driving and repairing",
-      "readme": "Servicing: oil changes, air filters, spark plugs. A tuning bench changes gearing",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+        "crafting.fuel_refund",
+        "vehicle.drive.*",
+        "vehicle.exhaust_smoke",
+        "vehicle.start_chance"
+      ]
     },
     {
       "id": "driving_and_repairing.a_paint_station_for_colours_and_decals_a",
@@ -65,9 +61,10 @@
       "group": "Driving and repairing",
       "readme": "Construction machines really change the terrain. Excavators, backhoes and dozers",
       "scenarios": [
-        "regression.machine_soil"
-      ],
-      "gap": "partial: excavator + tipper; backhoe, dozer, paver, roller terraforming not asserted"
+        "regression.machine_soil",
+        "roads.ladder",
+        "vehicle.crawler_mud.*"
+      ]
     },
     {
       "id": "driving_and_repairing.vehicle_weapons_roof_guns_rear_droppers_",
@@ -115,8 +112,9 @@
       "id": "the_world.day_and_night_seasons_rain_snow_storms_l",
       "group": "The world",
       "readme": "Day and night with the sun and moon crossing the sky, seasons, rain, snow, storm",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "visuals.sun_moon"
+      ]
     },
     {
       "id": "the_world.buildings_slowly_overgrow_and_crumble_gr",
@@ -143,13 +141,6 @@
       "id": "surviving.body_temperature_depends_on_clothing_lay",
       "group": "Surviving",
       "readme": "Body temperature depends on clothing layers, shelter, heaters and getting wet.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
-    },
-    {
-      "id": "surviving.injuries_are_tracked_per_body_part_cuts_",
-      "group": "Surviving",
-      "readme": "Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection)",
       "scenarios": [],
       "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
     },
@@ -182,13 +173,6 @@
       "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
     },
     {
-      "id": "building_farming_and_industry.walls_floors_roofs_doors_stairs_and_ladd",
-      "group": "Building, farming and industry",
-      "readme": "Walls, floors, roofs, doors, stairs and ladders. Foundations and drivable decks,",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
-    },
-    {
       "id": "building_farming_and_industry.furniture_that_does_something_beds_seats",
       "group": "Building, farming and industry",
       "readme": "Furniture that does something: beds, seats, dining tables, wardrobes, bookshelve",
@@ -196,35 +180,34 @@
       "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
     },
     {
-      "id": "building_farming_and_industry.power_from_generators_solar_panels_wind_",
-      "group": "Building, farming and industry",
-      "readme": "Power from generators, solar panels, wind turbines and water wheels, carried by ",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
-    },
-    {
       "id": "building_farming_and_industry.gardens_with_crops_fruit_trees_fertilise",
       "group": "Building, farming and industry",
       "readme": "Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenh",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "farming.ladder",
+        "story.side_quests"
+      ]
     },
     {
       "id": "building_farming_and_industry.a_production_chain_dig_soil_wash_it_for_",
       "group": "Building, farming and industry",
       "readme": "A production chain: dig soil, wash it for ore, then smelt metals, fire glass and",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "defence.ladder",
+        "medmine.works",
+        "metal.ladder",
+        "roads.ladder"
+      ]
     },
     {
       "id": "building_farming_and_industry.crafting_is_timed_and_happens_at_station",
       "group": "Building, farming and industry",
       "readme": "Crafting is timed and happens at stations (workbench, stove, furnace, kiln, stil",
       "scenarios": [
-        "crafting.fuel_refund",
-        "catalogue.recipes"
-      ],
-      "gap": "partial: one fuel-fired recipe; quality, knowledge and range limits not exercised"
+        "catalogue.recipes",
+        "cooking.ladder",
+        "crafting.fuel_refund"
+      ]
     },
     {
       "id": "building_farming_and_industry.sea_bases_domes_tunnels_a_shore_entrance",
@@ -295,8 +278,7 @@
       "readme": "Three save slots plus an autosave. A map and journal with waypoints and road rou",
       "scenarios": [
         "save.roundtrip"
-      ],
-      "gap": "partial: one slot; autosave, map and journal not exercised"
+      ]
     },
     {
       "id": "other.a_daily_race_board_road_race_bike_trial_",
@@ -332,7 +314,7 @@
     {
       "id": "vehicles.real_cars_modelled_in_blender_fiat_126p_",
       "group": "Vehicles",
-      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citroën BX, Cit",
+      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citro\u00ebn BX, Cit",
       "scenarios": [
         "vehicle.drive.Fiat126p",
         "vehicle.drive.Peugeot205",
@@ -399,6 +381,67 @@
       "readme": "Boats: Raft, Skiff, Trawler, Houseboat, Iron Eel submarine",
       "scenarios": [],
       "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+    },
+    {
+      "id": "driving_and_repairing.servicing_oil_changes_air_filters_spark_",
+      "group": "Driving and repairing",
+      "readme": "Servicing: oil changes, air filters, spark plugs. Working on a car takes a momen",
+      "scenarios": [
+        "anim.vehicle_work",
+        "metal.ladder"
+      ]
+    },
+    {
+      "id": "driving_and_repairing.roads_by_hand_too_rake_gravel_tamp_cobbl",
+      "group": "Driving and repairing",
+      "readme": "Roads by hand too: rake gravel, tamp cobbles, paint lines, patch potholes, and p",
+      "scenarios": [
+        "roads.ladder"
+      ]
+    },
+    {
+      "id": "surviving.injuries_are_tracked_per_body_part_cuts_",
+      "group": "Surviving",
+      "readme": "Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection,",
+      "scenarios": [
+        "medmine.clinic",
+        "medmine.ladder"
+      ]
+    },
+    {
+      "id": "building_farming_and_industry.walls_floors_roofs_doors_stairs_and_ladd",
+      "group": "Building, farming and industry",
+      "readme": "Walls, floors, roofs, doors, stairs and ladders in wood, planks, brick, fired br",
+      "scenarios": [
+        "defence.ladder"
+      ]
+    },
+    {
+      "id": "building_farming_and_industry.anything_you_carry_can_be_put_down_in_th",
+      "group": "Building, farming and industry",
+      "readme": "Anything you carry can be put down in the world, on the ground or on a table, an",
+      "scenarios": [
+        "items.feed",
+        "items.world"
+      ]
+    },
+    {
+      "id": "building_farming_and_industry.power_from_generators_solar_panels_wind_",
+      "group": "Building, farming and industry",
+      "readme": "Power from generators, solar panels, wind turbines, water wheels and biogas, car",
+      "scenarios": [
+        "cooking.ladder",
+        "utilities.ladder"
+      ]
+    },
+    {
+      "id": "building_farming_and_industry.cooking_from_a_campfire_to_a_stove_oven_",
+      "group": "Building, farming and industry",
+      "readme": "Cooking from a campfire to a stove, oven, kitchen range and cannery, and brewing",
+      "scenarios": [
+        "cooking.ladder",
+        "husbandry.ladder"
+      ]
     }
   ]
 }
