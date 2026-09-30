@@ -1115,7 +1115,7 @@ The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladde
 |---|---|---|---|
 | **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
 | **N1 first hour** | A1, B1, A2, S03, S06, S09, S24 (done) | evidence records, tagged vehicles, ground goals (done); **B fields** (done) | playable: `story.first_hour`, `story.a2`, `story.side_quests`, `story.work_quests` |
-| **N2 parallel lives** | A3-A4, B2-B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | outline |
+| **N2 parallel lives** | A3, A4, B2 (done); B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | A3, A4, B2 playable (`story.chapter_two`); B3, C1-C3 wait for the Roads and Utilities blocks |
 | **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
 | **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
 | **N5 delivery** | voices, captions, pacing, multiplayer ledger | — | — |
@@ -1160,4 +1160,10 @@ Each block is built on its own branch by its own agent against a scaffold in `ma
 | **Utilities** (F) | water quality, desalination, switches / timers / sensors, biogas, cold storage |
 | **MedMine** (G, H) | herbal remedies, first aid, clinic, gold pan and sluice, mine supports and carts, powered crusher |
 | **Defence** (I) | sawmill and planks, bricks, prefab concrete, watchtower, sandbags, mines and tripwires, motorised gate, emplacements |
+
+### N2 so far (2026-09-30)
+- [x] **A3 A VOICE WITH YESTERDAY'S WEATHER**: June Bell at the relay mast; fuel and start the relay's generator; get the recording module (build a ladder at the mast, or pay her crew 15); play three fragments (the count, old weather, a lift bell); ask her straight (accuse, or let her help). Receiver, the recording as evidence, every mast on the map.
+- [x] **A4 THE WEIGHT OF EMPTY TRUCKS**: the pumping depot (a bunker site) with the convoy's trucks at the gate and two Guild guards; watch it, then get in with the forged manifest, a 40-scrap bribe, the service hatch, or through the guards; the store (evidence: diverted cargo); Ren Okafor locked in with it: take the medicine or leave the traced shipment.
+- [x] **B2 SUPPER FOR FOUR**: safe water, a kitchen and a table at the garage, four hot portions; Nell brings Vic (salt-route driver) and Ezra (a gardener from the old bus) to the yard; after supper, who is the place for (Vic stops by, Ezra moves in, or nobody yet).
+- Engine: Have/Build goals and hand-overs accept "a|b|c"; cast members can move (Nell at the garage for supper); dead cast don't return; story prompts use [E]-style key tokens (the old {Build} placeholders showed raw).
 

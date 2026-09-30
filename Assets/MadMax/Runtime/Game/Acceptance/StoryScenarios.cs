@@ -22,6 +22,7 @@ namespace MadMax.Game.Acceptance
             yield return new StorySideQuests();
             yield return new StoryTownQuests();
             yield return new StoryWorkQuests();
+            yield return new StoryChapterTwo();
         }
     }
 
@@ -70,7 +71,7 @@ namespace MadMax.Game.Acceptance
                     {
                         if (cond.goal == Goal.Reach) c.Check(StoryLibrary.Anchors.Contains(cond.key), $"{q.id}:{s.id} reaches anchor '{cond.key}'");
                         if (cond.goal == Goal.Talk) c.Check(cond.say != null && cond.reply != null && StoryCast.Find(cond.key) != null, $"{q.id}:{s.id} talk to '{cond.key}' has both lines");
-                        if (cond.goal == Goal.Build) c.Check(FurnitureLibrary.Get(cond.key) != null, $"{q.id}:{s.id} builds '{cond.key}', a real piece");
+                        if (cond.goal == Goal.Build) foreach (var id in cond.key.Split('|')) c.Check(FurnitureLibrary.Get(id) != null, $"{q.id}:{s.id} builds '{id}', a real piece");
                     }
                     if (s.reward != null) foreach (var (item, _) in s.reward.items) c.Check(ItemIds.Name(item) != item, $"{q.id}:{s.id} reward '{item}' has a name");
                 }
@@ -489,6 +490,95 @@ namespace MadMax.Game.Acceptance
             c.Check(H.Talk(g, g.CastBody("jo"), "THE TRENCH IS OPEN"), "tell Jo");
             yield return H.Until(() => MadMax.Story.Story.StateOf("S06") == MadMax.Story.Story.State.Done, 4f);
             c.Check(MadMax.Story.Story.StateOf("S06") == MadMax.Story.Story.State.Done && g.Inventory.Get(ResourceType.Diesel) >= diesel + 30, "S06 done: diesel paid back");
+        }
+    }
+
+    /// <summary>N2 so far: A3 (the relay: repair and fuel the generator, pay the crew for the module, three fragments,
+    /// June's confession), A4 (the depot: watch, papers at the gate, the store, Ren's choice) and B2 (supper at the
+    /// garage: water, kitchen, table, four hot portions, Nell and her guests, who the place is for).</summary>
+    class StoryChapterTwo : Scenario
+    {
+        public override string Id => "story.chapter_two";
+        public override float Timeout => 240f;
+        public override GameRules WorldRules => new GameRules { randomSeed = false, story = true };
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game;
+            foreach (var q in new[] { "A1", "A2", "B1" }) MadMax.Story.Story.Complete(g, q);
+            c.Fixture("A1, A2 and B1 finished (chapter skip)");
+            yield return new WaitForSeconds(1.5f);
+            // ---- A3
+            c.Check(MadMax.Story.Story.StateOf("A3") == MadMax.Story.Story.State.Open, "A3 is on offer");
+            yield return H.Walk(c, "relay", 4f);
+            yield return H.Until(() => g.CastBody("june") != null, 5f);
+            if (!c.Check(H.Talk(g, g.CastBody("june"), "THE CALLSIGN"), "June Bell at her relay")) yield break;
+            yield return H.Until(() => MadMax.Story.Story.Flag("scene:A3"), 3f);
+            var gen = Placeable.All.FirstOrDefault(p => p && p.id == "generator" && g.IsStoryProp(p));
+            var gc = gen ? gen.GetComponent<Generator>() : null;
+            if (!c.Check(gc && gc.fuel <= 0f && !gc.on, "the relay generator is dry and off")) yield break;
+            g.Inventory.Add(ResourceType.Fuel, 10);
+            c.Fixture("10 L petrol in the pack");
+            gc.Use(g, true); gc.Use(g, false);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A3", "power"), 5f);
+            c.Check(MadMax.Story.Story.StepDone("A3", "power"), "the relay has power (repaired, fuelled, switched on)");
+            yield return H.Walk(c, "relay", 4f);
+            c.Check(H.Talk(g, g.CastBody("june"), "PAY THE MAINTENANCE CREW"), "pay the crew for the module");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A3", "module"), 4f);
+            c.Check(g.Inventory.GetItem("misc_relay_module") > 0, "the recording module");
+            foreach (var f in new[] { "PLAY THE FIRST", "PLAY THE SECOND", "PLAY THE LAST" }) c.Check(H.Talk(g, g.CastBody("june"), f), f.ToLowerInvariant());
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A3", "compare"), 4f);
+            c.Check(H.Talk(g, g.CastBody("june"), "WHOEVER CUT THOSE CALLS"), "June owns up and helps");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A3") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("A3") == MadMax.Story.Story.State.Done && MadMax.Story.Story.Evidence("recording"), "A3 done; the recording is evidence");
+            yield return new WaitForSeconds(0.5f);
+            c.Check(g.Discovered.Any(k => k.StartsWith("lm:")), "the mast map marks the relays");
+            // ---- A4
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A4") == MadMax.Story.Story.State.Open && g.CastBody("june") != null, 4f);
+            c.Check(H.Talk(g, g.CastBody("june"), "WHERE'S THAT DEPOT"), "June points to the depot");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A4") == MadMax.Story.Story.State.Active, 3f);
+            yield return H.Walk(c, "depot_gate", 3f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A4", "watch"), 4f);
+            yield return H.Until(() => g.CastBody("guard1") != null, 5f);
+            c.Screenshot("depot");
+            yield return null;
+            c.Check(H.Talk(g, g.CastBody("guard1"), "I'M THE DRIVER ON THIS MANIFEST"), "the forged manifest gets you past the gate");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A4", "inside"), 4f);
+            yield return H.Walk(c, "depot_store", 2f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A4", "store"), 4f);
+            c.Check(MadMax.Story.Story.Evidence("cargo"), "the diverted cargo is evidence");
+            yield return H.Until(() => g.CastBody("ren") != null, 5f);
+            c.Check(H.Talk(g, g.CastBody("ren"), "LEAVE IT"), "leave the traced shipment");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A4") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("A4") == MadMax.Story.Story.State.Done, "A4 THE WEIGHT OF EMPTY TRUCKS is done");
+            // ---- B2
+            yield return H.Walk(c, "nell", 3f);
+            yield return H.Until(() => g.CastBody("nell") != null, 5f);
+            c.Check(H.Talk(g, g.CastBody("nell"), "THE GARAGE HAS A ROOF"), "Nell wants a supper at the garage");
+            var ga = StoryAnchors.Get("garage"); var r = Quaternion.Euler(0f, StoryAnchors.Yaw("garage"), 0f);
+            foreach (var (id, off) in new[] { ("rain_collector", new Vector3(-6f, 0f, 6f)), ("campfire", new Vector3(3f, 0f, 7f)), ("table", new Vector3(-1f, 0f, 7f)) })
+            {
+                var pos = ga + r * off; pos.y = MadMax.World.DeformableTerrain.Instance.Height(pos.x, pos.z);
+                FurnitureLibrary.Spawn(id, g.Build.Structures, pos, r, g.propMaterial);
+            }
+            c.Fixture("a rain collector, a campfire and a table built at the garage");
+            g.Inventory.AddItem("food_stew", 4);
+            c.Fixture("four stews cooked");
+            yield return H.Walk(c, "garage", 5f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("B2", "meal"), 6f);
+            c.Check(MadMax.Story.Story.StepDone("B2", "water") && MadMax.Story.Story.StepDone("B2", "kitchen") && MadMax.Story.Story.StepDone("B2", "table") && MadMax.Story.Story.StepDone("B2", "meal"), "water, a kitchen, a table and four plates");
+            yield return H.Until(() => g.CastBody("nell") != null && g.CastBody("vic") != null && g.CastBody("ezra") != null, 6f);
+            c.Check(g.CastBody("nell") && Vector3.Distance(g.CastBody("nell").transform.position, ga) < 12f && g.CastBody("vic") && g.CastBody("ezra"), "Nell, Vic and Ezra come to the garage");
+            c.Screenshot("supper");
+            yield return null;
+            c.Check(H.Talk(g, g.CastBody("nell"), "SUPPER'S ON THE TABLE"), "supper is served");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("B2", "supper"), 4f);
+            c.Check(g.Inventory.GetItem("food_stew") == 0, "four plates eaten");
+            c.Check(H.Talk(g, g.CastBody("nell"), "EZRA CAN HAVE"), "Ezra gets the back room");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("B2") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("B2") == MadMax.Story.Story.State.Done, "B2 SUPPER FOR FOUR is done");
+            yield return new WaitForSeconds(2.5f);
+            c.Check(g.CastBody("ezra") != null && g.CastBody("vic") == null, "Ezra stays; Vic drives on");
         }
     }
 

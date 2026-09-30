@@ -15,6 +15,7 @@ namespace MadMax.Game
     {
         readonly HashSet<uint> storyProps = new HashSet<uint>();
         readonly Dictionary<string, MadMax.Npc.Npc> castBodies = new Dictionary<string, MadMax.Npc.Npc>();
+        readonly Dictionary<string, string> castAt = new Dictionary<string, string>();
         float castCheck;
 
         /// <summary>A piece the campaign set up (it doesn't count as the player's own work).</summary>
@@ -265,6 +266,67 @@ namespace MadMax.Game
             }
         }
 
+        /// <summary>A3: the relay's dead generator beside the mast (cracked casing, empty tank) and a fuel can.</summary>
+        void BuildRelay()
+        {
+            if (!StoryAnchors.Has("relay_gen") || !Build || !Build.Structures) return;
+            var gen = PutAt("relay_gen", "generator", Vector3.zero, 0f);                             // dry and switched off
+            if (gen && gen.TryGetComponent<Generator>(out var gc)) { gc.fuel = 0f; gc.on = false; gen.Dirty(); }
+            PutAt("relay_gen", "barrel", new Vector3(1.8f, 0f, 0.6f), 0f);
+            PutAt("relay_gen", "sign", new Vector3(-1.6f, 0f, 1f), 0f);
+        }
+
+        bool RelayPowered()
+        {
+            if (!StoryAnchors.Has("relay_gen")) return false;
+            var a = StoryAnchors.Get("relay_gen");
+            foreach (var p in Placeable.All)
+                if (p && p.id == "generator" && IsStoryProp(p) && (p.transform.position - a).sqrMagnitude < 9f && p.TryGetComponent<Generator>(out var gen) && gen.on && gen.fuel > 0f) return true;
+            return false;
+        }
+
+        /// <summary>A4: the pumping depot: the convoy's trucks parked by the gate, crates of diverted cargo in the store,
+        /// a marker on the service hatch.</summary>
+        void BuildDepot()
+        {
+            if (!StoryAnchors.Has("depot_gate") || !Build || !Build.Structures) return;
+            var rot = Quaternion.Euler(0f, StoryAnchors.Yaw("depot"), 0f);
+            foreach (var (design, off) in new[] { ("Hauler", new Vector3(-9f, 0f, 22f)), ("BoxTrailer", new Vector3(-9f, 0f, 34f)), ("Hauler", new Vector3(9f, 0f, 24f)) })
+            {
+                var pf = PrefabFor(design);
+                if (!pf) continue;
+                var p = StoryAnchors.Get("depot") + rot * off; p.y = terrain.HeightNoLoad(p.x, p.z) + 1f;
+                var v = Instantiate(pf, p, rot).GetComponent<VehicleDriver>();
+                v.name = "Convoy " + design;
+                Register(v, null);
+                var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+                paint.colour = 11; paint.Apply();
+            }
+            PutAt("depot_store", "crate", new Vector3(-1.5f, 0f, 1f), 0f);
+            PutAt("depot_store", "crate", new Vector3(1.4f, 0f, 1.2f), 20f);
+            PutAt("depot_store", "barrel", new Vector3(0f, 0f, -1.8f), 0f);
+            PutAt("depot_tunnel", "sign", new Vector3(0f, 0f, 1f), 0f);
+        }
+
+        bool GuardsDown()
+        {
+            foreach (var k in new[] { "guard1", "guard2" })
+            {
+                if (MadMax.Npc.NpcRegistry.IsDead("cast:" + k)) continue;
+                var b = CastBody(k);
+                if (!b || b.Alive) return false;
+            }
+            return true;
+        }
+
+        /// <summary>A3's mast map: every radio mast goes on the map.</summary>
+        void MarkMasts()
+        {
+            foreach (var m in MadMax.World.BiomeProps.Landmarks(World))
+                if (m.kind == MadMax.World.BiomeProps.MarkKind.Mast) Discovered.Add("lm:" + m.index);
+            Journal.Add("PLACE", "JUNE'S MAST MAP: EVERY RELAY MAST IS ON YOUR MAP NOW");
+        }
+
         void UpdateStory()
         {
             if (!played || !Player) return;
@@ -276,6 +338,11 @@ namespace MadMax.Game
             if (Story.Story.StateOf("S03") != Story.Story.State.Locked && !Story.Story.Flag("scene:S03")) { SpawnHearse(); Story.Story.SetFlag("scene:S03"); }
             if (Story.Story.StateOf("S06") != Story.Story.State.Locked && !Story.Story.Flag("scene:S06")) { BuildJoFarm(); Story.Story.SetFlag("scene:S06"); }
             if (Story.Story.StateOf("S03") == Story.Story.State.Active) HearseCheck();
+            if (Story.Story.StateOf("A3") != Story.Story.State.Locked && !Story.Story.Flag("scene:A3")) { BuildRelay(); Story.Story.SetFlag("scene:A3"); }
+            if (Story.Story.StateOf("A4") != Story.Story.State.Locked && !Story.Story.Flag("scene:A4")) { BuildDepot(); Story.Story.SetFlag("scene:A4"); }
+            if (Story.Story.StateOf("A3") == Story.Story.State.Active && Time.frameCount % 15 == 0 && RelayPowered()) Story.Story.Note("a3:power");
+            if (Story.Story.StateOf("A4") == Story.Story.State.Active && Time.frameCount % 15 == 0 && GuardsDown()) Story.Story.Note("a4:guards_down");
+            if (Story.Story.Flag("masts_known") && !Story.Story.Flag("masts_marked")) { MarkMasts(); Story.Story.SetFlag("masts_marked"); }
             Story.Story.Tick(this);
             if (Time.time < castCheck) return;
             castCheck = Time.time + 1f;
@@ -288,19 +355,22 @@ namespace MadMax.Game
             var focus = FocusPos;
             foreach (var m in StoryCast.All)
             {
-                bool want = m.anchor != null && StoryAnchors.Has(m.anchor) && CastPresent(m.key);
+                string anchor = CastAnchor(m);
+                bool want = anchor != null && StoryAnchors.Has(anchor) && CastPresent(m.key);
                 castBodies.TryGetValue(m.key, out var body);
-                var at = want ? StoryAnchors.Get(m.anchor) : Vector3.zero;
+                if (body && castAt.TryGetValue(m.key, out var was) && was != anchor) { Destroy(body.gameObject); castBodies.Remove(m.key); body = null; }   // moved (supper at the garage)
+                var at = want ? StoryAnchors.Get(anchor) : Vector3.zero;
                 float d = want ? Vector2.Distance(new Vector2(at.x, at.z), new Vector2(focus.x, focus.z)) : 1e9f;
                 if (want && !body && d < 110f)
                 {
                     var p = StoryCast.Profile(m.key, World.seed);
-                    var pos = at + Quaternion.Euler(0f, StoryAnchors.Yaw(m.anchor), 0f) * new Vector3(0.6f, 0f, 0.8f);
+                    int slot = System.Array.FindIndex(StoryCast.All, x => x.key == m.key) % 5;                 // several at one anchor stand apart
+                    var pos = at + Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f) * new Vector3(0.6f + (slot - 2) * 1.3f, 0f, 0.8f + (slot % 2) * 0.9f);
                     pos.y = terrain.Height(pos.x, pos.z) + 0.05f;
-                    var n = MadMax.Npc.Npc.Spawn(p, pos, StoryAnchors.Yaw(m.anchor), null, propMaterial);
+                    var n = MadMax.Npc.Npc.Spawn(p, pos, StoryAnchors.Yaw(anchor), null, propMaterial);
                     n.mode = MadMax.Npc.Npc.Mode.Stand;
                     n.homeRadius = 5f;
-                    castBodies[m.key] = n;
+                    castBodies[m.key] = n; castAt[m.key] = anchor;
                 }
                 else if (body && (!want || d > 170f)) { Destroy(body.gameObject); castBodies.Remove(m.key); }
             }
@@ -310,7 +380,10 @@ namespace MadMax.Game
         /// and isn't finished (the rest arrive with their chapters).</summary>
         static bool CastPresent(string key)
         {
+            if (MadMax.Npc.NpcRegistry.IsDead("cast:" + key)) return false;
             if (key == "nell") return Story.Story.Campaign;
+            if (key == "guard2") return CastPresent("guard1");
+            if (key == "vic" || key == "ezra") return SupperTime || (key == "ezra" && Story.Story.Route("B2", "welcome") != null && Story.Story.Route("B2", "welcome").StartsWith("EZRA"));
             foreach (var q in StoryLibrary.All)
             {
                 if (!Story.Story.Runs(q) || Story.Story.StateOf(q.id) == Story.Story.State.Locked) continue;
@@ -320,6 +393,20 @@ namespace MadMax.Game
             }
             return false;
         }
+
+        /// <summary>B2's supper is on: Nell and her guests are at the garage.</summary>
+        static bool SupperTime
+        {
+            get
+            {
+                var q = StoryLibrary.Get("B2");
+                var cur = q != null ? Story.Story.Current(q) : null;
+                return cur != null && (cur.id == "supper" || cur.id == "welcome");
+            }
+        }
+
+        /// <summary>Where a cast member stands right now (Nell comes to the garage for supper).</summary>
+        static string CastAnchor(StoryCast.Member m) => m.key == "nell" && SupperTime ? "garage_yard" : m.anchor;
 
         /// <summary>The spawned body of a cast member (null when not around).</summary>
         public MadMax.Npc.Npc CastBody(string key) => castBodies.TryGetValue(key, out var n) && n ? n : null;

@@ -24,6 +24,11 @@ namespace MadMax.Story
             new Member { key = "jo", name = "JO KETTLE", title = "FARMER", anchor = "jo", temper = Temper.Gruff, female = true, outfit = new[] { "overalls", "boots", "sunhat", "gloves" }, tool = "tool_shovel" },
             new Member { key = "una", name = "UNA PRITCH", title = "GARDENER", anchor = "una", temper = Temper.Joker, female = true, outfit = new[] { "overalls", "sunhat", "boots", "gloves" }, tool = "tool_hoe" },
             new Member { key = "gus", name = "GUS ALDER", title = "GRANDFATHER", anchor = "gus", temper = Temper.Friendly, outfit = new[] { "sweater", "pants", "boots", "cowboy" } },
+            new Member { key = "vic", name = "VIC ALVAREZ", title = "SALT-ROUTE DRIVER", anchor = "garage_yard", temper = Temper.Joker, female = true, outfit = new[] { "jacket", "jeans", "boots", "goggles" } },
+            new Member { key = "ezra", name = "EZRA POOLE", title = "GARDENER", anchor = "garage_yard", temper = Temper.Nervous, outfit = new[] { "sweater", "pants", "boots", "beanie" } },
+            new Member { key = "guard1", name = "KURTZ", title = "GUILD GUARD", anchor = "depot_gate", temper = Temper.Greedy, outfit = new[] { "vest_scrap", "pants", "combat_boots", "helmet" }, tool = "tool_pipe_shotgun" },
+            new Member { key = "guard2", name = "DOYLE", title = "GUILD GUARD", anchor = "depot_gate", temper = Temper.Gruff, outfit = new[] { "jacket", "pants", "boots", "bandana" }, tool = "tool_pipe_club" },
+            new Member { key = "ren", name = "REN OKAFOR", title = "CONVOY MECHANIC", anchor = "depot_store", temper = Temper.Proud, outfit = new[] { "overalls", "boots", "gloves" } },
             new Member { key = "cask", name = "BROTHER CASK", title = "KEEPER OF THE LAST ENGINE", anchor = null, temper = Temper.Pious, outfit = new[] { "poncho", "pants", "boots" } },
             new Member { key = "ivo", name = "DR. IVO RUSK", title = "REMNANT ARCHIVIST", anchor = null, temper = Temper.Nervous, outfit = new[] { "coat", "pants", "boots", "goggles" } },
         };

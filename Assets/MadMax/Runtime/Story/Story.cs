@@ -184,13 +184,20 @@ namespace MadMax.Story
                         break;
                     }
                     case Goal.Have:
-                        if (cond.key.StartsWith("res:") && int.TryParse(cond.key.Substring(4), out int t) ? g.Inventory.Get((ResourceType)t) >= cond.amount : g.Inventory.GetItem(cond.key) >= cond.amount) return c;
+                    {
+                        // "a|b|c": the total of any of the listed items counts
+                        int have = 0;
+                        foreach (var id in cond.key.Split('|'))
+                            have += id.StartsWith("res:") && int.TryParse(id.Substring(4), out int t) ? g.Inventory.Get((ResourceType)t) : g.Inventory.GetItem(id);
+                        if (have >= cond.amount) return c;
                         break;
+                    }
                     case Goal.Build:
                     {
                         var center = StoryAnchors.Get(s.waypoint ?? cond.key);
+                        var ids = cond.key.Split('|');
                         foreach (var p in MadMax.Building.Placeable.All)
-                            if (p && p.id == cond.key && Flat(p.transform.position, center) <= cond.amount && !g.IsStoryProp(p)) return c;
+                            if (p && System.Array.IndexOf(ids, p.id) >= 0 && Flat(p.transform.position, center) <= cond.amount && !g.IsStoryProp(p)) return c;
                         break;
                     }
                     case Goal.Drive:
@@ -253,7 +260,11 @@ namespace MadMax.Story
         {
             if (r == null || r.Empty || !ledger.Add(key)) return;
             var parts = new List<string>();
-            foreach (var (item, n) in r.take) g.Inventory.TakeItem(item, n);
+            foreach (var (item, n) in r.take)
+            {
+                int left = n;                                                                            // "a|b": take from any of them in order
+                foreach (var id in item.Split('|')) { int k = Mathf.Min(left, g.Inventory.GetItem(id)); if (k > 0 && g.Inventory.TakeItem(id, k)) left -= k; if (left <= 0) break; }
+            }
             if (r.scrap > 0) { g.Inventory.Add(ResourceType.Scrap, r.scrap); parts.Add(r.scrap + " SCRAP"); }
             foreach (var (item, n) in r.items) { g.Inventory.AddItem(item, n); parts.Add(ItemCatalog.Name(item)); }
             foreach (var (t, n) in r.resources) { g.Inventory.Add(t, n); parts.Add(n + " " + ResourceInfo.Name(t)); }

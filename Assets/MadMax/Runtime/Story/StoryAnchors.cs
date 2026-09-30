@@ -52,7 +52,10 @@ namespace MadMax.Story
                 Set("nell", nell, ny);
             // the garage at the bend: roadside ground 250-700 m out, clear of the town and of Nell's stop
             if (Roadside(world, wreck, 250f, 700f, 22f, p => Clear(town, p, 90f) && (!at.ContainsKey("nell") || Vector3.Distance(p, at["nell"]) > 150f), out var gar, out var gy))
+            {
                 Set("garage", gar, gy);
+                Set("garage_yard", gar + Quaternion.Euler(0f, gy, 0f) * new Vector3(0f, 0f, 7.5f), gy + 180f);   // in front of the doorway
+            }
 
             // side-quest givers at the edge of the first town (open ground just outside its buildings)
             if (town != null)
@@ -141,6 +144,18 @@ namespace MadMax.Story
                 if (d < md) { md = d; Set("relay", new Vector3(m.pos.x, 0f, m.pos.y), m.yaw); }
             }
 
+            // the relay generator: open ground beside the mast
+            if (at.ContainsKey("relay"))
+            {
+                var rp = at["relay"]; bool gset = false;
+                for (int k = 0; k < 16 && !gset; k++)
+                {
+                    var gp = rp + Quaternion.Euler(0f, k * 22.5f, 0f) * Vector3.forward * 9f;
+                    if (Open(world, gp)) { Set("relay_gen", gp, k * 22.5f + 180f); gset = true; }
+                }
+                if (!gset) Set("relay_gen", rp + new Vector3(8f, 0f, 0f));
+            }
+
             // the dispatch city: the city settlement farthest from the start (a late destination)
             Settlement city = null; float cd = -1f;
             foreach (var st in world.settlements)
@@ -159,6 +174,7 @@ namespace MadMax.Story
                 float d = Vector2.Distance(site.pos, mid2);
                 if (d < bd) { bd = d; Set("depot", new Vector3(site.pos.x, 0f, site.pos.y), site.rot * 90f); }
             }
+            // (the depot's gate, service hatch and store are laid out from it after the fallback below)
             // no bunker there: the nearest bunker to the start, else the nearest site of any kind
             for (int pass = 0; pass < 2 && !at.ContainsKey("depot"); pass++)
             {
@@ -171,6 +187,13 @@ namespace MadMax.Story
                     float d = Vector2.Distance(site.pos, new Vector2(o.x, o.z));
                     if (d < bd) { bd = d; Set("depot", new Vector3(site.pos.x, 0f, site.pos.y), site.rot * 90f); }
                 }
+            }
+            if (at.ContainsKey("depot"))
+            {
+                var dq = Quaternion.Euler(0f, yaw["depot"], 0f); var dp = at["depot"];
+                Set("depot_gate", dp + dq * new Vector3(0f, 0f, 16f), yaw["depot"]);
+                Set("depot_tunnel", dp + dq * new Vector3(14f, 0f, -6f));
+                Set("depot_store", dp, yaw["depot"]);
             }
         }
 
