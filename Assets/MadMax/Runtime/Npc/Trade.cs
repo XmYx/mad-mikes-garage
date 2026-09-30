@@ -169,6 +169,7 @@ namespace MadMax.Npc
             // the Fuel Guild's chits pay at fuel vendors, worth a little more than their scrap
             int chits = vendor.Profile.kind == "fuel" ? Mathf.Min(g.Inventory.GetItem(Contracts.Chit), cost / ChitValue) : 0;
             if (g.Inventory.Get(ResourceType.Scrap) < cost - chits * ChitValue) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); NpcVoice.Say(vendor, "broke", true); return false; }
+            using var feed = Inventory.Source("BOUGHT", "PAID");                                   // item feed labels
             if (o.id.StartsWith("part:"))
             {
                 var at = vendor.transform.position + vendor.transform.right * 1.2f + Vector3.up * 0.6f;
@@ -196,6 +197,7 @@ namespace MadMax.Npc
             n = Mathf.Min(n, have);
             int price = SellPrice(id, bargain);
             if (n <= 0 || price <= 0) return false;
+            using var feed = Inventory.Source("SALE", "SOLD");
             bool ok = id.StartsWith("res:") ? g.Inventory.TrySpend((ResourceType)int.Parse(id.Substring(4)), n) : g.Inventory.TakeItem(id, n);
             if (!ok) return false;
             if (id.StartsWith("tool_")) g.UpdateHotbarNow();

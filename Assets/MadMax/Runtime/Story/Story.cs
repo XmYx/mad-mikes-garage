@@ -252,6 +252,7 @@ namespace MadMax.Story
         static void Pay(WastelandGame g, string key, Reward r, string kind, string what)
         {
             if (r == null || r.Empty || !ledger.Add(key)) return;
+            using var feed = Inventory.Source("REWARD", "HANDED OVER");
             var parts = new List<string>();
             foreach (var (item, n) in r.take) g.Inventory.TakeItem(item, n);
             if (r.scrap > 0) { g.Inventory.Add(ResourceType.Scrap, r.scrap); parts.Add(r.scrap + " SCRAP"); }
