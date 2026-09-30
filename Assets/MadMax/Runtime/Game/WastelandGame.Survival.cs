@@ -83,6 +83,7 @@ namespace MadMax.Game
             }
             else Toast("ATE " + f.name);
             Stats.Practice(Skill.Survival, 1f);
+            MedMineAte(id);                                                               // willow-bark tea
         }
 
         public void Drink(float thirst, bool dirty)
@@ -272,6 +273,7 @@ namespace MadMax.Game
 
         void UseConsumable(string id)
         {
+            if (MedMineUse(id)) return;                                                   // poultice, first-aid kit
             if (id == ItemIds.Canteen)
             {
                 if (Inventory.TrySpend(ResourceType.Water, 1)) Drink(45f, false);
