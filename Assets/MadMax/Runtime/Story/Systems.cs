@@ -53,8 +53,8 @@ namespace MadMax.Story
             E("power_control", true, "F", "switches, timers, priority loads, outages");
             E("animal_treatment", true, "E", "treat an injured animal");
             E("clinic", true, "G", "clinic bed and treatment of others");
-            E("nonlethal_bout", false, "N4", "supervised fist fight with a stop state");
-            E("performance", false, "N4", "a public recital or ceremony scene");
+            E("nonlethal_bout", true, "N4", "supervised fist fight with a stop state");
+            E("performance", true, "N4", "a public recital or ceremony scene");
             E("transfer", false, "N3", "readiness-gated rescue / escort operations");
             E("broadcast", false, "N3", "prepare and air a broadcast with choices");
             E("residents", false, "N3", "residents who staff a service at the home");
