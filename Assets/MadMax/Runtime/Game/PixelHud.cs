@@ -232,7 +232,9 @@ namespace MadMax.Game
             string where = car ? WastelandGame.Name(car) : game.Player.Interior ? "IN " + WastelandGame.Name(game.Player.Interior) : "ON FOOT";
             canvas.Text(6, 6, where, Text);
             string clock = Mathf.FloorToInt(MadMax.World.DayNight.Hours).ToString("00") + ":" + Mathf.FloorToInt(MadMax.World.DayNight.Hours % 1f * 60f).ToString("00");
-            canvas.Text(6, 13, "VIEW " + ViewName(rig.mode) + "  " + game.CurrentBiome.ToString().ToUpperInvariant() + "  " + clock, Dim);
+            string viewLine = "VIEW " + ViewName(rig.mode) + "  " + game.CurrentBiome.ToString().ToUpperInvariant() + "  " + clock;
+            canvas.Text(6, 13, viewLine, Dim);
+            if (!MadMax.World.Atmosphere.SkyVisible) DrawSkyArc(6 + PixelCanvas.TextWidth(viewLine) + 5, 11);   // top-down views can't see the sky
             if (game.RadiationLevel > 0.02f && (Time.time * (2f + game.RadiationLevel * 6f)) % 1f > 0.35f)
                 canvas.Text(canvas.w / 2 - 20, 34, "RADIATION " + Mathf.RoundToInt(game.RadiationLevel * 100), new Color32(156, 255, 58, 255));
             if (!car && game.Player.Diving)
@@ -992,6 +994,27 @@ namespace MadMax.Game
             float k = (size / 2 - 2) / Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y));
             int ex = cx + Mathf.RoundToInt(d.x * k), ey = cy + Mathf.RoundToInt(d.y * k);
             canvas.Rect(ex - 1, ey - 1, 3, 3, col);
+        }
+
+        /// <summary>Where the sun or the moon stands: a small horizon arc beside the clock (east left, west right).</summary>
+        void DrawSkyArc(int x, int y)
+        {
+            const int w = 22, h = 7;
+            var horizon = new Color32(90, 70, 55, 255);
+            for (int i = 0; i <= w; i++) canvas.Set(x + i, y + h, horizon);
+            var sun = MadMax.World.DayNight.SunDirection;
+            bool day = sun.y > -0.05f;
+            var dir = day ? sun : MadMax.World.DayNight.MoonDirection;
+            if (dir.y < -0.05f) return;
+            // along the sky: hour angle from east (-x) to west, height from elevation
+            float hours = MadMax.World.DayNight.Hours;
+            float along = day ? Mathf.Clamp01((hours - 6f) / 12f) : Mathf.Repeat(hours - 18f, 24f) / 12f;      // rises left, sets right
+            int px = x + Mathf.RoundToInt(along * w), py = y + h - 1 - Mathf.RoundToInt(Mathf.Clamp01(dir.y) * (h - 2));
+            var core = day ? (Color32)MadMax.Voxel.Pal.LightY : MadMax.Voxel.Pal.Cream[4];
+            canvas.Rect(px - 1, py - 1, 3, 3, core);
+            if (day) { canvas.Set(px - 2, py, core); canvas.Set(px + 2, py, core); canvas.Set(px, py - 2, core); }
+            else if (MadMax.World.DayNight.MoonPhase > 0.5f) canvas.Rect(px + 1, py - 1, 1, 3, new Color32(20, 20, 30, 255));   // waning: the dark limb
+            else canvas.Rect(px - 1, py - 1, 1, 3, new Color32(20, 20, 30, 255));
         }
 
         void DrawMinimap(int x, int y, int size)

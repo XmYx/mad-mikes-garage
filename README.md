@@ -13,7 +13,7 @@ parts, and most of the world can be dug up, knocked down or burnt. Made with Uni
 ### Driving and repairing
 - Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doors, hoods, bumpers, rams, spikes, armour plates, roof racks, winches, cranes, lights, snorkels and weapons. Most parts fit most vehicles.
 - Raycast suspension, open or locked differentials, switchable 4WD, automatic or manual gearbox, launch and hill-start assists.
-- Crashes dent the bodywork, bend the frame (the car starts pulling to one side) and knock parts off. Tyres wear, heat up and burst.
+- Crashes dent the bodywork (how much is a setting), bend the frame (the car starts pulling to one side) and knock parts off. Windows shatter and lamps break, leaving glass on the road, and scraping along a wall or another car grinds the paint down to bare metal. Tyres wear, heat up and burst.
 - Each engine needs fuel, oil and coolant. Petrol and diesel are separate, and filling up with the wrong one causes a fault until you siphon it out. Engines crank and sometimes refuse to start when they are worn or cold, and old ones leak.
 - Servicing: oil changes, air filters, spark plugs. A tuning bench changes gearing, ride height, dampers, brake bias, turbo, supercharger and nitrous.
 - A paint station for colours and decals. A gang decal can get you past that gang's convoys.
@@ -27,7 +27,7 @@ parts, and most of the world can be dug up, knocked down or burnt. Made with Uni
 - Deserts, forests, meadows, tropical lakes, swamps and radioactive zones. Rivers, dry wadis, coasts and open sea.
 - Villages, towns and ruined cities joined by highways and dirt tracks. You can walk into the buildings, including multi-storey ones, with a cutaway view.
 - Bunkers, rock tunnels with caves, airfields with hangars, scrapyards, a refinery, radio masts and military checkpoints.
-- Day and night, seasons, rain, snow, storms, lightning, dust devils and wind. Fire spreads through dry country, and puddles and wet roads dry out in the sun.
+- Day and night with the sun and moon crossing the sky, seasons, rain, snow, storms, lightning, dust devils and wind. Fire spreads through dry country, and puddles and wet roads dry out in the sun.
 - Buildings slowly overgrow and crumble. Grass gets flattened where you drive and grows back.
 
 ### Surviving
@@ -162,7 +162,9 @@ The full list of what is done and what is planned lives in [ROADMAP.md](ROADMAP.
 Planned [unattended acceptance playtests](ROADMAP.md#26-quality-of-life--unattended-acceptance-playtests-t2t3--planned)
 cover feature correctness, quality of life and complete journeys; the accompanying
 [world-coherence audit](ROADMAP.md#27-world-coherence--gaps-to-investigate-and-close-t2t3--planned)
-prioritises how the systems connect. These are implementation plans, not an existing test suite.
+prioritises how the systems connect. The first stages exist: `python3 tools/acceptance/run.py` runs the fast suite
+(catalogue checks, driving, machinery, crafting, saves, damage and sky scenarios) against a player build on a throwaway
+profile, and `tools/acceptance/manifest.py --check` shows which README features have a scenario and which are still gaps.
 
 ---
 

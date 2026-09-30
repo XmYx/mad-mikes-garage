@@ -148,6 +148,7 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehicleTuning>(out var tun)) vs.tuning = tun.SaveState();
                 if (v.TryGetComponent<VehiclePaint>(out var vp)) vs.paint = vp.SaveState();
                 if (v.TryGetComponent<VehicleSystems>(out var mt)) vs.service = mt.MaintenanceState();
+                if (v.TryGetComponent<VehicleBreakables>(out var wr)) vs.wear = wr.SaveState();
                 foreach (var dm in v.GetComponentsInChildren<DeformableMesh>())
                 {
                     var st = dm.SaveState();
@@ -282,6 +283,7 @@ namespace MadMax.Game
                         if (!t.TryGetComponent<DeformableMesh>(out var dm)) dm = t.gameObject.AddComponent<DeformableMesh>();
                         dm.LoadState(dent.Substring(cut + 1));
                     }
+                if (!string.IsNullOrEmpty(vs.wear) && go.TryGetComponent<VehicleBreakables>(out var wear)) wear.LoadState(vs.wear);
                 if (vs.fourWheel != v.FourWheelDrive) v.ToggleFourWheelDrive();
                 v.diffLocked = vs.diffLocked;
                 if (!string.IsNullOrEmpty(vs.radio)) MadMax.Audio.RadioReceiver.On(v.gameObject).LoadState(vs.radio);

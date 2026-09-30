@@ -38,6 +38,10 @@ namespace MadMax.Game
         public float fovFirst = 60f;     // vertical degrees (≈ 90° horizontal at 16:9)
         public float fovThird = 55f;
         public bool cameraShake = true;
+        public int deformation = 2;      // CAR DEFORMATION: index into DeformationScales
+        public static readonly float[] DeformationScales = { 0f, 0.5f, 1f, 1.6f, 2.4f };
+        public static readonly string[] DeformationNames = { "OFF", "LIGHT", "NORMAL", "HEAVY", "EXTREME" };
+        public float DeformationScale => DeformationScales[Mathf.Clamp(deformation, 0, DeformationScales.Length - 1)];
         // interface
         public int hudScale;             // 0 = with the pixel size, else the HUD's own height index into PixelHeights
         public bool colourBlind;         // blue/orange instead of red/green on bars and lamps
@@ -78,7 +82,7 @@ namespace MadMax.Game
         static GameSettings Load()
         {
             GameSettings s;
-            try { s = PlayerPrefs.HasKey(Key) ? JsonUtility.FromJson<GameSettings>(PlayerPrefs.GetString(Key)) : new GameSettings { version = CurrentVersion }; }
+            try { s = Profile.HasKey(Key) ? JsonUtility.FromJson<GameSettings>(Profile.GetString(Key)) : new GameSettings { version = CurrentVersion }; }
             catch { s = new GameSettings { version = CurrentVersion }; }
             // v2: the intro became a pre-rendered boot film; old "intro off" choices predate it, so they reset once
             if (s.version < 2) { s.intro = true; s.version = CurrentVersion; s.Save(); }
@@ -87,8 +91,8 @@ namespace MadMax.Game
 
         public void Save()
         {
-            PlayerPrefs.SetString(Key, JsonUtility.ToJson(this));
-            PlayerPrefs.Save();
+            Profile.SetString(Key, JsonUtility.ToJson(this));
+            Profile.Save();
         }
 
         public int PixelHeight => PixelHeights[Mathf.Clamp(pixelHeightIndex, 0, PixelHeights.Length - 1)];

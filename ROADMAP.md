@@ -789,7 +789,7 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [ ] **Store the harvest, sell the winter**: the seasonal price swing only pays if food keeps. Give preserved foods (smoked, dried, canned, pickled) near-zero spoilage and a recipe chain from the garden and the smokehouse, and let a root cellar / cold store piece slow spoilage in containers. Turns farming + crafting + trading into one loop across the year.
 - [ ] **Seasonal stock and chores**: vendors carry seeds and saplings in spring, preserves and firewood in winter, fishing gear in summer; residents work the village fields at harvest (`NpcLore` errands: bring in the crop, cut firewood before the first snow).
 - [ ] **Hemisphere seasons** (goes with the deferred regional weather): south of `ZEquator` the seasons should run half a year out of phase, and markets with them, so a long haul across the equator is a trade run.
-- [ ] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. The machine-clearance part is complete: it has moved behind the machine row (see User fixes below); home-service and progression integration remain planned.
+- [x] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. *Done:* the homestead comes with a bed (the respawn point) and a claim flag (raids know it); its workbench looks after fleet cars parked within 14 m like a garage; FIRST STEPS gains "sleep the night in a bed"; homestead pieces are remembered (`SaveData.homestead`) so the prebuilt workbench no longer half-completes "build a workbench and a wall".
 - [ ] **Station sounds**: only workbenches have a working sound; stoves (sizzle), furnaces (roar), mixers (churn), stills (bubble) and sewing (clack) would let a base be heard working, through `ProceduralSfx`.
 - [ ] **Town notice boards as a news digest**: the bounty board could also post the last few journal/radio headlines about that town (raids beaten, skirmish wrecks, season prices), so what happens off-screen is visible where the player trades.
 
@@ -845,6 +845,13 @@ establish that the player can see and understand it.
 
 *Exit evidence:* a coverage report with zero unassigned advertised features; unresolved gaps stay visible.
 
+*Progress (2026-09-30):* `tools/acceptance/manifest.py` builds and checks `Assets/StreamingAssets/Acceptance/manifest.json`
+from every README feature bullet and vehicle row (51 features: 11 mapped to scenarios, 40 explicit gaps, 0 unassigned);
+runs write `coverage.json` per feature. Catalogue checks (`catalogue.recipes`, `.vehicles`, `.manifest`) are separate from
+behavioural ones: 440 recipes resolve against 22 station types, all 77 knowledge gates have a loot, trade, media or
+research source, all 52 vehicle prefabs are complete. PASS / FAIL / BLOCKED with a reason are reported. Budgets per scenario
+are still missing.
+
 ### Q1 — Reproducible runner, input and isolation
 - [ ] Add a CLI entry point and process supervisor with per-step and whole-run watchdogs. Exit code 0 means
       every required assertion passed; crashes, timeouts, assertion failures and blocked required scenarios
@@ -864,6 +871,15 @@ establish that the player can see and understand it.
 
 *Exit evidence:* the same scenario passes from a cold player and repeated editor Play sessions with domain
 reload disabled; deliberately broken runs reliably fail without user input.
+
+*Progress (2026-09-30):* `Game/Acceptance/AcceptanceRunner` (player flags `-acceptance <suite> -results -scenario
+-runtimeout`, editor entry `StartInEditor`) runs every scenario with its own timeout, a watchdog thread for hangs and the
+run deadline, exceptions during a scenario fail it, and exit codes 0/1/2/3; `tools/acceptance/run.py` supervises a player
+build (kills it past the deadline, exit 4 when no build). `Game/Profile` (`-profiledir`) puts saves, settings and hints in a
+disposable folder. Each scenario gets a fresh seed-7 world; fixtures (placements, grants, clock changes) are disclosed;
+results.json, junit.xml, coverage.json and failure screenshots with contact / engine / gearbox evidence. The fast suite
+(16 scenarios) passes in the editor. Open: production-path keyboard/mouse/pad input, harness self-tests (deliberate
+fail / crash / hang), a player-build run in CI.
 
 ### Q2 — First session, navigation and everyday comfort
 - [ ] Run boot/title → new game → FIRST STEPS → scavenge → drive → craft → place/use a home piece → trade →
@@ -1029,3 +1045,24 @@ the regression. Regional weather remains deliberately deferred; this plan does n
 - [ ] **W3 — Re-run the whole loop:** scavenge → build/tune → travel/trade → conflict/dialogue → settle/produce
       → standing → farther travel, with no fixture shortcuts. Compare task budgets and consequences against Q0,
       and publish what improved and what remains unresolved rather than ticking off content volume.
+
+## Acceptance findings and user requests (2026-09-30, later)
+
+Defects the first acceptance runs caught (each now a regression scenario):
+- [x] An automatic held on the brake at rest parked itself (rest sleep won the race against selecting reverse), so some cars never reversed. Only the handbrake parks an occupied automatic now.
+- [x] The hill hold braked on top of a drive force already at the grip limit, broke the tyres loose and left a car stuck at a standstill on a 12° slope; it now only uses the grip the drive leaves free (the Sedan climbs 60+ m in 6 s).
+- [x] The bulldozer carried its blade in the ground by default, cut a trench wherever it drove and then could not back out of it. The blade is carried up until the operator lowers it.
+- [x] FIRST STEPS counted the homestead's prebuilt workbench as built by the player.
+- [x] The tipper test showed how easily a truck parked against a crawler gets launched: acceptance fixtures now park clear and check reach.
+
+User requests:
+- [x] **Scratches**: vehicles sliding along vehicles, walls or rocks throw sparks (dust off stone, splinters off wood), play a grinding loop and wear the paint down to bare metal where they rub (`VehicleDamage.OnCollisionStay`, `VehicleBreakables.Scrape`; saved). Building surfaces only get sparks and dust (their templates are shared).
+- [x] **CAR DEFORMATION setting** (GAMEPLAY tab: OFF, LIGHT, NORMAL, HEAVY, EXTREME) scales dent depth; network impacts carry the raw depth and every peer applies its own setting.
+- [x] **Breakable windows**: knocks, gunfire and melee hits shatter the glass around the hit (quads removed from `Body/Glass`), with flying shards and broken glass left on the ground (`World/Shards`, pooled). Door windows are part of the door panels and do not break yet.
+- [x] **Breakable lights**: a knock at a lamp breaks it: the lens goes dark, that headlamp dims the beam (both gone: dark), a broken tail lamp stays off; red, amber or clear shards stay behind. Saved with the vehicle (`VehicleSave.wear`).
+- [x] **Visible sun and moon**: a sun disc (white-gold high, orange low, red on the horizon) in the perspective views, the moon also by day; the top-down views show a small sun / moon arc beside the clock.
+
+Still failing in the fast suite (kept visible, not skipped):
+- [ ] `vehicle.drive.Bulldozer` on the start-road pad: reverses at 1.4 m/s, then stops dead (all tracks grounded, no collider contact, 118 kN drive). Other pads reverse 4-10 m. Suspect the tracks' ray suspension against a road edge or its own landing ruts; needs a per-wheel force trace.
+- [ ] `visuals.sun_moon` after world reloads: the sun disc is measured 64 m from the camera instead of 104 m and out of frame, though a single run and a live capture show it correctly at sunset. The scenario now logs every camera and Atmosphere to find the stale one.
+

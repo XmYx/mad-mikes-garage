@@ -121,6 +121,7 @@ namespace MadMax.Game
                 }
                 else Toast("SLEPT BADLY: " + Comfort.Word(comfort) + (note != null ? " (" + note + ")" : ""));
                 MadMax.Net.NetSession.Instance?.SendWeather();
+                StarterNote("slept");
                 if (GameSettings.Current.autosaveMinutes > 0) Invoke(nameof(AutosaveNow), 1.5f);         // after the toast
             }
             else Toast("RESTED");

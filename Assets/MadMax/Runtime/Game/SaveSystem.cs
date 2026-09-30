@@ -27,6 +27,7 @@ namespace MadMax.Game
         public string tuning;              // VehicleTuning settings
         public string paint;               // VehiclePaint colour,decal
         public string service;             // VehicleSystems maintenance (oil life, air filter, plugs, hours)
+        public string wear;                // VehicleBreakables: broken glass and lamps, scraped paint
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
     }
 
@@ -90,6 +91,7 @@ namespace MadMax.Game
         public int storm; public float stormLeft, stormFor;             // Storms: kind, seconds left, total length
         public List<FireSave> fires = new List<FireSave>();
         public int starter = -1;                                        // FIRST STEPS step (-1 = off)
+        public List<uint> homestead = new List<uint>();                 // placed-piece ids that came with the homestead
         public List<string> lastEngine = new List<string>();            // LastEngine flags
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
@@ -115,7 +117,7 @@ namespace MadMax.Game
         /// <summary>The slot the running game was loaded from / last saved to (autosaves go to 0 regardless).</summary>
         public static int Slot = 1;
 
-        public static string PathOf(int slot) => System.IO.Path.Combine(Application.persistentDataPath,
+        public static string PathOf(int slot) => System.IO.Path.Combine(Profile.Dir,
             slot == 0 ? "wasteland_autosave.json" : slot == 1 ? "wasteland_save.json" : "wasteland_save_" + slot + ".json");
         public static string Path => PathOf(Slot);
         public static bool Exists(int slot) => File.Exists(PathOf(slot));

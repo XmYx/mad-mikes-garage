@@ -188,7 +188,9 @@ namespace MadMax.World
 
         // ------------------------------------------------------------------ night sky
         Material skyMat;
-        Transform stars, moon;
+        Transform stars, moon, sun;
+        MeshFilter sunMesh;
+        static readonly Mesh[] sunMeshes = new Mesh[3];
 
         Material SkyMaterial()
         {
@@ -206,17 +208,28 @@ namespace MadMax.World
             float dark = DayNight.Darkness;
             float phase = DayNight.MoonPhase, lit = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI * 2f);
             bool onMoon = MadMax.Game.TitleSequence.OnMoon || MadMax.Game.TitleSequence.SpaceFade > 0.6f;   // the title's climb and lunar set: stars, no moon
-            bool show = onMoon || SkyVisible && dark > 0.35f && !OccluderFadeUnderground;
-            if (show && !stars) BuildSky();
+            bool sky = onMoon || SkyVisible && !OccluderFadeUnderground;               // perspective views see the sky, day and night
+            if (sky && !stars) BuildSky();
             if (!stars) return;
-            bool starsOn = show && (onMoon || CloudCover < 0.75f);
+            bool starsOn = sky && (onMoon || dark > 0.35f && CloudCover < 0.75f);
             if (stars.gameObject.activeSelf != starsOn) stars.gameObject.SetActive(starsOn);
             var dir = DayNight.MoonDirection;
-            bool moonUp = show && !onMoon && dir.y > -0.02f && lit > 0.06f;
+            bool moonUp = sky && !onMoon && dir.y > -0.02f && lit > 0.06f && CloudCover < 0.9f;   // the moon rides by day too
             if (moon.gameObject.activeSelf != moonUp) moon.gameObject.SetActive(moonUp);
-            if (!show) return;
+            var sd = DayNight.SunDirection;
+            bool sunUp = sky && !onMoon && sd.y > -0.04f && CloudCover < 0.85f;
+            if (sun.gameObject.activeSelf != sunUp) sun.gameObject.SetActive(sunUp);
+            if (!sky) return;
             var c = cam.transform.position;
             stars.position = c;
+            if (sunUp)
+            {
+                // white-gold at noon, orange low down, red on the horizon
+                int si = sd.y > 0.35f ? 0 : sd.y > 0.1f ? 1 : 2;
+                if (sunMesh.sharedMesh != SunMesh(si)) sunMesh.sharedMesh = SunMesh(si);
+                sun.position = c + sd * 104f;
+                sun.rotation = Quaternion.LookRotation(-sd);
+            }
             if (!moonUp) return;
             // the moon on its orbit (DayNight), lit on the sun's side: eight phase meshes from crescent to full
             int pi = Mathf.Clamp(Mathf.RoundToInt(phase * 8f) % 8, 0, 7);
@@ -226,6 +239,24 @@ namespace MadMax.World
         }
 
         static bool OccluderFadeUnderground => MadMax.Game.OccluderFade.Underground;
+
+        /// <summary>The sun disc: a bright core with a softer rim, by height in the sky (0 high .. 2 on the horizon).</summary>
+        static Mesh SunMesh(int kind)
+        {
+            if (sunMeshes[kind]) return sunMeshes[kind];
+            var core = kind == 0 ? Pal.SunDay : kind == 1 ? Pal.LightY : Pal.SunDusk;
+            var rim = kind == 0 ? Pal.LightW : kind == 1 ? Pal.Ochre[4] : Pal.Rust[4];
+            var g = new VoxelGrid();
+            for (int x = -8; x <= 8; x++)
+            for (int y = -8; y <= 8; y++)
+            {
+                int d2 = x * x + y * y;
+                if (d2 > 64) continue;
+                if (d2 > 42 && ((x + y) & 1) == 0) continue;                                    // ragged glow at the edge
+                g.Set(x, y, 0, Pal.Solid(d2 > 30 ? rim : core));
+            }
+            return sunMeshes[kind] = VoxelMesher.Build(g, "Sun" + kind, 0.5f);
+        }
 
         int moonPhaseShown = -1;
         static readonly Mesh[] moonMeshes = new Mesh[8];
@@ -289,6 +320,13 @@ namespace MadMax.World
             var mmr = mo.GetComponent<MeshRenderer>(); mmr.sharedMaterial = mat;
             mmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mmr.receiveShadows = false;
             moon = mo.transform;
+            var su = new GameObject("SunDisc", typeof(MeshFilter), typeof(MeshRenderer));
+            su.transform.SetParent(transform, false);
+            sunMesh = su.GetComponent<MeshFilter>();
+            sunMesh.sharedMesh = SunMesh(0);
+            var sr = su.GetComponent<MeshRenderer>(); sr.sharedMaterial = mat;
+            sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; sr.receiveShadows = false;
+            sun = su.transform;
         }
 
         static float Bell(float x, float centre, float width) { float d = (x - centre) / width; return Mathf.Exp(-d * d); }

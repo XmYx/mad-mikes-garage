@@ -46,7 +46,7 @@ namespace MadMax.Vehicles
         float slew, boom = -8f, stick = 10f, bucket = 10f;             // excavator
         float arms = 0f, tilt = 0f;                                     // backhoe front loader
         float hoeSwing, hoeBoom = -10f, hoeStick = 0f, hoeBucket = 0f;  // backhoe rear hoe
-        float bladeLift = -6f, bladePitch = 0f, bladeAngle = 0f;       // dozer
+        float bladeLift = -14f, bladePitch = 0f, bladeAngle = 0f;      // dozer: carried up (negative) until the operator lowers it
         float bed;                                                      // dump truck 0..50
         float screed;                                                   // paver
         Vector3 lastPos;
@@ -56,6 +56,14 @@ namespace MadMax.Vehicles
         static readonly List<DebrisSystem.Chunk> clods = new List<DebrisSystem.Chunk>();
 
         public string Status { get; private set; }
+        /// <summary>Hinge angles for diagnostics: excavator bucket / loader tilt, dozer blade lift.</summary>
+        public float BucketAngle => kind == Kind.Backhoe ? tilt : kind == Kind.Dozer ? bladeLift : bucket;
+        /// <summary>Excavator / loader bucket teeth in world space (zero without a bucket); automation and tests.</summary>
+        public Vector3 BucketTip => kind == Kind.Excavator ? Teeth(Seg(Tool, "bucket"), new Vector3(0, -8, 4)) : kind == Kind.Backhoe ? Teeth(Seg(Tool, "bucket"), new Vector3(0, -6, 5)) : Vector3.zero;
+        /// <summary>Where a bucket load lands in this tipper's bed (its own position for other machines).</summary>
+        public Vector3 BedPoint => store ? LoadPoint(store) : transform.position;
+        /// <summary>Soil units in the tipper bed / hopper (not fluids).</summary>
+        public int BedUnits { get { int n = 0; if (store) for (int t = 1; t < ResourceInfo.Count; t++) if (!ResourceInfo.IsFluid((ResourceType)t)) n += store.inventory.Get((ResourceType)t); return n; } }
         public float Capacity => kind == Kind.Excavator ? 1.4f : kind == Kind.Backhoe ? 0.8f : kind == Kind.Dozer ? 2.5f : 0f;
         const float RearCapacity = 0.35f;
         const float BedM3 = 6.5f;                                       // tipper bed volume (2.3 x 3.8 x 0.75 m)

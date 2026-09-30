@@ -70,6 +70,14 @@ namespace MadMax.Game
         InteriorSpace cutawayInterior;
         float targetScale = 1f;
         float yaw = 45f, orbitYaw, orbitPitch = 12f, lookYaw, lookPitch;
+
+        /// <summary>Automation: turn the third-person / first-person view toward a world direction (on foot).</summary>
+        public void LookToward(Vector3 dir)
+        {
+            float y = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, p = -Mathf.Asin(Mathf.Clamp(dir.normalized.y, -1f, 1f)) * Mathf.Rad2Deg;
+            orbitYaw = lookYaw = y;
+            orbitPitch = Mathf.Clamp(p + 4f, -10f, 70f); lookPitch = Mathf.Clamp(p, -80f, 80f);
+        }
         Vector3 smoothFocus, lastTargetPos, velocity, filteredTarget, lastCamPos;
         float travelFraming;
         Quaternion lastCamRot = Quaternion.identity;

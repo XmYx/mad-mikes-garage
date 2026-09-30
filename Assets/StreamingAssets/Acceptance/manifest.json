@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "features": [
+    {
+      "id": "driving_and_repairing.vehicles_are_made_of_parts_in_sockets_wh",
+      "group": "Driving and repairing",
+      "readme": "Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doo",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "driving_and_repairing.raycast_suspension_open_or_locked_differ",
+      "group": "Driving and repairing",
+      "readme": "Raycast suspension, open or locked differentials, switchable 4WD, automatic or m",
+      "scenarios": [
+        "vehicle.drive.*",
+        "regression.hill_hold.*",
+        "regression.cars_separate"
+      ],
+      "gap": "partial: 4WD/diff lock/manual box not exercised"
+    },
+    {
+      "id": "driving_and_repairing.crashes_dent_the_bodywork_bend_the_frame",
+      "group": "Driving and repairing",
+      "readme": "Crashes dent the bodywork (how much is a setting), bend the frame (the car start",
+      "scenarios": [
+        "vehicle.glass_and_lamps",
+        "settings.car_deformation",
+        "vehicle.scrape_marks"
+      ],
+      "gap": "partial: frame pull and parts knocked off not asserted"
+    },
+    {
+      "id": "driving_and_repairing.each_engine_needs_fuel_oil_and_coolant_p",
+      "group": "Driving and repairing",
+      "readme": "Each engine needs fuel, oil and coolant. Petrol and diesel are separate, and fil",
+      "scenarios": [
+        "vehicle.drive.*"
+      ],
+      "gap": "partial: cranking only; fluids, wrong fuel and faults not exercised"
+    },
+    {
+      "id": "driving_and_repairing.servicing_oil_changes_air_filters_spark_",
+      "group": "Driving and repairing",
+      "readme": "Servicing: oil changes, air filters, spark plugs. A tuning bench changes gearing",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "driving_and_repairing.a_paint_station_for_colours_and_decals_a",
+      "group": "Driving and repairing",
+      "readme": "A paint station for colours and decals. A gang decal can get you past that gang'",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "driving_and_repairing.towing_with_hitches_and_couplers_fuel_ta",
+      "group": "Driving and repairing",
+      "readme": "Towing with hitches and couplers, fuel tankers you can pump from, and car transp",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "driving_and_repairing.construction_machines_really_change_the_",
+      "group": "Driving and repairing",
+      "readme": "Construction machines really change the terrain. Excavators, backhoes and dozers",
+      "scenarios": [
+        "regression.machine_soil"
+      ],
+      "gap": "partial: excavator + tipper; backhoe, dozer, paver, roller terraforming not asserted"
+    },
+    {
+      "id": "driving_and_repairing.vehicle_weapons_roof_guns_rear_droppers_",
+      "group": "Driving and repairing",
+      "readme": "Vehicle weapons: roof guns, rear droppers for oil and caltrops, smoke screens.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "driving_and_repairing.mud_ruts_snow_ice_fords_and_rain_all_cha",
+      "group": "Driving and repairing",
+      "readme": "Mud, ruts, snow, ice, fords and rain all change how much grip you have.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.a_procedural_planet_about_9_6_km_around_",
+      "group": "The world",
+      "readme": "A procedural planet about 9.6 km around. It wraps east to west through an open o",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.deserts_forests_meadows_tropical_lakes_s",
+      "group": "The world",
+      "readme": "Deserts, forests, meadows, tropical lakes, swamps and radioactive zones. Rivers,",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.villages_towns_and_ruined_cities_joined_",
+      "group": "The world",
+      "readme": "Villages, towns and ruined cities joined by highways and dirt tracks. You can wa",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.bunkers_rock_tunnels_with_caves_airfield",
+      "group": "The world",
+      "readme": "Bunkers, rock tunnels with caves, airfields with hangars, scrapyards, a refinery",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.day_and_night_seasons_rain_snow_storms_l",
+      "group": "The world",
+      "readme": "Day and night with the sun and moon crossing the sky, seasons, rain, snow, storm",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "the_world.buildings_slowly_overgrow_and_crumble_gr",
+      "group": "The world",
+      "readme": "Buildings slowly overgrow and crumble. Grass gets flattened where you drive and ",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.you_create_a_character_with_attributes_a",
+      "group": "Surviving",
+      "readme": "You create a character with attributes and traits. Skills improve with practice,",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.hunger_thirst_hygiene_food_spoilage_sick",
+      "group": "Surviving",
+      "readme": "Hunger, thirst, hygiene, food spoilage, sickness, radiation.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.body_temperature_depends_on_clothing_lay",
+      "group": "Surviving",
+      "readme": "Body temperature depends on clothing layers, shelter, heaters and getting wet.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.injuries_are_tracked_per_body_part_cuts_",
+      "group": "Surviving",
+      "readme": "Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection)",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.clothing_and_body_armour_wear_out_get_ho",
+      "group": "Surviving",
+      "readme": "Clothing and body armour wear out, get holes and can be mended.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.melee_tools_guns_with_magazines_and_jams",
+      "group": "Surviving",
+      "readme": "Melee tools, guns with magazines and jams, thrown molotovs and smoke, fishing ro",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.parkour_vaulting_climbing_sliding_and_ro",
+      "group": "Surviving",
+      "readme": "Parkour: vaulting, climbing, sliding and rolling.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "surviving.diving_gear_with_tank_air_for_working_un",
+      "group": "Surviving",
+      "readme": "Diving gear with tank air for working underwater.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.walls_floors_roofs_doors_stairs_and_ladd",
+      "group": "Building, farming and industry",
+      "readme": "Walls, floors, roofs, doors, stairs and ladders. Foundations and drivable decks,",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.furniture_that_does_something_beds_seats",
+      "group": "Building, farming and industry",
+      "readme": "Furniture that does something: beds, seats, dining tables, wardrobes, bookshelve",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.power_from_generators_solar_panels_wind_",
+      "group": "Building, farming and industry",
+      "readme": "Power from generators, solar panels, wind turbines and water wheels, carried by ",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.gardens_with_crops_fruit_trees_fertilise",
+      "group": "Building, farming and industry",
+      "readme": "Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenh",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.a_production_chain_dig_soil_wash_it_for_",
+      "group": "Building, farming and industry",
+      "readme": "A production chain: dig soil, wash it for ore, then smelt metals, fire glass and",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "building_farming_and_industry.crafting_is_timed_and_happens_at_station",
+      "group": "Building, farming and industry",
+      "readme": "Crafting is timed and happens at stations (workbench, stove, furnace, kiln, stil",
+      "scenarios": [
+        "crafting.fuel_refund",
+        "catalogue.recipes"
+      ],
+      "gap": "partial: one fuel-fired recipe; quality, knowledge and range limits not exercised"
+    },
+    {
+      "id": "building_farming_and_industry.sea_bases_domes_tunnels_a_shore_entrance",
+      "group": "Building, farming and industry",
+      "readme": "Sea bases: domes, tunnels, a shore entrance and a docking collar for the submari",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.every_npc_has_a_name_a_job_a_temperament",
+      "group": "People and animals",
+      "readme": "Every NPC has a name, a job, a temperament and a history that you learn over sev",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.shopkeepers_market_stalls_roadside_vendo",
+      "group": "People and animals",
+      "readme": "Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raid",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.raiders_track_you_down_on_the_road_you_c",
+      "group": "People and animals",
+      "readme": "Raiders track you down on the road. You can talk your way out, pay, bluff, recru",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.factions_with_territory_and_standing_bou",
+      "group": "People and animals",
+      "readme": "Factions with territory and standing, bounty boards, supply and escort contracts",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.companions_who_follow_you_ride_with_you_",
+      "group": "People and animals",
+      "readme": "Companions who follow you, ride with you, drive and fight.",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "people_and_animals.herds_predators_birds_snakes_scorpions_a",
+      "group": "People and animals",
+      "readme": "Herds, predators, birds, snakes, scorpions and insects. Livestock can be kept, f",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "radio.eleven_stations_run_around_the_clock_ten",
+      "group": "Radio",
+      "readme": "Eleven stations run around the clock: ten music stations with about 250 original",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "other.multiplayer_through_a_listen_server_a_de",
+      "group": "Other",
+      "readme": "Multiplayer through a listen server, a dedicated server or as a client (Unity Tr",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "other.three_save_slots_plus_an_autosave_a_map_",
+      "group": "Other",
+      "readme": "Three save slots plus an autosave. A map and journal with waypoints and road rou",
+      "scenarios": [
+        "save.roundtrip"
+      ],
+      "gap": "partial: one slot; autosave, map and journal not exercised"
+    },
+    {
+      "id": "other.a_daily_race_board_road_race_bike_trial_",
+      "group": "Other",
+      "readme": "A daily race board (road race, bike trial, air race, arena) and a long quest cal",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "other.views_isometric_tilt_shift_top_down_thir",
+      "group": "Other",
+      "readme": "Views: isometric, tilt-shift, top-down, third person, first person, hood and bum",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "other.rebindable_controls_gamepad_support_colo",
+      "group": "Other",
+      "readme": "Rebindable controls, gamepad support, colour-blind palette, HUD scaling and sepa",
+      "scenarios": [],
+      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+    },
+    {
+      "id": "vehicles.wasteland_cars_interceptor_scavenger_tra",
+      "group": "Vehicles",
+      "readme": "Wasteland cars: Interceptor, Scavenger, Trabant, Pickup (4x4), Coupe, Sedan, Wag",
+      "scenarios": [
+        "vehicle.drive.*",
+        "catalogue.vehicles"
+      ],
+      "gap": null
+    },
+    {
+      "id": "vehicles.real_cars_modelled_in_blender_fiat_126p_",
+      "group": "Vehicles",
+      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citroën BX, Cit",
+      "scenarios": [
+        "vehicle.drive.Fiat126p",
+        "vehicle.drive.Peugeot205",
+        "vehicle.drive.CitroenXM",
+        "vehicle.drive.FiatMultipla",
+        "catalogue.vehicles"
+      ],
+      "gap": "partial: four of thirteen named here, all run under vehicle.drive.*"
+    },
+    {
+      "id": "vehicles.trucks_and_buses_hauler_war_rig_with_a_w",
+      "group": "Vehicles",
+      "readme": "Trucks and buses: Hauler war rig with a walk-in module, Semi tractor, Bus, Ambul",
+      "scenarios": [
+        "vehicle.drive.Hauler",
+        "vehicle.drive.Bus",
+        "vehicle.drive.Semi",
+        "vehicle.drive.Ambulance",
+        "vehicle.drive.APC"
+      ],
+      "gap": null
+    },
+    {
+      "id": "vehicles.machines_excavator_backhoe_loader_bulldo",
+      "group": "Vehicles",
+      "readme": "Machines: Excavator, Backhoe loader, Bulldozer, Dump truck, Asphalt/concrete pav",
+      "scenarios": [
+        "vehicle.drive.Excavator",
+        "vehicle.drive.Bulldozer",
+        "vehicle.drive.Paver",
+        "vehicle.drive.Roller",
+        "vehicle.drive.Backhoe",
+        "vehicle.drive.DumpTruck",
+        "regression.machine_soil"
+      ],
+      "gap": null
+    },
+    {
+      "id": "vehicles.trailers_tanker_2000_l_small_bowser_450_",
+      "group": "Vehicles",
+      "readme": "Trailers: Tanker (2000 L), Small bowser (450 L), Cargo trailer, Box trailer, Car",
+      "scenarios": [
+        "catalogue.vehicles"
+      ],
+      "gap": "catalogue only: towing and pumping not exercised"
+    },
+    {
+      "id": "vehicles.two_wheels_dirt_bike_chopper_bicycle_sid",
+      "group": "Vehicles",
+      "readme": "Two wheels: Dirt bike, Chopper, Bicycle, Sidecar outfit",
+      "scenarios": [],
+      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+    },
+    {
+      "id": "vehicles.aircraft_ultralight_trike_gyrocopter",
+      "group": "Vehicles",
+      "readme": "Aircraft: Ultralight trike, Gyrocopter",
+      "scenarios": [],
+      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+    },
+    {
+      "id": "vehicles.boats_raft_skiff_trawler_houseboat_iron_",
+      "group": "Vehicles",
+      "readme": "Boats: Raft, Skiff, Trawler, Houseboat, Iron Eel submarine",
+      "scenarios": [],
+      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+    }
+  ]
+}

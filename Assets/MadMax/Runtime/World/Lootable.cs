@@ -85,6 +85,9 @@ namespace MadMax.World
             { "office", new[] { ("misc_paper", 2, 6, 3f), ("book_gunsmith", 1, 1, 0.4f), ("book_mechanics_1", 1, 1, 0.4f), ("book_builder", 1, 1, 0.4f), ("res:21", 1, 3, 1f), ("res:4", 1, 2, 1f), ("drink_soda", 1, 1, 1f) } },
         };
 
+        /// <summary>Every id any table can drop (acceptance: blueprint and media sources).</summary>
+        public static IEnumerable<string> AllIds() { foreach (var t in tables.Values) foreach (var e in t) yield return e.id; }
+
         public static List<(string id, int n)> Roll(string table, System.Random rnd, int abundance, int perception)
         {
             var result = new List<(string, int)>();

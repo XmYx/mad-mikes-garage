@@ -22,6 +22,7 @@ namespace MadMax.Game
             new Step { text = "TAKE A HAUL FROM A TOWN BOARD AND DELIVER IT", done = "FIRST HAUL PAID", pay = 40 },
             new Step { text = "BUILD A WORKBENCH AND A WALL: {Build} WITH THE CLAW HAMMER", done = "A PLACE OF YOUR OWN", pay = 50 },
             new Step { text = "TAME AN ANIMAL: FEED IT TILL IT TRUSTS YOU, OR BUY LIVESTOCK", done = "A FRIEND ON FOUR LEGS", pay = 60 },
+            new Step { text = "SLEEP THE NIGHT IN A BED: THE HOMESTEAD HAS ONE", done = "HOME IS WHERE YOU WAKE UP", pay = 30 },
         };
 
         /// <summary>Current FIRST STEPS step (-1 = off or finished).</summary>
@@ -91,10 +92,11 @@ namespace MadMax.Game
                 case 4:
                 {
                     bool bench = false, wall = false;
-                    foreach (var p in Placeable.All) { if (!p) continue; bench |= p.id == "workbench"; wall |= p.id.StartsWith("wall"); }
+                    foreach (var p in Placeable.All) { if (!p || IsHomestead(p)) continue; bench |= p.id == "workbench"; wall |= p.id.StartsWith("wall"); }   // the homestead's own bench does not count
                     return bench && wall;
                 }
                 case 5: return MadMax.Animals.AnimalDirector.Instance && MadMax.Animals.AnimalDirector.Instance.kept.Count > 0;
+                case 6: return starterNotes.Contains("slept");
             }
             return true;
         }

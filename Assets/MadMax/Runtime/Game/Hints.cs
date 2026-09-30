@@ -25,7 +25,7 @@ namespace MadMax.Game
             {
                 if (seen != null) return seen;
                 seen = new Dictionary<string, int>();
-                foreach (var pair in PlayerPrefs.GetString(PrefKey, "").Split(';'))
+                foreach (var pair in Profile.GetString(PrefKey, "").Split(';'))
                 {
                     var kv = pair.Split('=');
                     if (kv.Length == 2 && int.TryParse(kv[1], out int n)) seen[kv[0]] = n;
@@ -47,10 +47,10 @@ namespace MadMax.Game
             next = until + 4f;
             var parts = new List<string>();
             foreach (var kv in seen) parts.Add(kv.Key + "=" + kv.Value);
-            PlayerPrefs.SetString(PrefKey, string.Join(";", parts));
+            Profile.SetString(PrefKey, string.Join(";", parts));
             return true;
         }
 
-        public static void Reset() { seen = new Dictionary<string, int>(); PlayerPrefs.DeleteKey(PrefKey); until = next = 0f; }
+        public static void Reset() { seen = new Dictionary<string, int>(); Profile.DeleteKey(PrefKey); until = next = 0f; }
     }
 }

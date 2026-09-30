@@ -107,6 +107,7 @@ namespace MadMax.Game
             d.hasWaypoint = HasWaypoint; d.waypoint = Waypoint;
             d.journal = Journal.Save();
             d.starter = StarterStep;
+            SaveHomestead(d);
             d.lastEngine = LastEngine.Save();
             d.records = Racing.Save();
             SaveWreckPlan(d);
@@ -118,6 +119,7 @@ namespace MadMax.Game
             if (d.discovered != null) foreach (var k in d.discovered) Discovered.Add(k);
             Journal.Load(d.journal);
             StarterStep = d.starter;
+            LoadHomestead(d);
             LastEngine.Load(d.lastEngine);
             Racing.Load(d.records);
             LoadWreckPlan(d);

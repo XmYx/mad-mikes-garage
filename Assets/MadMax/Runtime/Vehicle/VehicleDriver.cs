@@ -80,6 +80,8 @@ namespace MadMax.Vehicles
         public float Rpm { get; private set; }
         public float ForwardSpeed { get; private set; }
         public float SpeedKmh => ForwardSpeed * 3.6f;
+        /// <summary>Wheels touching the ground last physics step (diagnostics, tests).</summary>
+        public int GroundedWheels { get { int n = 0; foreach (var w in wheels) if (w.part && w.grounded) n++; return n; } }
         public float WheelSlip { get; private set; }
         public float Mud { get; private set; }
         /// <summary>Tyre audio telemetry (per grounded wheel averages): sliding on hard ground, scrub speed on loose ground,
@@ -265,7 +267,8 @@ namespace MadMax.Vehicles
             // In automatic reverse the brake pedal is the accelerator: never park-sleep against it.
             float drivePedal = !manual && Reversing ? brakeInput : throttleInput;
             float stopPedal = !manual && Reversing ? throttleInput : brakeInput;
-            bool idleInput = KeepAwakeUntil <= Time.time && drivePedal < 0.01f && Mathf.Abs(steerInput) < 0.01f && (handbrake || stopPedal > 0.1f);
+            // an automatic held on the brake at rest is about to select reverse: only the handbrake parks it
+            bool idleInput = KeepAwakeUntil <= Time.time && drivePedal < 0.01f && Mathf.Abs(steerInput) < 0.01f && (handbrake || (stopPedal > 0.1f && (manual || aiDriven || !Occupied)));
             if (idleInput && rb.linearVelocity.sqrMagnitude < 0.02f && rb.angularVelocity.sqrMagnitude < 0.02f && AllGroundedLastStep())
             {
                 restTimer += dt;
@@ -453,7 +456,9 @@ namespace MadMax.Vehicles
                 float brake = (lineLock ? 0f : brakeCmd * brakeForce / wheels.Count * bias) + (handbrake ? (!occupied ? brakeForce : !w.front ? brakeForce * 0.5f : 0f) : 0f);   // parked: every wheel locked
                 brake += Mathf.Clamp01(w.part.damage) * 0.35f * w.spring;       // damaged wheel drags
                 // hill hold: rolling back against the throttle at a crawl, the brakes catch it while the drive takes over
-                if (touring && driveCmd > 0.05f && Mathf.Abs(ForwardSpeed) < 2f && (Reversing ? w.vf > 0.02f : w.vf < -0.02f)) brake += brakeForce / wheels.Count;
+                // (only with the grip the drive leaves free: pushing a tyre past its grip would break it loose)
+                if (touring && driveCmd > 0.05f && Mathf.Abs(ForwardSpeed) < 2f && (Reversing ? w.vf > 0.02f : w.vf < -0.02f))
+                    brake += Mathf.Min(brakeForce / wheels.Count, Mathf.Max(0f, w.maxF * 0.95f - Mathf.Abs(w.drive)));
                 lng -= Mathf.Clamp(w.vf * massPerWheel / dt, -brake, brake);
                 float press = Pressure(w);
                 float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f) * (tuning ? tuning.RollingFactor : 1f);   // mud and ruts drag

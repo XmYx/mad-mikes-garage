@@ -24,7 +24,7 @@ namespace MadMax.Game
             var claim = ClaimFlag.Near(at);
             if (!claim) return null;
             foreach (var st in CraftingStation.All)
-                if (st && st.type == "garage" && claim.Inside(st.transform.position) && (st.transform.position - at).sqrMagnitude < GarageReach * GarageReach) return st;
+                if (st && (st.type == "garage" || (Instance && Instance.IsHomesteadBench(st))) && claim.Inside(st.transform.position) && (st.transform.position - at).sqrMagnitude < GarageReach * GarageReach) return st;
             return null;
         }
 

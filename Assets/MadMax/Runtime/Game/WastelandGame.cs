@@ -39,6 +39,8 @@ namespace MadMax.Game
 
         /// <summary>When true, device input is ignored for the current vehicle/player (automation writes inputs directly).</summary>
         public static bool ExternalInput;
+        /// <summary>Operator keys for the driven machine while <see cref="ExternalInput"/> is set (automation).</summary>
+        public static MachineKeys MachineInput;
         /// <summary>Automation: hold the aim (RMB) with a ranged weapon; <see cref="ForceAimViewport"/> is the cursor.</summary>
         public static bool ForceAim;
         public static Vector2 ForceAimViewport = new Vector2(0.5f, 0.5f);
@@ -46,7 +48,7 @@ namespace MadMax.Game
 
         // Enter Play Mode Options may skip domain reload; statics must be reset explicitly.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { ExternalInput = false; ForceAim = false; VehiclePart.Registry.Clear(); }
+        static void ResetStatics() { ExternalInput = false; MachineInput = default; ForceAim = false; VehiclePart.Registry.Clear(); }
 
         public WorldGen World { get; private set; }
         /// <summary>All driveable vehicles (fleet + wrecks).</summary>
@@ -641,7 +643,8 @@ namespace MadMax.Game
                         alt = Controls.Held(Controls.Act.Run), drop = Controls.Down(Controls.Act.Dropper) || (pad != null && pad.dpad.down.wasPressedThisFrame), smoke = Controls.Down(Controls.Act.Smoke),
                         aim = VehicleAim(), dt = Time.deltaTime
                     });
-                if (Current.TryGetComponent<Machine>(out var machine) && kb != null)
+                if (Current.TryGetComponent<Machine>(out var machine) && ExternalInput) machine.Control(MachineInput);
+                else if (machine && kb != null)
                     machine.Control(new MachineKeys
                     {
                         h1 = kb.digit1Key.isPressed, h2 = kb.digit2Key.isPressed, h3 = kb.digit3Key.isPressed, h4 = kb.digit4Key.isPressed, h5 = kb.digit5Key.isPressed, h6 = kb.digit6Key.isPressed,

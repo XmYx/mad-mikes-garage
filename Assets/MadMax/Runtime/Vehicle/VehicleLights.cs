@@ -11,6 +11,10 @@ namespace MadMax.Vehicles
         public static readonly string[] ModeNames = { "LIGHTS AUTO", "LIGHTS ON", "LIGHTS OFF" };
         /// <summary>Headlights lit (light bars and searchlights follow).</summary>
         public bool On { get; private set; }
+        int broken;                            // VehicleBreakables bits: 1 front-left, 2 front-right, 4 rear-left, 8 rear-right
+
+        /// <summary>Lamps knocked out: a broken headlamp dims the beam (both gone: dark), a broken tail lamp stays off.</summary>
+        public void SetBroken(int bits) { broken = bits; beamShown = -1f; }
         Light[] heads, tails;
         VehicleDriver driver;
         // light beams: cones you see in rain, fog and dust (one mesh per vehicle, alpha by visibility)
@@ -78,7 +82,11 @@ namespace MadMax.Vehicles
             float dust = Mathf.Clamp01((Mathf.Abs(driver.ForwardSpeed) - 5f) / 15f) * (Weather.Raining ? 0f : 0.6f);
             float vis = on ? Mathf.Clamp01(Mathf.Max(Weather.Raining ? 0.8f : 0f, Mathf.Max(Atmosphere.Fog * 0.9f, dust)) * (0.35f + 0.65f * DayNight.Darkness)) : 0f;
             bool show = vis > 0.05f;
-            foreach (var b in beams) if (b.gameObject.activeSelf != show) b.gameObject.SetActive(show);
+            for (int i = 0; i < beams.Length; i++)
+            {
+                bool lit = show && (broken & (i == 0 ? 1 : 2)) == 0;                                 // beam 0 is the left lamp (-x)
+                if (beams[i].gameObject.activeSelf != lit) beams[i].gameObject.SetActive(lit);
+            }
             if (!show || Mathf.Abs(vis - beamShown) < 0.04f) return;
             beamShown = vis;
             for (int i = 0; i < beamCols.Length; i++) beamCols[i] = new Color32(255, 238, 200, (byte)(i % 2 == 0 ? 38 * vis : 0));
@@ -102,12 +110,15 @@ namespace MadMax.Vehicles
             bool driven = driver.Occupied && (driver.aiDriven || (g && g.Current == driver));             // a stale occupied flag never lights a parked car
             bool on = mode == 1 || (mode == 0 && driven && DayNight.Darkness > 0.3f);
             On = on;
-            heads[0].enabled = on && LightBudget.Allowed(heads[0], true);
+            int heads2 = ((broken & 1) == 0 ? 1 : 0) + ((broken & 2) == 0 ? 1 : 0);
+            heads[0].enabled = on && heads2 > 0 && LightBudget.Allowed(heads[0], true);
+            heads[0].intensity = heads2 == 2 ? 60f : 30f;
             UpdateBeams(on);
             float brake = driver.brakeInput > 0.1f || driver.handbrake && driver.Occupied ? 1f : 0f;
-            foreach (var t in tails)
+            for (int i = 0; i < tails.Length; i++)
             {
-                t.enabled = (on || brake > 0f && driver.Occupied) && LightBudget.Allowed(t, true);
+                var t = tails[i];
+                t.enabled = (broken & (i == 0 ? 4 : 8)) == 0 && (on || brake > 0f && driver.Occupied) && LightBudget.Allowed(t, true);
                 t.intensity = brake > 0f ? 0.6f : 0.25f;
             }
         }

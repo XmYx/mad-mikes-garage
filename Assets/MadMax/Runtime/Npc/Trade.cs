@@ -120,6 +120,9 @@ namespace MadMax.Npc
             { "build", new[] { ("res:2", 20, 80), ("res:3", 20, 80), ("res:26", 5, 30), ("res:27", 5, 20), ("res:10", 10, 40), ("res:11", 10, 40), ("kit_chest", 0, 2), ("kit_wall_scrap", 0, 3) } },
         };
 
+        /// <summary>Every id any vendor kind can stock (acceptance: blueprint and media sources).</summary>
+        public static IEnumerable<string> AllStockIds() { foreach (var t in sells.Values) foreach (var e in t) yield return e.id; }
+
         /// <summary>What a vendor buys, by item prefix or res:N.</summary>
         static readonly Dictionary<string, string[]> buys = new Dictionary<string, string[]>
         {

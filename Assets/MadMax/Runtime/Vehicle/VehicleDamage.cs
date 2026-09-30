@@ -39,7 +39,9 @@ namespace MadMax.Vehicles
         VehicleDriver driver;
         VehicleChassis chassis;
         VehicleArmor armour;
+        VehicleBreakables breakables;
         Rigidbody rb;
+        float nextScrape, lastScrape = -9f;
         float lastHit, pullSign = 1f;
 
         void Awake()
@@ -50,10 +52,45 @@ namespace MadMax.Vehicles
             if (!TryGetComponent(out armour) && transform.Find("Body")) armour = gameObject.AddComponent<VehicleArmor>();
             if (!GetComponent<VehicleTuning>() && driver && driver.driveable) gameObject.AddComponent<VehicleTuning>();
             if (!GetComponent<VehicleGrime>() && transform.Find("Body")) gameObject.AddComponent<VehicleGrime>();
+            if (!TryGetComponent(out breakables) && transform.Find("Body")) breakables = gameObject.AddComponent<VehicleBreakables>();
             PassengerSeat.For(driver);
         }
 
         void OnCollisionEnter(Collision c) => Handle(c);
+
+        /// <summary>Scraping along another vehicle, a wall or a rock: sparks (dust off stone, splinters off wood), a
+        /// grinding loop, and paint worn to bare metal where the body rubs. Ground contacts under the wheels don't count.</summary>
+        void OnCollisionStay(Collision c)
+        {
+            if (Time.time < nextScrape || c.contactCount == 0 || Time.time < graceUntil) return;
+            var cp = c.GetContact(0);
+            if (c.collider is MeshCollider && !c.rigidbody && cp.normal.y > 0.6f) return;          // resting on terrain / a deck
+            var slide = Vector3.ProjectOnPlane(c.relativeVelocity, cp.normal);
+            float speed = slide.magnitude;
+            if (speed < 1.2f) return;
+            nextScrape = Time.time + 0.07f;
+            lastScrape = Time.time;
+            bool metal = c.rigidbody && c.rigidbody.GetComponent<VehicleDriver>() || c.collider.GetComponentInParent<VehiclePart>();
+            var prop = c.collider.GetComponentInParent<MadMax.World.DestructibleVoxels>();
+            bool wood = !metal && (c.collider.name.Contains("Wood") || c.collider.name.Contains("Tree") || c.collider.name.Contains("Fence"));
+            var along = -slide.normalized * Mathf.Min(6f, speed * 0.5f) + cp.normal * 0.8f;
+            if (metal || !wood) MadMax.World.Fx.Sparks(cp.point, along, Mathf.Clamp(Mathf.RoundToInt(speed / 3f), 1, 5), new Color(1f, 0.72f, 0.3f));
+            if (!metal && MadMax.World.DebrisSystem.Instance)
+                MadMax.World.DebrisSystem.Instance.EmitPuff(cp.point, wood ? MadMax.Voxel.Pal.Wood[2] : prop ? MadMax.Voxel.Pal.Cream[1] : MadMax.Voxel.Pal.Metal[3], 0.05f, along * 0.5f + Vector3.up, 0.6f);
+            if (breakables) breakables.Scrape(cp.point, cp.normal, Mathf.Clamp(0.12f + speed * 0.012f, 0.12f, 0.3f));
+            MadMax.Audio.Sfx.Loop(this, "scratch", Mathf.Clamp01(speed / 10f) * 0.8f, 0.8f + Mathf.Min(0.5f, speed * 0.03f), 40f);
+        }
+
+        void Update()
+        {
+            if (lastScrape > 0f && Time.time - lastScrape > 0.15f) { lastScrape = -9f; MadMax.Audio.Sfx.Loop(this, "scratch", 0f, 1f, 40f); }
+        }
+
+        /// <summary>True while this vehicle is sliding against something (sparks, the grinding loop).</summary>
+        public bool Scraping => Time.time - lastScrape < 0.2f;
+
+        /// <summary>Dent depth multiplier from the CAR DEFORMATION setting (0 = no visible dents).</summary>
+        public static float DeformationScale => MadMax.Game.GameSettings.Current.DeformationScale;
 
         /// <summary>Settling grace: no damage from contacts until then (spawned or woken wrecks dropping into place,
         /// depenetration shoves).</summary>
@@ -86,7 +123,8 @@ namespace MadMax.Vehicles
                     victim.ApplyHit(point, -normal, (armor.spikes * 1.5f + armor.ram) * dv * 0.15f, 0.5f, gameObject);
                 if (shield.damage >= 1f) { foreach (var sk in chassis.Sockets) if (sk.Current == shield) { Break(sk, normal); break; } }
             }
-            float depth = Mathf.Min(maxDent, s * dentPerMs);
+            float rawDepth = Mathf.Min(maxDent, s * dentPerMs);                                // what peers receive: each applies its own setting
+            float depth = rawDepth * DeformationScale;
             float radius = Mathf.Clamp(0.35f + s * 0.06f, 0.35f, 1.1f);
 
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
@@ -95,8 +133,9 @@ namespace MadMax.Vehicles
                 var part = mf.GetComponentInParent<VehiclePart>();
                 if (part && part.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
-                dm.Dent(point, normal, depth, radius, maxDisplacement);
+                if (depth > 0.001f) dm.Dent(point, normal, depth, radius, maxDisplacement * Mathf.Max(1f, DeformationScale));
             }
+            if (breakables && s > 2f) breakables.Smash(point, radius * 0.8f, s);
 
             // parts near the impact
             foreach (var socket in chassis.Sockets)
@@ -123,7 +162,7 @@ namespace MadMax.Vehicles
             if (FrameDamage > 0f && Mathf.Abs(transform.InverseTransformPoint(point).x) > 0.3f)
                 pullSign = Mathf.Sign(transform.InverseTransformPoint(point).x);
             driver.steerPull = FrameDamage * maxSteerPull * pullSign;
-            MadMax.Net.NetSession.Instance?.SendImpact(driver, point, normal, depth, radius);
+            MadMax.Net.NetSession.Instance?.SendImpact(driver, point, normal, rawDepth, radius);
             Impact?.Invoke(s, point);
         }
 
@@ -158,8 +197,9 @@ namespace MadMax.Vehicles
                 var p = mf.GetComponentInParent<VehiclePart>();
                 if (p && p.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
-                dm.Dent(point, direction, 0.04f * power, radius + 0.15f, maxDisplacement);
+                if (DeformationScale > 0f) dm.Dent(point, direction, 0.04f * power * DeformationScale, radius + 0.15f, maxDisplacement * Mathf.Max(1f, DeformationScale));
             }
+            if (breakables) breakables.Smash(point, radius + 0.15f, power * 3f);                  // a bullet or a club through the glass
             foreach (var socket in chassis.Sockets)
             {
                 var part = socket.Current;
@@ -190,7 +230,7 @@ namespace MadMax.Vehicles
                 var p = mf.GetComponentInParent<VehiclePart>();
                 if (p && p.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
-                dm.Dent(point, direction, depth, radius, maxDisplacement);
+                if (DeformationScale > 0f) dm.Dent(point, direction, depth * DeformationScale, radius, maxDisplacement * Mathf.Max(1f, DeformationScale));
             }
         }
 
