@@ -189,8 +189,8 @@ namespace MadMax.Story
             {
                 if (!plot || !AtHome(plot.transform.position) || plot.crop == null) continue;
                 bool touched = false;
-                if (plot.water < 0.8f) { plot.water = 0.9f; touched = true; }
-                if (plot.weeds > 0.05f) { plot.weeds = Mathf.Max(0f, plot.weeds - 0.3f); touched = true; }
+                if (plot.water < 0.8f) { plot.Water(1f); touched = true; }
+                if (plot.weeds > 0.05f) { plot.Weed(); touched = true; }                          // crows shooed off too
                 if (plot.Ripe && pantry != null && plot.Reap(g, 1f, pantry)) touched = true;
                 if (!touched) continue;
                 plot.GetComponent<Placeable>()?.Dirty();

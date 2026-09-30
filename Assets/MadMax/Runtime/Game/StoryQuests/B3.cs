@@ -101,6 +101,8 @@ namespace MadMax.Game
             }
             if (b3TestAt < 0f) b3TestAt = Time.time;                                             // after a reload the test goes on
             float t = Time.time - b3TestAt;
+            if (!Q7Prop("garage", "air_compressor", new Vector3(7.6f, 0f, 4.6f), 3f) && !Story.Story.Flag("b3:outage"))
+                Story.Story.SetFlag("b3:outage");                                                // unplugged: shedding the load by hand counts
             var svc = B3Service(true);
             bool stalled = false;
             foreach (var p in Placeable.All)
