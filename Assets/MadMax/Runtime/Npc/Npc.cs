@@ -789,6 +789,7 @@ namespace MadMax.Npc
             }
             var pp = g.Player.transform.position;
             if (Vector3.Distance(pp, transform.position) > 2f || Vector3.Dot(Flat(pp - transform.position).normalized, transform.forward) < 0.3f) { MadMax.Audio.Sfx.Play("punch", hitAt, 0.3f, 0.7f); return; }
+            if (boutStrike != null) { boutStrike(this); MadMax.Audio.Sfx.Play("punch", pp + Vector3.up, 0.6f, 1.1f); return; }   // a supervised bout scores it
             g.Vitals.Hurt(Random.Range(7f, 13f) * power, "MELEE");
             BloodStains.Splash(pp, 0.4f);
             MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", pp + Vector3.up, 0.8f);
@@ -878,6 +879,7 @@ namespace MadMax.Npc
                 MadMax.Net.NetSession.Instance?.SendActorHit(netId, point, direction, power, radius);
                 return;
             }
+            if (boutHit != null && boutHit(this, point, direction, power, source)) return;       // a supervised bout scores it instead
             // their armour: gunfire (player guns, vehicle weapons) or blows
             var gp = WastelandGame.Instance;
             int kind = (int)DamageKind.Melee;
@@ -1051,6 +1053,12 @@ namespace MadMax.Npc
         public Transform Head => rig ? rig.Head : null;
 
         public void Heal() => health = maxHealth;
+
+        /// <summary>A supervised bout (story system "nonlethal_bout", <see cref="MadMax.Game.BoutRing"/>): while set, blows
+        /// on this person go to the handler first (true = scored there, no harm done), and their own blows on the player
+        /// are scored by <see cref="boutStrike"/> instead of hurting.</summary>
+        [System.NonSerialized] public System.Func<Npc, Vector3, Vector3, float, GameObject, bool> boutHit;
+        [System.NonSerialized] public System.Action<Npc> boutStrike;
 
         // ------------------------------------------------------------------ clinic (depth stage G)
         Transform berth; bool berthed; Vector3 berthExit;
