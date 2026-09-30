@@ -1063,6 +1063,16 @@ User requests:
 - [x] **Visible sun and moon**: a sun disc (white-gold high, orange low, red on the horizon) in the perspective views, the moon also by day; the top-down views show a small sun / moon arc beside the clock.
 
 Still failing in the fast suite (kept visible, not skipped):
-- [ ] `vehicle.drive.Bulldozer` on the start-road pad: reverses at 1.4 m/s, then stops dead (all tracks grounded, no collider contact, 118 kN drive). Other pads reverse 4-10 m. Suspect the tracks' ray suspension against a road edge or its own landing ruts; needs a per-wheel force trace.
-- [ ] `visuals.sun_moon` after world reloads: the sun disc is measured 64 m from the camera instead of 104 m and out of frame, though a single run and a live capture show it correctly at sunset. The scenario now logs every camera and Atmosphere to find the stale one.
+- [x] `vehicle.drive.Bulldozer` on the start-road pad stopped dead in reverse. *Fixed* by the modelled tracks (below): 22 m forward / 18 m back in the same test.
+- [x] `visuals.sun_moon` after world reloads: the disc was right (104 m out on the sun's bearing); the camera just was not facing it. The check now asserts the bearing and distance; the screenshot stays evidence only.
+
+## User requests (2026-09-30, evening)
+- [x] **Modelled tracks for all tracked machines** (bulldozer, excavator, paver). *Done:* each track bears on five points a side (sprocket, three road wheels, idler, each on its own suspension); skid steering (outer track leads, inner holds back or reverses, pivot turn at a standstill, sideways slew while steering) instead of steered wheels; `Vehicle/CrawlerTracks` draws the belt as voxel links (plate + grouser) running round the wheels with the ground speed, road wheels roll. The old painted tracks became a frame rail and a fender. Heavy mud with a full load: bulldozer 28 m / excavator 33 m in 8 s, turns on the move, pivots on the spot (`vehicle.crawler_mud.*`).
+- [x] **Carried things hidden while driving**: the tool or prop in hand is put away when seated and comes back on foot.
+- [x] **Get in / out animations** (setting GET IN / OUT ANIMATION, on by default): walk to the door, the door swings open on its front hinge, slide into the seat, door shuts; out the same way. Only for the player's own key presses (scripted enters, fleet cycling and tests stay instant); bikes, aircraft, boats and walk-in cabins keep their own ways (`vehicle.boarding`).
+- [x] **Natural machine controls**: arrows and Q/E (rebindable Tool actions) work the tool when the vehicle has one — excavator up/down boom, left/right swing, Q curl/dig, E dump, Shift+up/down stick; backhoe loader arms and bucket, Shift for the rear hoe; dozer blade up/down, angle, pitch; tipper bed; paver screed, Q pave, E material; crane hoist, slew, Shift+up/down boom, Q grab. Number keys still work; on machines Shift+E/Q shifts gear.
+- [x] **Graphical key map** (F1 or H): a drawn keyboard with every key bound in the current situation (on foot, driving, machine, crane, aircraft, build mode) lit by group, with a legend; replaces the text help sheet.
+- [x] **Quieter prompts**: the context prompt is a small list on the left (key cap, icon where the action has one, label) instead of a bar across the bottom.
+- [x] **Far view in first and third person** (also hood / bumper cameras): the far terrain carries the view to ~450 m (fog end) instead of the chunk radius.
+- [x] **Flight controls**: arrows pitch (setting FLIGHT PITCH: up climbs, or stick style), Q/E roll, left/right and A/D rudder, W/S throttle; Space / Ctrl still pull up / push down.
 

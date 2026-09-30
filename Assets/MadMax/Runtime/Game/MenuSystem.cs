@@ -319,8 +319,10 @@ namespace MadMax.Game
                         Opt("AUTOSAVE", () => s.autosaveMinutes == 0 ? "OFF" : "EVERY " + s.autosaveMinutes + " MIN", d => { int i = System.Array.IndexOf(GameSettings.AutosaveChoices, s.autosaveMinutes); s.autosaveMinutes = GameSettings.AutosaveChoices[(Mathf.Max(0, i) + d + GameSettings.AutosaveChoices.Length) % GameSettings.AutosaveChoices.Length]; });
                         Opt("UNITS", () => s.metric ? "KM/H, CELSIUS" : "MPH, FAHRENHEIT", d => s.metric = !s.metric);
                         Opt("FLIGHT MODEL", () => s.simFlight ? "SIMULATION" : "ASSISTED", d => s.simFlight = !s.simFlight);
+                        Opt("FLIGHT PITCH", () => s.flightStick ? "STICK (UP DIVES)" : "UP CLIMBS", d => s.flightStick = !s.flightStick);
                         Opt("SIDECAR HANDLING", () => s.vintageSidecar ? "VINTAGE" : "ASSISTED", d => s.vintageSidecar = !s.vintageSidecar);
                         Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
+                        Opt("GET IN / OUT ANIMATION", () => s.boardingAnimation ? "ON" : "OFF", d => s.boardingAnimation = !s.boardingAnimation);
                         Opt("CAR DEFORMATION", () => GameSettings.DeformationNames[Mathf.Clamp(s.deformation, 0, GameSettings.DeformationNames.Length - 1)],
                             d => s.deformation = Mathf.Clamp(s.deformation + d, 0, GameSettings.DeformationScales.Length - 1));
                         Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);

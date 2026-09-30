@@ -46,6 +46,30 @@ namespace MadMax.Game.Acceptance
             pad = dir = default; return false;
         }
 
+        /// <summary>A level, clear pad on soft muddy ground (mud ≥ <paramref name="minMud"/>) with a lane ahead, near the player.</summary>
+        public static bool MudPad(float radius, float lane, float minMud, out Vector3 pad, out Vector3 dir, out float mud)
+        {
+            var g = WastelandGame.Instance; var t = DeformableTerrain.Instance;
+            var focus = g.Player ? g.Player.transform.position : Vector3.zero;
+            for (int k = 0; k < 500; k++)
+            {
+                float a = k * 2.39996f, r = 10f + k * 0.22f;
+                var p = focus + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r;
+                float m = t.SurfaceAt(p.x, p.z).mud;
+                if (m < minMud) continue;
+                foreach (var d in new[] { Vector3.forward, Vector3.right, Vector3.back, Vector3.left })
+                {
+                    var far = p + d * lane * 0.5f;
+                    if (t.SurfaceAt(far.x, far.z).mud < minMud * 0.8f) continue;
+                    if (!Level(p, radius, 4f, true) || !Clear(p, radius)) continue;
+                    bool open = true;
+                    for (float s = radius; s < lane && open; s += 6f) open = Clear(p + d * s, 3f) && Level(p + d * s, 3f, 8f, true);
+                    if (open) { pad = new Vector3(p.x, t.Height(p.x, p.z), p.z); dir = d; mud = m; return true; }
+                }
+            }
+            pad = dir = default; mud = 0f; return false;
+        }
+
         static bool Usable(Vector3 p, float radius, float lane, Vector3 dir)
         {
             if (!Level(p, radius, 3f) || !Clear(p, radius)) return false;
@@ -80,10 +104,10 @@ namespace MadMax.Game.Acceptance
             at = uphill = default; return false;
         }
 
-        static bool Level(Vector3 p, float radius, float maxDeg)
+        static bool Level(Vector3 p, float radius, float maxDeg, bool muddy = false)
         {
             var t = DeformableTerrain.Instance;
-            if (t.WaterDepth(p.x, p.z) > 0f || t.SurfaceAt(p.x, p.z).mud > 0.3f) return false;
+            if (t.WaterDepth(p.x, p.z) > 0f || (!muddy && t.SurfaceAt(p.x, p.z).mud > 0.3f)) return false;
             float h0 = t.Height(p.x, p.z);
             for (int i = 0; i < 8; i++)
             {

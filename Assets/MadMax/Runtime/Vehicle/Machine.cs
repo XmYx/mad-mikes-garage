@@ -10,6 +10,10 @@ namespace MadMax.Vehicles
     public struct MachineKeys
     {
         public bool h1, h2, h3, h4, h5, h6, p1, p2, p3, p4, p5, p6, shift;
+        /// <summary>Natural controls: up = arrows up/down (+ up), side = left/right (+ right), qe = Q (+1) / E (-1);
+        /// qPressed / ePressed this frame.</summary>
+        public float up, side, qe;
+        public bool qPressed, ePressed;
         /// <summary>+1 / -1 / 0 from a pair of held keys.</summary>
         public static float Axis(bool plus, bool minus) => (plus ? 1f : 0f) - (minus ? 1f : 0f);
     }
@@ -127,9 +131,11 @@ namespace MadMax.Vehicles
             {
                 case Kind.Excavator:
                 {
-                    if (k.shift) Hinge(ref slew, MachineKeys.Axis(k.h2, k.h1), 30f, -150f, 150f, dt);
-                    else Hinge(ref boom, MachineKeys.Axis(k.h1, k.h2), 22f, -35f, 45f, dt);
-                    Hinge(ref stick, MachineKeys.Axis(k.h3, k.h4), 28f, -55f, 75f, dt);
+                    // numbers as before; arrows: up/down boom (Shift: stick out/in), left/right swing, Q curl / E open
+                    Hinge(ref slew, Mathf.Clamp((k.shift ? MachineKeys.Axis(k.h2, k.h1) : 0f) + k.side, -1f, 1f), 30f, -150f, 150f, dt);
+                    Hinge(ref boom, Mathf.Clamp(k.shift ? 0f : MachineKeys.Axis(k.h1, k.h2) - k.up, -1f, 1f), 22f, -35f, 45f, dt);
+                    float stickIn = Mathf.Clamp(MachineKeys.Axis(k.h3, k.h4) - (k.shift ? k.up : 0f), -1f, 1f);
+                    Hinge(ref stick, stickIn, 28f, -55f, 75f, dt);
                     // a rock drill in place of the bucket: [5] spins the auger into rock, outcrops and deep ground
                     var bit = Seg(Tool, "bit");
                     if (bit)
@@ -140,60 +146,63 @@ namespace MadMax.Vehicles
                         Status = "EXCAVATOR DRILL" + (doing != null ? "  " + doing : "") + "  [1/2] BOOM  [3/4] STICK  [5] DRILL  [SHIFT+1/2] SWING";
                         break;
                     }
-                    Hinge(ref bucket, MachineKeys.Axis(k.h5, k.h6), 45f, -80f, 75f, dt);
+                    Hinge(ref bucket, Mathf.Clamp(MachineKeys.Axis(k.h5, k.h6) + k.qe, -1f, 1f), 45f, -80f, 75f, dt);
                     var tip = Teeth(Seg(Tool, "bucket"), new Vector3(0, -8, 4));
-                    bool inSoil = Dig(ref load, ref loadType, ref tick, Capacity, tip, (k.h5 || k.h3) && !k.shift, 1.0f, 0.14f, dt, 8f);
-                    if (k.h6 && bucket < -25f && load > 0.01f) Dump(ref load, loadType, tip, 7f);
+                    bool inSoil = Dig(ref load, ref loadType, ref tick, Capacity, tip, ((k.h5 || k.h3) && !k.shift) || k.qe > 0.5f || stickIn > 0.5f, 1.0f, 0.14f, dt, 8f);
+                    if ((k.h6 || k.qe < -0.5f) && bucket < -25f && load > 0.01f) Dump(ref load, loadType, tip, 7f);
                     Status = "EXCAVATOR  BUCKET " + Pct(load, Capacity) + " " + ResourceInfo.Name(loadType) + (inSoil ? "  (IN SOIL)" : "") +
-                             "  [1/2] BOOM  [3/4] STICK  [5/6] CURL/OPEN  [SHIFT+1/2] SWING";
+                             "  UP/DN BOOM  L/R SWING  Q CURL  E DUMP  SHIFT+UP/DN STICK";
                     break;
                 }
                 case Kind.Backhoe:
                 {
                     if (!k.shift)
                     {
-                        Hinge(ref arms, MachineKeys.Axis(k.h1, k.h2), 25f, -50f, 14f, dt);
-                        Hinge(ref tilt, MachineKeys.Axis(k.h6, k.h5), 40f, -45f, 60f, dt);
+                        // front loader: up/down arms, Q curl / E dump
+                        Hinge(ref arms, Mathf.Clamp(MachineKeys.Axis(k.h1, k.h2) - k.up, -1f, 1f), 25f, -50f, 14f, dt);
+                        Hinge(ref tilt, Mathf.Clamp(MachineKeys.Axis(k.h6, k.h5) - k.qe, -1f, 1f), 40f, -45f, 60f, dt);
                         Hinge(ref hoeBoom, MachineKeys.Axis(k.h4, k.h3), 22f, -45f, 30f, dt);
                     }
                     else
                     {
-                        Hinge(ref hoeSwing, MachineKeys.Axis(k.h2, k.h1), 28f, -80f, 80f, dt);
+                        // Shift: the rear hoe — up/down boom, left/right swing, Q curl / E open
+                        Hinge(ref hoeSwing, Mathf.Clamp(MachineKeys.Axis(k.h2, k.h1) + k.side, -1f, 1f), 28f, -80f, 80f, dt);
+                        Hinge(ref hoeBoom, Mathf.Clamp(k.up, -1f, 1f), 22f, -45f, 30f, dt);
                         Hinge(ref hoeStick, MachineKeys.Axis(k.h4, k.h3), 28f, -60f, 60f, dt);
-                        Hinge(ref hoeBucket, MachineKeys.Axis(k.h6, k.h5), 45f, -70f, 80f, dt);
+                        Hinge(ref hoeBucket, Mathf.Clamp(MachineKeys.Axis(k.h6, k.h5) - k.qe, -1f, 1f), 45f, -70f, 80f, dt);
                     }
                     var edge = Teeth(Seg(Tool, "bucket"), new Vector3(0, -6, 5));
                     bool pushing = driver && driver.ForwardSpeed > 0.3f;
-                    bool front = Dig(ref load, ref loadType, ref tick, Capacity, edge, pushing || (!k.shift && k.h5), 1.3f, 0.08f, dt, 2f);
-                    if (!k.shift && k.h6 && tilt > 25f && load > 0.01f) Dump(ref load, loadType, edge, 4f);
+                    bool front = Dig(ref load, ref loadType, ref tick, Capacity, edge, pushing || (!k.shift && (k.h5 || k.qe > 0.5f)), 1.3f, 0.08f, dt, 2f);
+                    if (!k.shift && (k.h6 || k.qe < -0.5f) && tilt > 25f && load > 0.01f) Dump(ref load, loadType, edge, 4f);
                     var hoeTip = Teeth(Seg(Rear, "bucket"), new Vector3(0, -6, -3));
-                    bool rear = Rear && Dig(ref rearLoad, ref rearType, ref rearTick, RearCapacity, hoeTip, k.shift && (k.h5 || k.h3), 0.7f, 0.06f, dt, 3f);
-                    if (Rear && k.shift && k.h6 && hoeBucket > 30f && rearLoad > 0.01f) Dump(ref rearLoad, rearType, hoeTip, 4f);
+                    bool rear = Rear && Dig(ref rearLoad, ref rearType, ref rearTick, RearCapacity, hoeTip, k.shift && (k.h5 || k.h3 || k.qe > 0.5f), 0.7f, 0.06f, dt, 3f);
+                    if (Rear && k.shift && (k.h6 || k.qe < -0.5f) && hoeBucket > 30f && rearLoad > 0.01f) Dump(ref rearLoad, rearType, hoeTip, 4f);
                     Status = "LOADER " + Pct(load, Capacity) + (front ? "*" : "") + "  HOE " + Pct(rearLoad, RearCapacity) + (rear ? "*" : "") +
-                             "  [1/2] ARMS [5/6] BUCKET [3/4] HOE BOOM  SHIFT+: [1/2] SWING [3/4] STICK [5/6] HOE BUCKET";
+                             "  UP/DN ARMS  Q CURL  E DUMP   SHIFT: UP/DN HOE BOOM  L/R SWING  Q/E HOE BUCKET";
                     break;
                 }
                 case Kind.Dozer:
                 {
-                    Hinge(ref bladeLift, MachineKeys.Axis(k.h1, k.h2), 12f, -20f, 16f, dt);
-                    Hinge(ref bladePitch, MachineKeys.Axis(k.h3, k.h4), 15f, -15f, 15f, dt);
-                    Hinge(ref bladeAngle, MachineKeys.Axis(k.h6, k.h5), 20f, -25f, 25f, dt);
+                    Hinge(ref bladeLift, Mathf.Clamp(MachineKeys.Axis(k.h1, k.h2) - k.up, -1f, 1f), 12f, -20f, 16f, dt);       // up raises
+                    Hinge(ref bladePitch, Mathf.Clamp(MachineKeys.Axis(k.h3, k.h4) + k.qe, -1f, 1f), 15f, -15f, 15f, dt);
+                    Hinge(ref bladeAngle, Mathf.Clamp(MachineKeys.Axis(k.h6, k.h5) + k.side, -1f, 1f), 20f, -25f, 25f, dt);
                     var e = BladeEdge();
                     float depth = e.HasValue ? terrain.Height(e.Value.x, e.Value.z) - e.Value.y : -1f;
                     Status = "BULLDOZER  BLADE " + (depth > 0.02f ? "CUT " + depth.ToString("0.00") + " M" : "UP " + (-depth).ToString("0.00") + " M") +
-                             "  PILE " + load.ToString("0.0") + " M3  [1/2] DOWN/UP  [3/4] PITCH  [5/6] ANGLE";
+                             "  PILE " + load.ToString("0.0") + " M3  UP/DN BLADE  L/R ANGLE  Q/E PITCH";
                     break;
                 }
                 case Kind.DumpTruck:
-                    Hinge(ref bed, MachineKeys.Axis(k.h2, k.h1), 12f, 0f, 50f, dt);
-                    Status = "TIPPER  " + Mathf.RoundToInt(store.Weight) + " KG  BED " + Mathf.RoundToInt(bed) + "°  [1/2] LOWER/RAISE  [E] LOAD FROM OUTSIDE";
+                    Hinge(ref bed, Mathf.Clamp(MachineKeys.Axis(k.h2, k.h1) + k.up, -1f, 1f), 12f, 0f, 50f, dt);
+                    Status = "TIPPER  " + Mathf.RoundToInt(store.Weight) + " KG  BED " + Mathf.RoundToInt(bed) + "  UP/DN RAISE/LOWER THE BED";
                     break;
                 case Kind.Paver:
-                    if (k.p1) active = !active;
-                    if (k.p3) concrete = !concrete;
-                    Hinge(ref screed, MachineKeys.Axis(k.h5, k.h6), 10f, -4f, 10f, dt);
+                    if (k.p1 || k.qPressed) active = !active;
+                    if (k.p3 || k.ePressed) concrete = !concrete;
+                    Hinge(ref screed, Mathf.Clamp(MachineKeys.Axis(k.h5, k.h6) + k.up, -1f, 1f), 10f, -4f, 10f, dt);
                     var mat = concrete ? ResourceType.Concrete : ResourceType.Asphalt;
-                    Status = "PAVER  " + (active ? "PAVING " : "IDLE ") + ResourceInfo.Name(mat) + " " + store.inventory.Get(mat) + "  [1] ON/OFF  [3] MATERIAL  [5/6] SCREED";
+                    Status = "PAVER  " + (active ? "PAVING " : "IDLE ") + ResourceInfo.Name(mat) + " " + store.inventory.Get(mat) + "  Q PAVE ON/OFF  E MATERIAL  UP/DN SCREED";
                     break;
                 case Kind.Roller:
                     Status = "ROLLER  COMPACTS WET PAVING";

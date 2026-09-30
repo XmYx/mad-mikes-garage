@@ -237,6 +237,7 @@ namespace MadMax.Game
             SaveSystem.PendingRules = null; SaveSystem.PendingCharacter = null; SaveSystem.PendingLook = null;
             SaveSystem.SkipMenu = false;
             helpUntil = Time.time + 12f;
+            Hints.Show("keymap", "F1: A MAP OF THE KEYS FOR WHAT YOU ARE DOING", 3);
             ScreenFader.Progress(1f);
             Ready = true;
         }
@@ -596,7 +597,7 @@ namespace MadMax.Game
                 return;
             }
 
-            if (Controls.Down(Controls.Act.Help)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
+            if (Controls.Down(Controls.Act.Help) || (kb != null && kb.f1Key.wasPressedThisFrame)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
             if (ShowHelp && Time.time > helpUntil) ShowHelp = false;
             UpdateAim(mouse, pad);
             if (Controls.Down(Controls.Act.Reload) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
@@ -619,8 +620,9 @@ namespace MadMax.Game
                 }
                 if (Controls.Down(Controls.Act.FourWheel)) { Current.ToggleFourWheelDrive(); if (Current.awdSelectable) Toast(Current.FourWheelDrive ? "4WD ENGAGED" : "2WD"); }
                 if (Controls.Down(Controls.Act.DiffLock)) { Current.ToggleDiffLock(); Toast(Current.hasDiffLock ? (Current.diffLocked ? "DIFF LOCKED" : "DIFF OPEN") : "NO DIFF LOCK ON THIS VEHICLE"); }
-                if (Controls.Down(Controls.Act.ShiftUp) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();
-                if (Controls.Down(Controls.Act.ShiftDown) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
+                bool gearKeys = !ToolKeys || Controls.Held(Controls.Act.Run);                     // on machines Q/E work the tool: Shift+E/Q shift
+                if ((gearKeys && Controls.Down(Controls.Act.ShiftUp)) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) Current.ShiftUp();
+                if ((gearKeys && Controls.Down(Controls.Act.ShiftDown)) || (pad != null && pad.leftShoulder.wasPressedThisFrame)) Current.ShiftDown();
                 if (Controls.Down(Controls.Act.Lights) || (pad != null && pad.dpad.left.wasPressedThisFrame)) { var vl = Current.GetComponent<VehicleLights>(); if (vl) { vl.mode = (vl.mode + 1) % 3; Toast(VehicleLights.ModeNames[vl.mode]); } }
                 // horn (a siren with an emergency bar): Y, middle mouse, right stick
                 bool horn = !ExternalInput && (Controls.Held(Controls.Act.Horn) || (mouse != null && mouse.middleButton.isPressed) || (pad != null && pad.rightStickButton.isPressed));
@@ -634,7 +636,18 @@ namespace MadMax.Game
                 hornHeld = horn;
                 if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
                 bool shiftHeld = Controls.Held(Controls.Act.Run);
-                if (kb != null && Current.TryGetComponent<Crane>(out var crane)) crane.Control(Pressed(Key.Digit7), kb.digit8Key.isPressed, kb.digit9Key.isPressed, kb.digit0Key.isPressed ? (shiftHeld ? -1f : 1f) : 0f, shiftHeld);
+                float toolUp = (Controls.Held(Controls.Act.ToolUp) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolDown) ? 1f : 0f);
+                float toolSide = (Controls.Held(Controls.Act.ToolRight) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolLeft) ? 1f : 0f);
+                float toolQE = (Controls.Held(Controls.Act.ToolA) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolB) ? 1f : 0f);
+                bool machineHere = Current.TryGetComponent<Machine>(out var machineTool) && machineTool.enabled;
+                if (kb != null && Current.TryGetComponent<Crane>(out var crane))
+                {
+                    // arrows (when no machine tool claims them): up/down hoist (Shift: boom), left/right slew, Q grab / release
+                    bool arrowsFree = !machineHere && crane.CranePart;
+                    crane.Control(Pressed(Key.Digit7) || arrowsFree && Controls.Down(Controls.Act.ToolA),
+                        kb.digit8Key.isPressed || arrowsFree && toolUp > 0f, kb.digit9Key.isPressed || arrowsFree && toolUp < 0f,
+                        kb.digit0Key.isPressed ? (shiftHeld ? -1f : 1f) : arrowsFree ? toolSide : 0f, shiftHeld);
+                }
                 if (Controls.Down(Controls.Act.Climate) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
                 if (Current.TryGetComponent<VehicleWeapons>(out var guns) && !ExternalInput)
                     guns.Control(new WeaponInput
@@ -649,7 +662,9 @@ namespace MadMax.Game
                     {
                         h1 = kb.digit1Key.isPressed, h2 = kb.digit2Key.isPressed, h3 = kb.digit3Key.isPressed, h4 = kb.digit4Key.isPressed, h5 = kb.digit5Key.isPressed, h6 = kb.digit6Key.isPressed,
                         p1 = Pressed(Key.Digit1), p2 = Pressed(Key.Digit2), p3 = Pressed(Key.Digit3), p4 = Pressed(Key.Digit4), p5 = Pressed(Key.Digit5), p6 = Pressed(Key.Digit6),
-                        shift = Controls.Held(Controls.Act.Run)
+                        shift = Controls.Held(Controls.Act.Run),
+                        up = toolUp, side = toolSide, qe = shiftHeld && Controls.Held(Controls.Act.ShiftUp) ? 0f : toolQE,
+                        qPressed = Controls.Down(Controls.Act.ToolA), ePressed = Controls.Down(Controls.Act.ToolB)
                     });
             }
             {
@@ -707,8 +722,9 @@ namespace MadMax.Game
             Vector2 move = Vector2.zero; bool space = false, shift = false, spaceDown = false;
             if (kb != null)
             {
-                move.x = (Controls.Held(Controls.Act.Right) || kb.rightArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Left) || kb.leftArrowKey.isPressed ? 1f : 0f);
-                move.y = (Controls.Held(Controls.Act.Forward) || kb.upArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Back) || kb.downArrowKey.isPressed ? 1f : 0f);
+                bool arrows = !ToolKeys;                                                  // machines, cranes, aircraft: the arrows work the tool
+                move.x = (Controls.Held(Controls.Act.Right) || arrows && kb.rightArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Left) || arrows && kb.leftArrowKey.isPressed ? 1f : 0f);
+                move.y = (Controls.Held(Controls.Act.Forward) || arrows && kb.upArrowKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.Back) || arrows && kb.downArrowKey.isPressed ? 1f : 0f);
                 space = Controls.Held(Controls.Act.Jump); spaceDown = Controls.Down(Controls.Act.Jump); shift = Controls.Held(Controls.Act.Run);
             }
             float throttle = Mathf.Max(0f, move.y), brake = Mathf.Max(0f, -move.y);
@@ -737,6 +753,7 @@ namespace MadMax.Game
             }
             if (!Current && Build) Build.Tick(kb, mouse, pad);
             if (ExternalInput) return;
+            if (Boarding) { if (Current) { Current.throttleInput = Current.brakeInput = Current.steerInput = 0f; Current.handbrake = true; } return; }
 
             if (Current)
             {
@@ -747,10 +764,15 @@ namespace MadMax.Game
                 if (Current.TryGetComponent<BikeBalance>(out var bikeLean)) bikeLean.leanBack = shift;          // wheelie / bicycle sprint
                 if (Current.TryGetComponent<FlightModel>(out var flight))
                 {
-                    // aircraft: W/S move the throttle lever, A/D bank, Space pulls up, Ctrl pushes down (pad: right stick)
-                    flight.rollInput = Mathf.Clamp(move.x, -1f, 1f);
+                    // aircraft: W/S throttle lever, arrows up/down pitch (setting: which way climbs), Q/E roll, left/right
+                    // arrows and A/D the rudder (taxi steering); Space / Ctrl still pull up / push down; pad: sticks
+                    float roll = (Controls.Held(Controls.Act.ToolB) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolA) ? 1f : 0f);
+                    if (pad != null) roll += pad.leftStick.ReadValue().x;
+                    flight.rollInput = Mathf.Clamp(roll, -1f, 1f);
+                    Current.steerInput = Mathf.Clamp(move.x + (Controls.Held(Controls.Act.ToolRight) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolLeft) ? 1f : 0f), -1f, 1f);
                     flight.throttleAxis = Mathf.Clamp(throttle - brake, -1f, 1f);
-                    float pitch = (space ? 1f : 0f) - (Controls.Held(Controls.Act.Crouch) ? 1f : 0f);
+                    float nose = (Controls.Held(Controls.Act.ToolUp) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolDown) ? 1f : 0f);
+                    float pitch = (GameSettings.Current.flightStick ? -nose : nose) + (space ? 1f : 0f) - (Controls.Held(Controls.Act.Crouch) ? 1f : 0f);
                     if (pad != null) pitch -= pad.rightStick.ReadValue().y;
                     flight.pitchInput = Mathf.Clamp(pitch, -1f, 1f);
                 }

@@ -123,6 +123,8 @@ namespace MadMax.Vehicles
             public bool broken;          // tyre broke traction last step (kinetic friction is lower)
             public bool deck;            // on a built deck (floor, foundation, ramp): firm, no ruts
             public float reachBase;      // body below the wheel bottom (crawler tracks, roller drums): extra ray reach
+            public bool virt;            // a track road wheel between the sprocket and the idler (no part of its own)
+            public Vector3 local;        // virtual road wheels: axle (inner face) in vehicle space
             public Surface surf;
         }
 
@@ -136,6 +138,35 @@ namespace MadMax.Vehicles
 
         /// <summary>Wheels touching the ground last step (0 = airborne: jumps, hang time).</summary>
         public int WheelsDown { get { int n = 0; foreach (var w in wheels) if (w.part && w.grounded) n++; return n; } }
+
+        /// <summary>Crawler tracks (wheel_track parts): five contacts per side, skid steering, see <see cref="CrawlerTracks"/>.</summary>
+        public bool Tracked { get; private set; }
+
+        Vector3 Axle(Wheel w) => w.virt ? transform.TransformPoint(w.local) : w.socket.transform.position;
+        Vector3 LocalAxle(Wheel w) => w.virt ? w.local : transform.InverseTransformPoint(w.socket.transform.position);
+
+        /// <summary>One road wheel of a track: axle (inner face, vehicle space, suspension included), radius, own part or virtual.</summary>
+        public struct TrackPoint { public Vector3 axle; public float radius, width; public bool virt; public VehiclePart part; }
+
+        /// <summary>The road wheels of one track, front first (for the belt and roller visuals).</summary>
+        public void TrackProfile(bool left, List<TrackPoint> into)
+        {
+            into.Clear();
+            foreach (var w in wheels)
+            {
+                if (!w.part || w.left != left) continue;
+                float off = (w.grounded ? w.comp : 0f) - restComp - rideHeight;
+                into.Add(new TrackPoint { axle = LocalAxle(w) + Vector3.up * off, radius = w.radius, width = w.width, virt = w.virt, part = w.part });
+            }
+            into.Sort((a, b) => b.axle.z.CompareTo(a.axle.z));
+        }
+
+        /// <summary>How far one track's belt has run (m, forward positive): drives the link animation.</summary>
+        public float TrackTravel(bool left)
+        {
+            foreach (var w in wheels) if (w.part && !w.virt && w.left == left) return w.spin * Mathf.Deg2Rad * w.radius;
+            return 0f;
+        }
 
         bool AllGroundedLastStep()
         {
@@ -161,6 +192,42 @@ namespace MadMax.Vehicles
         }
 
         void OnDestroy() { if (chassis) chassis.Changed -= Rebuild; }
+
+        /// <summary>Three road wheels between each track's sprocket and idler: the track bears on five points a side.</summary>
+        void AddRoadWheels()
+        {
+            foreach (bool left in new[] { true, false })
+            {
+                Wheel f = null, r = null;
+                foreach (var w in wheels)
+                {
+                    if (!w.part || w.left != left) continue;
+                    if (f == null || LocalAxle(w).z > LocalAxle(f).z) f = w;
+                    if (r == null || LocalAxle(w).z < LocalAxle(r).z) r = w;
+                }
+                if (f == null || r == null || f == r) continue;
+                foreach (float t in new[] { 0.25f, 0.5f, 0.75f })
+                    wheels.Add(new Wheel { socket = f.socket, part = f.part, stats = f.stats, radius = f.radius, width = f.width, left = left, front = false, virt = true,
+                                           local = Vector3.Lerp(LocalAxle(f), LocalAxle(r), t) });
+            }
+            if (!Application.isBatchMode && !GetComponent<CrawlerTracks>()) gameObject.AddComponent<CrawlerTracks>();
+        }
+
+        /// <summary>Skid steering: the outer track drives harder, the inner one holds back; at a standstill the tracks
+        /// counter-rotate (pivot turn).</summary>
+        void SkidSteer(float share, float driveCmd, bool running)
+        {
+            float turn = Mathf.Clamp(steer / Mathf.Max(1f, maxSteer), -1f, 1f);
+            bool pivot = running && Mathf.Abs(driveCmd) < 0.05f && Mathf.Abs(turn) > 0.05f;
+            foreach (var w in wheels)
+            {
+                if (!w.part || !w.grounded) continue;
+                float side = w.left ? 1f : -1f;                                              // turning right: the left track leads
+                // split within the grip: past it both tracks would just slip equally and the machine would not turn
+                float limited = Mathf.Sign(share) * Mathf.Min(Mathf.Abs(share), w.maxF * 0.9f);
+                w.drive = pivot ? turn * side * w.maxF * 0.75f : limited * Mathf.Clamp(1f + turn * side * 1.4f, -0.8f, 1.1f);
+            }
+        }
 
         static PhysicsMaterial skin;
         /// <summary>Vehicle colliders: slick against other vehicles (Minimum combine) so stalled cars pressed together
@@ -189,9 +256,9 @@ namespace MadMax.Vehicles
             float bottom = body.localPosition.y + meshBounds.min.y, deepest = 0f, axle = float.MaxValue;
             foreach (var w in wheels)
             {
-                w.reachBase = w.part ? Mathf.Min(0.4f, w.socket.transform.localPosition.y - bottom - w.radius) : -1f;
+                w.reachBase = w.part ? Mathf.Min(0.4f, LocalAxle(w).y - bottom - w.radius) : -1f;
                 deepest = Mathf.Max(deepest, w.reachBase);
-                if (w.part) axle = Mathf.Min(axle, w.socket.transform.localPosition.y);
+                if (w.part) axle = Mathf.Min(axle, LocalAxle(w).y);
             }
             if (!bodyBox && body.TryGetComponent(out bodyBox)) { bodyBoxCenter = bodyBox.center; bodyBoxSize = bodyBox.size; }
             if (!bodyBox) return;
@@ -223,6 +290,9 @@ namespace MadMax.Vehicles
                 }
                 else if (!engine && s.Current) engine = s.Current.GetComponent<EngineStats>();
             }
+            Tracked = false;
+            foreach (var w in wheels) if (w.part && w.part.partId.StartsWith("wheel_track")) Tracked = true;
+            if (Tracked) AddRoadWheels();
             ApplySkin();
             rb.mass = chassis.TotalMass;
             massPerWheel = rb.mass / Mathf.Max(1, wheels.Count);
@@ -239,7 +309,7 @@ namespace MadMax.Vehicles
                 {
                     // a single-track bike balances over its tyres' contact line
                     int n = 0; cx = 0f;
-                    foreach (var w in wheels) if (!w.idler) { cx += w.socket.transform.localPosition.x + (w.left ? -0.5f : 0.5f) * w.width; n++; }
+                    foreach (var w in wheels) if (!w.idler) { cx += LocalAxle(w).x + (w.left ? -0.5f : 0.5f) * w.width; n++; }
                     cx = n > 0 ? cx / n : 0f;
                 }
                 rb.centerOfMass = customCom ? centerOfMass : new Vector3(cx, b.min.y + 0.25f, b.center.z);
@@ -363,7 +433,7 @@ namespace MadMax.Vehicles
                 if (!w.part) continue;
 
                 Vector3 outward = transform.right * (w.left ? -1f : 1f);
-                Vector3 anchor = w.socket.transform.position + outward * (w.width * 0.5f) + up * (travel - restComp - rideHeight);
+                Vector3 anchor = Axle(w) + outward * (w.width * 0.5f) + up * (travel - restComp - rideHeight);
                 float rayLen = travel + w.radius * (w.stats && w.stats.Popped ? 0.78f : 1f) + Mathf.Max(0f, w.reachBase - rideHeight);
                 if (up.y < 0.25f) { w.comp = 0; continue; }
                 float gh = terrain.Height(anchor.x, anchor.z);
@@ -384,7 +454,7 @@ namespace MadMax.Vehicles
                 w.spring = Mathf.Clamp(spring, 0f, massPerWheel * 40f);
                 rb.AddForceAtPosition(up * w.spring, w.contact);
 
-                Vector3 fwd = Quaternion.AngleAxis(w.front ? steer : 0f, up) * transform.forward;
+                Vector3 fwd = Quaternion.AngleAxis(w.front && !Tracked ? steer : 0f, up) * transform.forward;
                 w.fwd = Vector3.ProjectOnPlane(fwd, n).normalized;
                 w.side = Vector3.Cross(n, w.fwd);
                 Vector3 v = rb.GetPointVelocity(w.contact);
@@ -414,7 +484,8 @@ namespace MadMax.Vehicles
             float share = driven > 0 ? driveForce / driven : 0f;
             foreach (var w in wheels) if (w.part && w.grounded && IsDriven(w)) w.drive = tractionLimit > 0f ? Mathf.Clamp(share, -w.maxF * tractionLimit, w.maxF * tractionLimit) : share;
             DriveForce = 0f; foreach (var w in wheels) DriveForce += w.drive;
-            if (!diffLocked && Mathf.Abs(share) > 0f)
+            if (Tracked) SkidSteer(share, driveCmd, engine && power > 0f);
+            else if (!diffLocked && Mathf.Abs(share) > 0f)
             {
                 for (int i = 0; i < wheels.Count; i++)
                 for (int j = i + 1; j < wheels.Count; j++)
@@ -449,6 +520,11 @@ namespace MadMax.Vehicles
                     continue;
                 }
                 float lat = -w.vs * massPerWheel / dt * 0.5f;
+                if (Tracked)                                                                    // tracks slew sideways when steering
+                {
+                    float slew = Mathf.Lerp(0.6f, 0.3f, Mathf.Abs(steer) / Mathf.Max(1f, maxSteer));
+                    lat = Mathf.Clamp(lat, -w.maxF * slew, w.maxF * slew);
+                }
                 float lng = w.drive;
                 // line lock: throttle + brake at low speed holds the undriven wheels only (burnout)
                 bool lineLock = driveCmd > 0.5f && brakeCmd > 0.5f && Mathf.Abs(ForwardSpeed) < 4f && isDriven && driven < wheels.Count;
@@ -567,7 +643,7 @@ namespace MadMax.Vehicles
             {
                 if (!w.socket) continue;
                 n++;
-                var p = w.socket.transform.position;
+                var p = Axle(w);
                 float lvl = terrain.WaterLevel(p.x, p.z);
                 if (float.IsNaN(lvl)) continue;
                 float depth = lvl - (p.y - w.radius);
@@ -605,7 +681,7 @@ namespace MadMax.Vehicles
                 w.grounded = true; w.comp = restComp;
                 if (stamp && terrain)
                 {
-                    var p = w.socket.transform.position;
+                    var p = Axle(w);
                     p.y = terrain.Height(p.x, p.z);
                     terrain.Deform(p, transform.forward, transform.right, w.width, massPerWheel * 9.81f, 0f, 0.1f);
                 }
@@ -617,7 +693,7 @@ namespace MadMax.Vehicles
             ReplicaVisuals();
             foreach (var w in wheels)
             {
-                if (!w.part || w.part.Socket != w.socket) continue;
+                if (!w.part || w.virt || w.part.Socket != w.socket) continue;
                 var t = w.part.transform;
                 t.localPosition = new Vector3(0f, Mathf.Min((w.grounded ? w.comp : 0f) - restComp - rideHeight, archLift), 0f);
                 float wobble = Mathf.Clamp01(w.part.damage) * 9f * Mathf.Sin(w.spin * Mathf.Deg2Rad);

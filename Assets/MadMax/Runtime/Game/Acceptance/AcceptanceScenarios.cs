@@ -34,6 +34,9 @@ namespace MadMax.Game.Acceptance
             yield return new DeformationSetting();
             yield return new ScrapeMarks();
             yield return new SunAndMoon();
+            yield return new CrawlerMud("Bulldozer");
+            yield return new CrawlerMud("Excavator");
+            yield return new Boarding();
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);
@@ -603,8 +606,9 @@ namespace MadMax.Game.Acceptance
             if (c.Failed) yield break;
             a.handbrake = false; a.throttleInput = 1f; a.steerInput = 0f;
             var dmg = a.GetComponent<VehicleDamage>();
-            float t0 = Time.time; bool touched = false;
-            while (Time.time - t0 < 3f) { touched |= dmg.Scraping; yield return null; }
+            int calls0 = wear.ScrapeCalls;
+            yield return new WaitForSeconds(3f);
+            bool touched = wear.ScrapeCalls > calls0;
             if (!c.Check(touched, "the cars rub (scrape contact registered)")) c.Note(TestWorld.State(a) + $"; moved {Vector3.Distance(pad - Vector3.forward * 4f, a.transform.position):0.0} m; touching: " + TestWorld.Contacts(a));
             a.throttleInput = 0f; a.brakeInput = 1f; a.steerInput = 0f;
             yield return new WaitForSeconds(1f);
@@ -647,7 +651,11 @@ namespace MadMax.Game.Acceptance
                 var vp = cam.WorldToViewportPoint(sun.transform.position);
                 c.Metric("sun_viewport_x", vp.x, ""); c.Metric("sun_viewport_y", vp.y, "");
                 c.Note($"cameras: {string.Join(", ", Camera.allCameras.Select(k => k.name + (k == cam ? "*" : "") + " @" + k.transform.position.ToString("0")))}; disc @{sun.transform.position:0}; atmospheres {Object.FindObjectsByType<Atmosphere>(FindObjectsSortMode.None).Length}");
-                c.Check(vp.z > 0f && vp.z < cam.farClipPlane && vp.x > 0f && vp.x < 1f && vp.y > 0f && vp.y < 1f, $"the sun disc is in frame (viewport {vp.x:0.00},{vp.y:0.00}, {vp.z:0} m, far clip {cam.farClipPlane:0} m)");
+                var toDisc = sun.transform.position - cam.transform.position;
+                float off = Vector3.Angle(toDisc, sd);
+                c.Metric("disc_bearing_error", off, "deg");
+                c.Check(off < 2f && Mathf.Abs(toDisc.magnitude - 104f) < 3f && toDisc.magnitude < cam.farClipPlane, $"the disc stands on the sun's bearing, {toDisc.magnitude:0} m out, inside the far clip ({cam.farClipPlane:0} m)");
+                if (vp.x < 0f || vp.x > 1f || vp.y < 0f || vp.y > 1f) c.Note($"the camera was not facing it for the screenshot (viewport {vp.x:0.00},{vp.y:0.00})");
             }
             c.Screenshot("sun");
             yield return null; yield return null;                                               // the capture is written at the end of the frame
@@ -667,6 +675,102 @@ namespace MadMax.Game.Acceptance
             }
             DayNight.SetHours(keepHours);
             rig.mode = keepMode;
+        }
+    }
+
+    /// <summary>Tracked machines (roadmap: modelled tracks): on soaked soft ground with a full load (dozer blade pile,
+    /// excavator bucket) the machine drives on, turns on the move and pivots on the spot.</summary>
+    class CrawlerMud : Scenario
+    {
+        readonly string name;
+        public CrawlerMud(string name) { this.name = name; }
+        public override string Id => "vehicle.crawler_mud." + name;
+        public override float Timeout => 90f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game; var v = TestWorld.Vehicle(name);
+            if (!v) { c.Block(name + " missing"); yield break; }
+            if (!c.Check(v.Tracked, name + " runs on modelled tracks")) yield break;
+            Weather.SetWetness(1f);
+            c.Fixture("ground soaked (weather wetness 1)");
+            yield return new WaitForSeconds(0.5f);
+            if (!TestWorld.MudPad(10f, 30f, 0.5f, out var pad, out var dir, out float mud)) { c.Block("no soft muddy ground near the start"); yield break; }
+            c.Metric("mud", mud, "");
+            yield return TestWorld.Place(c, v, pad, dir, 1.5f);
+            var m = v.GetComponent<Machine>();
+            if (m) { m.load = m.kind == Machine.Kind.Dozer ? 1.1f : m.Capacity; m.loadType = MadMax.Items.ResourceType.Clay; c.Fixture($"full load: {m.load:0.0} m3 of clay"); }
+            g.Enter(v); yield return new WaitForSeconds(0.3f);
+            yield return TestWorld.StartEngine(c, v);
+            if (c.Failed) yield break;
+
+            var p0 = v.transform.position;
+            v.handbrake = false; v.throttleInput = 1f;
+            yield return new WaitForSeconds(8f);
+            float ahead = Vector3.Dot(v.transform.position - p0, dir);
+            c.Metric("mud_8s", ahead, "m");
+            if (!c.Check(ahead > 6f, $"drives through the mud with a full load ({ahead:0.0} m in 8 s)")) c.Note(TestWorld.State(v) + "; touching: " + TestWorld.Contacts(v));
+
+            float y0 = v.transform.eulerAngles.y;
+            v.steerInput = 1f;
+            yield return new WaitForSeconds(3f);
+            float turned = Mathf.Abs(Mathf.DeltaAngle(y0, v.transform.eulerAngles.y));
+            c.Metric("turn_3s", turned, "deg");
+            c.Check(turned > 15f, $"steers on the move ({turned:0} deg in 3 s)");
+
+            v.throttleInput = 0f; v.brakeInput = 0f;
+            yield return new WaitForSeconds(1f);
+            y0 = v.transform.eulerAngles.y;
+            var ps = v.transform.position;
+            yield return new WaitForSeconds(3f);
+            float pivot = Mathf.Abs(Mathf.DeltaAngle(y0, v.transform.eulerAngles.y));
+            c.Metric("pivot_3s", pivot, "deg");
+            c.Metric("pivot_drift", Vector3.Distance(ps, v.transform.position), "m");
+            c.Check(pivot > 15f, $"pivots on the spot ({pivot:0} deg in 3 s)");
+            v.steerInput = 0f; v.handbrake = true;
+            yield return new WaitForSeconds(0.5f);
+        }
+    }
+
+    /// <summary>GET IN / OUT ANIMATION: the player walks to the door, the door opens, they slide in (the tool is put
+    /// away while driving) and get out the same way; with the setting off both are instant.</summary>
+    class Boarding : Scenario
+    {
+        public override string Id => "vehicle.boarding";
+        public override float Timeout => 40f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game; var v = TestWorld.Vehicle("Sedan");
+            if (!v) { c.Block("sedan missing"); yield break; }
+            if (!TestWorld.Pad(8f, out var pad)) { c.Block("no pad"); yield break; }
+            if (g.Current) { g.Exit(); yield return null; }
+            yield return TestWorld.Place(c, v, pad, Vector3.forward, 1f);
+            g.Player.Teleport(pad + Vector3.right * 3.2f + Vector3.up * 0.3f, -90f);
+            c.Fixture("player 3 m from the sedan's door");
+            var s = GameSettings.Current; bool keep = s.boardingAnimation;
+            s.boardingAnimation = true;
+            WastelandGame.ExternalInput = false;                                            // the animation plays for the player's own presses
+            g.EnterAnimated(v);
+            c.Check(g.Boarding, "the get-in animation starts");
+            float t0 = Time.time;
+            while (g.Boarding && Time.time - t0 < 4f) yield return null;
+            c.Metric("get_in", Time.time - t0, "s");
+            c.Check(g.Current == v && g.Player.SeatedIn == v, "seated at the wheel after the animation");
+            c.Check(!g.Player.Tool || !g.Player.Tool.gameObject.activeInHierarchy, "the tool is put away while driving");
+            g.ExitAnimated();
+            t0 = Time.time;
+            while (g.Boarding && Time.time - t0 < 4f) yield return null;
+            c.Metric("get_out", Time.time - t0, "s");
+            c.Check(g.Current == null && !g.Player.SeatedIn, "on foot after the get-out animation");
+            c.Check(!g.Player.Tool || g.Player.Tool.gameObject.activeInHierarchy, "the tool is back in hand");
+            s.boardingAnimation = false;
+            g.EnterAnimated(v);
+            c.Check(!g.Boarding && g.Current == v, "setting off: getting in is instant");
+            g.Exit();
+            s.boardingAnimation = keep;
+            WastelandGame.ExternalInput = true;
+            yield return null;
         }
     }
 }

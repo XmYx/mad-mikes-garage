@@ -204,7 +204,7 @@ namespace MadMax.Game
                 Prompt = Current.GetComponent<InteriorSpace>() ? "[F] STAND UP" : "[F] EXIT";
                 var tow = TowTargetFor(Current, out var towText);
                 if (towText != null) Prompt += "   " + towText;
-                if (F) Exit();
+                if (F && !Boarding) ExitAnimated();
                 else if (J) DoTow(Current, tow);
                 return;
             }
@@ -239,7 +239,7 @@ namespace MadMax.Game
                 if (Vector2.Distance(new Vector2(local.x, local.z), seat) < 1.6f && drv && drv.driveable)
                 {
                     enterText = "[F] DRIVE";
-                    if (F) Enter(drv);
+                    if (F && !Boarding) EnterAnimated(drv);
                 }
                 else if (door >= 0)
                 {

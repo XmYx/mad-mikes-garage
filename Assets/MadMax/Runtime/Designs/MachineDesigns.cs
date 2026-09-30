@@ -29,20 +29,20 @@ namespace MadMax.Designs
             Interior(g, floor, z1 - 4, z0 + 6, 4);
         }
 
-        /// <summary>Crawler track (right side at +x..+x+w), wheels hidden inside.</summary>
+        /// <summary>Crawler undercarriage (right side at +x..+x+w): the track frame between the road wheels and a
+        /// fender over the belt. The belt, road wheels and sprocket are live parts (<see cref="CrawlerTracks"/>).</summary>
         static void Track(VoxelGrid g, int x0, int w, int z0, int z1, int h)
         {
             foreach (int s in new[] { -1, 1 })
-            for (int z = z0; z <= z1; z++)
-            for (int y = 0; y <= h; y++)
-            for (int k = 0; k <= w; k++)
             {
-                int x = s * (x0 + k);
-                bool end = z == z0 || z == z1;
-                bool shell = y == 0 || y == h || k == 0 || k == w || end;
-                if (!shell) continue;
-                bool lug = (y == 0 || y == h || end) && (z + y) % 3 == 0;
-                g.Set(x, y, z, lug ? Pal.Solid(Pal.Tire[2]) : Pal.Ramp(Pal.Tire, 1, 1200));
+                // frame rail on the inner side of the belt, at axle height, with the roller brackets
+                for (int z = z0 + 2; z <= z1 - 2; z++)
+                    for (int y = 3; y <= 5; y++)
+                        g.Set(s * (x0 - 1), y, z, Pal.Ramp(Pal.Metal, y == 5 ? 2 : 1, 1201));
+                for (int z = z0 + 4; z <= z1 - 4; z += 8) g.Box(s * (x0 - 2), 2, z, s * (x0 - 1), 6, z, Pal.Solid(Pal.Metal[0]));
+                // fender over the belt, clear of it
+                g.Box(s * x0, h + 1, z0 - 1, s * (x0 + w + 1), h + 1, z1 + 1, Pal.Ramp(Pal.Metal, 1, 1202));
+                g.Box(s * (x0 + w + 1), h, z0 - 1, s * (x0 + w + 1), h, z1 + 1, Pal.Solid(Pal.Metal[2]));
             }
         }
 
@@ -86,8 +86,8 @@ namespace MadMax.Designs
             Cab(g, 9, 5, 22, 10, 27, paint, 1205);
             Lamps(g, 8, 24, 23, -27);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_track", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_track", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 19, "wheel_track", true);      // idler
+            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -19, "wheel_track", true);      // sprocket
             d.Socket("engine", PartCategory.Engine, 0, 12, -12, "engine_truck_diesel");
             d.Socket("radiator", PartCategory.Radiator, 0, 12, -22, "radiator_truck");
             d.Socket("tool", PartCategory.Tool, 11, 17, 18, "tool_excavator_arm");
@@ -140,8 +140,8 @@ namespace MadMax.Designs
             g.CylY(4, 10, 1f, 17, 24, Pal.Ramp(Pal.Black, 1));
             Lamps(g, 7, 14, 23, -23);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 15, "wheel_track", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -15, "wheel_track", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 10, 4, 19, "wheel_track", true);      // idler
+            d.Socket("wheel_rear", PartCategory.Wheel, 10, 4, -19, "wheel_track", true);      // sprocket
             d.Socket("engine", PartCategory.Engine, 0, 7, 8, "engine_truck_diesel");
             d.Socket("radiator", PartCategory.Radiator, 0, 7, 20, "radiator_truck");
             d.Socket("tool", PartCategory.Tool, 0, 0, 30, "tool_dozer_blade");
@@ -193,8 +193,8 @@ namespace MadMax.Designs
             g.Box(-3, 16, 3, 3, 20, 5, Pal.Ramp(Pal.Black, 1));
             Lamps(g, 8, 12, 19, -21);
             Finish(d, g);
-            d.Socket("wheel_front", PartCategory.Wheel, 9, 4, 11, "wheel_track", true);
-            d.Socket("wheel_rear", PartCategory.Wheel, 9, 4, -11, "wheel_track", true);
+            d.Socket("wheel_front", PartCategory.Wheel, 9, 4, 13, "wheel_track", true);
+            d.Socket("wheel_rear", PartCategory.Wheel, 9, 4, -13, "wheel_track", true);
             d.Socket("engine", PartCategory.Engine, 0, 7, 6, "engine_diesel_i6");
             d.Socket("radiator", PartCategory.Radiator, 0, 7, 16, "radiator_car");
             d.Socket("tool", PartCategory.Tool, 0, 1, -21, "tool_paver_screed");

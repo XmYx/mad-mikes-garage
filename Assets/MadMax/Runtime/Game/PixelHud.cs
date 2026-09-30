@@ -316,17 +316,11 @@ namespace MadMax.Game
                 canvas.Rect((canvas.w - hw2) / 2, hy, hw2, 10, new Color32(10, 5, 3, 170));
                 canvas.Text((canvas.w - hw2) / 2 + 4, hy + 2, hint, Text);
             }
-            string prompt = game.RadialOpen ? null : Controls.Localize(game.Prompt);
-            if (prompt != null)
-            {
-                int w = PixelCanvas.TextWidth(prompt) + 8;
-                int x = (canvas.w - w) / 2, y = canvas.h - (car && !fps ? 52 : 40);
-                canvas.Panel(x, y, w, 11);
-                canvas.Text(x + 4, y + 3, prompt, Amber);
-            }
+            string prompt = game.RadialOpen || game.ShowHelp ? null : Controls.Localize(game.Prompt);
+            if (prompt != null) HudKeys.DrawPromptList(canvas, prompt, 8, canvas.h - (car && !fps ? 76 : 84), Text, Dim, Amber);   // left, above the vitals / vehicle panel
             if (!car && game.Build && game.Build.Active) { DrawWorn(); DrawBuildPanel(); }
             DrawRadio(car);
-            if (game.ShowHelp) DrawHelp();
+            if (game.ShowHelp) HudKeys.DrawKeyboard(canvas, game);
             var toast = game.ToastText;
             if (toast != null)
             {
@@ -1233,25 +1227,5 @@ namespace MadMax.Game
             canvas.Text(x + 5, y + 4, line, Amber);
         }
 
-        void DrawHelp()
-        {
-            string K(Controls.Act a) => Controls.Name(a);
-            string[] lines =
-            {
-                K(Controls.Act.Forward) + K(Controls.Act.Left) + K(Controls.Act.Back) + K(Controls.Act.Right) + " DRIVE/WALK  " + K(Controls.Act.Jump) + " HANDBRAKE/JUMP  " + K(Controls.Act.Run) + " RUN  LMB USE TOOL  RMB AIM  " + K(Controls.Act.Reload) + " RELOAD  1-8 HOTBAR  " + K(Controls.Act.Inventory) + " INVENTORY  " + K(Controls.Act.Skills) + " SKILLS  " + K(Controls.Act.Health) + " HEALTH  " + K(Controls.Act.Map) + " MAP",
-                "ON FOOT: " + K(Controls.Act.Jump) + " AT A WALL VAULT/CLIMB  " + K(Controls.Act.Crouch) + " CROUCH (RUNNING: SLIDE, LANDING: ROLL)  STAND STILL ON A MOVING CAR: HOLD ON",
-                "ANIMALS: CROUCH AND STAY DOWNWIND TO HUNT  " + K(Controls.Act.Use) + " BUTCHER/FEED/MILK/TAME  " + K(Controls.Act.Second) + " FOLLOW/STAY  HORSE: " + K(Controls.Act.Forward) + " TROT  " + K(Controls.Act.Run) + " GALLOP  " + K(Controls.Act.Jump) + " JUMP  " + K(Controls.Act.Enter) + " DISMOUNT",
-                K(Controls.Act.Enter) + " ENTER/EXIT  " + K(Controls.Act.Use) + " USE/OPEN/CRAFT/TALK  " + K(Controls.Act.Second) + " SECOND ACTION (LOCK, TRADE, TUNE)  " + K(Controls.Act.Drop) + " DROP  " + K(Controls.Act.Hitch) + " HITCH  " + K(Controls.Act.Service) + " SERVICE  " + K(Controls.Act.Siphon) + " SIPHON  " + K(Controls.Act.Armour) + " ARMOUR  TAB FLEET / HOLD: WHEEL",
-                "BUILD (" + K(Controls.Act.Build) + ", HOLD: RADIAL): " + K(Controls.Act.BuildPrevCategory) + " " + K(Controls.Act.BuildNextCategory) + " CATEGORY  1-0 PIECE  " + K(Controls.Act.BuildRotate) + " ROTATE  " + K(Controls.Act.BuildDismantle) + " DISMANTLE  " + K(Controls.Act.BuildRepair) + " REPAIR  " + K(Controls.Act.BuildUpgrade) + " UPGRADE  CABLE/PIPE: CLICK TWO PIECES",
-                "DRIVING: " + K(Controls.Act.FourWheel) + " 4WD  " + K(Controls.Act.DiffLock) + " DIFF LOCK  " + K(Controls.Act.ShiftUp) + "/" + K(Controls.Act.ShiftDown) + " SHIFT  " + K(Controls.Act.Lights) + " LIGHTS  " + K(Controls.Act.Horn) + " HORN  " + K(Controls.Act.Nitrous) + " NITROUS  " + K(Controls.Act.Recover) + " RECOVER/PARLEY  LMB WEAPON  " + K(Controls.Act.Dropper) + " DROPPER  " + K(Controls.Act.Smoke) + " SMOKE  MACHINES: 1 2 3",
-                "BIKES: LEFT/RIGHT LEAN INTO THE TURN  " + K(Controls.Act.Run) + " WHEELIE  CRASH = THROWN OFF (" + K(Controls.Act.Enter) + " TO GET BACK ON)  BICYCLE: " + K(Controls.Act.Run) + " SPRINTS (STAMINA)",
-                "FLYING: " + K(Controls.Act.Forward) + "/" + K(Controls.Act.Back) + " THROTTLE LEVER  LEFT/RIGHT BANK  " + K(Controls.Act.Jump) + " PULL UP  " + K(Controls.Act.Crouch) + " PUSH DOWN  " + K(Controls.Act.Back) + " (IDLE) BRAKES  TAKE OFF FROM AIRSTRIPS OR STRAIGHT ROADS",
-                "RADIO: " + K(Controls.Act.RadioPower) + " ON/OFF  " + K(Controls.Act.RadioPrev) + " " + K(Controls.Act.RadioNext) + " TUNE  " + K(Controls.Act.VolumeDown) + " " + K(Controls.Act.VolumeUp) + " VOLUME   FISHING: LMB CAST, CLICK ON A BITE, HOLD TO REEL   " + K(Controls.Act.View) + " VIEW  ESC MENU  " + K(Controls.Act.Help) + " HELP"
-            };
-            int w = 0; foreach (var l in lines) w = Mathf.Max(w, PixelCanvas.TextWidth(l));
-            int x = (canvas.w - w) / 2 - 4, y = 26;
-            canvas.Panel(x, y, w + 8, lines.Length * 7 + 5);
-            for (int i = 0; i < lines.Length; i++) canvas.Text(x + 4, y + 4 + i * 7, lines[i], Text);
-        }
     }
 }

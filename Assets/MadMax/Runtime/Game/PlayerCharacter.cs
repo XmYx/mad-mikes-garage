@@ -87,7 +87,7 @@ namespace MadMax.Game
         {
             if (Tool) Destroy(Tool.gameObject);
             Tool = tool;
-            if (tool) AttachTool(tool);
+            if (tool) { AttachTool(tool); if (SeatedIn) tool.gameObject.SetActive(false); }
         }
 
         /// <summary>Scripted upper-body pose (refuelling, washing...) overriding the tool pose while set.</summary>
@@ -100,6 +100,7 @@ namespace MadMax.Game
             DropProp();
             if (Tool) Tool.gameObject.SetActive(false);
             prop = new GameObject("Prop", typeof(MeshFilter), typeof(MeshRenderer));
+            if (SeatedIn) prop.SetActive(false);
             prop.GetComponent<MeshFilter>().sharedMesh = mesh;
             prop.GetComponent<MeshRenderer>().sharedMaterial = mat;
             prop.transform.SetParent(Rig.RightHand, false);
@@ -191,6 +192,7 @@ namespace MadMax.Game
             Interior = null;
             cc.enabled = false;
             SeatedIn = car;
+            ShowHeld(false);                                                   // hands on the wheel: the tool / prop waits
             var eye = car.transform.Find("DriverEye");
             transform.SetParent(car.transform, false);
             float h = Rig.appearance.height;
@@ -248,10 +250,18 @@ namespace MadMax.Game
             else Teleport(at, yaw);
         }
 
+        /// <summary>Show or hide what is in the hands (tool, prop) — hidden while driving.</summary>
+        public void ShowHeld(bool show)
+        {
+            if (Tool) Tool.gameObject.SetActive(show && !prop);
+            if (prop) prop.SetActive(show);
+        }
+
         public void Unseat()
         {
             if (!SeatedIn) return;
             SeatedIn = null;
+            ShowHeld(true);
             transform.SetParent(null, true);
         }
 

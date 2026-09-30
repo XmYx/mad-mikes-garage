@@ -131,7 +131,7 @@ Dedicated server: **MadMax → Build Linux Player**, then
 `MadMikesGarage.x86_64 -batchmode -nographics -server -port 7777`.
 
 ### Controls (short version)
-`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines `1 2 3` · winch `4 5 6` · crane `7 8 9 0` · `V` camera view · `/` radio (`,` `.` tune, `[` `]` volume) · `M` map and journal · hold `Tab` action wheel · `H` full help.
+`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines and cranes: arrows + `Q` `E` · aircraft: `W` `S` throttle, arrows pitch and rudder, `Q` `E` roll · `V` camera view · `/` radio (`,` `.` tune, `[` `]` volume) · `M` map and journal · hold `Tab` action wheel · `F1` key map for whatever you are doing.
 
 ---
 

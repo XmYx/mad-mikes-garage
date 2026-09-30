@@ -38,7 +38,9 @@ namespace MadMax.Game
         public float fovFirst = 60f;     // vertical degrees (≈ 90° horizontal at 16:9)
         public float fovThird = 55f;
         public bool cameraShake = true;
-        public int deformation = 2;      // CAR DEFORMATION: index into DeformationScales
+        public int deformation = 2;
+        public bool boardingAnimation = true;
+        public bool flightStick;                // FLIGHT PITCH: false = up arrow climbs, true = stick style (up dives)   // GET IN / OUT: walk to the door, it swings open, slide into the seat      // CAR DEFORMATION: index into DeformationScales
         public static readonly float[] DeformationScales = { 0f, 0.5f, 1f, 1.6f, 2.4f };
         public static readonly string[] DeformationNames = { "OFF", "LIGHT", "NORMAL", "HEAVY", "EXTREME" };
         public float DeformationScale => DeformationScales[Mathf.Clamp(deformation, 0, DeformationScales.Length - 1)];

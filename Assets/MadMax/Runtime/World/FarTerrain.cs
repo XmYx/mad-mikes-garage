@@ -15,7 +15,10 @@ namespace MadMax.World
 
         /// <summary>0 on the ground .. 1 at 120 m up in an aircraft.</summary>
         public static float Aerial { get; private set; }
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => Aerial = 0f;
+        /// <summary>How far the view carries (fog, far clip): Aerial in the air; ~0.7 in the ground-level perspective
+        /// views (first / third person, hood, bumper), where the far terrain fills the distance beyond the chunks.</summary>
+        public static float Reach { get; private set; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Aerial = 0f; Reach = 0f; }
 
         GameObject go;
         Mesh mesh;
@@ -31,8 +34,13 @@ namespace MadMax.World
             var flight = car ? car.GetComponent<MadMax.Vehicles.FlightModel>() : null;
             float want = flight ? Mathf.Clamp01((flight.Altitude - 20f) / 100f) : 0f;
             Aerial = Mathf.MoveTowards(Aerial, want, Time.deltaTime * 0.5f);
-            if (go) go.SetActive(Aerial > 0.01f);
-            if (!flight || !t || t.World == null) return;
+            var rig = g ? g.cameraRig : null;
+            bool ground = rig && !MadMax.Game.TitleSequence.OnMoon && !MadMax.Game.OccluderFade.Underground &&
+                          (rig.mode == MadMax.Game.ViewMode.FirstPerson || rig.mode == MadMax.Game.ViewMode.ThirdPerson || rig.mode == MadMax.Game.ViewMode.Hood || rig.mode == MadMax.Game.ViewMode.Bumper);
+            Reach = Mathf.MoveTowards(Reach, Mathf.Max(want, ground ? 0.7f : 0f), Time.deltaTime * 0.5f);
+            if (go) go.SetActive(Reach > 0.01f);
+            var focus = car ? car.transform : g && g.Player ? g.Player.transform : null;
+            if (!focus || !t || t.World == null) return;
             if (job != null)
             {
                 if (!job.IsCompleted) return;
@@ -40,8 +48,8 @@ namespace MadMax.World
                 job = null;
                 return;
             }
-            if (Aerial <= 0.01f) return;
-            var p = car.transform.position;
+            if (Reach <= 0.01f) return;
+            var p = focus.position;
             var snapped = new Vector3(Mathf.Round(p.x / Snap) * Snap, 0f, Mathf.Round(p.z / Snap) * Snap);
             if (go && (snapped - centre).sqrMagnitude < 150f * 150f) return;
             var world = t.World;

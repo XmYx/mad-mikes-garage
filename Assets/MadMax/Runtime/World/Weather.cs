@@ -9,6 +9,8 @@ namespace MadMax.World
         public static bool Raining;                              // any precipitation (rain or snow)
         public static bool Snowing => Raining && Temperature < 0.5f && SnowAllowed;
         public static float Wetness { get; private set; }
+        /// <summary>Soak or dry the ground at once (tests, debug keys).</summary>
+        public static void SetWetness(float w) => Wetness = Mathf.Clamp01(w);
         public static float Snow { get; private set; }           // 0 .. 1 ground cover
         /// <summary>Air temperature where the player is (°C): the start latitude's weather plus the planet's climate
         /// offset for <see cref="FocusZ"/> (colder poleward, seasons flipped in the south).</summary>

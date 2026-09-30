@@ -19,7 +19,8 @@ namespace MadMax.Game
             ShiftUp, ShiftDown, FourWheel, DiffLock, Lights, Horn, Nitrous, Recover, Dropper, Smoke, Climate,
             RadioPower, RadioPrev, RadioNext, VolumeDown, VolumeUp,
             BuildRotate, BuildDismantle, BuildUpgrade, BuildRepair, BuildPrevCategory, BuildNextCategory, BuildPrevPiece, BuildNextPiece,
-            DevWeather, DevDropPart, DevRepair
+            DevWeather, DevDropPart, DevRepair,
+            ToolUp, ToolDown, ToolLeft, ToolRight, ToolA, ToolB                 // machines, cranes and aircraft (appended: saved maps keep their slots)
         }
 
         public static readonly int Count = System.Enum.GetValues(typeof(Act)).Length;
@@ -32,7 +33,8 @@ namespace MadMax.Game
             Key.E, Key.Q, Key.X, Key.L, Key.N, Key.Y, Key.LeftCtrl, Key.T, Key.B, Key.U, Key.K,
             Key.Slash, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.Y, Key.X, Key.U, Key.R, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
-            Key.F9, Key.Backspace, Key.F10
+            Key.F9, Key.Backspace, Key.F10,
+            Key.UpArrow, Key.DownArrow, Key.LeftArrow, Key.RightArrow, Key.Q, Key.E
         };
 
         /// <summary>Labels for the CONTROLS page.</summary>
@@ -44,7 +46,8 @@ namespace MadMax.Game
             "SHIFT UP", "SHIFT DOWN", "4WD", "DIFF LOCK", "LIGHTS", "HORN", "NITROUS", "RECOVER / PARLEY", "REAR DROPPER", "SMOKE SCREEN", "CLIMATE",
             "RADIO POWER", "RADIO TUNE DOWN", "RADIO TUNE UP", "RADIO VOLUME DOWN", "RADIO VOLUME UP",
             "BUILD: ROTATE", "BUILD: DISMANTLE", "BUILD: UPGRADE", "BUILD: REPAIR", "BUILD: PREV CATEGORY", "BUILD: NEXT CATEGORY", "BUILD: PREV PIECE", "BUILD: NEXT PIECE",
-            "DEV: WEATHER", "DEV: DROP PART", "DEV: INSTANT REPAIR"
+            "DEV: WEATHER", "DEV: DROP PART", "DEV: INSTANT REPAIR",
+            "TOOL UP / NOSE", "TOOL DOWN / NOSE", "TOOL LEFT / RUDDER", "TOOL RIGHT / RUDDER", "TOOL A: CURL, GRAB / ROLL LEFT", "TOOL B: DUMP / ROLL RIGHT"
         };
 
         static Key[] map;
@@ -96,7 +99,7 @@ namespace MadMax.Game
             return kb != null && k != Key.None && kb[k].wasReleasedThisFrame;
         }
 
-        static bool IsDev(Act a) => a >= Act.DevWeather;
+        static bool IsDev(Act a) => a >= Act.DevWeather && a <= Act.DevRepair;
 
         /// <summary>Fire an action this frame as if its key was pressed (action wheel).</summary>
         public static void Inject(Act a) { injected = a; injectedFrame = Time.frameCount; }
@@ -158,6 +161,13 @@ namespace MadMax.Game
                 case Key.Equals: return "=";
                 case Key.Backquote: return "`";
                 case Key.Backspace: return "BKSP";
+                case Key.UpArrow: return "UP";
+                case Key.DownArrow: return "DOWN";
+                case Key.LeftArrow: return "LEFT";
+                case Key.RightArrow: return "RIGHT";
+                case Key.PageUp: return "PGUP";
+                case Key.PageDown: return "PGDN";
+                case Key.Backslash: return "\\";
                 default:
                     var s = k.ToString().ToUpperInvariant();
                     return s.StartsWith("DIGIT") ? s.Substring(5) : s;
