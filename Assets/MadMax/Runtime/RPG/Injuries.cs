@@ -16,6 +16,9 @@ namespace MadMax.RPG
         public Wound type;
         public float severity = 1f;          // 1 fresh .. 0 healed
         public bool bandaged, splinted, disinfected;
+        /// <summary>A fragment or bullet lodged in the wound (blasts, gunshots): it won't close past half and slowly
+        /// festers until it is cut out at a surgery table (depth stage G).</summary>
+        public bool shrapnel;
         public float bandageAge;             // seconds since the bandage went on (dirty after 10 min)
         public float infection;              // 0..1
 
@@ -25,6 +28,9 @@ namespace MadMax.RPG
 
         public static readonly string[] ZoneNames = { "HEAD", "TORSO", "LEFT ARM", "RIGHT ARM", "LEFT HAND", "RIGHT HAND", "LEFT LEG", "RIGHT LEG", "LEFT FOOT", "RIGHT FOOT" };
         public static readonly string[] WoundNames = { "BRUISE", "SCRATCH", "LACERATION", "DEEP WOUND", "FRACTURE", "BURN" };
+
+        /// <summary>How far a wound with <see cref="shrapnel"/> in it can heal (severity never drops below this).</summary>
+        public const float ShrapnelFloor = 0.45f;
 
         /// <summary>Minutes to heal fully when properly treated.</summary>
         public float HealMinutes => type switch { Wound.Bruise => 3f, Wound.Scratch => 5f, Wound.Laceration => 14f, Wound.DeepWound => 28f, Wound.Fracture => 40f, _ => 18f };
@@ -37,6 +43,7 @@ namespace MadMax.RPG
                 if (Bleeding) s.Add("BLEEDING");
                 if (bandaged) s.Add(BandageDirty ? "DIRTY BANDAGE" : "BANDAGED");
                 if (splinted) s.Add("SPLINTED");
+                if (shrapnel) s.Add("SHRAPNEL");
                 if (type == Wound.Fracture && !splinted) s.Add("NEEDS SPLINT");
                 if (infection > 0.05f) s.Add("INFECTED " + Mathf.RoundToInt(infection * 100) + "%");
                 return s.Count == 0 ? Mathf.RoundToInt((1f - severity) * 100) + "% HEALED" : string.Join(" ", s);
@@ -51,12 +58,13 @@ namespace MadMax.RPG
             bool open = type != Wound.Bruise && type != Wound.Fracture;
             if (open && !disinfected && (hygiene < 50f || BandageDirty || !bandaged))
                 infection = Mathf.Min(1f, infection + dt / 900f * (hygiene < 25f ? 2f : 1f) * (bandaged && !BandageDirty ? 0.4f : 1f));
+            else if (shrapnel) infection = Mathf.Min(1f, infection + dt / 3600f);             // a lodged fragment festers under any dressing
             else infection = Mathf.Max(0f, infection - dt / 600f);
             if (infection > 0.5f) loss += (infection - 0.5f) * 0.3f * dt;
             bool canHeal = type != Wound.Fracture || splinted;
             float rate = canHeal ? (bandaged || type == Wound.Bruise || type == Wound.Scratch ? 1f : 0.35f) : 0f;
             rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f);
-            severity = Mathf.Max(0f, severity - dt * rate / (HealMinutes * 60f));
+            severity = Mathf.Max(shrapnel ? ShrapnelFloor : 0f, severity - dt * rate / (HealMinutes * 60f));
             return loss;
         }
     }
@@ -82,6 +90,7 @@ namespace MadMax.RPG
                     {
                         inj.type = inj.type switch { Wound.DeepWound => Wound.Laceration, Wound.Laceration => Wound.Bruise, Wound.Fracture => Wound.Bruise, Wound.Scratch => Wound.Bruise, _ => inj.type };
                         inj.severity *= 1f - p * 0.5f;
+                        if (inj.type == Wound.Bruise) inj.shrapnel = false;
                         deflected?.Invoke(inj.zone);
                     }
                 }
@@ -126,7 +135,7 @@ namespace MadMax.RPG
                     for (int i = 0; i < n; i++)
                     {
                         var all = (BodyZone[])Enum.GetValues(typeof(BodyZone));
-                        Put(new Injury { zone = all[rnd.Next(all.Length)], type = amount > 18f ? Wound.DeepWound : Wound.Laceration });
+                        Put(new Injury { zone = all[rnd.Next(all.Length)], type = amount > 18f ? Wound.DeepWound : Wound.Laceration, shrapnel = amount > 18f && rnd.NextDouble() < 0.4 });   // a lodged bullet
                     }
                     break;
                 }
@@ -139,7 +148,7 @@ namespace MadMax.RPG
                     {
                         var z = all[rnd.Next(all.Length)];
                         var w = amount > 35f && rnd.NextDouble() < 0.4 && z != BodyZone.Head && z != BodyZone.Torso ? Wound.Fracture : i == 0 ? Wound.Burn : Wound.Laceration;
-                        Put(new Injury { zone = z, type = w, severity = w == Wound.Burn ? 0.7f : 1f });
+                        Put(new Injury { zone = z, type = w, severity = w == Wound.Burn ? 0.7f : 1f, shrapnel = w == Wound.Laceration && rnd.NextDouble() < 0.5 });
                     }
                     break;
                 }

@@ -6,10 +6,10 @@ using BP = MadMax.Game.BodyPart;
 namespace MadMax.Game
 {
     /// <summary>Wearable garments. Item id in the Inventory = "cloth_" + def id. Layer order is the inflate value.</summary>
-    public static class ClothingLibrary
+    public static partial class ClothingLibrary
     {
         static List<ClothingDef> all;
-        public static IReadOnlyList<ClothingDef> All => all ??= Thermal(Build());
+        public static IReadOnlyList<ClothingDef> All => all ??= Thermal(LeatherGoods(Build()));   // + depth stage E (ClothingLibrary.Husbandry)
 
         /// <summary>Cold protection (warmth, °C) and heat relief (cooling; negative traps heat) per garment. They stack.</summary>
         static List<ClothingDef> Thermal(List<ClothingDef> l)

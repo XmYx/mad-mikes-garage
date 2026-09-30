@@ -270,7 +270,7 @@ namespace MadMax.Vehicles
                 // a real pull) and the engine labours; the thermal mass gives about a minute and a half before trouble
                 bool pinned = speed < 1.5f && load > 0.8f && rpmFrac > 0.93f;
                 float heat = (0.25f + load * rpmFrac * (pinned ? 0.6f : 1f)) * 4.4f * (TryGetComponent<VehicleTuning>(out var tune) ? tune.HeatFactor : 1f);   // hot engine maps, boost, nitrous
-                float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? 1f - 0.6f * Mathf.Clamp01(radiator.damage) : 0f;
+                float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? (1f - 0.6f * Mathf.Clamp01(radiator.damage)) * MetalPartFunctions.Cooling(radiator.partId) : 0f;
                 float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.72f + 0.28f * Mathf.Clamp01(speed / 20f)) : 0.6f + Mathf.Clamp01(speed / 25f) * 0.4f;   // fan at a standstill
                 Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * 0.45f * dt;   // ~30 s time constant
                 if (pinned && Temperature > 95f) f |= Fault.Labouring;
@@ -282,7 +282,7 @@ namespace MadMax.Vehicles
                 else if (!oilInFuel && OilFraction < 0.25f) ep.damage += 0.002f * load * dt;                        // wear
                 // maintenance: old oil wears the engine, a clogged filter starves it, worn plugs misfire
                 hours += dt / 3600f;
-                if (!oilInFuel) oilLife = Mathf.Max(0f, oilLife - dt * (0.00002f + 0.0001f * load) * (Temperature > 100f ? 2f : 1f));
+                if (!oilInFuel) oilLife = Mathf.Max(0f, oilLife - dt * (0.00002f + 0.0001f * load) * (Temperature > 100f ? 2f : 1f) * (radiator ? MetalPartFunctions.OilWear(radiator.partId) : 1f));
                 var ground = terrain ? terrain.SurfaceAt(ePos.x, ePos.z) : default;
                 float dust = (1f - ground.wet) * (1f - ground.road) * Mathf.Clamp01(ground.softness * 1.5f + 0.2f) * Mathf.Clamp01(speed / 12f) + MadMax.World.Storms.Dust * 2f;
                 airFilter = Mathf.Max(0f, airFilter - dt * (0.00001f + 0.00012f * dust));
@@ -358,6 +358,7 @@ namespace MadMax.Vehicles
                 const float v = 0.08f;
                 if (part.partId == "exhaust_stack") { at = t.TransformPoint(0f, 33 * v, -3 * v); dir = (t.up * 0.8f - t.forward * 0.4f).normalized; return; }
                 if (part.partId == "exhaust_side_pipes") { at = t.TransformPoint(0.5f * v, 0.5f * v, -15.5f * v); dir = -t.forward; return; }
+                if (MetalPartFunctions.Outlet(part, i, out at, out dir)) return;
                 at = t.position; dir = -transform.forward; return;
             }
             at = transform.TransformPoint(tailpipe); dir = -transform.forward;

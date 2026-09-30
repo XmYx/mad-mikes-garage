@@ -3,8 +3,11 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    /// <summary>Solves the power and water networks twice a second: union of linked nodes per kind; power = supply +
-    /// batteries vs demand (brown-out = nobody powered); water = pooled tanks, sources add dirty water, filters clean it.
+    /// <summary>Solves the power and water networks twice a second: union of linked nodes per kind (open switches and
+    /// closed valves break the links through them); power = supply + batteries vs demand, served by priority (load
+    /// breakers mark the loads behind them essential / normal / low: low loads shed first, and when essential or normal
+    /// loads go dark the net is overloaded and its generators stall); water = pooled tanks, sources add dirty water with
+    /// its taint, filters clean everything but salt, desalinators and stills clean anything.
     /// Also draws cables (sagging black lines) and pipes (straight grey lines).</summary>
     public static class UtilityGrid
     {
@@ -37,6 +40,7 @@ namespace MadMax.Building
         {
             Group(UtilityKind.Power, powerNets, (n, i) => n.powerNet = i);
             Group(UtilityKind.Water, waterNets, (n, i) => n.waterNet = i);
+            Priorities();
         }
 
         static void Group(UtilityKind kind, List<List<UtilityNode>> nets, System.Action<UtilityNode, int> assign)
@@ -49,13 +53,18 @@ namespace MadMax.Building
             int Find(int x) { while (parent[x] != x) x = parent[x] = parent[parent[x]]; return x; }
             var byId = new Dictionary<uint, int>();
             for (int i = 0; i < nodes.Count; i++) byId[nodes[i].Id] = i;
+            // an open switch / closed valve conducts nothing of the kind it cuts: it stands alone
             for (int i = 0; i < nodes.Count; i++)
+            {
+                if ((nodes[i].cut & kind) != 0) continue;
                 foreach (var l in nodes[i].links)
-                    if (l.kind == kind && byId.TryGetValue(l.id, out int j)) parent[Find(i)] = Find(j);
+                    if (l.kind == kind && byId.TryGetValue(l.id, out int j) && (nodes[j].cut & kind) == 0) parent[Find(i)] = Find(j);
+            }
             // everything on one vehicle shares its wiring and plumbing (onboard generator, water tank, built pieces)
             var byVehicle = new Dictionary<MadMax.Vehicles.VehicleChassis, int>();
             for (int i = 0; i < nodes.Count; i++)
             {
+                if ((nodes[i].cut & kind) != 0) continue;
                 var v = nodes[i].GetComponentInParent<MadMax.Vehicles.VehicleChassis>();
                 if (!v) continue;
                 if (byVehicle.TryGetValue(v, out int j)) parent[Find(i)] = Find(j); else byVehicle[v] = i;
@@ -70,25 +79,89 @@ namespace MadMax.Building
             }
         }
 
+        /// <summary>Loads behind a breaker (every component of the net without the breaker that holds no power source)
+        /// take its priority; a load behind breakers in series takes the nearest one's.</summary>
+        static void Priorities()
+        {
+            foreach (var net in powerNets) foreach (var n in net) if (n) n.priority = 1;
+            foreach (var net in powerNets)
+            {
+                bool any = false;
+                foreach (var n in net) if (n && n.breaker >= 0) { any = true; break; }
+                if (!any) continue;
+                var at = new Dictionary<uint, int>();
+                for (int i = 0; i < net.Count; i++) if (net[i]) at[net[i].Id] = i;
+                var adj = new List<int>[net.Count];
+                for (int i = 0; i < net.Count; i++) adj[i] = new List<int>();
+                var byVehicle = new Dictionary<MadMax.Vehicles.VehicleChassis, int>();
+                for (int i = 0; i < net.Count; i++)
+                {
+                    if (!net[i]) continue;
+                    foreach (var l in net[i].links)
+                        if (l.kind == UtilityKind.Power && at.TryGetValue(l.id, out int j) && j != i) { adj[i].Add(j); adj[j].Add(i); }
+                    var v = net[i].GetComponentInParent<MadMax.Vehicles.VehicleChassis>();
+                    if (!v) continue;
+                    if (byVehicle.TryGetValue(v, out int k)) { adj[i].Add(k); adj[k].Add(i); } else byVehicle[v] = i;
+                }
+                var sides = new List<(int prio, List<int> nodes)>();
+                var queue = new Queue<int>();
+                for (int b = 0; b < net.Count; b++)
+                {
+                    if (!net[b] || net[b].breaker < 0) continue;
+                    var seen = new bool[net.Count];
+                    seen[b] = true;
+                    foreach (int start in adj[b])
+                    {
+                        if (seen[start]) continue;
+                        var comp = new List<int>();
+                        bool source = false;
+                        seen[start] = true; queue.Enqueue(start);
+                        while (queue.Count > 0)
+                        {
+                            int x = queue.Dequeue();
+                            comp.Add(x);
+                            if (net[x] && net[x].IsSource) source = true;
+                            foreach (int y in adj[x]) if (!seen[y]) { seen[y] = true; queue.Enqueue(y); }
+                        }
+                        if (!source) sides.Add((net[b].breaker, comp));
+                    }
+                }
+                sides.Sort((a, b) => b.nodes.Count.CompareTo(a.nodes.Count));      // the nearest breaker (smallest side) wins
+                foreach (var (prio, nodes) in sides) foreach (int x in nodes) if (net[x]) net[x].priority = Mathf.Clamp(prio, 0, 2);
+            }
+        }
+
+        static readonly float[] tierDemand = new float[3];
+
         static void SolvePower(List<UtilityNode> net, float dt)
         {
-            float supply = 0f, demand = 0f, stored = 0f, cap = 0f;
-            foreach (var n in net) { if (!n) continue; supply += n.produce; demand += n.demand; stored += n.batteryCharge; cap += n.batteryWh; }
-            float surplusWh = (supply - demand) * dt / 3600f;
-            bool powered;
-            if (surplusWh >= 0f)
+            float supply = 0f, stored = 0f, cap = 0f;
+            tierDemand[0] = tierDemand[1] = tierDemand[2] = 0f;
+            foreach (var n in net) { if (!n) continue; supply += n.produce; tierDemand[Mathf.Clamp(n.priority, 0, 2)] += n.demand + n.auxDemand; stored += n.batteryCharge; cap += n.batteryWh; }
+            // serve the tiers in order (essential, normal, low) while the producers plus the batteries carry them
+            float served = 0f;
+            int level = -1;
+            for (int p = 0; p < 3; p++)
             {
-                powered = demand > 0f || supply > 0f;
-                float room = cap - stored;
-                float charge = Mathf.Min(room, surplusWh);
-                Distribute(net, charge, cap);
+                float need = served + tierDemand[p];
+                if (tierDemand[p] > 0f && (need - supply) * dt / 3600f > stored) break;
+                served = need; level = p;
             }
-            else
+            float surplusWh = (supply - served) * dt / 3600f;
+            if (surplusWh >= 0f) Distribute(net, Mathf.Min(cap - stored, surplusWh), cap);
+            else Distribute(net, surplusWh, cap);
+            bool on = (served > 0f || supply > 0f) && (supply > 0f || stored > 0f);
+            bool overloaded = false;                                   // essential or normal loads left dark
+            for (int p = level + 1; p < 2; p++) if (tierDemand[p] > 0f) overloaded = true;
+            foreach (var n in net)
             {
-                powered = stored >= -surplusWh;
-                if (powered) Distribute(net, surplusWh, cap);
+                if (!n) continue;
+                n.Powered = on && n.priority <= level;
+                n.Shed = on && n.priority > level;
+                n.Overloaded = overloaded;
+                n.NetLevel = level;
+                n.load = supply > 0f ? Mathf.Min(served, supply) * n.produce / supply : 0f;
             }
-            foreach (var n in net) if (n) n.Powered = powered && (supply > 0f || stored > 0f);
         }
 
         static void Distribute(List<UtilityNode> net, float wh, float cap)
@@ -99,10 +172,22 @@ namespace MadMax.Building
 
         static void SolveWater(List<UtilityNode> net, float dt)
         {
-            float cap = 0f, clean = 0f, dirtyW = 0f, filter = 0f;
-            foreach (var n in net) { if (!n) continue; cap += n.waterCapacity; clean += n.clean + n.sourceClean * dt; dirtyW += n.dirty + n.sourceDirty * dt; filter += n.filterRate; }
-            float conv = Mathf.Min(dirtyW, filter * dt);
-            dirtyW -= conv; clean += conv;
+            float cap = 0f, clean = 0f, dirtyW = 0f, filter = 0f, desal = 0f;
+            var taint = WaterTaint.None;
+            foreach (var n in net)
+            {
+                if (!n) continue;
+                cap += n.waterCapacity; clean += n.clean + n.sourceClean * dt; dirtyW += n.dirty + n.sourceDirty * dt; filter += n.filterRate; desal += n.desalRate;
+                if (n.dirty > 0.01f) taint |= n.taint == WaterTaint.None ? WaterTaint.Silt : n.taint;
+                if (n.sourceDirty > 0f) taint |= n.sourceTaint == WaterTaint.None ? WaterTaint.Silt : n.sourceTaint;
+            }
+            // desalinators and stills take anything out, filters everything but salt
+            float byDesal = Mathf.Min(dirtyW, desal * dt);
+            dirtyW -= byDesal; clean += byDesal;
+            float byFilter = (taint & WaterTaint.Salt) != 0 ? 0f : Mathf.Min(dirtyW, filter * dt);
+            dirtyW -= byFilter; clean += byFilter;
+            var carried = taint;
+            if (dirtyW <= 0.001f) taint = WaterTaint.None;
             float total = clean + dirtyW;
             if (total > cap) { float over = total - cap; float fromDirty = Mathf.Min(over, dirtyW); dirtyW -= fromDirty; clean -= over - fromDirty; }
             if (cap <= 0f) return;
@@ -111,7 +196,20 @@ namespace MadMax.Building
                 if (!n) continue;
                 float share = n.waterCapacity / cap;
                 n.clean = clean * share; n.dirty = dirtyW * share;
+                n.taint = taint;
+                float mine = (desal > 0f ? byDesal * n.desalRate / desal : 0f) + (filter > 0f ? byFilter * n.filterRate / filter : 0f);
+                if (mine > 0f) { n.converted += mine; n.convertedTaint |= carried; }
             }
+        }
+
+        /// <summary>Litres the node's water network can hold.</summary>
+        public static float NetCapacity(UtilityNode node)
+        {
+            if (!node) return 0f;
+            if (node.waterNet < 0 || node.waterNet >= waterNets.Count) return node.waterCapacity;
+            float c = 0f;
+            foreach (var n in waterNets[node.waterNet]) if (n) c += n.waterCapacity;
+            return c;
         }
 
         public static float NetWater(UtilityNode node, out float cleanShare)

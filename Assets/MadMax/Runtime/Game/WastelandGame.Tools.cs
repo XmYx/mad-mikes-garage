@@ -64,10 +64,10 @@ namespace MadMax.Game
             return true;
         }
 
-        /// <summary>Repair kit: the most damaged part of the vehicle you are in or next to gets +30 % condition.</summary>
-        bool UseRepairKit()
+        /// <summary>Repair kit: the most damaged part of the vehicle you are in or next to (or <paramref name="on"/>) gets +30 % condition.</summary>
+        bool UseRepairKit(VehicleDriver on = null)
         {
-            VehicleDriver v = Current;
+            VehicleDriver v = on ? on : Current;
             if (!v)
             {
                 float best = 4f;
@@ -82,6 +82,7 @@ namespace MadMax.Game
             VehiclePart worst = null;
             foreach (var p in v.GetComponentsInChildren<VehiclePart>()) if (p.Socket && (!worst || p.damage > worst.damage)) worst = p;
             if (!worst || worst.damage < 0.02f) { Toast("NOTHING TO FIX"); return false; }
+            if (DeferRepairKit(v, worst)) return false;                                      // patched at the part first; the kit is used then (WastelandGame.Anim)
             worst.damage = Mathf.Max(0f, worst.damage - 0.3f - Stats.Level(Skill.Mechanics) * 0.02f);
             if (worst.TryGetComponent<WheelStats>(out var ws) && ws.Popped) ws.wear = 0.8f;       // patched, not new
             Stats.Practice(Skill.Mechanics, 5f);

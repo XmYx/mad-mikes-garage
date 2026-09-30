@@ -92,6 +92,9 @@ namespace MadMax.Game
 
         /// <summary>Scripted upper-body pose (refuelling, washing...) overriding the tool pose while set.</summary>
         [System.NonSerialized] public ToolPose? PoseOverride;
+        /// <summary>Scripted walk (timed work at a vehicle): world-space heading, length = share of the walking speed,
+        /// used instead of the move input while set; zero holds the player still. Tool swings wait.</summary>
+        [System.NonSerialized] public Vector3? AutoWalk;
         GameObject prop;
 
         /// <summary>Hold a prop (jerry can...) in the right hand instead of the tool.</summary>
@@ -127,7 +130,7 @@ namespace MadMax.Game
         /// <summary>Swing / fire the equipped tool (faces the view direction first in first/third person).</summary>
         public void Attack(bool faceViewYaw)
         {
-            if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled) return;
+            if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled || AutoWalk.HasValue) return;
             var g = WastelandGame.Instance;
             if (g && Tool.TwoHanded && g.ArmBroken) { g.Toast("BROKEN ARM: CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
@@ -299,7 +302,7 @@ namespace MadMax.Game
 
             var terrain = DeformableTerrain.Instance;
             var dir = Quaternion.Euler(0, viewYaw, 0) * new Vector3(moveInput.x, 0, moveInput.y);
-            dir = Vector3.ClampMagnitude(dir, 1f);
+            dir = Vector3.ClampMagnitude(AutoWalk ?? dir, 1f);                              // walking up to a job at a vehicle
             var game = WastelandGame.Instance;
             var stats = game ? game.Stats : null;
             var vitals = game ? game.Vitals : null;

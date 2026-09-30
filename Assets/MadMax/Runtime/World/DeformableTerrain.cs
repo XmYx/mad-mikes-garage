@@ -77,7 +77,7 @@ namespace MadMax.World
             public float floraNext;
             public int floraKey = -1;
             public GameObject waterGo;
-            public byte[] pave, compact;      // 0 none, 1 asphalt, 2 concrete; compacted by a roller
+            public byte[] pave, compact;      // 0 none, 1 asphalt, 2 concrete, 3-9 gravel, cobbles, paint, potholes (.Roads); compacted by a roller
             public float[] cure;              // 0 wet .. 1 set
             public bool terraformed;
             public float[] rut;               // wheel / foot deformation that heals (not terraform), null until rutted
@@ -274,6 +274,7 @@ namespace MadMax.World
             float hard = road * (paved ? 0.97f : 0.6f);
             if (ch.pave[k] > 0)
             {
+                if (ch.pave[k] >= PaveGravel) return RoadSurface(ch.pave[k], w);
                 float set = ch.cure[k];
                 return new Surface { wet = w * 0.3f, road = 1f, rut = 0f, softness = (1f - set) * 0.35f, mud = (1f - set) * 0.4f, ice = Weather.Ice * 0.8f };
             }
@@ -356,6 +357,7 @@ namespace MadMax.World
         /// <summary>Press a tyre footprint into the ground. <paramref name="dig"/> (0..1) is wheel-spin that excavates.</summary>
         public void Deform(Vector3 contact, Vector3 fwd, Vector3 side, float width, float load, float dig, float dt)
         {
+            RoadTraffic(contact, load, dt);
             Trample(contact, width * 0.5f);
             var s = SurfaceAt(contact.x, contact.z);
             float sink = Mathf.Min(maxSink, s.softness * load * sinkPerNewton);
@@ -516,7 +518,7 @@ namespace MadMax.World
         }
 
         // ------------------------------------------------------------------ terraforming (excavators, pavers, rollers)
-        public enum TerraOp : byte { Dig, Dump, Flatten, Pave, Roll }
+        public enum TerraOp : byte { Dig, Dump, Flatten, Pave, Roll, Paint, Pothole }
         public const float MaxDig = 8f, MaxFill = 6f;
 
         /// <summary>Soil a dig produces here: biome topsoil, stone deeper down.</summary>
@@ -584,8 +586,10 @@ namespace MadMax.World
                         break;
                     }
                     case TerraOp.Pave:
-                        if (ch.pave[k] == 0) { SetPave(ix, iz, extra, 0f, 0); SetD(ix, iz, cur + (Hash(ix, iz) - 0.5f) * 0.03f); moved += Cell * Cell; }
+                        if (CanPaveOver(ch.pave[k], extra, ch.paved[k] && ch.road[k] > 0.5f)) { SetPave(ix, iz, extra, extra >= PaveGravel ? 1f : 0f, 0); SetD(ix, iz, cur + (Hash(ix, iz) - 0.5f) * 0.03f); moved += Cell * Cell; }
                         break;
+                    case TerraOp.Paint: moved += PaintCell(ch, k, ix, iz, extra); break;
+                    case TerraOp.Pothole: moved += PotholeCell(ch, k, ix, iz, cur, extra); break;
                     case TerraOp.Roll:
                         if (ch.pave[k] > 0 && ch.cure[k] < 1f)
                         {
@@ -615,6 +619,7 @@ namespace MadMax.World
                 ch.terraformed = true; ch.deformed = true; ch.meshDirty = true;
                 if (kind > 0 && !curing.Contains(ch)) curing.Add(ch);
             }
+            { byte old = Data(new Vector2Int(cx, cz)).pave[lj * V + li]; if (old != kind) NoteRoad(ix, iz, old, kind); }   // the player's roads on the map
             P(cx, cz, li, lj);
             if (li == 0) P(cx - 1, cz, N, lj);
             if (lj == 0) P(cx, cz - 1, li, N);
@@ -698,6 +703,7 @@ namespace MadMax.World
                 var c = new Vector2Int(e.x, e.z);
                 if (chunks.TryGetValue(c, out var ch)) ApplySaved(ch, e); else savedEdits[c] = e;
             }
+            RoadMarksFrom(edits);
         }
 
         void ApplySaved(Chunk ch, ChunkEdit e)
@@ -1020,6 +1026,7 @@ namespace MadMax.World
 
             if (ch.pave[k] > 0)
             {
+                if (ch.pave[k] >= PaveGravel) return RoadColor(ch, k, hs, gx, gz, gi, gj);
                 float set = ch.cure[k];
                 bool asphalt = ch.pave[k] == 1;
                 var baseC = asphalt ? Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2] : Concrete[hs < 0.3f ? 1 : hs < 0.9f ? 2 : 3];
