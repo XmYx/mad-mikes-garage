@@ -11,9 +11,11 @@ parts, and most of the world can be dug up, knocked down or burnt. Made with Uni
 ## What's in the game
 
 There are two ways to start. **Sandbox** gives you a yard of cars, a homestead and a short FIRST STEPS chain, then leaves
-you to it. **Story** (early, in development) starts you with nothing next to a wrecked convoy trailer: a radio voice,
-a neighbour called Nell with a cracked rain collector, a small car that won't start, and a derelict garage down the
-road. The first two chapters are playable; the rest of the campaign is written out in `storyline.md`.
+you to it. **Story** starts you with nothing next to a wrecked convoy trailer: a radio voice, a neighbour called Nell with a
+cracked rain collector, a small car that won't start, and a derelict garage down the road. Three storylines (the
+falsified death records, the garage that becomes a refuge, and a fair way to share fuel and water between towns) meet
+in a finale at the Guild's dispatch yard with three different endings. The campaign is new and still being tuned; it
+follows `storyline.md`.
 
 ### Driving and repairing
 - Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doors, hoods, bumpers, rams, spikes, armour plates, roof racks, winches, cranes, lights, snorkels and weapons. Most parts fit most vehicles.
@@ -74,6 +76,7 @@ for a base, and away from the masts the signal fades into hiss.
 - Multiplayer through a listen server, a dedicated server or as a client (Unity Transport, UDP).
 - Three save slots plus an autosave. A map and journal with waypoints and road routing.
 - A daily race board (road race, bike trial, air race, arena) and a long quest called The Last Engine.
+- A campaign of 17 chapters plus 24 side stories, three personal threads and The Last Engine in five parts, all of which run in sandbox worlds too: choices are remembered, most problems have a peaceful, a clever and a forceful answer, and nothing is on a timer.
 - Views: isometric, tilt-shift, top-down, third person, first person, hood and bumper cameras. The pixel-art renderer can also switch to full-resolution "vector" mode.
 - Rebindable controls, gamepad support, colour-blind palette, HUD scaling and separate volume channels.
 

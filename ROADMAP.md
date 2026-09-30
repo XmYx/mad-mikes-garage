@@ -1115,10 +1115,10 @@ The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladde
 |---|---|---|---|
 | **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
 | **N1 first hour** | A1, B1, A2, S03, S06, S09, S24 (done) | evidence records, tagged vehicles, ground goals (done); **B fields** (done) | playable: `story.first_hour`, `story.a2`, `story.side_quests`, `story.work_quests` |
-| **N2 parallel lives** | A3, A4, B2 (done); B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | A3, A4, B2 playable (`story.chapter_two`); B3, C1-C3 wait for the Roads and Utilities blocks |
-| **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
-| **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
-| **N5 delivery** | voices, captions, pacing, multiplayer ledger | — | — |
+| **N2 parallel lives** | A3, A4, B2, B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | **playable**: `story.chapter_two`, `story.b3`, `story.c1`-`c3`, `story.allocation` |
+| **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | **playable**: `story.a5`, `a6`, `b4`, `b5`, `b5_defence`, `c4`, `c5`, `f1`, `f1_routes` |
+| **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | **playable**: `story.s01`-`s24`, `p1`-`p3`, `last_engine` |
+| **N5 delivery** | voices, captions, pacing, multiplayer ledger, relocation | — | open |
 
 Order of work: N1 remainder with stage B (fields and tractor) → N2 with stages C and F → N3 with G and the remaining story verbs → N4 with E, H, I.
 
@@ -1175,7 +1175,7 @@ All eight blocks built in parallel, merged into main, compiled in Unity and run 
 - [x] HUD item feed of every gain and loss of the pack with labels (bought, paid, sold, made, harvested, reward, found, picked up, dropped...), merged within 1.5 s, sliding out.
 - [ ] World items online (local to each peer); build-mode costs in the feed.
 
-**Anim** (`anim.vehicle_work`: service and unbolt pass; remount and the real G key path are being fixed)
+**Anim** (`anim.vehicle_work`)
 - [x] Timed work at vehicles: service, refuel walk-up, siphon, battery lead, take/mount parts, repair kit, armour welding, welder/cutter/jack: walk to the spot, pose, prop/tool, sparks and sounds, the hood lifted, effect at the end, cancel without effect; progress bar; setting WORK ANIMATION.
 - [ ] Work poses online; pose tuning from captures.
 
@@ -1198,4 +1198,27 @@ All eight blocks built in parallel, merged into main, compiled in Unity and run 
 **I Defence** (`defence.ladder`)
 - [x] Saw bench and sawmill (planks), brick mould and kiln bricks, prefab concrete panels; plank / fired-brick / panel walls (stronger upgrade chain); sandbag wall, watchtower (perch, far view, lookout), landmines, tripwire, gate frame + motorised gate, MG nest → auto turret; raids count and trip the new works.
 - Fixed on integration: `Explosion.Blast` shoved vehicles with ~26 m/s per point of power (dynamite ≈ 200 m/s); now capped at 14 m/s. `ToolLibrary.Has/AllIds` include block tools (hotbar icons, repair page, network index).
+
+### The whole campaign playable (2026-10-01)
+Built by seven parallel quest branches (per-quest hook files), merged, compiled in Unity and run scenario by scenario; every quest in the catalogue is `Build.Playable` and every story system is ready except `relocation` (N5).
+
+**Arc A: KEEP THE LIGHT ON**
+- [x] **A5 NO ONE RIDES IN THE BACK**: the Guild transfer yard, Wes stabilised four ways (first aid kit, clinic bed in the hut, the town medic, a bed at the staging point), everyone or one group plus an agreement, contracts bought / worked off / sneaking out / stopping the escort, Mara's live list (seats, water, medicine) and the player's go at the trailer door, two trips or Otis's bus, survivors choose where they go, the convoy horn and Ada's schedule (`transfer`).
+- [x] **A6 TELL IT STRAIGHT**: Ivo's Remnant checkpoint, the cross-check by the clerk's book or Ivo's runner, full / redacted (+ Wes's logbook) / held with June, captioned rehearsal and broadcast (radio flash, journal transcript, two days of follow-up news), Mara stays / travels as a companion / departs (`broadcast`).
+**Arc B: the garage**
+- [x] **B3 LIGHTS WORTH COMING BACK TO**: fuel, solar or wind/water supply, a powered lamp and one essential service, roof, bed, sanitation; Nell's compressor surge on a load breaker (LOW and restart, unplug, or a battery bank); the refuge (respawn at the garage bed, the lantern under the sign).
+- [x] **B4 WHO GETS A KEY?**: rooms or lodging at Mae's, Hester's grievance over her father's pump (ask Judd or Nell), rules (the pump comes home on a well, house rules, Judd sleeps in town), one staffed service (repair labour, crops, medical resupply), residents eating from the garage stores at 19:00 (`residents`).
+- [x] **B5 THE NIGHT WE STAYED**: Silas Vance's levy; Moth's double ledger; a written levy, passage for repairs, exposing the ledger, or three defences and the flag at the gate (defence 9+ deters, below that a real `BaseRaid`); a shared meal, a keepsake wall, the charter (home / paid workshop / cooperative refuge).
+**Arc C: THE PRICE OF PASSAGE** (Sera Dune; the village nearest the first town, the road between, the next town out)
+- [x] **C1 WATER HAS NO FLAG**: Isaac's bowser at a Guild toll post, the test kit at its valve against the toll book, the leak mended in build mode; the measured toll, the Nomads' salt road, the booked sixty, or taking it; tow it to the village.
+- [x] **C2 THE CHEAP ROAD**: the trial truck logs minutes, litres, knocks and wear per route (warden's track vs the public road through the wash); the warden's pass, fill / surface / bridge the wash, or shared hauling; matching tyres and a haul contract.
+- [x] **C3 ENOUGH TO GO AROUND**: twelve cans against sixteen claimed; ask what each really burns, mend the waste, share by need / evenly / one favoured openly (`allocation`), deliver the posted shares, a provisional passage agreement; clinic bed, produce stall, lamps.
+- [x] **C4 A BRIDGE YOU CAN AFFORD**: the washout at a ford; fill, a timber or steel deck, or the ferry; Greta's digger and tipper on return terms; the loaded-tipper test; the road-work sign.
+- [x] **C5 NO EMPTY SEAT**: hire drivers, load Bo's crates, highway or back track, the Remnant checkpoint arranged (`Checkpoint.OpenFor`), the convoy behind you (`player_convoy`), a breakdown and Wren's cart on the road, terms at the depot (`arc_c_concession|coop|bilateral`).
+**Finale**
+- [x] **F1 THE LONG WAY HOME**: Ada's offer at the Guild dispatch yard; support from earlier outcomes (Mara, June, Nell, Sera, residents, the agreement, the crossing); the fuel week shared over five places (supply from campaign transport, fixed when posted, what can be met); control by published terms (refusal says why), a work stoppage, or the yard seized with its pumps whole; consequences and an autosave before the commitment; the run by road, shortcut (a hurt scout) or water (a loaded skiff), escorted, lost loads replaced; A BETTER BARGAIN / OPEN ROADS / BREAK THE LOCKS (strong / weak variants, factions, fuel prices, radio flash, `campaign_done`); the last call on the refuge radio.
+**Side stories** (sandbox and campaign)
+- [x] S01 A FRIDGE FULL OF FLOWERS (Orla's cold cabinet), S02, S04, S05 NOT THAT KIND OF SHOT (Amos's range, the dummy round), S07, S08 THE WEDDING AT THE WRONG END OF THE ROAD (`performance`), S10, S11, S12 THE DOG AT PLATFORM THREE (`Animal.TreatWith`), S13, S14 SOMETHING IN THE WELL (the oily well, the pumpjack uphill), S15 THE ORGAN RUNS ON DIESEL (load balancing, a procedural organ), S16-S18, S19 THE BELL BENEATH THE WATER (diving), S20-S22, S23 NO TEETH, STILL TROUBLE (`nonlethal_bout`), P1-P3 personal threads, L1-L5 THE LAST ENGINE chapters.
+- Fixed on integration: shots counted by `WastelandGame.ShotsFired` (a reload and a shot in one frame hid the round from S05); S19's shore search used `Sample.water` (the lake level past the shoreline) and fell back to dry ground; tests that found "the first story prop" picked other quests' props (scoped to their anchors); frame-throttled hooks vs fixed test waits (wait for the state instead).
+- Open: `relocation` (N5), voices and captions for the new cast, pacing on real routes (the dispatch city can be kilometres out), recurring convoy traffic after C5, B5's low-defence raid and A6's travel/depart branches without scenarios, multiplayer story ledger.
 
