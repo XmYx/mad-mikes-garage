@@ -62,6 +62,7 @@ namespace MadMax.Items
             { "misc_coil", "GENERATOR COIL" }, { "misc_blade", "TURBINE BLADE" }, { "misc_solar_cell", "SOLAR CELL" },
             { "kit_solar_panel", "SOLAR PANEL KIT" }, { "kit_wind_large", "LARGE WIND TURBINE KIT" }, { "kit_water_turbine", "WATER WHEEL KIT" },
             { "relic_block", "RELIC: V12 BLOCK" }, { "relic_heads", "RELIC: V12 HEADS" }, { "relic_crank", "RELIC: V12 CRANKSHAFT" }, { "relic_blower", "RELIC: TWIN BLOWERS" },
+            { "misc_rope", "ROPE" }, { "animal_lamb", "LAMB" }, { "animal_rabbit", "LIVE RABBIT" }, { "vet_salve", "HONEY SALVE (ANIMALS)" },
             { "keepsake_badge", "CONVOY ENAMEL BADGE" }, { "misc_delivery_chit", "DELIVERY CHIT" }, { "misc_relay_module", "RELAY RECORDING MODULE" }, { "misc_receiver", "JUNE'S RECEIVER" }, { "evidence_receipt", "FUEL RECEIPT (EVIDENCE)" }, { "evidence_manifest", "FORGED MANIFEST (EVIDENCE)" }, { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
@@ -256,7 +257,7 @@ namespace MadMax.Items
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {
-                if (r.category == RecipeCategory.Clothing) r.station = "sewing";                        // all clothes at the sewing table
+                if (r.category == RecipeCategory.Clothing && (r.station == null || r.station == "workbench")) r.station = "sewing";   // clothes at the sewing table (leather goods: the leather bench)
                 // firearms and their ammunition at the gunsmith bench (melee and caltrops stay at the workbench)
                 if (r.category == RecipeCategory.Weapons && r.output != null && (r.output == ItemIds.Shotgun || (r.output.StartsWith("ammo_") && r.output != "ammo_caltrops"))) r.station = "gunsmith";
             }
@@ -274,6 +275,7 @@ namespace MadMax.Items
             "bandana", "goggles", "gloves", "helmet", "vest", "tank", "jeans", "boots", "shoulder", "coat",
             "duster", "poncho", "hazmat", "gasmask", "sweater", "overalls", "cowboy", "bomber", "shemagh", "fingerless", "combat_boots",
             "welding_mask", "skull_mask", "schoolbag", "hikingpack", "framepack",
+            "leather_boots", "work_belt", "gun_belt", "leather_cuirass", "leather_chaps", "leather_satchel", "bee_veil",   // depth stage E (RecipeLibrary.Husbandry)
         };
 
         static IEnumerable<Recipe> Extra()

@@ -171,6 +171,7 @@ namespace MadMax.Npc
         {
             float strength = Strength * 2f + DayNight.Day * 0.2f;
             int defence = claim.Defence();
+            DefenceWorks.SpendMines(claim);                                                    // they walk into some of the mines
             foreach (var p in Placeable.All)                                                 // turrets spend a belt
                 if (p && claim.Inside(p.transform.position) && p.TryGetComponent<AutoTurret>(out var tur) && tur.on)
                 {

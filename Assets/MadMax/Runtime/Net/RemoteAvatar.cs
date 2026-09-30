@@ -96,7 +96,7 @@ namespace MadMax.Net
             {
                 toolIndex = s.tool;
                 if (toolVisual) Destroy(toolVisual.gameObject);
-                toolVisual = s.tool < ToolLibrary.Order.Length ? ToolLibrary.Create(ToolLibrary.Order[s.tool], material) : null;
+                toolVisual = s.tool < ToolLibrary.AllIds.Count ? ToolLibrary.Create(ToolLibrary.AllIds[s.tool], material) : null;
                 if (toolVisual) AttachTool();
             }
             anim.Tick(Time.deltaTime, new HumanAnimator.State

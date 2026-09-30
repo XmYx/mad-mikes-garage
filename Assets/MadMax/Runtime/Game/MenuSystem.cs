@@ -10,7 +10,7 @@ namespace MadMax.Game
 {
     /// <summary>Pixel-art menus drawn into the HUD canvas: main menu, pause, settings, crafting.
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
-    public class MenuSystem : MonoBehaviour
+    public partial class MenuSystem : MonoBehaviour
     {
         public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots }
 
@@ -32,6 +32,7 @@ namespace MadMax.Game
             public System.Action<string> setText;
             public string hint;
             public string id;
+            public string drop;                           // inventory page: item id or "res:N" to drop / place (Items block)
             public RectInt rect;
         }
 
@@ -220,7 +221,7 @@ namespace MadMax.Game
                 if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
                 if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
             }
-            if (from.TrySpend(t, n)) to.Add(t, n);
+            using (Inventory.Source("TAKEN", "STORED")) if (from.TrySpend(t, n)) to.Add(t, n);
             Rebuild();
         }
 
@@ -234,7 +235,7 @@ namespace MadMax.Game
                 if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
                 if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
             }
-            if (from.TakeItem(id, n)) to.AddItem(id, n);
+            using (Inventory.Source("TAKEN", "STORED")) if (from.TakeItem(id, n)) to.AddItem(id, n);
             if (!intoBox && id.StartsWith("tool_")) game.UpdateHotbarNow();
             Rebuild();
         }
@@ -323,6 +324,7 @@ namespace MadMax.Game
                         Opt("SIDECAR HANDLING", () => s.vintageSidecar ? "VINTAGE" : "ASSISTED", d => s.vintageSidecar = !s.vintageSidecar);
                         Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
                         Opt("GET IN / OUT ANIMATION", () => s.boardingAnimation ? "ON" : "OFF", d => s.boardingAnimation = !s.boardingAnimation);
+                        Opt("WORK ANIMATION", () => s.workAnimation ? "ON" : "OFF", d => s.workAnimation = !s.workAnimation);
                         Opt("CAR DEFORMATION", () => GameSettings.DeformationNames[Mathf.Clamp(s.deformation, 0, GameSettings.DeformationNames.Length - 1)],
                             d => s.deformation = Mathf.Clamp(s.deformation + d, 0, GameSettings.DeformationScales.Length - 1));
                         Opt("INTRO FILM", () => s.intro ? "ON" : "OFF", d => s.intro = !s.intro);
@@ -532,8 +534,8 @@ namespace MadMax.Game
                             {
                                 id = id, label = MadMax.Items.ItemCatalog.Name(id) + (game.HasMake(id) ? " (" + game.QualityName(id) + ")" : ""),
                                 value = () => { int slot = System.Array.IndexOf(game.Hotbar, id); return (slot >= 0 ? "[" + (slot + 1) + "] " : "") + "X" + inv.GetItem(id) + "  " + (inv.GetItem(id) * MadMax.Items.ItemCatalog.Weight(id)).ToString("0.0") + "KG"; },
-                                confirm = () => game.UseItem(id),
-                                hint = MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR"
+                                confirm = () => game.UseItem(id), drop = id,
+                                hint = (MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR") + DropHint(id)
                             });
                         }
                     }
@@ -542,7 +544,7 @@ namespace MadMax.Game
                     {
                         var rt = (ResourceType)t;
                         if (inv.Get(rt) <= 0) continue;
-                        items.Add(new Item { label = ResourceInfo.Name(rt), value = () => inv.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L  " : "  ") + (inv.Get(rt) * MadMax.Items.ItemCatalog.ResourceWeight(rt)).ToString("0.0") + "KG" });
+                        items.Add(new Item { label = ResourceInfo.Name(rt), value = () => inv.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L  " : "  ") + (inv.Get(rt) * MadMax.Items.ItemCatalog.ResourceWeight(rt)).ToString("0.0") + "KG", drop = "res:" + t, hint = DropHint("res:" + t).Trim() });
                     }
                     break;
                 }
@@ -757,6 +759,11 @@ namespace MadMax.Game
                     Slider("DAMPERS", 2, () => t.damping, v => t.damping = v, -1f, 1f, 0.25f, v => Signed(v, 35f, "%"), "MORE DAMPING: LESS BOUNCE, HARSHER RIDE");
                     Slider("BRAKE BIAS", 1, () => t.brakeBias, v => t.brakeBias = v, 0.4f, 0.8f, 0.05f, v => "FRONT " + Mathf.RoundToInt(v * 100) + "%", "REARWARD BIAS TURNS IN, TOO MUCH SPINS YOU");
                     items.Add(new Item { label = "BRAKES" + (mech < 2 ? " [MECH 2]" : ""), value = () => BrakeNames[t.brakeLevel], confirm = () => game.UpgradeBrakes(t), enabled = () => t.brakeLevel < 2, hint = "E UPGRADE: 4 IRON + 2 COPPER (+25% STOPPING)" });
+                    foreach (var kitSlot in MadMax.Vehicles.VehicleTuning.KitSlots)          // depth stage D: machine-shop and forge kits
+                    {
+                        var ks = kitSlot;
+                        items.Add(new Item { label = ks.label + (mech < ks.mech ? " [MECH " + ks.mech + "]" : ""), value = () => game.KitValue(t, ks), confirm = () => game.FitMetalKit(t, ks), hint = ks.hint });
+                    }
                     Slider("TYRE PRESSURE", 0, () => t.pressure, v => t.pressure = v, 0.6f, 1.25f, 0.05f, v => (v * 2.2f).ToString("0.0") + " BAR" + (v < 0.85f ? " SOFT" : v > 1.1f ? " HARD" : ""), "LOW: SAND AND MUD GRIP, SLOWER, WEARS.  HIGH: FAST ON ROADS");
                     items.Add(new Item { label = "BALLAST", value = () => Mathf.RoundToInt(t.ballast) + " KG", adjust = d => game.TuneBallast(t, d), hint = "A/D LOAD OR UNLOAD 25 KG OF STONE (TRACTION, STABILITY)" });
                     items.Add(new Item { label = "INTERIOR", value = () => t.stripped ? "STRIPPED" : "STOCK", confirm = () => game.StripInterior(t), hint = "E STRIP IT (-8% BODY WEIGHT, +SCRAP, CLOTH) OR REFIT IT" });
@@ -1019,7 +1026,8 @@ namespace MadMax.Game
             }
             if (!IsOpen)
             {
-                if (esc) Open(Page.Pause);
+                pendingPlace = null;
+                if (esc && !game.CancelPlacing()) Open(Page.Pause);                              // Esc first puts a PLACE preview away
                 return;
             }
             if (esc || (pad != null && pad.buttonEast.wasPressedThisFrame)) { if (Current == Page.Join) Open(Page.Main); else Back(); return; }
@@ -1048,6 +1056,7 @@ namespace MadMax.Game
             if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
                 for (int i = 0; i < WastelandGame.HotbarSize; i++) if (kb[Key.Digit1 + i].wasPressedThisFrame) game.AssignHotbar(i, items[cursor].id);
+            if (Current == Page.Inventory && InventoryDropKeys(pad)) return;
 
             int dy = 0, dx = 0; bool ok = false;
             if (kb != null)

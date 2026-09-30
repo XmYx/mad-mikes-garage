@@ -165,6 +165,7 @@ namespace MadMax.Npc
             if (c.id.StartsWith("Q")) { g.Toast("TELL THE TOWN BOSS IT'S DONE"); return; }        // a town boss's job (TownQuests)
             int pay = c.reward;
             if ((c.Delivery || c.Escort) && g.Current && MadMax.Vehicles.VehiclePaint.DecalOf(g.Current) == Factions.Decal[(int)Faction.FuelGuild]) pay += pay / 10;   // Guild colours
+            using var feed = MadMax.Items.Inventory.Source("REWARD");
             g.Inventory.Add(MadMax.Items.ResourceType.Scrap, pay);
             if (c.chits > 0) g.Inventory.AddItem(Chit, c.chits);
             Factions.Shift(c.faction >= 0 ? (Faction)c.faction : c.Delivery ? Faction.FuelGuild : Faction.Settlers, c.rep);

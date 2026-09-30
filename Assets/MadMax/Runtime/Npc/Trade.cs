@@ -55,11 +55,19 @@ namespace MadMax.Npc
                 : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") || id.Contains("dinner") ? 8f : 3f;
             if (id == "drink_beer" || id == "drink_cider") return 6f;
             if (id.StartsWith("drink_")) return id == "drink_water" ? 4f : 3f;
+            if (id == "med_firstaid") return 30f;
             if (id.StartsWith("med_")) return id == "med_splint" ? 10f : id == "med_pills" ? 14f : 8f;
+            if (id == "misc_gold_ring") return 60f;
+            if (id.EndsWith("_concentrate")) return id.Contains("gold") ? 12f : 2.5f;
             if (id.StartsWith("book_")) return 16f;
             if (id.StartsWith("vhs_")) return 14f;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return 3f;
-            if (id.StartsWith("kit_")) return 28f;
+            if (id == "misc_nails") return 0.3f;                                                   // depth stage D fixings and castings
+            if (id == "misc_bolts") return 0.6f;
+            if (id == "misc_castings") return 6f;
+            if (id == "misc_engine_block") return 70f;
+            if (id == "use_horseshoes") return 14f;
+            if (id.StartsWith("kit_")) return id.StartsWith("kit_gearbox") || id == "kit_transfer_case" ? 60f : id.StartsWith("kit_brakes") || id == "kit_lift" || id == "kit_long_range_tank" ? 40f : 28f;
             if (id.StartsWith("cloth_")) { var cd = MadMax.Game.ClothingLibrary.Get(id); return cd?.armor != null ? 14f + cd.weight * 5f + cd.armor[1] * 40f : 10f; }
             if (id.StartsWith("throw_")) return 12f;
             if (id.StartsWith("farm_")) return 5f;
@@ -69,6 +77,7 @@ namespace MadMax.Npc
 
         public static float Value(ResourceType t) => t switch
         {
+            ResourceType.GoldOre => 8f, ResourceType.Gold => 35f,
             ResourceType.Scrap => 1f, ResourceType.Wood => 0.8f, ResourceType.Stone => 0.6f, ResourceType.Glass => 2f, ResourceType.Rubber => 2f,
             ResourceType.Cloth => 1.5f, ResourceType.Fuel => 2f, ResourceType.Oil => 3f, ResourceType.Coolant => 2f,
             ResourceType.IronOre or ResourceType.CopperOre or ResourceType.TinOre or ResourceType.Bauxite or ResourceType.Silica => 1.5f,
@@ -77,7 +86,10 @@ namespace MadMax.Npc
             ResourceType.DirtyWater => 0.1f,
             ResourceType.Hide => 2f, ResourceType.Leather => 4f, ResourceType.Gunpowder => 6f, ResourceType.Sulfur => 3f, ResourceType.CrudeOil => 1.5f,
             ResourceType.Diesel => 2.2f, ResourceType.Tar => 1f, ResourceType.SeedOil => 2f, ResourceType.Coal => 1.2f, ResourceType.LeadOre => 1.5f,
-            ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f, _ => 0.5f
+            ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f,
+            ResourceType.Steel => 9f, ResourceType.Gravel => 0.5f, ResourceType.Wool => 2.5f, ResourceType.Honey => 4f, ResourceType.Beeswax => 3f,
+            ResourceType.Hay => 0.4f, ResourceType.Feed => 1f, ResourceType.SeaWater => 0.05f, ResourceType.Biogas => 1.5f, ResourceType.Brick => 1.6f,
+            ResourceType.Plank => 1.4f, ResourceType.Thread => 1.2f, ResourceType.Salt => 2f, _ => 0.5f
         };
 
         public static string Name(string id) => id.StartsWith("res:") ? ResourceInfo.Name((ResourceType)int.Parse(id.Substring(4)))
@@ -115,7 +127,7 @@ namespace MadMax.Npc
                               ("animal_puppy", 0, 1), ("animal_calf", 0, 1), ("use_saddle", 0, 1) } },
             { "food", new[] { ("food_can", 2, 8), ("food_ration", 1, 5), ("drink_water", 3, 10), ("drink_soda", 1, 6), ("food_potato", 2, 8), ("food_corn", 2, 8), ("food_stew", 0, 3),
                               ("seed_corn", 0, 4), ("seed_tomato", 0, 4), ("seed_potato", 0, 4), ("res:28", 10, 40),
-                              ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
+                              ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("animal_lamb", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
             { "salvage", new[] { ("med_bandage", 1, 5), ("med_pills", 0, 3), ("med_splint", 0, 2), ("med_disinfectant", 0, 2), ("ammo_shells", 5, 20), ("throw_molotov", 0, 3),
                                  ("tool_torch", 1, 3), ("tool_lantern", 0, 2), ("tool_gas_torch", 0, 1), ("tool_pipe_shotgun", 0, 1), ("tool_machete", 0, 1),
                                  ("book_charm", 0, 1), ("book_mechanics_1", 0, 1), ("vhs_salesman", 0, 1), ("vhs_driving", 0, 1), ("kit_floodlight", 0, 1) } },
@@ -141,6 +153,7 @@ namespace MadMax.Npc
         {
             if (!buys.TryGetValue(kind, out var l)) return false;
             if (id == "res:1" || id == "food_rotten") return false;       // scrap is the money
+            if (id == "res:" + (int)ResourceType.GoldOre || id == "res:" + (int)ResourceType.Gold) return kind != "food";   // everyone else takes gold
             foreach (var p in l) if (p.EndsWith("_") ? id.StartsWith(p) : id == p) return true;
             return false;
         }
@@ -169,6 +182,7 @@ namespace MadMax.Npc
             // the Fuel Guild's chits pay at fuel vendors, worth a little more than their scrap
             int chits = vendor.Profile.kind == "fuel" ? Mathf.Min(g.Inventory.GetItem(Contracts.Chit), cost / ChitValue) : 0;
             if (g.Inventory.Get(ResourceType.Scrap) < cost - chits * ChitValue) { g.Toast("NOT ENOUGH SCRAP (" + cost + ")"); NpcVoice.Say(vendor, "broke", true); return false; }
+            using var feed = Inventory.Source("BOUGHT", "PAID");                                   // item feed labels
             if (o.id.StartsWith("part:"))
             {
                 var at = vendor.transform.position + vendor.transform.right * 1.2f + Vector3.up * 0.6f;
@@ -196,6 +210,7 @@ namespace MadMax.Npc
             n = Mathf.Min(n, have);
             int price = SellPrice(id, bargain);
             if (n <= 0 || price <= 0) return false;
+            using var feed = Inventory.Source("SALE", "SOLD");
             bool ok = id.StartsWith("res:") ? g.Inventory.TrySpend((ResourceType)int.Parse(id.Substring(4)), n) : g.Inventory.TakeItem(id, n);
             if (!ok) return false;
             if (id.StartsWith("tool_")) g.UpdateHotbarNow();

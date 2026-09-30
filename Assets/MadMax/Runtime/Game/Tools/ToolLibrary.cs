@@ -27,7 +27,23 @@ namespace MadMax.Game
         }
         const float S = VoxelMesher.DefaultSize;
 
-        public static bool Has(string id) => System.Array.IndexOf(Order, id) >= 0;
+        public static bool Has(string id) { EnsureBlocks(); return System.Array.IndexOf(Order, id) >= 0 || Extra.ContainsKey(id); }
+
+        /// <summary>Every tool id: the core order, then the blocks' tools (sorted, so peers agree on the indices).</summary>
+        public static IReadOnlyList<string> AllIds
+        {
+            get
+            {
+                EnsureBlocks();
+                if (allIds == null || allIds.Count != Order.Length + Extra.Count)
+                {
+                    var extra = new List<string>(Extra.Keys); extra.Sort(System.StringComparer.Ordinal);
+                    allIds = new List<string>(Order); allIds.AddRange(extra);
+                }
+                return allIds;
+            }
+        }
+        static List<string> allIds;
 
         public static Mesh MeshFor(string id)
         {

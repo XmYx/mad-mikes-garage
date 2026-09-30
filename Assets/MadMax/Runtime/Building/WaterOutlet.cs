@@ -15,7 +15,7 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             float w = UtilityGrid.NetWater(node, out float clean);
-            string q = w < 0.5f ? "NO WATER" : Mathf.RoundToInt(w) + "L" + (clean < 0.99f ? " DIRTY" : "");
+            string q = w < 0.5f ? "NO WATER" : Mathf.RoundToInt(w) + "L" + (clean < 0.99f ? " " + WaterQuality.Word(WaterQuality.TaintOf(node)) : "");
             return kind switch
             {
                 Kind.Shower => w < 10f ? "SHOWER: " + q : "[E] SHOWER  " + q,
@@ -47,9 +47,10 @@ namespace MadMax.Building
             }
             if (!secondary)
             {
+                var taint = WaterQuality.TaintOf(node);
                 float got = UtilityGrid.Draw(node, 0.5f, out bool clean);
                 if (got < 0.1f) { g.Toast("NO WATER"); return; }
-                g.Drink(got * 60f, !clean);
+                g.DrinkTainted(got * 60f, clean ? WaterTaint.None : taint);
                 return;
             }
             if (kind == Kind.Sink && g.Stats.hygiene < 95f)
@@ -58,10 +59,12 @@ namespace MadMax.Building
                 if (got >= 0.9f) { g.Wash(clean ? 30f : 15f, "WASHED HANDS"); return; }
             }
             // fill the canteen (inventory water)
+            var carried = WaterQuality.Carried(node);
+            string word = WaterQuality.Word(WaterQuality.TaintOf(node));
             float fill = UtilityGrid.Draw(node, 5f, out bool c2);
             if (fill < 0.5f) { g.Toast("NO WATER"); return; }
-            g.Inventory.Add(c2 ? ResourceType.Water : ResourceType.DirtyWater, Mathf.RoundToInt(fill));
-            g.Toast("FILLED " + Mathf.RoundToInt(fill) + "L" + (c2 ? "" : " DIRTY"));
+            g.Inventory.Add(c2 ? ResourceType.Water : carried, Mathf.RoundToInt(fill));
+            g.Toast("FILLED " + Mathf.RoundToInt(fill) + "L" + (c2 ? "" : " " + word));
         }
     }
 }

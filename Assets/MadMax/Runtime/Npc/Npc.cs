@@ -210,6 +210,12 @@ namespace MadMax.Npc
                 if (Random.value < dt * 3f) BloodStains.Splash(transform.position, 0.15f);
                 if (health <= 0f) { Die(lastByPlayer); return; }
             }
+            if (berthed)
+            {
+                // on a clinic bed (depth stage G): propped up, still, until let go
+                if (!berth) Unberth();
+                else { transform.SetPositionAndRotation(berth.position - berth.up * (0.94f * Profile.look.height), berth.rotation); anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, grounded = true }); return; }
+            }
             if (Riding) { RideTick(g, dt); return; }
             if (Driving) { DriveTick(g); return; }
             var terrain = DeformableTerrain.Instance;
@@ -667,7 +673,7 @@ namespace MadMax.Npc
                 siegeTarget = null; float bd = float.MaxValue;
                 foreach (var p in Placeable.All)
                 {
-                    if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>()) continue;
+                    if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>() || DefenceWorks.Concealed(p)) continue;   // mines and tripwires: unseen
                     float d = (p.transform.position - transform.position).sqrMagnitude;
                     if (PoweredLight.FloodlitAt(p.transform.position)) d += 30f * 30f;                  // they keep out of the floodlights
                     if (d < bd) { bd = d; siegeTarget = p; }
@@ -1045,5 +1051,33 @@ namespace MadMax.Npc
         public Transform Head => rig ? rig.Head : null;
 
         public void Heal() => health = maxHealth;
+
+        // ------------------------------------------------------------------ clinic (depth stage G)
+        Transform berth; bool berthed; Vector3 berthExit;
+        public float MaxHealth => maxHealth;
+        /// <summary>Hurt or bleeding: worth a clinic bed.</summary>
+        public bool Wounded => mode != Mode.Dead && (health < maxHealth - 0.5f || Time.time < bleedUntil);
+        /// <summary>The clinic bed spot this person lies on (hips; null when up and about).</summary>
+        public Transform Berthed => berthed ? berth : null;
+        /// <summary>Treatment: the bleeding stops and <paramref name="hp"/> health comes back.</summary>
+        public void Mend(float hp) { bleedUntil = 0f; health = Mathf.Min(maxHealth, health + hp); }
+
+        /// <summary>Lie on a clinic bed: hips at <paramref name="at"/>, AI paused; <paramref name="exit"/> is where to get up.</summary>
+        public void Berth(Transform at, Vector3 exit)
+        {
+            if (!at || mode == Mode.Dead) return;
+            berth = at; berthed = true; berthExit = exit;
+            LeaveFire(); SetAsleep(false);
+            cc.enabled = false; hasGoal = false;
+        }
+
+        /// <summary>Get up from the clinic bed.</summary>
+        public void Unberth()
+        {
+            if (!berthed) return;
+            berthed = false; berth = null;
+            transform.position = berthExit;
+            cc.enabled = mode != Mode.Dead;
+        }
     }
 }

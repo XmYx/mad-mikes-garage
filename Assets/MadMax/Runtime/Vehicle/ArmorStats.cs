@@ -18,6 +18,10 @@ namespace MadMax.Vehicles
             { "bumper_bull_bar", new Stats { absorb = 0.4f, ram = 1.2f } },
             { "bumper_plow", new Stats { absorb = 0.6f, ram = 1.8f } },
             { "tool_dozer_blade", new Stats { absorb = 0.7f, ram = 2.0f } },
+            // depth stage D
+            { "armor_window_mesh", new Stats { absorb = 0.3f } },
+            { "armor_skirt_spiked", new Stats { absorb = 0.45f, spikes = 1.5f, ram = 0.4f } },
+            { "armor_sloped", new Stats { absorb = 0.85f } },
         };
 
         public static bool Get(string partId, out Stats s) => table.TryGetValue(partId ?? "", out s);

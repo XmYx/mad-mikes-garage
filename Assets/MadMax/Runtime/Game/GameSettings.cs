@@ -40,6 +40,7 @@ namespace MadMax.Game
         public bool cameraShake = true;
         public int deformation = 2;
         public bool boardingAnimation = true;
+        public bool workAnimation = true;       // WORK ANIMATION: walk to the spot on the vehicle and work (service, parts, welding...) for a while
         public bool flightStick;                // FLIGHT PITCH: false = up arrow climbs, true = stick style (up dives)   // GET IN / OUT: walk to the door, it swings open, slide into the seat      // CAR DEFORMATION: index into DeformationScales
         public static readonly float[] DeformationScales = { 0f, 0.5f, 1f, 1.6f, 2.4f };
         public static readonly string[] DeformationNames = { "OFF", "LIGHT", "NORMAL", "HEAVY", "EXTREME" };

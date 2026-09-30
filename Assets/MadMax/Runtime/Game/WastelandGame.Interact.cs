@@ -313,6 +313,7 @@ namespace MadMax.Game
             if (m == ArmorMat.None)
             {
                 if (a.mat[i] == ArmorMat.None) return;
+                if (DeferArmour(a, z, m, () => WeldArmour(a, z, m))) return;                    // cut off at the zone first (WastelandGame.Anim)
                 a.Cost(z, a.mat[i], 0.3f * a.condition[i], out var r1, out int n1, out var r2, out int n2);
                 Inventory.Add(r1, n1); if (n2 > 0) Inventory.Add(r2, n2);
                 a.Set(z, ArmorMat.None, 0f);
@@ -328,6 +329,7 @@ namespace MadMax.Game
                 Toast("NEED " + k1 + " " + ResourceInfo.Name(c1) + (k2 > 0 ? " + " + k2 + " " + ResourceInfo.Name(c2) : "") + " + 1 PETROL FOR THE TORCH");
                 return;
             }
+            if (DeferArmour(a, z, m, () => WeldArmour(a, z, m))) return;                        // welded on at the zone first (WastelandGame.Anim)
             Inventory.TrySpend(c1, k1); if (k2 > 0) Inventory.TrySpend(c2, k2);
             Inventory.TrySpend(ResourceType.Fuel, 1);
             if (a.mat[i] != ArmorMat.None && a.mat[i] != m) Inventory.Add(ResourceType.Scrap, Mathf.Max(1, a.Voxels(z) / 40));   // the old plates come off
@@ -415,39 +417,18 @@ namespace MadMax.Game
             {
                 bool wrench = Inventory.GetItem(ItemIds.Wrench) > 0;
                 text = wrench ? "[G] RECONNECT THE BATTERY LEAD" : "A BATTERY LEAD HANGS LOOSE (NEEDS A WRENCH)";
-                if (G && wrench)
-                {
-                    sys.Reconnect();
-                    Stats.Practice(MadMax.RPG.Skill.Mechanics, 4f);
-                    MadMax.Audio.Sfx.Play("ratchet", v.transform.position, 0.6f);
-                    Toast("BATTERY LEAD TIGHTENED: " + Name(v) + " WILL CRANK NOW");
-                    MadMax.Story.Story.Note("reconnected");
-                    MadMax.Net.NetSession.Instance?.SendVehicleMeta(v);
-                }
+                if (G && wrench) ReconnectBattery(v);                                            // timed at the engine bay (WastelandGame.Anim)
                 return text;
             }
             if (sys.NeedsService(Inventory) || sys.CanMaintain(Inventory))
             {
                 text = "[G] REFUEL/SERVICE";
-                if (G)
-                {
-                    if (Refuelling) StopRefuel("STOPPED");
-                    else if (sys.fuel < sys.fuelCapacity - 1f && (Inventory.Get(sys.FuelKind) > 0 || (sys.FuelKind == ResourceType.Fuel && Inventory.Get(ResourceType.Ethanol) > 0))) StartRefuel(v, null);
-                    else
-                    {
-                        Stats.Practice(MadMax.RPG.Skill.Mechanics, 3f);
-                        int n = sys.Service(Inventory);
-                        string m = sys.Maintain(Inventory);                                       // oil change, filters, plugs (roadmap 19)
-                        if (m != null) Stats.Practice(MadMax.RPG.Skill.Mechanics, 4f);
-                        Toast($"SERVICED {Name(v)}: {n} L" + (m != null ? ", " + m : ""));
-                        MadMax.Net.NetSession.Instance?.SendVehicleMeta(v);
-                    }
-                }
+                if (G) ServiceVehicle(v);
             }
             if (sys.TotalFluids >= 1f)
             {
                 text = Join(text, $"[K] SIPHON {Mathf.FloorToInt(sys.TotalFluids)} L");
-                if (K) { Stats.Practice(MadMax.RPG.Skill.Survival, 2f); int n = sys.Siphon(Inventory); Toast($"SIPHONED {n} L"); MadMax.Net.NetSession.Instance?.SendVehicleMeta(v); }
+                if (K) SiphonVehicle(v);
             }
             return text;
         }
@@ -482,15 +463,7 @@ namespace MadMax.Game
                 {
                     if (!Holding(ItemIds.Wrench)) return Inventory.GetItem(ItemIds.Wrench) > 0 ? "EQUIP THE WRENCH TO MOUNT   [Q] DROP" : "CRAFT A WRENCH TO MOUNT   [Q] DROP";
                     if (NeedsJack(carried)) return "HEAVY WHEEL: NEED A JACK IN THE PACK   [Q] DROP";
-                    if (E)
-                    {
-                        var part = Player.TakeCarried();
-                        best.Attach(part);
-                        MadMax.Audio.Sfx.Play("ratchet", best.transform.position, 0.8f);
-                        Stats.Practice(MadMax.RPG.Skill.Mechanics, 8f);
-                        StarterNote("mount");
-                        MadMax.Net.NetSession.Instance?.SendPartMounted(best.GetComponentInParent<VehicleDriver>(), best.name, part);
-                    }
+                    if (E) MountCarried(best);                                                   // timed at the socket (WastelandGame.Anim)
                     return $"[E] MOUNT {carried.partId.ToUpperInvariant()} > {best.name.ToUpperInvariant()}   [Q] DROP";
                 }
                 return $"CARRYING {carried.partId.ToUpperInvariant()}   [Q] DROP";
@@ -510,23 +483,7 @@ namespace MadMax.Game
             if (!target) return null;
             if (target.Socket && !Holding(ItemIds.Wrench)) return $"{target.partId.ToUpperInvariant()}: " + (Inventory.GetItem(ItemIds.Wrench) > 0 ? "EQUIP THE WRENCH" : "CRAFT A WRENCH");
             if (target.Socket && NeedsJack(target)) return $"{target.partId.ToUpperInvariant()}: NEED A JACK TO LIFT IT";
-            if (target.Socket && E) WearTool(ItemIds.Wrench, 0.01f);
-            if (E)
-            {
-                var net = MadMax.Net.NetSession.Instance;
-                if (target.Socket)
-                {
-                    var owner = target.Socket.GetComponentInParent<VehicleDriver>();
-                    if (net) { target.netId = net.NewEntityId(); net.SendPartDetached(owner, target.Socket.name, target, net.LocalId); }
-                    MadMax.Audio.Sfx.Play("ratchet", target.transform.position, 0.8f);
-                    target.Socket.Detach(false);
-                    Stats.Practice(MadMax.RPG.Skill.Mechanics, 6f);
-                    StarterNote("take");
-                }
-                else net?.SendPartCarried(target);
-                if (target.TryGetComponent<MadMax.Net.NetReplica>(out var rep)) Destroy(rep);
-                Player.Carry(target);
-            }
+            if (E) TakePart(target);                                                            // mounted parts: timed with the wrench (WastelandGame.Anim)
             string state = target.damage > 0.05f ? $" {Mathf.RoundToInt((1f - Mathf.Clamp01(target.damage)) * 100f)}%" : "";
             return $"[E] TAKE {target.partId.ToUpperInvariant()}{state}";
         }

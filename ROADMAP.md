@@ -1167,3 +1167,35 @@ Each block is built on its own branch by its own agent against a scaffold in `ma
 - [x] **B2 SUPPER FOR FOUR**: safe water, a kitchen and a table at the garage, four hot portions; Nell brings Vic (salt-route driver) and Ezra (a gardener from the old bus) to the yard; after supper, who is the place for (Vic stops by, Ezra moves in, or nobody yet).
 - Engine: Have/Build goals and hand-overs accept "a|b|c"; cast members can move (Nell at the garage for supper); dead cast don't return; story prompts use [E]-style key tokens (the old {Build} placeholders showed raw).
 
+### Blocks merged (2026-10-01)
+All eight blocks built in parallel, merged into main, compiled in Unity and run together.
+
+**Items** (`items.world`, `items.feed`)
+- [x] Every item and resource can be dropped or placed in the world as its own object (tool meshes, clothing props, icon models, resource crate / sack / jerry can, kit crate), picked up with [E] and saved; the PLACE preview from the pack page (rotate, LMB, Esc/RMB); Q drops the tool in hand.
+- [x] HUD item feed of every gain and loss of the pack with labels (bought, paid, sold, made, harvested, reward, found, picked up, dropped...), merged within 1.5 s, sliding out.
+- [ ] World items online (local to each peer); build-mode costs in the feed.
+
+**Anim** (`anim.vehicle_work`: service and unbolt pass; remount and the real G key path are being fixed)
+- [x] Timed work at vehicles: service, refuel walk-up, siphon, battery lead, take/mount parts, repair kit, armour welding, welder/cutter/jack: walk to the spot, pose, prop/tool, sparks and sounds, the hood lifted, effect at the end, cancel without effect; progress bar; setting WORK ANIMATION.
+- [ ] Work poses online; pose tuning from captures.
+
+**C Roads** (`roads.ladder`)
+- [x] Gravel and cobbles by hand (road rake, tamper); rock crusher (2 kW); road paint (line painter on set asphalt/concrete, white/yellow); the tipper spreads gravel on the move, the paver lays gravel; potholes from heavy traffic, patched with the rake; signs, guard rail, curb, bollard; timber (8 m) and steel (12 m) bridges; player roads on the minimap and map.
+- [ ] Player roads in `RoadRoute` and AI driving.
+
+**D Metal** (`metal.parts`, `metal.ladder`)
+- [x] Forge and anvil; steel at the forge, furnace, arc furnace; castings and a cast V8 block; machine shop (2 kW, tier 1.5): gearbox (close / wide), transfer case, HD brakes, lift / lowered / heavy suspension, long-range tank as kits at the tuning bench; parts 71 → 83 (exhausts, radiators, lamp pods, armour, ducktail, forged V8); horseshoes.
+
+**E Husbandry** (`husbandry.ladder`)
+- [x] Scythe and tractor baler (hay), feed at the workbench and feed mill, richer mixed rations; sheep, shears, wool regrowth, spinning wheel (thread, felt, rope), loom; beehive (honey, wax by forage and weather), candles, mead; stable; bark tanning and the leather bench (boots, belts, cuirass, chaps, satchel, saddle, saddlebags; Belt slot); snares and cage traps; butchering table; animal wounds and treatment.
+
+**F Utilities** (`utilities.ladder`)
+- [x] Water quality (silt, oil, salt, sewage, fallout; wells fouled by oil ground, latrines, troughs; filter cartridges; the water test kit; tainted drinking); sea water, solar still, desalinator, salt and salted foods; power switch, timer, light sensor, float switch, valve, load breaker (essential / normal / low shedding; overloads stall generators); biogas digester and generator; fridges by temperature, freezer, ice box.
+
+**G/H MedMine** (`medmine.ladder`, `.clinic`, `.works`)
+- [x] Poultice and willow-bark tea (campfire), first aid kit, clinic bed and medicine cabinet, surgery table (shrapnel); gold pan (river stretches run thin), sluice box, stamp mill (concentrate), gold smelting, ring; mine props and lamps (unpropped deep pits slump), mine rail and a pushable ore cart.
+
+**I Defence** (`defence.ladder`)
+- [x] Saw bench and sawmill (planks), brick mould and kiln bricks, prefab concrete panels; plank / fired-brick / panel walls (stronger upgrade chain); sandbag wall, watchtower (perch, far view, lookout), landmines, tripwire, gate frame + motorised gate, MG nest → auto turret; raids count and trip the new works.
+- Fixed on integration: `Explosion.Blast` shoved vehicles with ~26 m/s per point of power (dynamite ≈ 200 m/s); now capped at 14 m/s. `ToolLibrary.Has/AllIds` include block tools (hotbar icons, repair page, network index).
+

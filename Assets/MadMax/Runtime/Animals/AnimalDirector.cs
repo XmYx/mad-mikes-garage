@@ -11,6 +11,7 @@ namespace MadMax.Animals
     public class AnimalSave
     {
         public string species, bags;
+        public string husbandry;             // wool, wounds, sickness, fitted saddlebags (Animal.Husbandry)
         public Vector3 position, home;
         public float yaw, trust, health, stamina;
         public int born, fedDay, hungry, stock, order;
@@ -162,7 +163,7 @@ namespace MadMax.Animals
 
         // ------------------------------------------------------------------ village livestock
 
-        static readonly string[] VillageStock = { "chicken", "chicken", "chicken", "goat", "goat", "pig", "cow", "chicken" };
+        static readonly string[] VillageStock = { "chicken", "chicken", "chicken", "goat", "goat", "pig", "cow", "chicken", "sheep", "sheep" };
 
         void UpdateVillages(Vector3 focus)
         {
@@ -300,8 +301,8 @@ namespace MadMax.Animals
                 if (!a || !a.Alive) continue;
                 var d = a.Def;
                 bool fed = a.fedDay >= day - 1;
-                if (!fed) { var tr = Trough.Near(a.home, d.feedPerDay); if (tr && tr.Eat(d.feedPerDay)) fed = true; }
-                if (!fed && (d.id == "goat" || d.id == "cow" || d.id == "horse") && t)
+                if (!fed) { var tr = Trough.Near(a.home, d.feedPerDay); if (tr && tr.Eat(d.feedPerDay)) { fed = true; if (tr.LastMixed) a.MixedRation(); } }
+                if (!fed && (d.id == "goat" || d.id == "cow" || d.id == "horse" || d.id == "sheep") && t)
                 {
                     var b = t.BiomeAt(a.home.x, a.home.z);
                     if ((b == Biome.Forest || b == Biome.Tropical || b == Biome.Village) && Random.value < 0.6f) fed = true;     // found grazing
@@ -347,7 +348,7 @@ namespace MadMax.Animals
                 if (t) p.y = t.HeightNoLoad(p.x, p.z);
                 var young = Keep(d, p, Random.value * 360f, day);
                 young.home = parent.home; young.fedDay = day;
-                game.Toast("A NEW " + (d.id == "chicken" ? "CHICK" : d.id == "cow" ? "CALF" : d.id == "goat" ? "KID" : d.id == "pig" ? "PIGLET" : d.id == "horse" ? "FOAL" : "PUP") + " IN THE PEN");
+                game.Toast("A NEW " + (d.id == "chicken" ? "CHICK" : d.id == "cow" ? "CALF" : d.id == "goat" ? "KID" : d.id == "pig" ? "PIGLET" : d.id == "horse" ? "FOAL" : d.id == "sheep" ? "LAMB" : d.id == "jackrabbit" ? "KIT" : "PUP") + " IN THE PEN");
             }
         }
 
@@ -389,7 +390,8 @@ namespace MadMax.Animals
                 d.animals.Add(new AnimalSave
                 {
                     species = a.Def.id, position = a.transform.position, home = a.home, yaw = a.transform.eulerAngles.y, trust = a.trust, health = a.health, stamina = a.stamina,
-                    born = a.born, fedDay = a.fedDay, hungry = a.hungryDays, stock = a.stock, order = a.order, saddled = a.saddled, bags = a.bags ? a.bags.SaveState() : null
+                    born = a.born, fedDay = a.fedDay, hungry = a.hungryDays, stock = a.stock, order = a.order, saddled = a.saddled, bags = a.bags ? a.bags.SaveState() : null,
+                    husbandry = a.HusbandryState()
                 });
             }
             var sb = new System.Text.StringBuilder();
@@ -421,6 +423,7 @@ namespace MadMax.Animals
                 a.home = s.home; a.trust = s.trust; a.health = s.health > 0f ? s.health : d.health; a.stamina = s.stamina;
                 a.fedDay = s.fedDay; a.hungryDays = s.hungry; a.stock = s.stock; a.order = s.order;
                 if (s.saddled) { a.SetSaddled(true); if (a.bags && !string.IsNullOrEmpty(s.bags)) a.bags.LoadState(s.bags); }
+                a.LoadHusbandry(s.husbandry);
                 a.ApplySize();
             }
         }
