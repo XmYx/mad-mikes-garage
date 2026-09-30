@@ -56,9 +56,9 @@ namespace MadMax.Story
         {
             string k = "c2:" + route + ":";
             if (!ArcCRecord.Has(k + "s")) return null;
-            int s = ArcCRecord.Get(k + "s"), dl = ArcCRecord.Get(k + "dl"), dmg = ArcCRecord.Get(k + "dmg"), m = ArcCRecord.Get(k + "m");
+            int s = ArcCRecord.Get(k + "s"), dl = ArcCRecord.Get(k + "dl"), dmg = ArcCRecord.Get(k + "dmg"), m = ArcCRecord.Get(k + "m"), kn = ArcCRecord.Get(k + "kn");
             return (route == "short" ? "WARDEN'S TRACK " : "PUBLIC ROAD ") + (m / 100) / 10f + " KM, " + s / 60 + " MIN " + s % 60 + " S, "
-                   + dl / 10f + " L, " + dmg + "% KNOCKS" + (route == "short" ? ", 5 SCRAP A LOAD AT THE GATE" : ", NO TOLL");
+                   + dl / 10f + " L, " + kn + (kn == 1 ? " KNOCK, " : " KNOCKS, ") + dmg + "% WEAR" + (route == "short" ? ", 5 SCRAP A LOAD AT THE GATE" : ", NO TOLL");
         }
 
         /// <summary>C2's closing line from the choice made and the numbers.</summary>

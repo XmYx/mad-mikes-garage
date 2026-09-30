@@ -67,6 +67,7 @@ namespace MadMax.Game.Acceptance
             ArcCT.Put(c, truck, m, m - gate, "at the market's edge");
             yield return ArcCT.Done("C2", "short", 4f);
             c.Check(StoryState.StepDone("C2", "short") && StoryLibrary.C2Run("short") != null, "the warden's track is surveyed: " + StoryLibrary.C2Run("short"));
+            c.Note("the runs are placed, not driven: their minutes and litres are the fixture's, the distance is straight-line hops");
 
             // ---- run 2: the public road (market -> halfway -> the wash -> village)
             var pub = StoryAnchors.Get("c2_public");
@@ -85,8 +86,11 @@ namespace MadMax.Game.Acceptance
             c.Fixture("soil dumped into the wash (the excavator's dump op)");
             yield return ArcCT.Done("C2", "decide", 5f);
             c.Check(StoryState.Route("C2", "decide") == "FILLED THE WASH", "the wash is filled: " + StoryState.Route("C2", "decide"));
-            yield return new WaitForSeconds(1f);
-            var tyres = Object.FindObjectsByType<VehiclePart>(FindObjectsSortMode.None).Where(p => p && p.partId == "wheel_offroad" && !p.Socket && ArcCT.Flat(p.transform.position, truck.transform.position) < 8f).Count();
+            // the tick that hands the tyres and the contract over is frame-throttled: wait for it rather than a fixed second
+            int Tyres() => Object.FindObjectsByType<VehiclePart>(FindObjectsSortMode.None).Count(p => p && p.partId == "wheel_offroad" && !p.Socket && ArcCT.Flat(p.transform.position, truck.transform.position) < 8f);
+            yield return H.Until(() => StoryState.Flag("c2_paid") && Tyres() >= 2 && Contracts.Active.Any(k => k.id == "C2:HAUL"), 8f);
+            c.Note($"paid flag {StoryState.Flag("c2_paid")}, village {(Market.Near(StoryAnchors.Get("c_village")) != null)}, market {(Market.Near(StoryAnchors.Get("town1")) != null)}, contracts [{string.Join(", ", Contracts.Active.Select(k => k.id))}], loose wheels near the truck {Tyres()}");
+            var tyres = Tyres();
             c.Check(tyres >= 2, "a pair of all-terrain tyres by the trial truck (" + tyres + ")");
             c.Check(Contracts.Active.Any(k => k.id == "C2:HAUL"), "the village's first haul contract is taken");
 

@@ -64,11 +64,25 @@ namespace MadMax.Game.Acceptance
             c.Check(g.Inventory.GetItem(UtilityIds.WaterTest) > 0 && g.Inventory.Get(ResourceType.Iron) > iron0, "Isaac hands over a test kit and a hose clamp (iron)");
 
             // ---- quantity and quality at the valve
-            var back = -bowser.transform.forward; back.y = 0f; back.Normalize();
-            var stand = valve.transform.position + back * 1.1f; stand.y = MadMax.World.DeformableTerrain.Instance.Height(stand.x, stand.z) + 0.3f;
-            g.Player.Teleport(stand, Quaternion.LookRotation(-back).eulerAngles.y);
+            // out from the bowser's centre through the valve (whichever way the prefab faces), a few candidate spots: the kit
+            // samples the nearest water node within 3 m of the player's feet
+            var back = valve.transform.position - bowser.transform.position; back.y = 0f;
+            if (back.sqrMagnitude < 0.01f) back = -bowser.transform.forward;
+            back.y = 0f; back.Normalize();
+            var right = Vector3.Cross(Vector3.up, back);
+            c.Note($"valve local {valve.transform.localPosition}, world {valve.transform.position}, bowser {bowser.transform.position} fwd {bowser.transform.forward}, up {bowser.transform.up}; node listed {UtilityNode.All.Contains(node)}, active {valve.gameObject.activeInHierarchy}, capacity {node.waterCapacity}");
+            float near = float.MaxValue;
+            foreach (var cand in new[] { back * 1.1f, back * 0.7f, back * 1.6f, right * 1.2f, -right * 1.2f })
+            {
+                var stand = valve.transform.position + cand; stand.y = MadMax.World.DeformableTerrain.Instance.Height(stand.x, stand.z) + 0.1f;
+                g.Player.Teleport(stand, Quaternion.LookRotation(-cand.normalized).eulerAngles.y);
+                yield return new WaitForSeconds(0.4f);
+                near = Vector3.Distance(g.Player.transform.position, valve.transform.position);
+                c.Note($"stood at {cand} from the valve: player {g.Player.transform.position}, {near:0.00} m from it");
+                if (near < 2.8f) break;
+            }
             c.Fixture("walked to the back of the bowser (teleport)");
-            yield return new WaitForSeconds(0.6f);
+            c.Check(near < 2.8f, $"standing within the kit's reach of the valve ({near:0.00} m)");
             float w0 = node.Water;
             string reading = g.TestWater();
             c.Note("reading: " + reading);
@@ -111,7 +125,7 @@ namespace MadMax.Game.Acceptance
             ArcCT.Put(c, truck, ArcCT.At("c1_dest", new Vector3(0f, 0f, 3f)), Quaternion.Euler(0f, StoryAnchors.Yaw("c1_dest") + 90f, 0f) * Vector3.forward, "the tow car");
             yield return ArcCT.Done("C1", "deliver", 6f);
             if (!c.Check(StoryState.StepDone("C1", "deliver"), "the bowser is at the village")) yield break;
-            yield return new WaitForSeconds(0.6f);
+            yield return H.Until(() => ArcCRecord.Has("c1:litres"), 5f);
             int litres = ArcCRecord.Get("c1:litres");
             c.Metric("litres_delivered", litres, "L");
             c.Check(litres >= 230 && litres <= 380, "the litres that arrived are recorded (" + litres + " L)");
