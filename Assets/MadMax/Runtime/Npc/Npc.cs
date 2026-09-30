@@ -673,7 +673,7 @@ namespace MadMax.Npc
                 siegeTarget = null; float bd = float.MaxValue;
                 foreach (var p in Placeable.All)
                 {
-                    if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>()) continue;
+                    if (!p || p.Collapsing || (Flat(p.transform.position - raidAt)).sqrMagnitude > 45f * 45f || p.GetComponentInParent<Rigidbody>() || DefenceWorks.Concealed(p)) continue;   // mines and tripwires: unseen
                     float d = (p.transform.position - transform.position).sqrMagnitude;
                     if (PoweredLight.FloodlitAt(p.transform.position)) d += 30f * 30f;                  // they keep out of the floodlights
                     if (d < bd) { bd = d; siegeTarget = p; }
