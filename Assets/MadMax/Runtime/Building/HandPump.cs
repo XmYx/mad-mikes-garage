@@ -29,14 +29,13 @@ namespace MadMax.Building
             if (secondary || !node) return;
             if (!g.Vitals.Spend(6f)) { g.Toast("TOO TIRED TO PUMP"); return; }
             float litres = Mathf.Clamp(40f / Depth, 1f, 6f);
-            var t = MadMax.World.DeformableTerrain.Instance;
-            bool toxic = t && t.BiomeAt(transform.position.x, transform.position.z) == MadMax.World.Biome.Nuclear;
+            var taint = WaterQuality.GroundTaint(transform.position);
             if (node.Water + litres > node.waterCapacity) litres = Mathf.Max(0f, node.waterCapacity - node.Water);
             if (litres <= 0f) { g.Toast("THE CISTERN IS FULL"); return; }
-            if (toxic) node.dirty += litres; else node.clean += litres;
+            if (taint != WaterTaint.None) { node.dirty += litres; node.taint |= taint; } else node.clean += litres;
             MadMax.Audio.Sfx.Play("pour", transform.position, 0.6f, 1.2f);
             g.Stats.Practice(MadMax.RPG.Skill.Survival, 0.3f);
-            g.Toast("PUMPED " + litres.ToString("0") + " L" + (toxic ? " (TAINTED)" : ""));
+            g.Toast("PUMPED " + litres.ToString("0") + " L" + (taint != WaterTaint.None ? " (" + WaterQuality.Word(taint) + ")" : ""));
             GetComponent<Placeable>()?.Dirty();
         }
     }

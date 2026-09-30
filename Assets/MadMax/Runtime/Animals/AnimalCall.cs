@@ -69,6 +69,7 @@ namespace MadMax.Animals
                     return kind == 1 ? new Call(1100f, 650f, 0.6f, 0.3f, 0.6f, 0f, 20f, 0.05f) : new Call(115f, 90f, 0.6f, 0.55f, 1f, 3f);
                 case "cow": return new Call(115f * p, 140f * p, 1.6f, 0.05f, 1f, 0f, 4f, 0.02f);
                 case "goat": return new Call(380f * p, 330f * p, 0.8f, 0.1f, 0.9f, 0f, 9f, 0.12f);
+                case "sheep": return new Call(300f * p, 250f * p, 0.9f, 0.14f, 0.9f, 0f, 7f, 0.16f);   // a lower, longer bleat
                 case "pig": return new Call(160f * p, 120f * p, 0.5f, 0.4f, 1f, 2f);
                 case "chicken": return new Call(850f * p, 700f * p, 0.5f, 0.2f, 0.6f, 3f);
                 case "rat": return new Call(3200f, 2600f, 0.25f, 0.1f, 0.3f, 2f);

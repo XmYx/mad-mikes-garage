@@ -55,7 +55,8 @@ namespace MadMax.World
                     if (fall > 0f) dmg.ApplyHit(p, (p - at).normalized, power * fall, radius * (0.4f + 0.6f * fall), source);
                 }
                 var rb = c.attachedRigidbody;
-                if (rb && !rb.isKinematic && done.Add(rb)) rb.AddExplosionForce(power * 900f * Mathf.Sqrt(rb.mass), at, radius * 2f, 0.6f, ForceMode.Impulse);
+                // a shove that scales with the charge, lighter things flung further; never more than ~14 m/s of kick
+                if (rb && !rb.isKinematic && done.Add(rb)) rb.AddExplosionForce(Mathf.Min(power * 90f * Mathf.Sqrt(rb.mass), 14f * rb.mass), at, radius * 2f, 0.6f, ForceMode.Impulse);
             }
             // the player
             if (game && game.Vitals && !game.Current)

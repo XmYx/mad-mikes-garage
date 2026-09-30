@@ -6,7 +6,7 @@ using UnityEngine;
 namespace MadMax.Game
 {
     public enum BodyPart { Pelvis, Chest, Head, UpperArmL, UpperArmR, ForearmL, ForearmR, HandL, HandR, ThighL, ThighR, ShinL, ShinR, FootL, FootR }
-    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack, Vest, Arms, Shins }
+    public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack, Vest, Arms, Shins, Belt }
     /// <summary>Damage kinds armour protects against (index into <see cref="ClothingDef.armor"/>).</summary>
     public enum DamageKind { Melee, Shot, Crash, Fall, Burn }
     public enum HairStyle { Bald, Buzz, Short, Mohawk, Ponytail, Long }

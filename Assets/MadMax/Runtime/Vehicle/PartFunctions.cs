@@ -52,6 +52,7 @@ namespace MadMax.Vehicles
                 case "weapon_flamer": go.AddComponent<Flamethrower>(); break;
                 case "rear_dropper": go.AddComponent<RearDropper>(); break;
                 case "armor_smoke": go.AddComponent<SmokeLauncher>(); break;
+                default: MetalPartFunctions.Setup(p); break;                                    // depth stage D lamps, flame stack
             }
         }
 

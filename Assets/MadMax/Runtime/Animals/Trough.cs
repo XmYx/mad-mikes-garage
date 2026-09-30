@@ -7,9 +7,10 @@ using UnityEngine;
 
 namespace MadMax.Animals
 {
-    /// <summary>Feed and water trough (roadmap 23 pens): [E] tips crops (and scraps, for pigs) from the pack into it
-    /// and pours water; rain tops the water up. Once a day every kept animal whose home is within reach eats its
-    /// share; fed animals give eggs and milk, grow and breed (<see cref="AnimalDirector"/>).</summary>
+    /// <summary>Feed and water trough (roadmap 23 pens): [E] tips mixed feed, crops (and scraps, for pigs) and hay from
+    /// the pack into it and pours water; rain tops the water up. Once a day every kept animal whose home is within reach
+    /// eats its share; fed animals give eggs and milk, grow and breed (<see cref="AnimalDirector"/>). Mixed feed (depth
+    /// stage E) goes twice as far as raw crops and a ration of it is richer (<see cref="Animal.MixedRation"/>).</summary>
     public class Trough : MonoBehaviour, IInteractable, IPlaceState
     {
         public static readonly List<Trough> All = new List<Trough>();
@@ -19,6 +20,10 @@ namespace MadMax.Animals
         static readonly string[] Feeds = { "crop_wheat", "food_corn", "food_cabbage", "food_carrot", "food_potato", "food_beet", "food_pumpkin", "food_apple", "food_sunseeds", "food_rotten" };
 
         public float feed, water;
+        /// <summary>How much of <see cref="feed"/> is mixed feed (eaten first).</summary>
+        public float mix;
+        /// <summary>The last ration eaten was mostly mixed feed.</summary>
+        public bool LastMixed { get; private set; }
         float rainT;
 
         void OnEnable() => All.Add(this);
@@ -28,7 +33,7 @@ namespace MadMax.Animals
         public int manure;
         public const int ManureCap = 30;
 
-        public string Prompt(WastelandGame g) => "[E] FILL TROUGH (FEED " + Mathf.FloorToInt(feed) + "/" + Cap + ", WATER " + Mathf.FloorToInt(water) + " L)" + (manure > 0 ? "  [T] SHOVEL MANURE (" + manure + ")" : "");
+        public string Prompt(WastelandGame g) => "[E] FILL TROUGH (FEED " + Mathf.FloorToInt(feed) + "/" + Cap + (mix >= 1f ? " MIXED " + Mathf.FloorToInt(mix) : "") + ", WATER " + Mathf.FloorToInt(water) + " L)" + (manure > 0 ? "  [T] SHOVEL MANURE (" + manure + ")" : "");
 
         public void Use(WastelandGame g, bool secondary)
         {
@@ -43,10 +48,12 @@ namespace MadMax.Animals
                 return;
             }
             int items = 0, litres = 0;
+            while (feed <= Cap - 4f && g.Inventory.TrySpend(ResourceType.Feed, 1)) { feed += 4f; mix += 4f; items++; }     // mixed feed first: the best ration
             foreach (var f in Feeds)
                 while (feed <= Cap - 2f && g.Inventory.TakeItem(f)) { feed += f == "food_pumpkin" ? 4f : 2f; items++; }
+            while (feed <= Cap - 1.5f && g.Inventory.TrySpend(ResourceType.Hay, 1)) { feed += 1.5f; items++; }            // hay: plain roughage
             while (water < Cap && (g.Inventory.TrySpend(ResourceType.Water, 1) || g.Inventory.TrySpend(ResourceType.DirtyWater, 1))) { water += 1f; litres++; }
-            if (items + litres == 0) { g.Toast(feed >= Cap - 2f && water >= Cap ? "THE TROUGH IS FULL" : "BRING CROPS (WHEAT, CORN, CABBAGE...) OR WATER"); return; }
+            if (items + litres == 0) { g.Toast(feed >= Cap - 2f && water >= Cap ? "THE TROUGH IS FULL" : "BRING ANIMAL FEED, CROPS (WHEAT, CORN, CABBAGE...), HAY OR WATER"); return; }
             MadMax.Audio.Sfx.Play("pour", transform.position, 0.5f);
             g.Toast("TROUGH: +" + items + " FEED, +" + litres + " L WATER");
             GetComponent<Placeable>()?.Dirty();
@@ -63,7 +70,9 @@ namespace MadMax.Animals
         public bool Eat(float amount)
         {
             if (feed < amount || water < amount * 0.25f) return false;
+            LastMixed = mix >= amount * 0.5f;
             feed -= amount; water -= amount * 0.25f;
+            mix = Mathf.Clamp(mix - amount, 0f, feed);
             GetComponent<Placeable>()?.Dirty();
             return true;
         }
@@ -88,7 +97,8 @@ namespace MadMax.Animals
             return best;
         }
 
-        public string SaveState() => feed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + water.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + manure;
+        public string SaveState() => feed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + water.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + manure
+            + "|" + mix.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         public void LoadState(string s)
         {
@@ -97,6 +107,7 @@ namespace MadMax.Animals
             float.TryParse(p[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out feed);
             if (p.Length > 1) float.TryParse(p[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out water);
             if (p.Length > 2) int.TryParse(p[2], out manure);
+            if (p.Length > 3) float.TryParse(p[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out mix);
         }
     }
 }

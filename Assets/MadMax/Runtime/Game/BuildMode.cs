@@ -409,13 +409,17 @@ namespace MadMax.Game
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
             if (!Affordable(up)) { game.Toast("UPGRADE NEEDS " + CostText(up)); return; }
             foreach (var (t, c) in up.cost) game.Inventory.TrySpend(t, Cost(c));
+            if (up.kit != null) game.Inventory.TakeItem(up.kit);                                   // kit pieces (prefab panels) use up their kit
             foreach (var (t, n) in def.cost) if (n / 2 > 0) game.Inventory.Add(t, n / 2);
             var parent = p.transform.parent; var lp = p.transform.localPosition; var lr = p.transform.localRotation;
             string owner = p.owner; byte dye = p.dye;
+            var box = p.GetComponent<Container>();                                                  // stores move over (MG nest belts → the turret)
             MadMax.Net.NetSession.Instance?.SendPlaceBroken(p);
             Destroy(p.gameObject);
             var placed = FurnitureLibrary.Spawn(up.id, parent, lp, lr, material);
             if (placed) { placed.owner = owner; _ = placed.Id; if (dye != 0) placed.SetDye(dye); placed.Dirty(); MadMax.Net.NetSession.Instance?.SendPlaced(placed); }
+            if (box && placed && placed.TryGetComponent<Container>(out var into)) InventoryCodec.Decode(into.inventory, InventoryCodec.Encode(box.inventory));
+            else if (box) box.Spill();
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 8f);
             MadMax.Audio.Sfx.Play("hammer", lp, 0.8f);
             game.Toast("UPGRADED TO " + up.name);

@@ -28,7 +28,7 @@ namespace MadMax.Items
             return ItemCategory.Other;
         }
 
-        public static float Weight(string id) => id.StartsWith("coin_") ? 0.002f : Category(id) switch
+        public static float Weight(string id) => id.StartsWith("coin_") ? 0.002f : MetalItems.Weight(id) > 0f ? MetalItems.Weight(id) : Category(id) switch
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
             ItemCategory.Weapon => id == "tool_bolt_rifle" ? 4f : id == "tool_crossbow" ? 3.5f : id == "tool_knife" || id == "tool_slingshot" ? 0.3f : id == "tool_bow" || id == "tool_flare_gun" ? 1f : id == "tool_revolver" || id == "tool_pipe_pistol" ? 1.2f : 2.5f,
@@ -49,6 +49,7 @@ namespace MadMax.Items
             ResourceType.Scrap => 0.6f, ResourceType.Wood => 0.5f, ResourceType.Stone => 1f, ResourceType.Glass => 0.3f,
             ResourceType.Rubber => 0.4f, ResourceType.Cloth => 0.1f, ResourceType.Fuel => 0.75f, ResourceType.Oil => 0.9f, ResourceType.Coolant => 1f,
             ResourceType.Water => 1f, ResourceType.DirtyWater => 1f, ResourceType.Ethanol => 0.8f,
+            ResourceType.SeaWater => 1f, ResourceType.Biogas => 0.05f, ResourceType.Salt => 1f,
             ResourceType.Sand or ResourceType.Clay or ResourceType.Laterite or ResourceType.Rubble or ResourceType.Slag => 1.2f,
             ResourceType.Iron or ResourceType.Copper or ResourceType.Bronze => 0.8f, ResourceType.Aluminium => 0.3f,
             ResourceType.Asphalt or ResourceType.Concrete => 1.5f,
