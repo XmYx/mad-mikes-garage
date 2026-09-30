@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using MadMax.Npc;
 using MadMax.Story;
 using MadMax.Vehicles;
@@ -130,8 +129,7 @@ namespace MadMax.Game.Acceptance
             Column(c, hauler, new[] { water, produce }, StoryAnchors.Get("c5_boom") - Fwd("c5_boom") * 12f, Fwd("c5_boom"), "driven up to the checkpoint");
             yield return H.Until(() => StoryState.Flag("c5_lifted"), 5f);
             var cp = Checkpoint.All.FirstOrDefault(k => k && ArcCT.Flat(k.transform.position, StoryAnchors.Get("c5_check")) < 3f);
-            var open = typeof(Checkpoint).GetField("openUntil", BindingFlags.NonPublic | BindingFlags.Instance);
-            c.Check(cp && open != null && (float)open.GetValue(cp) > Time.time, "Captain Reed lifts the boom for the column");
+            c.Check(cp && cp.IsOpen, "Captain Reed lifts the boom for the column");
             var onward = StoryAnchors.Get("c5_depot") - StoryAnchors.Get("c5_boom"); onward.y = 0f; onward.Normalize();
             Column(c, hauler, new[] { water, produce }, StoryAnchors.Get("c5_boom") + onward * 60f, onward, "through the checkpoint");
             yield return ArcCT.Done("C5", "checkpoint", 5f);

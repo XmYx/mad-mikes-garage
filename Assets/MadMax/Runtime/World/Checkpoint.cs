@@ -21,6 +21,12 @@ namespace MadMax.World
         float openUntil, angle, nagAt, length;
         bool broken;
 
+        /// <summary>The boom is up (paid, a friend, or lifted by a story scene).</summary>
+        public bool IsOpen => Time.time < openUntil;
+        public bool Broken => broken;
+        /// <summary>Lift the boom for <paramref name="seconds"/> without a toll.</summary>
+        public void OpenFor(float seconds) { if (!broken) openUntil = Mathf.Max(openUntil, Time.time + seconds); }
+
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 

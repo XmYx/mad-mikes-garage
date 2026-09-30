@@ -58,8 +58,8 @@ namespace MadMax.Story
             E("transfer", true, "N3", "readiness-gated rescue / escort operations");
             E("broadcast", true, "N3", "prepare and air a broadcast with choices");
             E("residents", true, "N3", "residents who staff a service at the home");
-            E("allocation", false, "N3", "assign a finite shipment to customers");
-            E("player_convoy", false, "N3", "lead a convoy of allied drivers");
+            E("allocation", true, "N3", "assign a finite shipment to customers");
+            E("player_convoy", true, "N3", "lead a convoy of allied drivers");
             E("relocation", false, "N5", "move the campaign home");
         }
 

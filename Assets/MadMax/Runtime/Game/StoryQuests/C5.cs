@@ -1,4 +1,3 @@
-using System.Reflection;
 using MadMax.Building;
 using MadMax.Npc;
 using MadMax.Story;
@@ -25,7 +24,6 @@ namespace MadMax.Game
         PlayerConvoy c5Convoy;
         string c5Status;
         float c5StatusAt, c5BrokeAnchorAt;
-        static FieldInfo cpOpen, cpBroken;
 
         partial void Scene_C5()
         {
@@ -101,14 +99,12 @@ namespace MadMax.Game
 
         static void C5Lift(Checkpoint cp, float seconds)
         {
-            cpOpen = cpOpen ?? typeof(Checkpoint).GetField("openUntil", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (cp && cpOpen != null) cpOpen.SetValue(cp, Time.time + seconds);
+            if (cp) cp.OpenFor(seconds);
         }
 
         static bool C5Smashed(Checkpoint cp)
         {
-            cpBroken = cpBroken ?? typeof(Checkpoint).GetField("broken", BindingFlags.NonPublic | BindingFlags.Instance);
-            return cp && cpBroken != null && (bool)cpBroken.GetValue(cp);
+            return cp && cp.Broken;
         }
 
         /// <summary>Past a point on the way to the depot (closer to it than the point is, by <paramref name="margin"/>).</summary>
