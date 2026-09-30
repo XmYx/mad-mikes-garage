@@ -58,7 +58,7 @@ namespace MadMax.Story
                 .When(Goal.Event, "c5:no_checkpoint", label: "NOT GOING THAT WAY");
             q.steps[q.steps.Count - 1].any[1].price = 30;
             Step(q, "roll", "DRIVE YOUR OWN VEHICLE TO THE CONVOY YARD: THE CONVOY FORMS UP BEHIND YOU", "c5_yard").When(Goal.Event, "c5:rolling");
-            Step(q, "breakdown", "LEAD THE CONVOY OUT. IF A TRUCK STOPS: PATCH IT (REPAIR KIT), TOW IT ([J]), OR LEAVE IT AND TAKE ITS DRIVER", "c5_break")
+            Step(q, "breakdown", "LEAD THE CONVOY OUT. IF A TRUCK STOPS: PATCH IT (REPAIR KIT), TOW IT ALONG (A WINCH BUMPER, [4] TO HOOK), OR LEAVE IT AND TAKE ITS DRIVER", "c5_break")
                 .When(Goal.Event, "c5:fixed", label: "PATCHED IT ON THE ROADSIDE")
                 .When(Goal.Event, "c5:towed", label: "TOWED IT")
                 .Says("c1_driver", "c5_leave", "LEAVE IT. RIDE WITH ME.", "LEAVE IT? ...FINE. BUT I'M COMING BACK FOR IT WITH A TOW ROPE AND A GRUDGE.")
