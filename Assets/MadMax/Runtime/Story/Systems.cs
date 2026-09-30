@@ -55,9 +55,9 @@ namespace MadMax.Story
             E("clinic", true, "G", "clinic bed and treatment of others");
             E("nonlethal_bout", true, "N4", "supervised fist fight with a stop state");
             E("performance", true, "N4", "a public recital or ceremony scene");
-            E("transfer", false, "N3", "readiness-gated rescue / escort operations");
-            E("broadcast", false, "N3", "prepare and air a broadcast with choices");
-            E("residents", false, "N3", "residents who staff a service at the home");
+            E("transfer", true, "N3", "readiness-gated rescue / escort operations");
+            E("broadcast", true, "N3", "prepare and air a broadcast with choices");
+            E("residents", true, "N3", "residents who staff a service at the home");
             E("allocation", false, "N3", "assign a finite shipment to customers");
             E("player_convoy", false, "N3", "lead a convoy of allied drivers");
             E("relocation", false, "N5", "move the campaign home");
