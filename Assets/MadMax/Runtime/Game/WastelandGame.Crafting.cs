@@ -57,6 +57,7 @@ namespace MadMax.Game
         /// <summary>Turn a paid recipe into goods (items to the crafter if near the station, else the tray).</summary>
         void Produce(Recipe r, CraftingStation station)
         {
+            using var feed = Inventory.Source("MADE");
             MadMax.Story.Story.Note("craft:" + (r.kind == OutputKind.Resource ? "res:" + (int)r.outputResource : r.output));
             int q = RollQuality(r, station);
             bool near = !station || (Player && Vector3.Distance(Player.transform.position, station.transform.position) < 6f);
@@ -106,6 +107,7 @@ namespace MadMax.Game
         public void CollectTray(CraftingStation st)
         {
             if (!st) return;
+            using var feed = Inventory.Source("MADE");
             int n = 0;
             var items = new List<KeyValuePair<string, int>>(st.tray.Items);
             foreach (var kv in items) if (kv.Value > 0) { Inventory.AddItem(kv.Key, kv.Value); n += kv.Value; }
@@ -125,6 +127,7 @@ namespace MadMax.Game
             var paidFuel = st && st.queue.Count > 0 ? st.queue[st.queue.Count - 1].paidFuel : ResourceType.None;
             var r = st ? st.CancelLast() : null;
             if (r == null) { Toast("NOTHING QUEUED"); return; }
+            using var feed = Inventory.Source("REFUNDED");
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) Inventory.Add(t, RecipeLibrary.Amount(n));
             foreach (var (i, n) in r.items) Inventory.AddItem(i, n);
             if (paidFuel != ResourceType.None) Inventory.Add(paidFuel, r.fuelAmount);
@@ -161,6 +164,7 @@ namespace MadMax.Game
         public bool Salvage(string id)
         {
             var yield = SalvageYield(id);
+            using var feed = Inventory.Source("SALVAGED");
             if (yield.Count == 0 || !Inventory.TakeItem(id)) return false;
             var sb = new StringBuilder("SALVAGED " + ItemCatalog.Name(id) + ":");
             foreach (var (t, n) in yield) { Inventory.Add(t, n); sb.Append(" +").Append(n).Append(' ').Append(ResourceInfo.Name(t)); }
@@ -206,6 +210,7 @@ namespace MadMax.Game
         public void SalvagePart(VehiclePart p)
         {
             if (!p) return;
+            using var feed = Inventory.Source("SALVAGED");
             var sb = new StringBuilder("BROKE DOWN " + p.partId.Replace('_', ' ').ToUpperInvariant() + ":");
             foreach (var (t, n) in PartYield(p)) { Inventory.Add(t, n); sb.Append(" +").Append(n).Append(' ').Append(ResourceInfo.Name(t)); }
             Destroy(p.gameObject);

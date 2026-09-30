@@ -10,7 +10,7 @@ namespace MadMax.Game
 {
     /// <summary>Pixel-art menus drawn into the HUD canvas: main menu, pause, settings, crafting.
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
-    public class MenuSystem : MonoBehaviour
+    public partial class MenuSystem : MonoBehaviour
     {
         public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots }
 
@@ -32,6 +32,7 @@ namespace MadMax.Game
             public System.Action<string> setText;
             public string hint;
             public string id;
+            public string drop;                           // inventory page: item id or "res:N" to drop / place (Items block)
             public RectInt rect;
         }
 
@@ -220,7 +221,7 @@ namespace MadMax.Game
                 if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
                 if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
             }
-            if (from.TrySpend(t, n)) to.Add(t, n);
+            using (Inventory.Source("TAKEN", "STORED")) if (from.TrySpend(t, n)) to.Add(t, n);
             Rebuild();
         }
 
@@ -234,7 +235,7 @@ namespace MadMax.Game
                 if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
                 if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
             }
-            if (from.TakeItem(id, n)) to.AddItem(id, n);
+            using (Inventory.Source("TAKEN", "STORED")) if (from.TakeItem(id, n)) to.AddItem(id, n);
             if (!intoBox && id.StartsWith("tool_")) game.UpdateHotbarNow();
             Rebuild();
         }
@@ -532,8 +533,8 @@ namespace MadMax.Game
                             {
                                 id = id, label = MadMax.Items.ItemCatalog.Name(id) + (game.HasMake(id) ? " (" + game.QualityName(id) + ")" : ""),
                                 value = () => { int slot = System.Array.IndexOf(game.Hotbar, id); return (slot >= 0 ? "[" + (slot + 1) + "] " : "") + "X" + inv.GetItem(id) + "  " + (inv.GetItem(id) * MadMax.Items.ItemCatalog.Weight(id)).ToString("0.0") + "KG"; },
-                                confirm = () => game.UseItem(id),
-                                hint = MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR"
+                                confirm = () => game.UseItem(id), drop = id,
+                                hint = (MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR") + DropHint(id)
                             });
                         }
                     }
@@ -542,7 +543,7 @@ namespace MadMax.Game
                     {
                         var rt = (ResourceType)t;
                         if (inv.Get(rt) <= 0) continue;
-                        items.Add(new Item { label = ResourceInfo.Name(rt), value = () => inv.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L  " : "  ") + (inv.Get(rt) * MadMax.Items.ItemCatalog.ResourceWeight(rt)).ToString("0.0") + "KG" });
+                        items.Add(new Item { label = ResourceInfo.Name(rt), value = () => inv.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L  " : "  ") + (inv.Get(rt) * MadMax.Items.ItemCatalog.ResourceWeight(rt)).ToString("0.0") + "KG", drop = "res:" + t, hint = DropHint("res:" + t).Trim() });
                     }
                     break;
                 }
@@ -1019,7 +1020,8 @@ namespace MadMax.Game
             }
             if (!IsOpen)
             {
-                if (esc) Open(Page.Pause);
+                pendingPlace = null;
+                if (esc && !game.CancelPlacing()) Open(Page.Pause);                              // Esc first puts a PLACE preview away
                 return;
             }
             if (esc || (pad != null && pad.buttonEast.wasPressedThisFrame)) { if (Current == Page.Join) Open(Page.Main); else Back(); return; }
@@ -1048,6 +1050,7 @@ namespace MadMax.Game
             if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
                 for (int i = 0; i < WastelandGame.HotbarSize; i++) if (kb[Key.Digit1 + i].wasPressedThisFrame) game.AssignHotbar(i, items[cursor].id);
+            if (Current == Page.Inventory && InventoryDropKeys(pad)) return;
 
             int dy = 0, dx = 0; bool ok = false;
             if (kb != null)

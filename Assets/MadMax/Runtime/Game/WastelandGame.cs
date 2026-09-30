@@ -412,6 +412,7 @@ namespace MadMax.Game
             if (station && station.queue.Count >= CraftingStation.MaxQueue) { Toast("THE QUEUE IS FULL"); return; }
             if (!CanCraft(r, station)) { Toast("MISSING MATERIALS"); return; }
             var src = CraftSources(station);
+            using var feed = Inventory.Source("MADE", "USED");                                     // item feed labels
             var paidFuel = PickFuel(src, r);
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) PayFrom(src, t, RecipeLibrary.Amount(n));
             foreach (var (i, n) in r.items) TakeFrom(src, i, n);
@@ -807,7 +808,7 @@ namespace MadMax.Game
                     rod.reel = (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed);
                     if (attack) rod.Click();
                 }
-                else if (attack && cameraRig && !(Build && Build.Active)) Player.Attack(cameraRig.CrosshairView);
+                else if (attack && cameraRig && !(Build && Build.Active) && !PlacingItem) Player.Attack(cameraRig.CrosshairView);
                 if (cameraRig)
                 {
                     Player.viewYaw = cameraRig.ViewYaw;

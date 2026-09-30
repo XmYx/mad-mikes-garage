@@ -229,6 +229,7 @@ namespace MadMax.Game
         /// (Farming skill, soil, parent seeds), and better seeds grow faster.</summary>
         public void Harvest(CropDef def, Vector3 at, float fertility, float health, float seedQuality, float scale = 1f, bool byHand = true, Inventory into = null)
         {
+            using var feed = MadMax.Items.Inventory.Source("HARVESTED");
             var got = new List<string>();
             int farm = Stats.Level(Skill.Farming);
             float skill = (1f + farm * 0.08f) * (0.6f + 0.6f * fertility) * Mathf.Max(0.3f, health) * (0.9f + 0.1f * seedQuality) * scale;
