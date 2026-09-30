@@ -8,7 +8,7 @@ namespace MadMax.Vehicles
     /// +60 % torque each), gearing (short ↔ long) and final drive, ride height / spring stiffness / damping, brake bias
     /// and upgrades, tyre pressure (low: grips soft ground, rolls heavier, wears faster), ballast or a stripped interior.
     /// Written into VehicleDriver / VehicleChassis by <see cref="Apply"/>; the driver, systems and tyres read the factors.</summary>
-    public class VehicleTuning : MonoBehaviour
+    public partial class VehicleTuning : MonoBehaviour
     {
         public float map;                    // -1 economy .. 0 stock .. +1 power
         public float gearing;                // -1 short .. +1 long
@@ -50,7 +50,7 @@ namespace MadMax.Vehicles
         }
 
         public bool Stock => map == 0f && gearing == 0f && finalDrive == 0f && ride == 0f && stiffness == 0f && damping == 0f && Mathf.Abs(brakeBias - 0.6f) < 0.001f
-                             && brakeLevel == 0 && pressure == 1f && ballast == 0f && !stripped && !turbo && !supercharger && nitrous == 0;
+                             && brakeLevel == 0 && pressure == 1f && ballast == 0f && !stripped && !turbo && !supercharger && nitrous == 0 && KitsStock;
 
         /// <summary>Write the settings into the driver and chassis.</summary>
         public void Apply()
@@ -64,6 +64,7 @@ namespace MadMax.Vehicles
             driver.frequency = baseFreq * (1f + stiffness * (stiffness < 0f ? 0.25f : 0.35f));
             driver.damping = Mathf.Clamp(baseDamp * (1f + damping * 0.35f), 0.1f, 1.5f);
             driver.brakeForce = baseBrake * (1f + brakeLevel * 0.25f);
+            ApplyKits();                                                                    // gearbox, brake, suspension, tank kits
             if (chassis)
             {
                 chassis.bodyMass = baseBody * (stripped ? 0.92f : 1f);
@@ -164,7 +165,7 @@ namespace MadMax.Vehicles
                 map.ToString("0.##", ci), gearing.ToString("0.##", ci), finalDrive.ToString("0.##", ci), ride.ToString("0.##", ci), stiffness.ToString("0.##", ci),
                 damping.ToString("0.##", ci), brakeBias.ToString("0.##", ci), brakeLevel.ToString(ci), pressure.ToString("0.##", ci), ballast.ToString("0", ci),
                 stripped ? "1" : "0", turbo ? "1" : "0", supercharger ? "1" : "0", nitrous.ToString(ci)
-            });
+            }) + KitsState();
         }
 
         public void LoadState(string s)
@@ -176,6 +177,7 @@ namespace MadMax.Vehicles
             map = F(0, 0f); gearing = F(1, 0f); finalDrive = F(2, 0f); ride = F(3, 0f); stiffness = F(4, 0f); damping = F(5, 0f);
             brakeBias = F(6, 0.6f); brakeLevel = (int)F(7, 0f); pressure = F(8, 1f); ballast = F(9, 0f);
             stripped = F(10, 0f) > 0.5f; turbo = F(11, 0f) > 0.5f; supercharger = F(12, 0f) > 0.5f; nitrous = (int)F(13, 0f);
+            LoadKits(p);
             Apply();
         }
     }

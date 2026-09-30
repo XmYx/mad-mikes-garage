@@ -59,7 +59,12 @@ namespace MadMax.Npc
             if (id.StartsWith("book_")) return 16f;
             if (id.StartsWith("vhs_")) return 14f;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return 3f;
-            if (id.StartsWith("kit_")) return 28f;
+            if (id == "misc_nails") return 0.3f;                                                   // depth stage D fixings and castings
+            if (id == "misc_bolts") return 0.6f;
+            if (id == "misc_castings") return 6f;
+            if (id == "misc_engine_block") return 70f;
+            if (id == "use_horseshoes") return 14f;
+            if (id.StartsWith("kit_")) return id.StartsWith("kit_gearbox") || id == "kit_transfer_case" ? 60f : id.StartsWith("kit_brakes") || id == "kit_lift" || id == "kit_long_range_tank" ? 40f : 28f;
             if (id.StartsWith("cloth_")) { var cd = MadMax.Game.ClothingLibrary.Get(id); return cd?.armor != null ? 14f + cd.weight * 5f + cd.armor[1] * 40f : 10f; }
             if (id.StartsWith("throw_")) return 12f;
             if (id.StartsWith("farm_")) return 5f;
@@ -77,7 +82,8 @@ namespace MadMax.Npc
             ResourceType.DirtyWater => 0.1f,
             ResourceType.Hide => 2f, ResourceType.Leather => 4f, ResourceType.Gunpowder => 6f, ResourceType.Sulfur => 3f, ResourceType.CrudeOil => 1.5f,
             ResourceType.Diesel => 2.2f, ResourceType.Tar => 1f, ResourceType.SeedOil => 2f, ResourceType.Coal => 1.2f, ResourceType.LeadOre => 1.5f,
-            ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f, _ => 0.5f
+            ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f,
+            ResourceType.Steel => 9f, _ => 0.5f
         };
 
         public static string Name(string id) => id.StartsWith("res:") ? ResourceInfo.Name((ResourceType)int.Parse(id.Substring(4)))

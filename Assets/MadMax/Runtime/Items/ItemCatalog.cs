@@ -28,7 +28,7 @@ namespace MadMax.Items
             return ItemCategory.Other;
         }
 
-        public static float Weight(string id) => id.StartsWith("coin_") ? 0.002f : Category(id) switch
+        public static float Weight(string id) => id.StartsWith("coin_") ? 0.002f : MetalItems.Weight(id) > 0f ? MetalItems.Weight(id) : Category(id) switch
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
             ItemCategory.Weapon => id == "tool_bolt_rifle" ? 4f : id == "tool_crossbow" ? 3.5f : id == "tool_knife" || id == "tool_slingshot" ? 0.3f : id == "tool_bow" || id == "tool_flare_gun" ? 1f : id == "tool_revolver" || id == "tool_pipe_pistol" ? 1.2f : 2.5f,
