@@ -128,6 +128,7 @@ namespace MadMax.Game
                 int mx = Mathf.FloorToInt((WorldGen.WrapX(wx) + mapHalf) / mapMpp), my = Mathf.FloorToInt((wz - mapCz + mapHalf) / mapMpp);
                 c.Set(x + i, y + j, (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(22, 13, 9, 255) : map[my * mapSize + mx]);
             }
+            DrawPlayerRoads(c, x, y, w, h, center, mpp);
             Vector2Int P(Vector3 wp) => new Vector2Int(x + w / 2 + Mathf.RoundToInt((wp.x - center.x) / mpp), y + h / 2 - Mathf.RoundToInt((wp.z - center.y) / mpp));
             bool Inside(Vector2Int p) => p.x > x + 1 && p.y > y + 1 && p.x < x + w - 2 && p.y < y + h - 2;
             float hoverD = 6f;
@@ -1019,12 +1020,14 @@ namespace MadMax.Game
             var focus = game.Current ? game.Current.transform : game.Player.transform;
             var center = ToMap(focus.position);
             float scale = minimapMetresPerPixel / (2f * mapHalf / mapSize);
+            var roads = RoadOverlay();                                                              // the player's own roads
             for (int j = 0; j < size; j++)
             for (int i = 0; i < size; i++)
             {
                 int mx = Mathf.FloorToInt(center.x + (i - size / 2) * scale);
                 int my = Mathf.FloorToInt(center.y - (j - size / 2) * scale);
                 var c = (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(30, 18, 12, 255) : map[my * mapSize + mx];
+                if (roads) c = PlayerRoad(roads, focus.position.x + (i - size / 2) * minimapMetresPerPixel, focus.position.z - (j - size / 2) * minimapMetresPerPixel, c);
                 canvas.Set(x + i, y + j, c);
             }
             void Dot(Transform t, Color32 c)
