@@ -55,7 +55,7 @@ namespace MadMax.Game.Acceptance
             c.Check(g.CastBody("a5_wes") && g.CastBody("a5_wes").Berthed, "Wes lies on the cot in the crew hut");
             c.Check(Q7T.Say(c, "a5_wes", "HOLD STILL"), "stabilise Wes with the kit");
             yield return Q7T.Step("A5", "wes");
-            yield return new WaitForSeconds(0.6f);
+            yield return H.Until(() => g.Inventory.GetItem("med_firstaid") == 0, 4f);
             c.Check(MadMax.Story.Story.Route("A5", "wes") == StoryLibrary.A5Kit && g.Inventory.GetItem("med_firstaid") == 0, "route: " + MadMax.Story.Story.Route("A5", "wes") + "; the kit is used up");
 
             // ---- everyone at once
@@ -111,6 +111,7 @@ namespace MadMax.Game.Acceptance
             yield return H.Until(() => MadMax.Story.Story.Flag("a5:trip1"), 4f);
             c.Check(MadMax.Story.Story.Flag("a5:trip1") && !MadMax.Story.Story.StepDone("A5", "deliver"), "first trip in; three still waiting");
             yield return Q7T.Meet(c, "a5_staging", 3f, "a5_tally");
+            yield return H.Until(() => g.CastBody("a5_tally") != null, 5f);                         // the cast is checked once a second
             c.Check(g.CastBody("a5_tally") != null, "Tally waits at the staging point");
             var st = StoryAnchors.Get("a5_staging"); var sr = Quaternion.Euler(0f, StoryAnchors.Yaw("a5_staging"), 0f);
             yield return TestWorld.Place(c, car, st + sr * new Vector3(5f, 0f, 5f), sr * Vector3.right);

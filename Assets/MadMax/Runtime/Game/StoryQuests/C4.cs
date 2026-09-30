@@ -16,7 +16,8 @@ namespace MadMax.Game
     {
         const float C4Depth = 1.4f;
         char c4Side;
-        bool c4Mid;
+        bool c4Mid, c4HasPrev;
+        Vector3 c4Prev;
         float c4Nag;
 
         partial void Scene_C4()
@@ -110,7 +111,12 @@ namespace MadMax.Game
                 return;
             }
             char side = ArcCFlat(p, StoryAnchors.Get("c4_near")) < 8f ? 'N' : ArcCFlat(p, StoryAnchors.Get("c4_far")) < 8f ? 'F' : '\0';
-            if (ArcCFlat(p, StoryAnchors.Get("c4_crossing")) < 4.5f) c4Mid = true;
+            // over the middle since the last sample (the tick is throttled: at low frame rates a truck can pass the middle between samples)
+            var mid = StoryAnchors.Get("c4_crossing");
+            var a0 = c4HasPrev ? c4Prev : p; var ab = p - a0; ab.y = 0f;
+            float tt = ab.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector3.Dot(new Vector3(mid.x - a0.x, 0f, mid.z - a0.z), ab) / ab.sqrMagnitude) : 0f;
+            if (ArcCFlat(a0 + ab * tt, mid) < 4.5f) c4Mid = true;
+            c4Prev = p; c4HasPrev = true;
             if (side == '\0') return;
             if (c4Side != '\0' && side != c4Side && c4Mid)
             {

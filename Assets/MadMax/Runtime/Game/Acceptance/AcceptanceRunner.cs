@@ -23,7 +23,7 @@ namespace MadMax.Game.Acceptance
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Instance = null; }
 
         string suite = "fast", filter, resultsDir;
-        float runTimeout = 1800f;
+        float runTimeout = 5400f;                                             // the fast suite runs ~80 scenarios
         readonly List<ScenarioContext> results = new List<ScenarioContext>();
         readonly object gate = new object();
         long heartbeat;
