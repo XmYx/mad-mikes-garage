@@ -87,7 +87,9 @@ namespace MadMax.Npc
             ResourceType.Hide => 2f, ResourceType.Leather => 4f, ResourceType.Gunpowder => 6f, ResourceType.Sulfur => 3f, ResourceType.CrudeOil => 1.5f,
             ResourceType.Diesel => 2.2f, ResourceType.Tar => 1f, ResourceType.SeedOil => 2f, ResourceType.Coal => 1.2f, ResourceType.LeadOre => 1.5f,
             ResourceType.Lead => 4f, ResourceType.Acid => 3f, ResourceType.UraniumOre => 8f,
-            ResourceType.Steel => 9f, _ => 0.5f
+            ResourceType.Steel => 9f, ResourceType.Gravel => 0.5f, ResourceType.Wool => 2.5f, ResourceType.Honey => 4f, ResourceType.Beeswax => 3f,
+            ResourceType.Hay => 0.4f, ResourceType.Feed => 1f, ResourceType.SeaWater => 0.05f, ResourceType.Biogas => 1.5f, ResourceType.Brick => 1.6f,
+            ResourceType.Plank => 1.4f, ResourceType.Thread => 1.2f, ResourceType.Salt => 2f, _ => 0.5f
         };
 
         public static string Name(string id) => id.StartsWith("res:") ? ResourceInfo.Name((ResourceType)int.Parse(id.Substring(4)))
