@@ -101,6 +101,7 @@ namespace MadMax.Items
                 F("food_mush_skewer", "MUSHROOM SKEWER", 16, 0, 25, H("9a7a50")),
                 F("food_flatbread", "FLATBREAD", 20, -3, 40, H("d8b070")),
                 F("drink_tea", "HERB TEA", 2, 30, 30, H("8a6a2a"), 0f, 3f),
+                F("drink_bark_tea", "WILLOW-BARK TEA", 1, 26, 30, H("6a4a24"), 0f, 2f),       // depth stage G: dulls pain (WastelandGame.MedMine)
                 F("food_meat_stew", "MEAT STEW", 70, 10, 40, H("7a3a1a"), 0f, 10f),
                 F("food_fish_soup", "FISH SOUP", 46, 18, 30, H("c0a070"), 0f, 6f),
                 F("food_pancakes", "PANCAKES", 40, -2, 30, H("e0b060"), 0f, 3f),

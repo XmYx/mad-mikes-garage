@@ -55,7 +55,10 @@ namespace MadMax.Npc
                 : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") || id.Contains("dinner") ? 8f : 3f;
             if (id == "drink_beer" || id == "drink_cider") return 6f;
             if (id.StartsWith("drink_")) return id == "drink_water" ? 4f : 3f;
+            if (id == "med_firstaid") return 30f;
             if (id.StartsWith("med_")) return id == "med_splint" ? 10f : id == "med_pills" ? 14f : 8f;
+            if (id == "misc_gold_ring") return 60f;
+            if (id.EndsWith("_concentrate")) return id.Contains("gold") ? 12f : 2.5f;
             if (id.StartsWith("book_")) return 16f;
             if (id.StartsWith("vhs_")) return 14f;
             if (id.StartsWith("seed_") || id.StartsWith("sapling_")) return 3f;
@@ -74,6 +77,7 @@ namespace MadMax.Npc
 
         public static float Value(ResourceType t) => t switch
         {
+            ResourceType.GoldOre => 8f, ResourceType.Gold => 35f,
             ResourceType.Scrap => 1f, ResourceType.Wood => 0.8f, ResourceType.Stone => 0.6f, ResourceType.Glass => 2f, ResourceType.Rubber => 2f,
             ResourceType.Cloth => 1.5f, ResourceType.Fuel => 2f, ResourceType.Oil => 3f, ResourceType.Coolant => 2f,
             ResourceType.IronOre or ResourceType.CopperOre or ResourceType.TinOre or ResourceType.Bauxite or ResourceType.Silica => 1.5f,
@@ -147,6 +151,7 @@ namespace MadMax.Npc
         {
             if (!buys.TryGetValue(kind, out var l)) return false;
             if (id == "res:1" || id == "food_rotten") return false;       // scrap is the money
+            if (id == "res:" + (int)ResourceType.GoldOre || id == "res:" + (int)ResourceType.Gold) return kind != "food";   // everyone else takes gold
             foreach (var p in l) if (p.EndsWith("_") ? id.StartsWith(p) : id == p) return true;
             return false;
         }
