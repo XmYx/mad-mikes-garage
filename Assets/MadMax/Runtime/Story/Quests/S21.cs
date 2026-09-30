@@ -36,7 +36,7 @@ namespace MadMax.Story
                 .Says("ruth", "s21_charge", "ONE SMALL CHARGE ON THE BOLT. EVERYONE STAND BACK.",
                     "SMALL. I MEAN IT. ON THE BOLT, NOT THE DOOR. ...ALL RIGHT. FIRE IN THE HOLE, AS NOBODY HAS SAID SINCE THE WAR.")
                 .Needs("throw_dynamite")
-                .When(Goal.Event, "s21:wrecked", label: "BLEW IT APART");
+                .When(Goal.Event, "s21:wrecked", label: "TOOK IT APART THE HARD WAY");
             // what the method earned (hidden until paid; the journal lists them)
             Step(q, "intact", "THE WAGE ENVELOPES CAME OUT WHOLE: RUTH ADDS A BLUEPRINT FROM THE BOTTOM SHELF").When(Goal.Event, "s21:intact").Optional()
                 .Pays(r => { r.scrap = 25; r.items.Add(("bp_framepack", 1)); });

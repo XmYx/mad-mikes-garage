@@ -46,8 +46,20 @@ namespace MadMax.Game
 
         static float Q3Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
+        /// <summary>The authored closing lines, kept before the first rewrite (the catalogue outlives a world).</summary>
+        static readonly System.Collections.Generic.Dictionary<string, string> q3Payoffs = new System.Collections.Generic.Dictionary<string, string>();
+
         /// <summary>The quest's closing journal line, written from the choices made (set before the last step).</summary>
-        static void Q3Payoff(string quest, string text) { var q = StoryLibrary.Get(quest); if (q != null) q.payoff = text; }
+        static void Q3Payoff(string quest, string text)
+        {
+            var q = StoryLibrary.Get(quest);
+            if (q == null) return;
+            if (!q3Payoffs.ContainsKey(quest)) q3Payoffs[quest] = q.payoff;
+            q.payoff = text;
+        }
+
+        /// <summary>A new world's quest starts from the authored closing line (called from its scene hook).</summary>
+        static void Q3ResetPayoff(string quest) { var q = StoryLibrary.Get(quest); if (q != null && q3Payoffs.TryGetValue(quest, out var t)) q.payoff = t; }
 
         static bool Q3Route(string quest, string step, string prefix) { var r = MadMax.Story.Story.Route(quest, step); return r != null && r.StartsWith(prefix); }
     }

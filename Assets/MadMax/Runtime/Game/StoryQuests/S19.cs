@@ -18,6 +18,7 @@ namespace MadMax.Game
 
         partial void Scene_S19()
         {
+            Q3ResetPayoff("S19");
             if (!StoryAnchors.Has("ester") || !Build || !Build.Structures) return;
             PutAt("ester", "porch_awning", new Vector3(0f, 0f, -1.8f), 0f);
             PutAt("ester", "table", new Vector3(-2.4f, 0f, 0.6f), 0f);
@@ -132,7 +133,8 @@ namespace MadMax.Game
                     Toast(bram ? "BRAM GOES DOWN, SWEARS, COMES UP: SHE'S CLEAR" : boat ? "YOU HOOK THE SLING OFF THE BEAM WITH A BOATHOOK. UP SHE COMES" : "YOU WORK THE SLING OFF THE BEAM. UP SHE COMES");
                 }
             }
-            if (rigged) S19Payoff(fast);
+            if (Plot.Flag("s19_hung") && Vector3.Distance(me, bt.position) < 4.5f) Plot.Note("s19:heard");
+            S19Payoff(fast);
         }
 
         /// <summary>The bags lift her: slow and level, or quick and (unless Bram minds the lines) fouled halfway.</summary>

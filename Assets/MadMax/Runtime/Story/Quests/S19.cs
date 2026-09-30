@@ -59,7 +59,7 @@ namespace MadMax.Story
                     "THE TOWN, THEN. THEY'LL COMPLAIN ABOUT THE NOISE FOR A WEEK AND MISS IT FOREVER AFTER. I'LL HAVE HER HUNG BY TONIGHT.")
                 .Says("ester", "s19_here", "HERE, OVER THE WATER, FOR THE VILLAGE UNDER IT.",
                     "HERE. YES. SO THEY KNOW DOWN THERE THAT SOMEBODY REMEMBERS. THANK YOU.");
-            Step(q, "hear", "GO AND RING HER ONCE ([E] THE BELL)").When(Goal.Reach, "s19_bell", 3.5f);
+            Step(q, "hear", "GO AND HEAR HER WHERE SHE HANGS ([E] RINGS THE BELL)").When(Goal.Event, "s19:heard");
             q.reward.scrap = 20; q.reward.items.Add(("use_o2_bottle", 2));
             q.reward.training.Add((Skill.Survival, 6f)); q.reward.training.Add((Skill.Salvaging, 6f)); q.reward.flag = "ester_boat_service";
             q.payoff = "THE BELL IS UP. ESTER SAYS THE LAKE SOUNDS DIFFERENT NOW, WHICH IS NONSENSE, AND SHE'S RIGHT. HER SLIPWAY WILL SERVICE YOUR BOATS AT COST.";

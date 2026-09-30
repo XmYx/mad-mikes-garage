@@ -17,6 +17,7 @@ namespace MadMax.Game
 
         partial void Scene_S20()
         {
+            Q3ResetPayoff("S20");
             if (!StoryAnchors.Has("oren") || !Build || !Build.Structures) return;
             PutAt("oren", "porch_awning", new Vector3(0f, 0f, -1.8f), 0f);
             PutAt("oren", "table", new Vector3(-2.2f, 0f, 0.4f), 0f);
