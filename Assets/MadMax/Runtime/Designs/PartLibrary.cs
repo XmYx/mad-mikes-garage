@@ -26,6 +26,7 @@ namespace MadMax.Designs
             yield return JerryRack();
             yield return Turret();
             yield return SmallWheel();
+            yield return CompactWheel();
             yield return TruckWheel();
             yield return TwoStroke();
             yield return TruckDiesel();
@@ -242,6 +243,33 @@ namespace MadMax.Designs
             }
             var part = Make("wheel_small", PartCategory.Wheel, g, 12, 1, R * VoxelMesher.DefaultSize);
             part.grip = 1.0f; part.mudGrip = 0.35f; part.width = 0.2f; part.wetGrip = 0.8f;
+            return part;
+        }
+
+/// <summary>Everyday hatchback / saloon wheel (0.31 m, 175-195 section): steel rim, plastic trim, four studs.</summary>
+        public static PartDesign CompactWheel()
+        {
+            var g = new VoxelGrid();
+            const float R = 3.9f, rim = 2.8f;
+            for (int x = 0; x <= 2; x++)
+            for (int y = -4; y <= 4; y++)
+            for (int z = -4; z <= 4; z++)
+            {
+                float d = Mathf.Sqrt(y * y + z * z);
+                if (d > R) continue;
+                Color32 c;
+                if (d > rim) c = x == 2 ? Pal.Tire[1] : Pal.Tire[Mathf.FloorToInt(Angle01(y, z) * 18) % 2 == 0 ? 2 : 0];
+                else
+                {
+                    if (x == 2) continue;
+                    if (x == 0) c = Pal.Metal[0];
+                    else if (d < 1.1f) c = Pal.Black[2];
+                    else c = Mathf.FloorToInt(Angle01(y, z) * 8) % 2 == 0 ? Pal.Chrome[1] : Pal.Chrome[2];
+                }
+                g.Set(x, y, z, Pal.Solid(c));
+            }
+            var part = Make("wheel_compact", PartCategory.Wheel, g, 14, 1, R * VoxelMesher.DefaultSize);
+            part.grip = 1.05f; part.mudGrip = 0.36f; part.width = 0.19f; part.wetGrip = 0.8f;
             return part;
         }
 

@@ -1,83 +1,101 @@
 # Mad Mike's Garage
 
-**Build it. Break it. Bolt it back together.**
-A pixel-art voxel wasteland where every vehicle is made of swappable parts, every wall can be smashed, and you survive by scavenging, farming, mining and wrenching. Made with Unity 6 and open to the community.
+A pixel-art survival game about cars in a voxel wasteland. You scavenge wrecks for parts, bolt them onto whatever still
+runs, and keep yourself alive with what you can find, grow, trade or build. Every vehicle is assembled from swappable
+parts, and most of the world can be dug up, knocked down or burnt. Made with Unity 6.
 
 ![Title screen](Docs/screenshots/title.png)
 
 ---
 
-## Why you'll want to hack on it
+## What's in the game
 
-- **Everything is voxels, everything is code.** Vehicles, parts, buildings, furniture, even the logo are authored in C# as voxel grids: no art pipeline to learn. Add a bumper in 20 lines.
-- **Everything is destructible and craftable.** Carve through shacks with a sledgehammer, ram through walls with a spiked bumper, dig a quarry with an excavator, then smelt the ore and build it all back.
-- **Systemic, not scripted.** Mud, rain, snow, ice, fire, temperature, power grids, water networks and tyre wear all interact.
-- **Multiplayer built in.** Listen server, dedicated server and clients (Unity Transport, UDP).
+### Driving and repairing
+- Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doors, hoods, bumpers, rams, spikes, armour plates, roof racks, winches, cranes, lights, snorkels and weapons. Most parts fit most vehicles.
+- Raycast suspension, open or locked differentials, switchable 4WD, automatic or manual gearbox, launch and hill-start assists.
+- Crashes dent the bodywork, bend the frame (the car starts pulling to one side) and knock parts off. Tyres wear, heat up and burst.
+- Each engine needs fuel, oil and coolant. Petrol and diesel are separate, and filling up with the wrong one causes a fault until you siphon it out. Engines crank and sometimes refuse to start when they are worn or cold, and old ones leak.
+- Servicing: oil changes, air filters, spark plugs. A tuning bench changes gearing, ride height, dampers, brake bias, turbo, supercharger and nitrous.
+- A paint station for colours and decals. A gang decal can get you past that gang's convoys.
+- Towing with hitches and couplers, fuel tankers you can pump from, and car transporters with a tilting upper deck.
+- Construction machines really change the terrain. Excavators, backhoes and dozers dig and push soil, and you can see it in the bucket, in front of the blade and in the tipper bed. Pavers lay asphalt or concrete and rollers finish it.
+- Vehicle weapons: roof guns, rear droppers for oil and caltrops, smoke screens.
+- Mud, ruts, snow, ice, fords and rain all change how much grip you have.
 
----
+### The world
+- A procedural planet about 9.6 km around. It wraps east to west through an open ocean, and latitude sets the climate, from the wet tropics to tundra and polar ice.
+- Deserts, forests, meadows, tropical lakes, swamps and radioactive zones. Rivers, dry wadis, coasts and open sea.
+- Villages, towns and ruined cities joined by highways and dirt tracks. You can walk into the buildings, including multi-storey ones, with a cutaway view.
+- Bunkers, rock tunnels with caves, airfields with hangars, scrapyards, a refinery, radio masts and military checkpoints.
+- Day and night, seasons, rain, snow, storms, lightning, dust devils and wind. Fire spreads through dry country, and puddles and wet roads dry out in the sun.
+- Buildings slowly overgrow and crumble. Grass gets flattened where you drive and grows back.
 
-## Features
+### Surviving
+- You create a character with attributes and traits. Skills improve with practice, from books and VHS tapes, and through research at a workbench.
+- Hunger, thirst, hygiene, food spoilage, sickness, radiation.
+- Body temperature depends on clothing layers, shelter, heaters and getting wet.
+- Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection) and treated with bandages, splints and medicine. A bad leg makes you limp and a broken arm stops you using two-handed tools.
+- Clothing and body armour wear out, get holes and can be mended.
+- Melee tools, guns with magazines and jams, thrown molotovs and smoke, fishing rods, a grappling hook.
+- Parkour: vaulting, climbing, sliding and rolling.
+- Diving gear with tank air for working underwater.
 
-### Vehicles you build from parts
-Interceptor, Scavenger, Trabant, the Hauler war rig with a walk-in module, tankers, cargo and car-transport trailers (single and double deck with a tilting upper deck), plus a fleet of construction machines. Wheels, engines, radiators, bumpers, rams, spikes, armour plates, winches, cranes and turrets are **parts that fit any vehicle**. Crashes dent panels, bend frames and knock parts off; tyres wear, overheat and blow out.
+### Building, farming and industry
+- Walls, floors, roofs, doors, stairs and ladders. Foundations and drivable decks, garages, defences (spikes, wire, turrets, alarm bells), and saved blueprints of whole structures.
+- Furniture that does something: beds, seats, dining tables, wardrobes, bookshelves, mirrors, TVs, radios, stoves and a latrine.
+- Power from generators, solar panels, wind turbines and water wheels, carried by cables. Water from wells, pumps, rain collectors, tanks and pipes, feeding sprinklers and drip lines.
+- Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenhouses and seasons matter.
+- A production chain: dig soil, wash it for ore, then smelt metals, fire glass and lime, burn charcoal and mix concrete and asphalt. Crude oil comes from pumpjacks and is refined into petrol, diesel and oil.
+- Crafting is timed and happens at stations (workbench, stove, furnace, kiln, still, garage, slipway and others). The results come in crude, sturdy or fine quality.
+- Sea bases: domes, tunnels, a shore entrance and a docking collar for the submarine.
+
+### People and animals
+- Every NPC has a name, a job, a temperament and a history that you learn over several conversations. Many of them speak, in ten Southern voices with over a thousand lines and short two-person chats.
+- Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raider gangs. Trade uses scrap as money, and prices vary by town, by season and by how much you have sold there. You can haggle.
+- Raiders track you down on the road. You can talk your way out, pay, bluff, recruit them or fight.
+- Factions with territory and standing, bounty boards, supply and escort contracts, and quests for each town.
+- Companions who follow you, ride with you, drive and fight.
+- Herds, predators, birds, snakes, scorpions and insects. Livestock can be kept, fed, bred and ridden, and fish and crabs live in the sea.
+
+### Radio
+Eleven stations run around the clock: ten music stations with about 250 original tracks, plus WasteTalk FM 90.1 with
+DJs, call-in shows, news and a weather report that matches the sky. Every vehicle has a radio, you can build radio sets
+for a base, and away from the masts the signal fades into hiss.
+
+### Other
+- Multiplayer through a listen server, a dedicated server or as a client (Unity Transport, UDP).
+- Three save slots plus an autosave. A map and journal with waypoints and road routing.
+- A daily race board (road race, bike trial, air race, arena) and a long quest called The Last Engine.
+- Views: isometric, tilt-shift, top-down, third person, first person, hood and bumper cameras. The pixel-art renderer can also switch to full-resolution "vector" mode.
+- Rebindable controls, gamepad support, colour-blind palette, HUD scaling and separate volume channels.
 
 | | |
 |---|---|
 | ![Convoy](Docs/screenshots/convoy.png) | ![Burnout](Docs/screenshots/burnout.png) |
 | ![Crane truck lifting a car](Docs/screenshots/crane.png) | ![Construction machines](Docs/screenshots/machines.png) |
-
-- Raycast suspension, open or locked differentials, switchable 4WD, auto or manual gearbox
-- Fuel, oil, coolant, heat and faults per vehicle; refuel from a jerry can or at an old pump with a hose
-- Headlights, tail and brake lights, cabin heating and air-con
-- **Winch** (hook trees, rocks, buildings or other vehicles and pull yourself free) and **crane** (lift cars and wrecks)
-- **Machines:** excavator, backhoe loader, bulldozer, dump truck, asphalt/concrete paver and roller that terraform and pave the world for real
-
-### A big, varied wasteland
-Deterministic procedural world: deserts, forests, tropical lakes, radioactive zones, and villages, towns and ruined cities connected by highways.
-
-| | |
-|---|---|
 | ![Ruined city](Docs/screenshots/city.png) | ![Walk-in buildings with cutaway](Docs/screenshots/city_interior.png) |
 | ![Village](Docs/screenshots/village.png) | ![Tropical lake](Docs/screenshots/swimming.png) |
-
-- Walkable multi-storey buildings with stairs and a see-through cutaway; shops, houses and garages full of lootable furniture
-- Day and night with street, house and vehicle lights
-- Weather: rain soaks the ground into mud, lakes rise; snow settles on the ground and dusts objects; freezing ground turns icy
-- Fire spreads through dry forests and wooden buildings; molotovs; smoke drifts with the wind
-- Line of sight: you only see what your character can actually see
-
-| | |
-|---|---|
 | ![Snow](Docs/screenshots/snow_vehicles.png) | ![Forest fire](Docs/screenshots/forest_fire.png) |
-
-### Base building, farming, industry
-- Walls (wood, brick, concrete), doorways, lockable doors, stairs, ladders, roofs, fences, furniture and decor, all placed with a claw hammer
-- **Power:** generators, wind turbines, battery banks, cables, lights, fridges, ovens, electric heaters and air-con
-- **Water:** rain collectors, pumps, filters, tanks, pipes, sinks, showers, sprinklers
-- **Farming:** plots and planters, 11 crops, fruit trees, fertiliser, seasons
-- **Industry:** dig biome soils, wash them into ores, smelt iron, copper, bronze and aluminium, burn charcoal, mix concrete and asphalt, distil biofuel, build whole vehicles in a garage. **Everything in the game can be crafted or found.**
-
-| | |
-|---|---|
 | ![Night base with power](Docs/screenshots/night_base.png) | ![Inventory](Docs/screenshots/inventory.png) |
-
-### Survive as a character, not a health bar
-- Character creation with attributes and traits; skills improve by doing, from books and VHS tapes (play them on a TV you built), and through research
-- Hunger, thirst, hygiene, food spoilage, sickness
-- Body temperature: clothing layers stack warmth or cooling; shelter, heaters, fires and wet clothes matter; hypothermia and heatstroke
-- Injuries per body part (scratches, lacerations, deep wounds, fractures, burns) with bleeding, infection, bandages, splints and disinfectant
-
-| | |
-|---|---|
 | ![Health and injuries](Docs/screenshots/health.png) | ![Character creation](Docs/screenshots/character.png) |
 
-### Sound and radio
-Every vehicle has a radio, and you can build radio sets for your base. **Eleven stations** broadcast around the clock: hard rock, classic rock, punk, southern rock, wasteland pop, synthpop, synthwave, darksynth, industrial and acid techno (about 250 original tracks), plus **WasteTalk FM 90.1**, with Big Hank & Dolly's morning show, the Wrench Line call-in, the Wasteland Wire news, weather that matches the actual sky, and late-night radio. DJs, jingles and commercials for wasteland businesses round it out. Engines rev with the rpm, tyres squeal, crashes crunch, and rain, wind and fire fill in the world.
+---
 
-### Looks
-Everything renders through a low-resolution pixel-art camera with banded lighting and 1 px outlines. Switch to **vector mode** for full-resolution voxels, toggle ordered dithering, and scale light detail.
+## Vehicles
 
-![Vector mode](Docs/screenshots/vector_mode.png)
+| Group | Vehicles |
+|---|---|
+| Wasteland cars | Interceptor, Scavenger, Trabant, Pickup (4x4), Coupe, Sedan, Wagon (woody), Tow Truck, Wrecker, Dune Buggy, Monster Truck |
+| Real cars (modelled in Blender) | Fiat 126p, Fiat 500, Renault 5, Citroën BX, Citroën XM, Citroën Xantia, Lancia Ypsilon, Peugeot 205, Peugeot 206, Peugeot 207 CC, Peugeot 405, Peugeot 406 Break, Fiat Multipla |
+| Trucks and buses | Hauler war rig with a walk-in module, Semi tractor, Bus, Ambulance with a medical bay, APC |
+| Machines | Excavator, Backhoe loader, Bulldozer, Dump truck, Asphalt/concrete paver, Roller |
+| Trailers | Tanker (2000 L), Small bowser (450 L), Cargo trailer, Box trailer, Car transporter (single and double deck) |
+| Two wheels | Dirt bike, Chopper, Bicycle, Sidecar outfit |
+| Aircraft | Ultralight trike, Gyrocopter |
+| Boats | Raft, Skiff, Trawler, Houseboat, Iron Eel submarine |
+
+All of these are built from code in `Assets/MadMax/Runtime/Designs`. The real cars start as Blender lofts made from
+the actual dimensions (`tools/blender/cars.py`), which are voxelized and then built like every other car.
 
 ---
 
@@ -113,22 +131,22 @@ Dedicated server: **MadMax → Build Linux Player**, then
 `MadMikesGarage.x86_64 -batchmode -nographics -server -port 7777`.
 
 ### Controls (short version)
-`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines `1 2 3` · winch `4 5 6` · crane `7 8 9 0` · `V` camera view · `M` radio (`,` `.` tune, `[` `]` volume) · hold `Tab` action wheel · `H` full help.
+`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines `1 2 3` · winch `4 5 6` · crane `7 8 9 0` · `V` camera view · `/` radio (`,` `.` tune, `[` `]` volume) · `M` map and journal · hold `Tab` action wheel · `H` full help.
 
 ---
 
 ## Contributing
 
-We would love your help. Good places to start:
+Pull requests are welcome. Some places to start:
 
 | Area | Where | Ideas |
 |---|---|---|
 | New vehicle parts | `Assets/MadMax/Runtime/Designs/PartLibrary.cs` | bumpers, exhausts, roof racks, armour, engines |
-| New vehicles | `Designs/VehicleDesigns.cs`, `MachineDesigns.cs`, `TransportDesigns.cs` | buggies, bikes, buses, a proper tracked tank |
+| New vehicles | `Designs/VehicleDesigns.cs`, `CarDesigns.cs`, `ModelCars.cs` + `tools/blender/cars.py` | more real cars, a tracked tank |
 | Buildings & furniture | `Building/BuildPieces.cs`, `FurnitureLibrary.cs` | new walls, decor, workshop stations |
 | World props & biomes | `World/BiomeProps.cs`, `WorldGen.cs` | new settlement types, landmarks, regional weather |
 | Recipes, food, crops | `Items/Recipes.cs`, `Items/FoodLibrary.cs` | cooking, medicine, new crops |
-| Systems | `Game/`, `Vehicle/`, `World/` | NPCs, trading, missions, sound |
+| Systems | `Game/`, `Vehicle/`, `World/`, `Npc/` | quests, NPC behaviour, sound |
 
 **Ground rules:**
 - 1 voxel = 8 cm; colours come from the `Pal` palette ramps; call `Bevel()` once after painting.
@@ -138,12 +156,9 @@ We would love your help. Good places to start:
 - Enter Play Mode skips domain reload: reset every static in a `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]` method.
 - Keep `FixedUpdate` and per-cell loops allocation-free.
 
-Open a pull request with a screenshot of what you added. Bug reports with a save file and steps to reproduce are gold.
+Open a pull request with a screenshot of what you added. Bug reports help most with a save file and the steps that lead to the problem.
 
-### Roadmap / open ideas
-- Regional weather (more rain in the tropics, sandstorms in the desert)
-- NPC survivors, traders and raiders
-- Vehicle paint shop and decals
+The full list of what is done and what is planned lives in [ROADMAP.md](ROADMAP.md).
 
 ---
 

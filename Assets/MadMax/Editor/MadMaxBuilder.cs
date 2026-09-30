@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using MadMax.Designs;
 using MadMax.Game;
 using MadMax.World;
@@ -124,7 +125,8 @@ namespace MadMax.EditorTools
                                           vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"],
                                           vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
                                           vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"],
-                                          vehicles["Ultralight"], vehicles["Gyrocopter"] };
+                                          vehicles["Ultralight"], vehicles["Gyrocopter"] }
+                .Concat(VehicleDesigns.ModelCarNames.Select(n => vehicles[n])).ToArray();
             game.boatPrefabs = new[] { vehicles["Raft"], vehicles["Skiff"], vehicles["Trawler"], vehicles["Houseboat"], vehicles["IronEel"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
@@ -208,6 +210,9 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
                                       VehicleDesigns.MonsterTruck(), VehicleDesigns.DuneBuggy(),
                                       VehicleDesigns.DirtBike(), VehicleDesigns.Chopper(), VehicleDesigns.Bicycle(), VehicleDesigns.SidecarOutfit(),
+                                      VehicleDesigns.Fiat126p(), VehicleDesigns.Renault5(), VehicleDesigns.CitroenBX(), VehicleDesigns.CitroenXM(), VehicleDesigns.CitroenXantia(),
+                                      VehicleDesigns.LanciaYpsilon(), VehicleDesigns.Fiat500(), VehicleDesigns.Peugeot205(), VehicleDesigns.Peugeot206(), VehicleDesigns.Peugeot207CC(),
+                                      VehicleDesigns.Peugeot405(), VehicleDesigns.Peugeot406Break(), VehicleDesigns.FiatMultipla(),
                                       VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter(),
                                       VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel() })
             {
