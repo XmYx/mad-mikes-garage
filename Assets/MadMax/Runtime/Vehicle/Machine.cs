@@ -526,7 +526,7 @@ namespace MadMax.Vehicles
         // ---------------------------------------------------------------- tractor implements (depth stage B)
         string Implement => toolSocket && toolSocket.Current ? toolSocket.Current.partId : null;
 
-        static string ImplementName(string id) => id == "tool_plough" ? "PLOUGH" : id == "tool_seeder" ? "SEEDER" : id == "tool_harvester" ? "HARVESTER" : id == "tool_sprayer" ? "SPRAYER" : "IMPLEMENT";
+        static string ImplementName(string id) => id == "tool_plough" ? "PLOUGH" : id == "tool_seeder" ? "SEEDER" : id == "tool_harvester" ? "HARVESTER" : id == "tool_sprayer" ? "SPRAYER" : id == "tool_baler" ? "BALER" : "IMPLEMENT";
 
         /// <summary>The lowered implement works the field cells across its width behind the tractor: the plough tills,
         /// the seeder sows (from the hopper, then the driver's pack), the sprayer waters (tank, then pack), the
@@ -550,6 +550,7 @@ namespace MadMax.Vehicles
                         if (did) Clods(new Vector3(p.x, terrain.Height(p.x, p.z) + 0.3f, p.z), ResourceType.Clay, 3, 0.6f, transform.right * Mathf.Sign(off + 0.01f) * 1.2f + Vector3.up);
                         break;
                     case "tool_seeder": did = Fields.Sow(game, p, store ? store.inventory : null); break;
+                    case "tool_baler": did = terrain.Bale(p, store ? store.inventory : null); break;       // depth stage E: grass into hay (DeformableTerrain.Hay)
                     case "tool_sprayer":
                         did = Fields.Spray(game, p, store ? store.inventory : null);
                         if (did) Fx.Smoke(new Vector3(p.x, terrain.Height(p.x, p.z) + 0.6f, p.z), Vector3.down * 0.4f, 0.4f, new Color(0.75f, 0.85f, 0.95f, 0.45f), 0.8f);
