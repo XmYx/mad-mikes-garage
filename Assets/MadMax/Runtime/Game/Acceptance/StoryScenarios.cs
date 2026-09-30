@@ -312,7 +312,8 @@ namespace MadMax.Game.Acceptance
             yield return Until(() => MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Active, 3f);
             yield return Until(() => MadMax.Story.Story.StepDone("S09", "look"), 4f);
             c.Check(MadMax.Story.Story.StepDone("S09", "look"), "looked over the beds");
-            var beds = Placeable.All.Where(p => p && p.id == "garden_plot" && g.IsStoryProp(p)).Select(p => p.GetComponent<GardenPlot>()).Where(p => p).ToList();
+            var ua = StoryAnchors.Get("una");
+            var beds = Placeable.All.Where(p => p && p.id == "garden_plot" && g.IsStoryProp(p) && (p.transform.position - ua).sqrMagnitude < 100f).Select(p => p.GetComponent<GardenPlot>()).Where(p => p).ToList();
             c.Check(beds.Count == 3 && beds.All(b => b.water < 0.1f), $"three dry beds ({beds.Count})");
             c.Screenshot("una_beds");
             yield return null;
