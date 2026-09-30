@@ -26,11 +26,12 @@ namespace MadMax.Vehicles
     /// Backhoe loader: front loader [1]/[2] arms down/up, [5]/[6] bucket curl/dump (drive into a pile to fill it);
     /// rear hoe Shift+[1]/[2] swing, [3]/[4] boom down/up, Shift+[3]/[4] stick in/out, Shift+[5]/[6] bucket curl/open.
     /// Dozer: [1]/[2] blade down/up (below ground = cut depth), [3]/[4] blade pitch, [5]/[6] blade angle (spills sideways).
-    /// Dump truck: [1]/[2] bed down/up (unloads behind when tipped). Paver: [1] paving on/off, [3] material, [5]/[6] screed.
+    /// Dump truck: [1]/[2] bed down/up (unloads behind when tipped; a raised bed of gravel on the move spreads a gravel road).
+    /// Paver: [1] paving on/off, [3] material (asphalt, concrete, gravel), [5]/[6] screed.
     /// Roller: compacts wet paving while driving. Tools sit on the MachineTool layer: they never collide with the
     /// terrain, so a blade or bucket in the ground does not pin the machine. Terrain edits go through
     /// <see cref="DeformableTerrain.ApplyTerraform"/> and are replicated.</summary>
-    public class Machine : MonoBehaviour
+    public partial class Machine : MonoBehaviour
     {
         public enum Kind { Excavator, Backhoe, Dozer, DumpTruck, Paver, Roller, Tractor }
         public Kind kind;
@@ -197,13 +198,13 @@ namespace MadMax.Vehicles
                 }
                 case Kind.DumpTruck:
                     Hinge(ref bed, Mathf.Clamp(MachineKeys.Axis(k.h2, k.h1) + k.up, -1f, 1f), 12f, 0f, 50f, dt);
-                    Status = "TIPPER  " + Mathf.RoundToInt(store.Weight) + " KG  BED " + Mathf.RoundToInt(bed) + "  UP/DN RAISE/LOWER THE BED";
+                    Status = "TIPPER  " + Mathf.RoundToInt(store.Weight) + " KG  BED " + Mathf.RoundToInt(bed) + (Spreading ? "  SPREADING GRAVEL" : "") + "  UP/DN RAISE/LOWER THE BED";
                     break;
                 case Kind.Paver:
                     if (k.p1 || k.qPressed) active = !active;
-                    if (k.p3 || k.ePressed) concrete = !concrete;
+                    if (k.p3 || k.ePressed) NextPaverMaterial();
                     Hinge(ref screed, Mathf.Clamp(MachineKeys.Axis(k.h5, k.h6) + k.up, -1f, 1f), 10f, -4f, 10f, dt);
-                    var mat = concrete ? ResourceType.Concrete : ResourceType.Asphalt;
+                    var mat = PaverMaterial;
                     Status = "PAVER  " + (active ? "PAVING " : "IDLE ") + ResourceInfo.Name(mat) + " " + store.inventory.Get(mat) + "  Q PAVE ON/OFF  E MATERIAL  UP/DN SCREED";
                     break;
                 case Kind.Roller:
@@ -382,6 +383,7 @@ namespace MadMax.Vehicles
                     WorkField(terrain);
                     break;
                 case Kind.DumpTruck:
+                    if (SpreadGravel(terrain, moved)) break;                                   // gravel on the move: a road, not a pile
                     if (bed < 35f || (tick -= dt) > 0f) break;
                     tick = 0.5f;
                     Unload(terrain);
@@ -390,10 +392,10 @@ namespace MadMax.Vehicles
                     if (!active || speed < 0.15f || speed > 4f || travel < 0.45f || !Tool) break;
                     travel = 0f;
                     {
-                        var mat = concrete ? ResourceType.Concrete : ResourceType.Asphalt;
+                        var mat = PaverMaterial;
                         if (!store.inventory.TrySpend(mat, 1)) { active = false; break; }
                         var screedAt = Tool.TransformPoint(new Vector3(0, 0, -4) * S);
-                        Terraform(DeformableTerrain.TerraOp.Pave, screedAt, 1.55f, 0f, (byte)(concrete ? 2 : 1));
+                        Terraform(DeformableTerrain.TerraOp.Pave, screedAt, 1.55f, 0f, PaverKind);
                         Fx.Smoke(screedAt + Vector3.up * 0.3f, Vector3.up * 0.6f, 0.5f, new Color(0.35f, 0.33f, 0.32f, 0.5f), 1.5f);
                     }
                     break;
