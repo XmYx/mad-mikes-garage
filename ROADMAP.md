@@ -1114,7 +1114,7 @@ The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladde
 | Story stage | Quests | Needs from the depth ladders | Status |
 |---|---|---|---|
 | **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
-| **N1 first hour** | A1, B1, S09, S24 (done); A2, S03 | evidence records (A2); towing a car (S03); **B fields** | A1, B1, S09, S24 playable (`story.first_hour`, `story.side_quests`); A2 / S03 next |
+| **N1 first hour** | A1, B1, S09, S24 (done); A2, S03 | evidence records (A2); towing a car (S03); **B fields** (done) | A1, B1, S09, S24 playable (`story.first_hour`, `story.side_quests`); stage B done (`farming.ladder`); A2 / S03 / S06 next |
 | **N2 parallel lives** | A3-A4, B2-B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | outline |
 | **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
 | **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
