@@ -10,7 +10,9 @@ namespace MadMax.Game
     /// the block deep in a far bunker, the heads in an airfield hangar, the crankshaft with the boss of the gang that
     /// holds the longest road, the twin blowers in the Church's keeping (given to a trusted friend of the Church).
     /// People talk about it (rumours pin the places on the map), a garage puts it together, and a car running it that
-    /// reaches the edge of the world makes THE LAST RUN. Saved as flags (relics found, "heard:*", "built", "run").</summary>
+    /// reaches the White Wall (the ice at either pole; the world is round east-west, it has no edge) makes THE LAST RUN.
+    /// The story chapters L1-L5 (Story/Quests) wrap this hunt: <see cref="Give"/>, <see cref="Hear"/>, <see cref="Run"/>.
+    /// Saved as flags (relics found, "heard:*", "built", "run").</summary>
     public static class LastEngine
     {
         public const string Part = "engine_v12_last";
@@ -30,23 +32,31 @@ namespace MadMax.Game
 
         static WorldGen World => DeformableTerrain.Instance ? DeformableTerrain.Instance.World : null;
 
-        /// <summary>Where the relics lie in this world: the second-nearest bunker to the start (a trip, not a stroll), the
-        /// nearest airfield, the gang with the longest road.</summary>
-        static void Resolve()
+        /// <summary>Where the block and the heads lie in a world: the second-nearest bunker to the start (a trip, not a
+        /// stroll) and the nearest airfield (either may be null). Pure: story anchors use it at bind time.</summary>
+        public static void Sites(WorldGen w, out Site block, out Site heads)
         {
-            var w = World;
-            if (w == null || resolved == w) return;
-            resolved = w;
+            block = heads = null;
+            if (w == null) return;
             var sites = new List<Site>();
             w.SitesNear(Vector3.zero, 2400f, sites);
             sites.Sort((a, b) => a.pos.sqrMagnitude.CompareTo(b.pos.sqrMagnitude));
             Site first = null;
             foreach (var s in sites)
             {
-                if (s.kind == SiteKind.Bunker) { if (first == null) first = s; else if (bunker == null) bunker = s; }
-                if (s.kind == SiteKind.Airfield && airfield == null) airfield = s;
+                if (s.kind == SiteKind.Bunker) { if (first == null) first = s; else if (block == null) block = s; }
+                if (s.kind == SiteKind.Airfield && heads == null) heads = s;
             }
-            bunker ??= first;
+            block ??= first;
+        }
+
+        /// <summary>Where the relics lie in this world: <see cref="Sites"/>, and the gang with the longest road.</summary>
+        static void Resolve()
+        {
+            var w = World;
+            if (w == null || resolved == w) return;
+            resolved = w;
+            Sites(w, out bunker, out airfield);
             gang = null;
             if (NpcDirector.Instance)
             {
@@ -70,6 +80,18 @@ namespace MadMax.Game
         }
 
         static string ItemCatalogName(string id) => MadMax.Items.ItemCatalog.Name(id);
+
+        /// <summary>A relic handed over by someone (a story chapter: a keeper, a trade, a race): into the pack and counted
+        /// as found. Does nothing if it was found already.</summary>
+        public static void Give(WastelandGame g, string relic, string where)
+        {
+            if (Has(relic) || System.Array.IndexOf(Relics, relic) < 0) return;
+            g.Inventory.AddItem(relic, 1);
+            Found(g, relic, where);
+        }
+
+        /// <summary>Word of a relic's whereabouts (its map pin shows until it is found).</summary>
+        public static void Hear(string relic) { if (System.Array.IndexOf(Relics, relic) >= 0) flags.Add("heard:" + relic); }
 
         public static int Count { get { int n = 0; foreach (var r in Relics) if (flags.Contains(r)) n++; return n; } }
 
@@ -138,21 +160,30 @@ namespace MadMax.Game
             if (!Has("built"))
             {
                 flags.Add("built");
-                Journal.Add("RELIC", "THE LAST ENGINE RUNS AGAIN. NOW TAKE IT TO THE EDGE OF THE WORLD.");
-                g.Toast("THE LAST ENGINE ROARS! DRIVE IT TO THE EDGE OF THE WORLD");
+                Journal.Add("RELIC", "THE LAST ENGINE RUNS AGAIN. NOW TAKE IT NORTH TO THE WHITE WALL, THE ICE AT THE TOP OF THE WORLD.");
+                g.Toast("THE LAST ENGINE ROARS! DRIVE IT NORTH TO THE WHITE WALL");
             }
             var w = World;
             if (Has("run") || w == null) return;
             var p = car.transform.position;
-            if (Mathf.Abs(WorldGen.Latitude(p.z)) < 80f) return;                                   // the edge of the world: the polar ice
+            if (Mathf.Abs(WorldGen.Latitude(p.z)) < 80f) return;                                   // the White Wall: the polar ice (the world wraps east-west)
+            Run(g, "THE WHITE WALL");
+        }
+
+        /// <summary>THE LAST RUN is made: the engine reached <paramref name="where"/> (the White Wall, or the far landmark a
+        /// story expedition was sent to). Once.</summary>
+        public static void Run(WastelandGame g, string where)
+        {
+            if (Has("run")) return;
             flags.Add("run");
-            Journal.Add("RELIC", "THE LAST RUN: DAY " + DayNight.Day + ", THE LAST ENGINE REACHED THE EDGE OF THE WORLD.");
+            Journal.Add("RELIC", "THE LAST RUN: DAY " + DayNight.Day + ", THE LAST ENGINE REACHED " + where + ".");
             g.Toast("THE LAST RUN! THE WASTES WILL TELL OF THIS ONE");
             MadMax.Audio.Sfx.Play2D("crowd_cheer", 0.9f);
             Factions.Shift(Faction.Settlers, 10);
         }
 
-        static bool Mounted(VehicleDriver car)
+        /// <summary>The car carries the Last Engine in a socket.</summary>
+        public static bool Mounted(VehicleDriver car)
         {
             if (!car.TryGetComponent<VehicleChassis>(out var ch)) return false;
             foreach (var s in ch.Sockets) if (s.Current && s.Current.partId == Part) return true;
