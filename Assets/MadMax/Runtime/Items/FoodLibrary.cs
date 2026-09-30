@@ -79,6 +79,10 @@ namespace MadMax.Items
                 F("food_bug_skewer", "FRIED BUG SKEWER", 22, 0, 30, H("8a6a2a"), 0.05f, 2f),
                 F("food_fish_cooked", "GRILLED FISH", 30, 2, 25, H("c09060"), 0f, 3f),
                 F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
+                // depth stage F: preserved with salt (counter)
+                F("food_meat_salted", "SALT MEAT", 30, -8, 0, H("9a4a3e"), 0f, 2f),
+                F("food_fish_salted", "SALT FISH", 24, -8, 0, H("c8b898")),
+                F("food_pickles", "PICKLED VEGETABLES", 16, 4, 0, H("8a9a3a")),
                 F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),
                 F("food_mushroom", "MUSHROOMS", 6, 1, 20, H("b8a888"), 0.05f),
                 Rad(F("food_fish_glow", "GLOWING FISH", 10, 2, 15, H("8aff5a"), 0.5f), 14f),
