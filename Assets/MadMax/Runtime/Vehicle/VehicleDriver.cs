@@ -537,7 +537,8 @@ namespace MadMax.Vehicles
                     brake += Mathf.Min(brakeForce / wheels.Count, Mathf.Max(0f, w.maxF * 0.95f - Mathf.Abs(w.drive)));
                 lng -= Mathf.Clamp(w.vf * massPerWheel / dt, -brake, brake);
                 float press = Pressure(w);
-                float crr = (0.015f + 0.04f * w.surf.softness * press + w.surf.rut * 0.22f) * (w.stats ? w.stats.rolling : 1f) * (tuning ? tuning.RollingFactor : 1f);   // mud and ruts drag
+                float rutDrag = w.surf.rut * 0.22f / (w.stats ? Mathf.Sqrt(Mathf.Max(1f, w.stats.footprint)) : 1f);   // a long track bridges ruts
+                float crr = (0.015f + 0.04f * w.surf.softness * press + rutDrag) * (w.stats ? w.stats.rolling : 1f) * (tuning ? tuning.RollingFactor : 1f);   // mud and ruts drag
                 lng -= Mathf.Clamp(w.vf * 4f, -1f, 1f) * crr * w.spring;
 
                 float mag = Mathf.Sqrt(lng * lng + lat * lat), slip = 0f;

@@ -752,9 +752,13 @@ namespace MadMax.Game.Acceptance
 
             var p0 = v.transform.position;
             v.handbrake = false; v.throttleInput = 1f;
-            yield return new WaitForSeconds(8f);
+            float slipSum = 0f; int slipN = 0;
+            for (float t = 0f; t < 8f; t += Time.deltaTime) { if (t > 2f) { slipSum += v.WheelSlip; slipN++; } yield return null; }
             float ahead = Vector3.Dot(v.transform.position - p0, dir);
+            float slip = slipN > 0 ? slipSum / slipN : 0f;
             c.Metric("mud_8s", ahead, "m");
+            c.Metric("mud_slip", slip, "");
+            c.Check(slip < 0.25f, $"the tracks bite in the mud (mean slip {slip:0.00} once rolling)");
             if (!c.Check(ahead > 6f, $"drives through the mud with a full load ({ahead:0.0} m in 8 s)")) c.Note(TestWorld.State(v) + "; touching: " + TestWorld.Contacts(v));
 
             float y0 = v.transform.eulerAngles.y;

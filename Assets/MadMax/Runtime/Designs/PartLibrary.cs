@@ -172,13 +172,14 @@ namespace MadMax.Designs
             return part;
         }
 
-        /// <summary>Crawler track roller: hidden inside a machine's track. Wide and long footprint: barely sinks, grips in mud.</summary>
+        /// <summary>Crawler track roller: hidden inside a machine's track. Wide and long footprint: barely sinks; the grousers bite
+        /// harder in mud than rubber does on dry tarmac.</summary>
         public static PartDesign TrackWheel()
         {
             var g = new VoxelGrid();
             g.CylX(0, 0, 4.3f, 0, 5, p => (p.y + p.z) % 3 == 0 ? Pal.Metal[2] : Pal.Metal[0]);
             var part = Make("wheel_track", PartCategory.Wheel, g, 180, 3, 4.3f * VoxelMesher.DefaultSize);
-            part.grip = 1.1f; part.mudGrip = 1.05f; part.width = 0.48f; part.wetGrip = 0.95f; part.rolling = 1.7f; part.wearRate = 0.2f; part.footprint = 7f;
+            part.grip = 1.1f; part.mudGrip = 1.6f; part.width = 0.48f; part.wetGrip = 0.95f; part.rolling = 1.7f; part.wearRate = 0.2f; part.footprint = 7f;
             return part;
         }
 
