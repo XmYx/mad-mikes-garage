@@ -60,7 +60,7 @@ namespace MadMax.Game.Acceptance
             c.Check(Q7T.Prop(c, "garage", "well", 12f) != null, "the Quayle pump on a well behind the garage");
             c.Check(Q7T.Say(c, "b4_hester", "TENDING CROPS"), "tending crops as the staffed service");
             yield return Q7T.Step("B4", "service");
-            yield return new WaitForSeconds(0.6f);
+            yield return H.Until(() => Residents.Current != Residents.Service.None, 3f);
             c.Check(Residents.Current == Residents.Service.Crops, "service: " + Residents.Name(Residents.Current));
 
             // ---- the pantry
