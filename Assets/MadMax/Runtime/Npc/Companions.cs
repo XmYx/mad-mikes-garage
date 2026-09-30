@@ -102,7 +102,8 @@ namespace MadMax.Npc
             var list = pending; pending = null;
             foreach (var s in list)
             {
-                var p = NpcProfile.Make(s.id, (NpcRole)s.role, s.seed, s.kind);
+                var p = (s.id != null && s.id.StartsWith("cast:") && g.World != null ? MadMax.Story.StoryCast.Profile(s.id.Substring(5), g.World.seed) : null)   // story cast keep their authored name and looks
+                        ?? NpcProfile.Make(s.id, (NpcRole)s.role, s.seed, s.kind);
                 if (NpcRegistry.IsDead(p.id)) continue;
                 var pos = s.order == 0 ? g.Player.transform.position - g.Player.transform.forward * 2.5f + g.Player.transform.right * (Live.Count - 1) : s.position;
                 var t = MadMax.World.DeformableTerrain.Instance;
