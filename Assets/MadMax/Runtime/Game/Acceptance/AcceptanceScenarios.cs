@@ -33,6 +33,7 @@ namespace MadMax.Game.Acceptance
             yield return new GlassAndLamps();
             yield return new DeformationSetting();
             yield return new ExhaustSmoke();
+            yield return new CookingLadder();
             yield return new ScrapeMarks();
             yield return new SunAndMoon();
             yield return new CrawlerMud("Bulldozer");
@@ -584,6 +585,77 @@ namespace MadMax.Game.Acceptance
             c.Check(!dentedOff, "OFF: no dents");
             c.Check(dentedOn, "NORMAL: the same knock dents the body");
         }
+    }
+
+    /// <summary>Depth stage A: one dish up every rung of the cooking ladder — campfire, wood stove, electric oven,
+    /// kitchen range (triple batch), cannery (tins that keep), still (brewing) — each placed, powered where it needs it,
+    /// fed from the pack and worked off to its output.</summary>
+    class CookingLadder : Scenario
+    {
+        public override string Id => "cooking.ladder";
+        public override float Timeout => 120f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game;
+            if (!TestWorld.Pad(10f, out var pad)) { c.Block("no open pad"); yield break; }
+            if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.3f); }
+            g.Player.Teleport(pad + Vector3.up * 0.3f, 0f);
+            yield return new WaitForSeconds(0.3f);
+            var steps = new[] { ("campfire", "fire_meat"), ("stove", "stove_meat_stew"), ("oven", "oven_apple_pie"), ("kitchen_range", "range_meat_stew"), ("cannery", "can_meat"), ("still", "brew_cider") };
+            var fwd = g.Player.transform.forward; var right = g.Player.transform.right;
+            var gen = FurnitureLibrary.Spawn("coal_generator", g.Build.Structures, g.Player.transform.position - fwd * 2f, Quaternion.identity, g.propMaterial);
+            yield return null;
+            var genNode = gen ? gen.GetComponent<UtilityNode>() : null;
+            var genComp = gen ? gen.GetComponent<Generator>() : null;
+            if (!c.Check(genNode && genComp, "generator spawns")) yield break;
+            genComp.fuel = 60f; genComp.on = true;
+            c.Fixture("fuelled steam generator (2.5 kW) behind the player, cabled to one powered station at a time");
+            UtilityNode prev = null;
+            int made = 0;
+            for (int i = 0; i < steps.Length; i++)
+            {
+                var (piece, id) = steps[i];
+                var r = RecipeLibrary.Get(id);
+                if (!c.Check(r != null, "recipe " + id + " exists")) continue;
+                var at = g.Player.transform.position + fwd * 1.8f + right * ((i % 3) * 2.4f - 2.4f) + fwd * (i / 3) * 2.4f;
+                var pl = FurnitureLibrary.Spawn(piece, g.Build.Structures, at, Quaternion.LookRotation(-fwd), g.propMaterial);
+                yield return null;
+                var st = pl ? pl.GetComponentInChildren<CraftingStation>() : null;
+                if (!c.Check(st && st.type == r.station, $"{piece} offers {r.station} recipes")) continue;
+                var node = pl.GetComponent<UtilityNode>();
+                if (st.watts > 0f && node) { if (prev) prev.Unlink(); node.Link(genNode, UtilityKind.Power); prev = node; }
+                if (st.watts > 0f) { float t1 = Time.time; while (!st.Powered && Time.time - t1 < 3f) yield return null; }
+                if (!c.Check(st.Powered, piece + " has power")) continue;
+                foreach (var (t, n) in r.resources) if (t != ResourceType.None) g.Inventory.Add(t, RecipeLibrary.Amount(n));
+                foreach (var (it, n) in r.items) g.Inventory.AddItem(it, n);
+                if (r.fuel != ResourceType.None) g.Inventory.Add(r.fuel, r.fuelAmount);
+                string why = g.CraftBlockReason(r, st);
+                if (!c.Check(why == null, $"{r.name} craftable at the {piece}" + (why != null ? ": " + why : ""))) continue;
+                int before = Output(g, r, st);
+                g.Craft(r, st);
+                if (st.queue.Count > 0) st.queue[0].progress = 0.95f;
+                float t0 = Time.time;
+                while (st.queue.Count > 0 && Time.time - t0 < 20f) yield return null;
+                yield return new WaitForSeconds(0.3f);
+                int got = Output(g, r, st) - before;
+                if (c.Check(got == r.amount, $"{piece}: {r.name} delivers {got} of {r.amount}")) made++;
+            }
+            c.Metric("rungs_cooked", made, "");
+            var stew = RecipeLibrary.Get("stove_meat_stew"); var batch = RecipeLibrary.Get("range_meat_stew");
+            c.Check(stew != null && batch != null && batch.amount == stew.amount * 3 && RecipeLibrary.Seconds(batch) <= RecipeLibrary.Seconds(stew), "the range cooks three times the stove's batch in the same time");
+            var tin = MadMax.Items.FoodLibrary.Get("food_can_meat");
+            c.Check(tin != null && tin.spoilMinutes == 0f, "tinned food never spoils");
+            var rig = Object.FindAnyObjectByType<CameraRig>();
+            if (rig) rig.SetTarget(g.Player.transform);
+            c.Note($"player at {g.Player.transform.position}, pad {pad}");
+            yield return new WaitForSeconds(1.5f);
+            c.Screenshot("cooking_ladder");
+            yield return null;
+        }
+
+        static int Output(WastelandGame g, Recipe r, CraftingStation st) =>
+            r.kind == OutputKind.Resource ? g.Inventory.Get(r.outputResource) + st.tray.Get(r.outputResource) : g.Inventory.GetItem(r.output) + st.tray.GetItem(r.output);
     }
 
     /// <summary>The tailpipe smokes while the engine runs; a worn engine smokes thicker and blacker than a healthy one.</summary>

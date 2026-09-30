@@ -240,6 +240,8 @@ namespace MadMax.Items
             list.AddRange(Extra());
             list.AddRange(Roadmap());
             list.AddRange(Wildlife());
+            list.AddRange(Kitchen());
+            list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {
                 if (r.category == RecipeCategory.Clothing) r.station = "sewing";                        // all clothes at the sewing table

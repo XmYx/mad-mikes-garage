@@ -90,7 +90,7 @@ namespace MadMax.Building
                 var listener = game && game.Current ? game.Current.transform : game && game.Player ? game.Player.transform : null;
                 if (listener && (listener.position - transform.position).sqrMagnitude < 28f * 28f)
                 {
-                    bool cooking = type == "stove" || type == "oven" || type == "still" || type == "smokehouse";
+                    bool cooking = type == "stove" || type == "oven" || type == "still" || type == "smokehouse" || type == "campfire" || type == "range" || type == "cannery";
                     bool hot = type == "furnace" || type == "arc_furnace" || type == "kiln";
                     if (cooking || hot)
                     {

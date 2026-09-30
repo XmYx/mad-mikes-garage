@@ -32,7 +32,7 @@ namespace MadMax.Items
             {
                 case ItemCategory.Food:
                     if (id.StartsWith("drink_") || id == "food_jam") { g.CylY(0, 0, 2f, 0, 6, Pal.Solid(c)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); }
-                    else if (id == "food_can" || id == "food_ration" || id == "food_stew" || id == "food_soup") { g.CylY(0, 0, 2.6f, 0, 5, p => p.y == 0 || p.y == 5 ? Pal.Chrome[2] : c); g.Box(-2, 2, 2, 2, 3, 2, Pal.Solid(Pal.Cream[3])); }
+                    else if (id.StartsWith("food_can") || id == "food_ration" || id == "food_stew" || id == "food_soup" || id == "food_meat_stew" || id == "food_fish_soup") { g.CylY(0, 0, 2.6f, 0, 5, p => p.y == 0 || p.y == 5 ? Pal.Chrome[2] : c); g.Box(-2, 2, 2, 2, 3, 2, Pal.Solid(Pal.Cream[3])); }
                     else if (id.StartsWith("food_fish") || id == "food_glowfish_cooked") Fish(g, c, dark);
                     else if (id == "food_corn" || id == "food_corn_roast" || id == "food_carrot") { g.Box(0, 0, 0, 0, 6, 0, Pal.Solid(c)); g.Box(-1, 1, 0, 1, 5, 0, Pal.Solid(c)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Hex("5a8a2a"))); }
                     else

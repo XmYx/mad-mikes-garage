@@ -168,6 +168,7 @@ namespace MadMax.Building
             defs.AddRange(Power());
             defs.AddRange(Sea());
             defs.AddRange(Homestead());
+            defs.AddRange(KitchenPieces());
             Upgrades();
         }
 

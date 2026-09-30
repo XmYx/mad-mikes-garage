@@ -93,6 +93,24 @@ namespace MadMax.Items
                 F("food_egg_fried", "FRIED EGGS", 26, 0, 30, H("f0d060"), 0f, 2f),
                 F("drink_milk", "MILK", 8, 22, 40, H("fbf8ee"), 0.05f),
                 F("food_cheese", "CHEESE", 24, -3, 0, H("e0ac40"), 0f, 2f),
+                // depth stage A: the cooking ladder (campfire → stove / oven → range → cannery, brewing)
+                F("food_mush_skewer", "MUSHROOM SKEWER", 16, 0, 25, H("9a7a50")),
+                F("food_flatbread", "FLATBREAD", 20, -3, 40, H("d8b070")),
+                F("drink_tea", "HERB TEA", 2, 30, 30, H("8a6a2a"), 0f, 3f),
+                F("food_meat_stew", "MEAT STEW", 70, 10, 40, H("7a3a1a"), 0f, 10f),
+                F("food_fish_soup", "FISH SOUP", 46, 18, 30, H("c0a070"), 0f, 6f),
+                F("food_pancakes", "PANCAKES", 40, -2, 30, H("e0b060"), 0f, 3f),
+                F("food_meat_pie", "MEAT PIE", 62, -2, 50, H("b07030"), 0f, 6f),
+                F("food_roast_dinner", "ROAST DINNER", 80, 4, 35, H("8a4a24"), 0f, 12f),
+                F("food_cornbread", "CORNBREAD", 36, -4, 60, H("e0b040")),
+                F("food_apple_pie", "APPLE PIE", 50, 2, 45, H("c88040"), 0f, 4f),
+                F("food_can_stew", "TINNED STEW", 55, 8, 0, H("9a6a3a"), 0f, 6f),
+                F("food_can_meat", "TINNED MEAT", 40, -2, 0, H("a05a3a"), 0f, 3f),
+                F("food_can_fish", "TINNED FISH", 34, 0, 0, H("b0b8c0"), 0f, 3f),
+                F("food_can_veg", "TINNED VEGETABLES", 30, 8, 0, H("7a9a3a"), 0f, 3f),
+                F("food_can_fruit", "TINNED FRUIT", 26, 14, 0, H("d06040"), 0f, 2f),
+                F("drink_beer", "BEER", 8, 22, 0, H("d8a030")),
+                F("drink_cider", "CIDER", 6, 26, 0, H("e0c060")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>

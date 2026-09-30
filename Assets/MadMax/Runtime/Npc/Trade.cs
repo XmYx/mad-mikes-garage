@@ -51,7 +51,9 @@ namespace MadMax.Npc
             if (id == "trophy_tusks" || id == "trophy_horns") return 20f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
             if (id.StartsWith("trophy_fish")) return id.EndsWith("mutant") ? 60f : 25f;
-            if (id.StartsWith("food_")) return id == "food_ration" ? 9f : id == "food_can" ? 6f : id == "food_rotten" ? 0f : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") ? 8f : 3f;
+            if (id.StartsWith("food_")) return id == "food_ration" ? 9f : id == "food_can" ? 6f : id == "food_rotten" ? 0f : id.StartsWith("food_can_") ? 9f
+                : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") || id.Contains("dinner") ? 8f : 3f;
+            if (id == "drink_beer" || id == "drink_cider") return 6f;
             if (id.StartsWith("drink_")) return id == "drink_water" ? 4f : 3f;
             if (id.StartsWith("med_")) return id == "med_splint" ? 10f : id == "med_pills" ? 14f : 8f;
             if (id.StartsWith("book_")) return 16f;
