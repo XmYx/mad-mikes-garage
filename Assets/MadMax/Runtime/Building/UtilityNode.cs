@@ -18,11 +18,40 @@ namespace MadMax.Building
         public float batteryWh, batteryCharge;
         public bool Powered { get; internal set; }
 
+        // power control (depth stage F)
+        /// <summary>Kinds this node currently breaks (open switch, closed valve): links through it carry nothing.</summary>
+        [System.NonSerialized] public UtilityKind cut;
+        /// <summary>A load breaker (0 essential, 1 normal, 2 low; -1 none): loads on its far side from every power
+        /// source take this priority.</summary>
+        [System.NonSerialized] public int breaker = -1;
+        /// <summary>0 essential, 1 normal, 2 low (shed first); set by the grid from breakers.</summary>
+        [System.NonSerialized] public int priority = 1;
+        /// <summary>W drawn by a second role on the same node (a desalinator's pump beside its crafting station).</summary>
+        [System.NonSerialized] public float auxDemand;
+        /// <summary>Producers: W they deliver (their share of the served demand).</summary>
+        [System.NonSerialized] public float load;
+        /// <summary>Dark because its priority was shed for lack of power.</summary>
+        public bool Shed { get; internal set; }
+        /// <summary>The net cannot carry its essential and normal loads: running generators on it stall.</summary>
+        public bool Overloaded { get; internal set; }
+        /// <summary>Highest priority tier the net served in the last solve (-1 none).</summary>
+        public int NetLevel { get; internal set; } = 1;
+
         // water
         public float waterCapacity;
         public float clean, dirty;
         [System.NonSerialized] public float sourceDirty, filterRate;   // L/s supplied / converted by this node (set by its role component)
         [System.NonSerialized] public float sourceClean;               // L/s of clean water supplied (wells)
+        // water quality (depth stage F)
+        /// <summary>What the dirty water on this node's network carries (saved).</summary>
+        public WaterTaint taint;
+        /// <summary>What this source's dirty water carries (None = plain silt).</summary>
+        [System.NonSerialized] public WaterTaint sourceTaint;
+        /// <summary>L/s of any dirty water, brine too, this node turns clean (desalinator, still).</summary>
+        [System.NonSerialized] public float desalRate;
+        /// <summary>Litres this node's filter / desalinator turned clean, and what they carried, since its role last read them.</summary>
+        [System.NonSerialized] public float converted;
+        [System.NonSerialized] public WaterTaint convertedTaint;
 
         internal int powerNet = -1, waterNet = -1;
 
@@ -38,6 +67,9 @@ namespace MadMax.Building
         public uint Id => Piece ? Piece.Id : 0;
 
         public float Water => clean + dirty;
+
+        /// <summary>Something that feeds the power net (a breaker's supply side): batteries and every kind of producer.</summary>
+        public bool IsSource => batteryWh > 0f || produce > 0f || GetComponent<Generator>() || GetComponent<SolarPanel>() || GetComponent<Windmill>() || GetComponent<WaterTurbine>();
 
         public void Link(UtilityNode other, UtilityKind kind)
         {
@@ -64,6 +96,7 @@ namespace MadMax.Building
             sb.Append(dirty.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)).Append(';');
             sb.Append(batteryCharge.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)).Append(';');
             foreach (var l in links) sb.Append(l.id).Append(':').Append((int)l.kind).Append(',');
+            if (taint != WaterTaint.None) sb.Append(';').Append((int)taint);
             return sb.ToString();
         }
 
@@ -82,6 +115,7 @@ namespace MadMax.Building
                     var kv = e.Split(':');
                     if (kv.Length == 2 && uint.TryParse(kv[0], out uint id) && int.TryParse(kv[1], out int k)) links.Add((id, (UtilityKind)k));
                 }
+            taint = p.Length > 4 && int.TryParse(p[4], out int tt) ? (WaterTaint)tt : WaterTaint.None;
             UtilityGrid.Invalidate();
         }
     }

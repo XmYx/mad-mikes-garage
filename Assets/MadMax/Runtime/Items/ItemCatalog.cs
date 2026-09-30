@@ -49,6 +49,7 @@ namespace MadMax.Items
             ResourceType.Scrap => 0.6f, ResourceType.Wood => 0.5f, ResourceType.Stone => 1f, ResourceType.Glass => 0.3f,
             ResourceType.Rubber => 0.4f, ResourceType.Cloth => 0.1f, ResourceType.Fuel => 0.75f, ResourceType.Oil => 0.9f, ResourceType.Coolant => 1f,
             ResourceType.Water => 1f, ResourceType.DirtyWater => 1f, ResourceType.Ethanol => 0.8f,
+            ResourceType.SeaWater => 1f, ResourceType.Biogas => 0.05f, ResourceType.Salt => 1f,
             ResourceType.Sand or ResourceType.Clay or ResourceType.Laterite or ResourceType.Rubble or ResourceType.Slag => 1.2f,
             ResourceType.Iron or ResourceType.Copper or ResourceType.Bronze => 0.8f, ResourceType.Aluminium => 0.3f,
             ResourceType.Asphalt or ResourceType.Concrete => 1.5f,

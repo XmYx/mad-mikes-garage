@@ -273,6 +273,7 @@ namespace MadMax.Game
 
         void UseConsumable(string id)
         {
+            if (UseUtilityItem(id)) return;
             if (id == ItemIds.Canteen)
             {
                 if (Inventory.TrySpend(ResourceType.Water, 1)) Drink(45f, false);
@@ -387,11 +388,11 @@ namespace MadMax.Game
             return best;
         }
 
-        /// <summary>Food rots over time (much slower in a powered fridge).</summary>
+        /// <summary>Food rots over time (much slower in a cold fridge, not at all in a freezer).</summary>
         void Spoil(float seconds)
         {
             SpoilIn(Inventory, seconds, 1f);
-            foreach (var c in Container.All) if (c) SpoilIn(c.inventory, seconds, c.Cooling ? 0.12f : 1f);
+            foreach (var c in Container.All) if (c) SpoilIn(c.inventory, seconds, c.SpoilFactor);
         }
 
         readonly Dictionary<Inventory, Dictionary<string, float>> spoilAcc = new Dictionary<Inventory, Dictionary<string, float>>();
@@ -478,6 +479,7 @@ namespace MadMax.Game
         {
             var p = Player.transform.position + Player.transform.forward * 0.8f;
             if (terrain.WaterDepth(p.x, p.z) < 0.1f || Player.HeadUnder || MadMax.Building.AirPocket.Contains(Player.transform.position + Vector3.up * 1.5f)) return null;   // not through a diving helmet, nor in a sea base
+            if (SeaInteraction(p, E, T, out string sea)) return sea;
             bool toxic = terrain.BiomeAt(p.x, p.z) == Biome.Nuclear;
             if (E) { Drink(30f, true); if (toxic) Vitals.Hurt(8f, "TOXIC WATER"); }
             if (T) { Inventory.Add(ResourceType.DirtyWater, 5); Toast("FILLED 5L DIRTY WATER"); }

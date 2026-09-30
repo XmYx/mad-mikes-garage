@@ -6,15 +6,16 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    /// <summary>Storage with its own inventory (chest, locker, shelf, crate, fridge, vehicle trunk). A powered fridge
-    /// keeps food fresh. Nearby containers feed crafting at stations.</summary>
+    /// <summary>Storage with its own inventory (chest, locker, shelf, crate, fridge, vehicle trunk). A cold fridge
+    /// keeps food fresh (<see cref="ColdStore"/>: cold only while powered, warms up after an outage; freezers stop
+    /// spoilage). Nearby containers feed crafting at stations.</summary>
     public class Container : MonoBehaviour, IPlaceState, IInteractable
     {
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             var door = GetComponent<Door>();
             if (door && door.locked && !g.OwnsPiece(GetComponent<Placeable>())) return title + " (LOCKED)";
-            return "[E] OPEN " + title + (fridge ? (Cooling ? " (COLD)" : " (NO POWER)") : "");
+            return "[E] OPEN " + title + (fridge ? (Cold ? " (" + Cold.Label + ")" : Cooling ? " (COLD)" : " (NO POWER)") : "");
         }
         public void Use(MadMax.Game.WastelandGame g, bool secondary) { if (!secondary) g.Menus.OpenContainer(this); }
 
@@ -31,10 +32,15 @@ namespace MadMax.Building
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
-        public bool Cooling => fridge && node && node.Powered;
+        ColdStore cold; bool coldLooked;
+        /// <summary>The fridge's temperature model, if it has one.</summary>
+        public ColdStore Cold { get { if (!coldLooked) { cold = GetComponent<ColdStore>(); coldLooked = true; } return cold; } }
+        public bool Cooling => Cold ? Cold.Chilled : fridge && node && node.Powered;
+        /// <summary>How fast food rots in here against the open pack (0 frozen .. 1).</summary>
+        public float SpoilFactor => Cold ? Cold.SpoilFactor : Cooling ? 0.12f : 1f;
         public float Weight => ItemCatalog.TotalWeight(inventory);
 
-        void Update() { if (node && fridge) node.demand = 150f; }
+        void Update() { if (node && fridge && !Cold) node.demand = 150f; }
 
         public static Container Nearest(Vector3 p, float max)
         {
