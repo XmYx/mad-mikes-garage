@@ -1,3 +1,5 @@
+using MadMax.RPG;
+
 namespace MadMax.Story
 {
     /// <summary>Standalone side quests (S01-S24) and personal chains (P1-P3) from storyline.md: they never lead back to
@@ -21,7 +23,19 @@ namespace MadMax.Story
             S("S06", "MUD, SWEAT AND GEARS", "jo", "Dig out a buried irrigation trench with a borrowed excavator; soil to the garden.", "machinery", "fields", "irrigation_control");
             S("S07", "AN HONEST FISH", "milt", "Catch a fair fish and expose a doctored weigh scale.", "fishing", "dialogue");
             S("S08", "THE WEDDING AT THE WRONG END OF THE ROAD", "fen", "Two villages with one name: deliver clothes and musicians, mend an outfit.", "sewing", "companions", "performance");
-            S("S09", "THE SMALLEST WAR", "una", "Crows or thirst? Watch the beds, fix the water, move the scarecrow.", "garden");
+            var s09 = S("S09", "THE SMALLEST WAR", "una", "Crows or thirst? Watch the beds, fix the water, move the scarecrow.", "garden", "building");
+            s09.build = Build.Playable;
+            s09.offerSay = "YOU LOOK LIKE YOU'RE LOSING A WAR.";
+            s09.offerReply = "TO BIRDS. EVERY MORNING ANOTHER ROW IS DOWN AND THAT SCARECROW JUST STANDS THERE LIKE HE'S ON THEIR SIDE. HAVE A LOOK AT MY BEDS, WOULD YOU?";
+            s09.hook = "UNA PRITCH SAYS THE CROWS ARE WINNING. HER BEDS ARE AT THE EDGE OF TOWN.";
+            Step(s09, "look", "LOOK OVER UNA'S BEDS", "una").When(Goal.Reach, "una", 5f);
+            Step(s09, "water", "HALF THE DAMAGE IS THIRST: WATER ALL THREE BEDS (CANTEEN OR WATERING CAN, [E] ON A BED)", "una").When(Goal.Event, "una:watered")
+                .Pays(r => r.training.Add((Skill.Farming, 5f)));
+            Step(s09, "scarecrow", "THE SCARECROW STANDS WHERE NO CROW LANDS: BUILD ONE BESIDE THE BEDS", "una").When(Goal.Build, "scarecrow", 5f);
+            Step(s09, "tell", "TELL UNA WHAT YOU FOUND", "una").Says("una", "s09_tell", "HALF OF IT WAS THIRST. THE SCARECROW'S BY THE BEDS NOW.",
+                "THIRST? I'VE BEEN SHOUTING AT CROWS FOR A MONTH OVER A DRY BED. TAKE THESE SEEDS; THEY LIKE IT HERE. AND DON'T TELL ANYONE ABOUT THE SHOUTING.");
+            s09.reward.scrap = 12; s09.reward.items.Add(("seed_tomato", 4)); s09.reward.items.Add(("seed_carrot", 4)); s09.reward.items.Add(("seed_herbs", 2)); s09.reward.training.Add((Skill.Farming, 8f));
+            s09.payoff = "UNA'S BEDS ARE GREEN AGAIN. THE CROWS MOVED ON TO SOMEONE ELSE'S.";
             S("S10", "TWELVE VOLTS OF FAME", "pip", "Tune a tiny car for a local hill trial.", "racing", "driving");
             S("S11", "LETTERS NOBODY STOLE", "reva", "Deliver three twenty-year-old letters along one route.", "dialogue", "driving");
             S("S12", "THE DOG AT PLATFORM THREE", "etta", "A waiting dog, a paw injury and a retired owner.", "animals", "animal_treatment");
@@ -36,7 +50,21 @@ namespace MadMax.Story
             S("S21", "THE LAST HONEST SAFE", "ruth", "Open a locksmith's own safe: records, linkage or a careful charge.", "salvage");
             S("S22", "A JACKET FOR THE END OF THE WORLD", "dax", "Finish a travelling coat: warmth or rain, then a test walk.", "sewing");
             S("S23", "NO TEETH, STILL TROUBLE", "nia", "A prizefighter bullying stallholders: testimony, a supervised bout, restitution.", "nonlethal_bout", "dialogue");
-            S("S24", "THE BIRTHDAY MACHINE", "gus", "Gears, lights and a horn for a wobbling birthday sculpture.", "salvage", "building");
+            var s24 = S("S24", "THE BIRTHDAY MACHINE", "gus", "Gears, lights and a horn for a wobbling birthday sculpture.", "salvage", "building");
+            s24.build = Build.Playable;
+            s24.offerSay = "WHAT ARE YOU BUILDING?";
+            s24.offerReply = "A BIRTHDAY MACHINE FOR MY GRANDDAUGHTER. IT'S MEANT TO SPIN AND LIGHT UP AND HONK. RIGHT NOW IT WOBBLES. " +
+                             "I NEED GEARS, WIRE, A BIT OF GLASS FOR THE LIGHTS AND SOMETHING FOR THE HORN. MY HANDS AREN'T WHAT THEY WERE.";
+            s24.hook = "GUS ALDER WANTS A BIRTHDAY MACHINE BUILT. IT SHOULD SPIN, LIGHT UP AND HONK.";
+            Step(s24, "build", "BUILD THE BIRTHDAY MACHINE AT A WORKBENCH (SCRAP, COPPER WIRE, GLASS, RUBBER)").When(Goal.Craft, "misc_birthday_machine")
+                .Pays(r => r.training.Add((Skill.Crafting, 6f)));
+            Step(s24, "give", "BRING IT TO GUS AND PICK ITS SOUND", "gus")
+                .Says("gus", "s24_horn", "IT HONKS LIKE A TRUCK.", "HA! SHE'LL LOVE THAT. HER MOTHER WON'T.").Needs("misc_birthday_machine")
+                .Says("gus", "s24_bell", "IT RINGS A BELL.", "A BELL. LIKE THE OLD SCHOOL ONE. THAT'S RIGHT, THAT IS.").Needs("misc_birthday_machine")
+                .Says("gus", "s24_whistle", "IT WHISTLES A TUNE.", "WHISTLES! WHERE DID YOU FIND A TUNE IN ALL THAT JUNK?").Needs("misc_birthday_machine")
+                .Pays(r => r.take.Add(("misc_birthday_machine", 1)));
+            s24.reward.scrap = 20; s24.reward.items.Add(("food_pie", 1)); s24.reward.training.Add((Skill.Salvaging, 5f));
+            s24.payoff = "THE BIRTHDAY MACHINE WOBBLED, SPUN AND MADE ITS NOISE. THE CHILD LIKED THE WOBBLE BEST.";
             // personal chains
             QuestDef P(string id, string title, string giver, string summary, string after, params string[] needs)
             {

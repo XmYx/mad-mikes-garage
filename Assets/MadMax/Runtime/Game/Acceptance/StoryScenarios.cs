@@ -19,6 +19,7 @@ namespace MadMax.Game.Acceptance
             yield return new StoryAnchorSeeds();
             yield return new StoryFirstHour();
             yield return new StorySandbox();
+            yield return new StorySideQuests();
         }
     }
 
@@ -272,6 +273,104 @@ namespace MadMax.Game.Acceptance
         }
 
         /// <summary>Open a conversation and choose the option starting with <paramref name="say"/>.</summary>
+        static bool Talk(WastelandGame g, MadMax.Npc.Npc npc, string say)
+        {
+            if (!npc) return false;
+            var d = new MadMax.Npc.Dialogue(g, npc);
+            foreach (var ch in d.choices) if (ch.label.StartsWith(say)) { ch.act(); return true; }
+            return false;
+        }
+    }
+
+    /// <summary>N1 side quests in a sandbox world (they need no campaign): S09 THE SMALLEST WAR (water Una's beds with
+    /// the bed's own action, a scarecrow beside them, tell her) and S24 THE BIRTHDAY MACHINE (craft it at a workbench,
+    /// hand it over, pick its sound).</summary>
+    class StorySideQuests : Scenario
+    {
+        public override string Id => "story.side_quests";
+        public override float Timeout => 150f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game;
+            yield return new WaitForSeconds(2f);
+            c.Check(MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Open && MadMax.Story.Story.StateOf("S24") == MadMax.Story.Story.State.Open, "S09 and S24 are on offer in a sandbox world");
+            var pins = new List<WastelandGame.Pin>(); g.JobPins(pins);
+            c.Check(pins.Any(p => p.label.StartsWith("? UNA")) && pins.Any(p => p.label.StartsWith("? GUS")), "the map shows who has work");
+            if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
+
+            // ---- S09
+            yield return Walk(c, "una", 2.5f);
+            yield return Until(() => g.CastBody("una") != null, 5f);
+            var una = g.CastBody("una");
+            if (!c.Check(una, "Una Pritch is at her beds")) yield break;
+            c.Check(Talk(g, una, "YOU LOOK LIKE"), "ask Una about the war");
+            yield return Until(() => MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Active, 3f);
+            yield return Until(() => MadMax.Story.Story.StepDone("S09", "look"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S09", "look"), "looked over the beds");
+            var beds = Placeable.All.Where(p => p && p.id == "garden_plot" && g.IsStoryProp(p)).Select(p => p.GetComponent<GardenPlot>()).Where(p => p).ToList();
+            c.Check(beds.Count == 3 && beds.All(b => b.water < 0.1f), $"three dry beds ({beds.Count})");
+            c.Screenshot("una_beds");
+            yield return null;
+            if (g.Inventory.Get(ResourceType.Water) < 3) { g.Inventory.Add(ResourceType.Water, 3); c.Fixture("3 L water in the pack"); }
+            foreach (var b in beds) b.Use(g, false);
+            yield return Until(() => MadMax.Story.Story.StepDone("S09", "water"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S09", "water"), "all three beds watered");
+            var a = StoryAnchors.Get("una"); var r = Quaternion.Euler(0f, StoryAnchors.Yaw("una"), 0f);
+            FurnitureLibrary.Spawn("scarecrow", g.Build.Structures, a + r * new Vector3(0f, 0f, 1.6f), r, g.propMaterial);
+            c.Fixture("a scarecrow built beside the beds");
+            yield return Until(() => MadMax.Story.Story.StepDone("S09", "scarecrow"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S09", "scarecrow"), "the scarecrow stands by the beds");
+            int seeds = g.Inventory.GetItem("seed_tomato");
+            c.Check(Talk(g, una, "HALF OF IT WAS THIRST"), "tell Una");
+            yield return Until(() => MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Done && g.Inventory.GetItem("seed_tomato") >= seeds + 4, "S09 THE SMALLEST WAR is done; seeds paid");
+
+            // ---- S24
+            yield return Walk(c, "gus", 2.5f);
+            yield return Until(() => g.CastBody("gus") != null, 5f);
+            var gus = g.CastBody("gus");
+            if (!c.Check(gus, "Gus Alder is in his corner")) yield break;
+            c.Check(Talk(g, gus, "WHAT ARE YOU BUILDING"), "ask Gus what he's building");
+            yield return Until(() => MadMax.Story.Story.StateOf("S24") == MadMax.Story.Story.State.Active, 3f);
+            c.Check(!Talk(g, gus, "IT RINGS A BELL"), "nothing to hand over before it's built");
+            var rec = RecipeLibrary.Get("birthday_machine");
+            var bench = FurnitureLibrary.Spawn("workbench", g.Build.Structures, g.Player.transform.position + g.Player.transform.forward * 1.6f, Quaternion.identity, g.propMaterial);
+            yield return null;
+            var st = bench ? bench.GetComponentInChildren<CraftingStation>() : null;
+            if (!c.Check(rec != null && st, "a workbench and the recipe")) yield break;
+            foreach (var (t, n) in rec.resources) if (g.Inventory.Get(t) < n) g.Inventory.Add(t, n - g.Inventory.Get(t));
+            c.Fixture("workbench beside Gus; recipe materials topped up");
+            string why = g.CraftBlockReason(rec, st);
+            c.Check(why == null, "craftable: " + (why ?? "ok"));
+            g.Craft(rec, st);
+            if (st.queue.Count > 0) st.queue[0].progress = 0.95f;
+            yield return Until(() => MadMax.Story.Story.StepDone("S24", "build"), 15f);
+            c.Check(MadMax.Story.Story.StepDone("S24", "build") && g.Inventory.GetItem("misc_birthday_machine") > 0, "the birthday machine is built");
+            c.Check(Talk(g, gus, "IT RINGS A BELL"), "hand it over: it rings a bell");
+            yield return Until(() => MadMax.Story.Story.StateOf("S24") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("S24") == MadMax.Story.Story.State.Done && g.Inventory.GetItem("misc_birthday_machine") == 0, "S24 done; the machine went to Gus");
+            c.Check(MadMax.Story.Story.Route("S24", "give") == "IT RINGS A BELL.", "its sound is remembered: " + MadMax.Story.Story.Route("S24", "give"));
+            c.Screenshot("gus");
+            yield return null;
+        }
+
+        static IEnumerator Walk(ScenarioContext c, string anchor, float off)
+        {
+            var g = c.Game;
+            var p = StoryAnchors.Get(anchor) + Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f) * new Vector3(0f, 0f, off);
+            p.y = MadMax.World.DeformableTerrain.Instance.Height(p.x, p.z) + 0.3f;
+            g.Player.Teleport(p, StoryAnchors.Yaw(anchor) + 180f);
+            c.Fixture("walked to " + anchor + " (teleport)");
+            yield return new WaitForSeconds(1.2f);
+        }
+
+        static IEnumerator Until(System.Func<bool> ok, float seconds)
+        {
+            float t0 = Time.time;
+            while (!ok() && Time.time - t0 < seconds) yield return null;
+        }
+
         static bool Talk(WastelandGame g, MadMax.Npc.Npc npc, string say)
         {
             if (!npc) return false;

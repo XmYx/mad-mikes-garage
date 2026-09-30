@@ -145,7 +145,7 @@ namespace MadMax.Game
             pickups.Init(propMaterial, Inventory);
 
             World.roads.SpawnPoint(out var p, out var dir);
-            if (pending != null && !joining && pending.story != null && pending.story.Contains("campaign")) StoryAnchors.Bind(World);   // clearings before the terrain builds
+            if (!joining) StoryAnchors.Bind(World);                                               // story places and their clearings before the terrain builds
             if (Rules.story && pending == null && !joining)
             {
                 // the campaign starts at the convoy wreck out on the road, not in the start yard

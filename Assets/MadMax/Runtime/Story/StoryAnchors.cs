@@ -54,8 +54,28 @@ namespace MadMax.Story
             if (Roadside(world, wreck, 250f, 700f, 22f, p => Clear(town, p, 90f) && (!at.ContainsKey("nell") || Vector3.Distance(p, at["nell"]) > 150f), out var gar, out var gy))
                 Set("garage", gar, gy);
 
+            // side-quest givers at the edge of the first town (open ground just outside its buildings)
+            if (town != null)
+            {
+                int found = 0;
+                for (float rr = town.radius + 10f; rr <= town.radius + 90f && found < 2; rr += 10f)
+                    for (int k = 0; k < 24 && found < 2; k++)
+                    {
+                        float ang = (k * 15f + 7f) * Mathf.Deg2Rad;
+                        var pp = new Vector3(town.pos.x + Mathf.Sin(ang) * rr, 0f, town.pos.y + Mathf.Cos(ang) * rr);
+                        if (!Open(world, pp) || (found == 1 && Vector3.Distance(pp, at["una"]) < 60f)) continue;
+                        float h0 = world.Sample(pp.x, pp.z).height, spread = 0f;
+                        foreach (var cc in new[] { new Vector3(5f, 0f, 5f), new Vector3(-5f, 0f, 5f), new Vector3(5f, 0f, -5f), new Vector3(-5f, 0f, -5f) })
+                            spread = Mathf.Max(spread, Mathf.Abs(world.Sample(pp.x + cc.x, pp.z + cc.z).height - h0));
+                        if (spread > 1f) continue;
+                        var toC = new Vector3(town.pos.x - pp.x, 0f, town.pos.y - pp.z);
+                        Set(found == 0 ? "una" : "gus", pp, Mathf.Atan2(toC.x, toC.z) * Mathf.Rad2Deg);
+                        found++;
+                    }
+            }
+
             // clear ground for the scenes (wild props skip these circles)
-            foreach (var (k, r) in new[] { ("wreck", 26f), ("car", 14f), ("nell", 18f), ("garage", 16f) })
+            foreach (var (k, r) in new[] { ("wreck", 26f), ("car", 14f), ("nell", 18f), ("garage", 16f), ("una", 12f), ("gus", 8f) })
                 if (at.ContainsKey(k)) world.Reserve(new Vector3(at[k].x, at[k].z, r));
 
             // the relay: the radio mast nearest the first town

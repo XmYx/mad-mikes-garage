@@ -50,10 +50,11 @@ namespace MadMax.Story
 
         static StepDef Says(this StepDef s, string npc, string topic, string say, string reply)
         {
-            s.any.Add(new Condition { goal = Goal.Talk, key = npc, topic = topic, say = say, reply = reply });
+            s.any.Add(new Condition { goal = Goal.Talk, key = npc, topic = topic, say = say, reply = reply, label = say });
             return s;
         }
 
+        static StepDef Needs(this StepDef s, string item) { s.any[s.any.Count - 1].requires = item; return s; }
         static StepDef Pays(this StepDef s, System.Action<Reward> fill) { s.reward = new Reward(); fill(s.reward); return s; }
         static StepDef Optional(this StepDef s) { s.optional = true; return s; }
 
@@ -125,6 +126,6 @@ namespace MadMax.Story
         }
 
         /// <summary>Every step's anchors and every quest's givers the catalogue refers to.</summary>
-        public static readonly string[] Anchors = { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch" };
+        public static readonly string[] Anchors = { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch", "una", "gus" };
     }
 }

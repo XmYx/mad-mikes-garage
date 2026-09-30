@@ -1114,7 +1114,7 @@ The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladde
 | Story stage | Quests | Needs from the depth ladders | Status |
 |---|---|---|---|
 | **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
-| **N1 first hour** | A1, B1 (done); A2, S03, S09, S24 | evidence records (A2); **B fields** for the gardener beats | A1 + B1 playable, `story.first_hour`; A2 / S03 / S09 / S24 next |
+| **N1 first hour** | A1, B1, S09, S24 (done); A2, S03 | evidence records (A2); towing a car (S03); **B fields** | A1, B1, S09, S24 playable (`story.first_hour`, `story.side_quests`); A2 / S03 next |
 | **N2 parallel lives** | A3-A4, B2-B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | outline |
 | **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
 | **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
@@ -1130,4 +1130,5 @@ Order of work: N1 remainder with stage B (fields and tractor) → N2 with stages
 - [x] **A1 SOMEONE LEFT THE RADIO ON**: satchel (wrench, knife, canteen, tin, bandage) → Nell's stop → talk (she lends a claw hammer and patch tin) → patch her rain collector in build mode (or build a new one) → 8 L fuel → reconnect the battery lead ([G] with a wrench), fill up and drive 150 m, or walk to the town → optional convoy badge.
 - [x] **B1 THE SIGN STILL STANDS**: Nell offers the garage at the bend (brick walls, garage doorway, half a roof, junk, a sign); break or dismantle the barricade, build a workbench inside, plant a claim flag.
 - Found while testing: the start yard sits 40 m from the start town (the story start moved out on the road); a wreck spawned on its side inside the ground was thrown 70 m up when physics woke it (wrecks at an angle are now rested on the ground first); the player spawned against a cactus and bled out (scene clearings).
+- [x] **Side quests in any world** (sandbox too): givers stand at the edge of the first town while their quest is on offer, "?" pins on the map, story topics in their dialogue. **S09 THE SMALLEST WAR** (Una Pritch: three dry beds and a scarecrow planted where no crow lands; water the beds with the bed's own action, build a scarecrow beside them, tell her; seeds + Farming) and **S24 THE BIRTHDAY MACHINE** (Gus Alder: craft the machine at a workbench from scrap, copper, glass and rubber, hand it over and pick its sound: horn, bell or whistle; the choice is remembered).
 

@@ -140,10 +140,60 @@ namespace MadMax.Game
             Journal.Add("PLACE", "THE GARAGE AT THE BEND: MIKE'S SIGN, A BLOCKED DOOR, HALF A ROOF");
         }
 
+        Placeable PutAt(string anchor, string id, Vector3 local, float turn)
+        {
+            var a = StoryAnchors.Get(anchor); var r = Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f);
+            var p = a + r * local; p.y = terrain.HeightNoLoad(p.x, p.z);
+            var pl = FurnitureLibrary.Spawn(id, Build.Structures, p, r * Quaternion.Euler(0f, turn, 0f), propMaterial);
+            if (pl) storyProps.Add(pl.Id);
+            return pl;
+        }
+
+        /// <summary>S09: three dry beds with crops going under, the scarecrow planted far off where no crow lands, a
+        /// water barrel.</summary>
+        void BuildUnaGarden()
+        {
+            if (!StoryAnchors.Has("una") || !Build || !Build.Structures) return;
+            string[] crops = { "seed_corn", "seed_tomato", "seed_cabbage" };
+            for (int i = 0; i < 3; i++)
+            {
+                var bed = PutAt("una", "garden_plot", new Vector3(-2.4f + i * 2.4f, 0f, -1.5f), 0f);
+                if (bed && bed.TryGetComponent<GardenPlot>(out var plot)) { plot.crop = crops[i]; plot.growth = 0.45f + i * 0.1f; plot.water = 0f; plot.health = 0.7f; bed.Dirty(); }
+            }
+            PutAt("una", "scarecrow", new Vector3(9f, 0f, 7f), 30f);
+            PutAt("una", "barrel", new Vector3(3.8f, 0f, 1.2f), 0f);
+        }
+
+        bool UnaWatered()
+        {
+            if (!StoryAnchors.Has("una")) return false;
+            var a = StoryAnchors.Get("una"); int beds = 0;
+            foreach (var p in Placeable.All)
+            {
+                if (!p || p.id != "garden_plot" || !IsStoryProp(p) || (p.transform.position - a).sqrMagnitude > 64f) continue;
+                if (!p.TryGetComponent<GardenPlot>(out var plot) || plot.water < 0.5f) return false;
+                beds++;
+            }
+            return beds >= 3;
+        }
+
+        /// <summary>S24: Gus's corner: a bench, a table with the wobbling half-machine, tyres and a barrel of junk.</summary>
+        void BuildGusCorner()
+        {
+            if (!StoryAnchors.Has("gus") || !Build || !Build.Structures) return;
+            PutAt("gus", "bench", new Vector3(-1.5f, 0f, -1.2f), 0f);
+            PutAt("gus", "table", new Vector3(1.2f, 0f, -0.8f), 0f);
+            PutAt("gus", "tyres", new Vector3(2.8f, 0f, -2.2f), 20f);
+            PutAt("gus", "barrel", new Vector3(-3f, 0f, 0.5f), 0f);
+        }
+
         void UpdateStory()
         {
             if (!played || !Player) return;
             if (Story.Story.Campaign && Story.Story.StateOf("B1") != Story.Story.State.Locked && !Story.Story.Flag("garage_built")) { BuildGarage(); Story.Story.SetFlag("garage_built"); }
+            if (Story.Story.StateOf("S09") != Story.Story.State.Locked && !Story.Story.Flag("scene:S09")) { BuildUnaGarden(); Story.Story.SetFlag("scene:S09"); }
+            if (Story.Story.StateOf("S24") != Story.Story.State.Locked && !Story.Story.Flag("scene:S24")) { BuildGusCorner(); Story.Story.SetFlag("scene:S24"); }
+            if (Story.Story.StateOf("S09") == Story.Story.State.Active && Time.frameCount % 30 == 0 && UnaWatered()) Story.Story.Note("una:watered");
             Story.Story.Tick(this);
             if (Time.time < castCheck) return;
             castCheck = Time.time + 1f;
@@ -156,7 +206,7 @@ namespace MadMax.Game
             var focus = FocusPos;
             foreach (var m in StoryCast.All)
             {
-                bool want = Story.Story.Campaign && m.anchor != null && StoryAnchors.Has(m.anchor) && CastPresent(m.key);
+                bool want = m.anchor != null && StoryAnchors.Has(m.anchor) && CastPresent(m.key);
                 castBodies.TryGetValue(m.key, out var body);
                 var at = want ? StoryAnchors.Get(m.anchor) : Vector3.zero;
                 float d = want ? Vector2.Distance(new Vector2(at.x, at.z), new Vector2(focus.x, focus.z)) : 1e9f;
@@ -174,8 +224,15 @@ namespace MadMax.Game
             }
         }
 
-        /// <summary>Who is around at this point of the campaign (the rest arrive with their chapters).</summary>
-        static bool CastPresent(string key) => key == "nell";
+        /// <summary>Who is around: Nell for the campaign; anyone else while a quest they give or take part in runs here
+        /// and isn't finished (the rest arrive with their chapters).</summary>
+        static bool CastPresent(string key)
+        {
+            if (key == "nell") return Story.Story.Campaign;
+            foreach (var q in StoryLibrary.All)
+                if (q.giver == key && Story.Story.Runs(q) && Story.Story.StateOf(q.id) != Story.Story.State.Locked) return true;
+            return false;
+        }
 
         /// <summary>The spawned body of a cast member (null when not around).</summary>
         public MadMax.Npc.Npc CastBody(string key) => castBodies.TryGetValue(key, out var n) && n ? n : null;
@@ -191,7 +248,23 @@ namespace MadMax.Game
             Story.Story.Load(d.story);
             storyProps.Clear();
             if (d.storyProps != null) foreach (var id in d.storyProps) storyProps.Add(id);
-            if (Story.Story.Campaign && World != null) StoryAnchors.Bind(World);
+            if (World != null) StoryAnchors.Bind(World);
+        }
+
+        /// <summary>Map pins: quests on offer ("?" at the giver) and the active steps' places.</summary>
+        void StoryPins(List<Pin> into)
+        {
+            var offer = new Color32(240, 200, 90, 255); var job = new Color32(255, 230, 150, 255);
+            foreach (var q in StoryLibrary.All)
+            {
+                if (!Story.Story.Runs(q)) continue;
+                var st = Story.Story.StateOf(q.id);
+                var m = q.giver != null ? StoryCast.Find(q.giver) : null;
+                if (st == Story.Story.State.Open && m != null && m.Value.anchor != null && StoryAnchors.Has(m.Value.anchor))
+                    into.Add(new Pin { label = "? " + m.Value.name, pos = StoryAnchors.Get(m.Value.anchor), color = offer });
+                var s = Story.Story.Current(q);
+                if (s != null && s.waypoint != null && StoryAnchors.Has(s.waypoint)) into.Add(new Pin { label = q.title, pos = StoryAnchors.Get(s.waypoint), color = job });
+            }
         }
     }
 }

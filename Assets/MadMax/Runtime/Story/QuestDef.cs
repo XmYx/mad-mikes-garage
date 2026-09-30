@@ -30,6 +30,7 @@ namespace MadMax.Story
         public float amount = 1f;   // Have: count, Drive: metres, Reach/Build: radius
         public string label;        // shown when a step has alternatives
         public string say, reply;   // Talk: the player's line and the answer
+        public string requires;     // Talk: the topic only shows while carrying this item
     }
 
     public class StepDef
@@ -55,7 +56,8 @@ namespace MadMax.Story
         public readonly List<(MadMax.Items.ResourceType type, int n)> resources = new List<(MadMax.Items.ResourceType, int)>();
         public readonly List<(MadMax.RPG.Skill skill, float xp)> training = new List<(MadMax.RPG.Skill, float)>();
         public string flag;         // a world flag set on payment ("car_owned", ...)
-        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null;
+        public readonly List<(string item, int n)> take = new List<(string, int)>();   // handed over by the player
+        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null && take.Count == 0;
     }
 
     public class QuestDef

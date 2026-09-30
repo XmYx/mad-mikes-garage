@@ -192,6 +192,7 @@ namespace MadMax.Story
         {
             if (r == null || r.Empty || !ledger.Add(key)) return;
             var parts = new List<string>();
+            foreach (var (item, n) in r.take) g.Inventory.TakeItem(item, n);
             if (r.scrap > 0) { g.Inventory.Add(ResourceType.Scrap, r.scrap); parts.Add(r.scrap + " SCRAP"); }
             foreach (var (item, n) in r.items) { g.Inventory.AddItem(item, n); parts.Add(ItemCatalog.Name(item)); }
             foreach (var (t, n) in r.resources) { g.Inventory.Add(t, n); parts.Add(n + " " + ResourceInfo.Name(t)); }

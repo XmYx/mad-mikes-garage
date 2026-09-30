@@ -19,6 +19,8 @@ namespace MadMax.Story
             new Member { key = "sera", name = "SERA DUNE", title = "WATER SURVEYOR", anchor = "town1", temper = Temper.Proud, female = true, outfit = new[] { "duster", "pants", "boots", "shemagh" } },
             new Member { key = "mara", name = "MARA VALE", title = "CONVOY LEADER", anchor = "depot", temper = Temper.Proud, female = true, outfit = new[] { "bomber", "jeans", "combat_boots" } },
             new Member { key = "ada", name = "ADA VENN", title = "GUILD SUPERINTENDENT", anchor = "dispatch", temper = Temper.Proud, female = true, outfit = new[] { "coat", "pants", "boots" } },
+            new Member { key = "una", name = "UNA PRITCH", title = "GARDENER", anchor = "una", temper = Temper.Joker, female = true, outfit = new[] { "overalls", "sunhat", "boots", "gloves" }, tool = "tool_hoe" },
+            new Member { key = "gus", name = "GUS ALDER", title = "GRANDFATHER", anchor = "gus", temper = Temper.Friendly, outfit = new[] { "sweater", "pants", "boots", "cowboy" } },
             new Member { key = "cask", name = "BROTHER CASK", title = "KEEPER OF THE LAST ENGINE", anchor = null, temper = Temper.Pious, outfit = new[] { "poncho", "pants", "boots" } },
             new Member { key = "ivo", name = "DR. IVO RUSK", title = "REMNANT ARCHIVIST", anchor = null, temper = Temper.Nervous, outfit = new[] { "coat", "pants", "boots", "goggles" } },
         };
