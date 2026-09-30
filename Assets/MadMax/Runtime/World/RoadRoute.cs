@@ -10,9 +10,10 @@ namespace MadMax.World
         static WorldGen built;
         static Vector3[] nodes;
         static List<int>[] links;
+        static int builtPlayerRoads = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { built = null; nodes = null; links = null; }
+        static void ResetStatics() { built = null; nodes = null; links = null; builtPlayerRoads = -1; }
 
         static void Build(WorldGen world)
         {
@@ -44,6 +45,26 @@ namespace MadMax.World
                         if (j > i && !adj[i].Contains(j) && Flat(pts[i] - pts[j]) < Join) { adj[i].Add(j); adj[j].Add(i); }
                 }
             }
+            // roads the player built (gravel, cobbles, asphalt, 4 m cells): their cells join each other and any road
+            // point or player cell within reach, so a route can use a new gravel track to a base
+            var terrain = DeformableTerrain.Instance;
+            builtPlayerRoads = terrain ? terrain.PlayerRoadCount : 0;
+            if (terrain && builtPlayerRoads > 0)
+            {
+                int start = pts.Count;
+                foreach (var (pos, _) in terrain.PlayerRoads()) { pts.Add(pos); adj.Add(new List<int>()); }
+                for (int i = start; i < pts.Count; i++)
+                {
+                    var c = Cell(pts[i]);
+                    for (int dx = -1; dx <= 1; dx++)
+                    for (int dz = -1; dz <= 1; dz++)
+                    {
+                        if (grid.TryGetValue(new Vector2Int(c.x + dx, c.y + dz), out var l))
+                            foreach (int j in l) if (Flat(pts[i] - pts[j]) < Join) { adj[i].Add(j); adj[j].Add(i); }
+                    }
+                    for (int j = start; j < i; j++) if (Flat(pts[i] - pts[j]) < 6f) { adj[i].Add(j); adj[j].Add(i); }
+                }
+            }
             nodes = pts.ToArray();
             links = adj.ToArray();
         }
@@ -63,7 +84,8 @@ namespace MadMax.World
         {
             into.Clear();
             if (world == null) return false;
-            if (built != world || nodes == null) Build(world);
+            var tr = DeformableTerrain.Instance;
+            if (built != world || nodes == null || (tr && tr.PlayerRoadCount != builtPlayerRoads)) Build(world);
             if (nodes.Length == 0) { into.Add(from); into.Add(to); return false; }
             int a = Nearest(from), b = Nearest(to);
             // closer than the roads are: straight line

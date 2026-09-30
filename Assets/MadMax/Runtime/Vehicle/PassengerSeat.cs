@@ -61,7 +61,7 @@ namespace MadMax.Vehicles
             if (Vehicle.aiDriven)
             {
                 var c = MadMax.Npc.NpcDirector.Instance ? MadMax.Npc.NpcDirector.Instance.ConvoyOf(Vehicle) : null;
-                return c == null ? 0 : c.raiders ? 2 : 1;
+                return c == null ? (Vehicle.GetComponent<MadMax.Story.StoryTag>() ? 3 : 0) : c.raiders ? 2 : 1;   // a story character's car (Nell drives): ride along free
             }
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.Online && Vehicle.Occupied && Vehicle.owner != net.LocalId) return 3;

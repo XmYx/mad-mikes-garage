@@ -20,10 +20,11 @@ road. The first two chapters are playable; the rest of the campaign is written o
 - Raycast suspension, open or locked differentials, switchable 4WD, automatic or manual gearbox, launch and hill-start assists.
 - Crashes dent the bodywork (how much is a setting), bend the frame (the car starts pulling to one side) and knock parts off. Windows shatter and lamps break, leaving glass on the road, and scraping along a wall or another car grinds the paint down to bare metal. Tyres wear, heat up and burst.
 - Each engine needs fuel, oil and coolant. Petrol and diesel are separate, and filling up with the wrong one causes a fault until you siphon it out. Engines crank and sometimes refuse to start when they are worn or cold, and old ones leak.
-- Servicing: oil changes, air filters, spark plugs. A tuning bench changes gearing, ride height, dampers, brake bias, turbo, supercharger and nitrous.
+- Servicing: oil changes, air filters, spark plugs. Working on a car takes a moment: you walk to the engine, the filler or the wheel and do the job, with the hood up when it needs to be. A tuning bench changes gearing, ride height, dampers, brake bias, turbo, supercharger and nitrous, and takes gearbox, brake, suspension and fuel-tank kits made in a machine shop.
 - A paint station for colours and decals. A gang decal can get you past that gang's convoys.
 - Towing with hitches and couplers, fuel tankers you can pump from, and car transporters with a tilting upper deck.
-- Construction machines really change the terrain. Excavators, backhoes and dozers dig and push soil, and you can see it in the bucket, in front of the blade and in the tipper bed. Pavers lay asphalt or concrete and rollers finish it.
+- Construction machines really change the terrain. Excavators, backhoes and dozers dig and push soil, and you can see it in the bucket, in front of the blade and in the tipper bed. Pavers lay asphalt, concrete or gravel and rollers finish it; a tipper spreads gravel as it drives.
+- Roads by hand too: rake gravel, tamp cobbles, paint lines, patch potholes, and put up signs, guard rails and timber or steel bridges. Roads you build show on the map and the route finder uses them.
 - Vehicle weapons: roof guns, rear droppers for oil and caltrops, smoke screens.
 - Mud, ruts, snow, ice, fords and rain all change how much grip you have.
 
@@ -39,18 +40,20 @@ road. The first two chapters are playable; the rest of the campaign is written o
 - You create a character with attributes and traits. Skills improve with practice, from books and VHS tapes, and through research at a workbench.
 - Hunger, thirst, hygiene, food spoilage, sickness, radiation.
 - Body temperature depends on clothing layers, shelter, heaters and getting wet.
-- Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection) and treated with bandages, splints and medicine. A bad leg makes you limp and a broken arm stops you using two-handed tools.
+- Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection, shrapnel) and treated with herbal poultices, bandages, splints, first aid kits and medicine, or in a clinic bed and on a surgery table. A bad leg makes you limp and a broken arm stops you using two-handed tools.
 - Clothing and body armour wear out, get holes and can be mended.
 - Melee tools, guns with magazines and jams, thrown molotovs and smoke, fishing rods, a grappling hook.
 - Parkour: vaulting, climbing, sliding and rolling.
 - Diving gear with tank air for working underwater.
 
 ### Building, farming and industry
-- Walls, floors, roofs, doors, stairs and ladders. Foundations and drivable decks, garages, defences (spikes, wire, turrets, alarm bells), and saved blueprints of whole structures.
+- Walls, floors, roofs, doors, stairs and ladders in wood, planks, brick, fired brick and concrete panels. Foundations and drivable decks, garages, defences (spikes, wire, sandbags, landmines, tripwires, a motorised gate, a watchtower, MG nests and turrets), and saved blueprints of whole structures.
+- Anything you carry can be put down in the world, on the ground or on a table, and picked up again. Everything you gain or hand over shows up in a small feed on the screen.
 - Furniture that does something: beds, seats, dining tables, wardrobes, bookshelves, mirrors, TVs, radios, stoves and a latrine.
-- Power from generators, solar panels, wind turbines and water wheels, carried by cables. Water from wells, pumps, rain collectors, tanks and pipes, feeding sprinklers and drip lines.
-- Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenhouses and seasons matter.
-- A production chain: dig soil, wash it for ore, then smelt metals, fire glass and lime, burn charcoal and mix concrete and asphalt. Crude oil comes from pumpjacks and is refined into petrol, diesel and oil.
+- Power from generators, solar panels, wind turbines, water wheels and biogas, carried by cables, with switches, timers, light sensors and breakers that shed less important loads first (overload a generator and it stalls). Water from wells, pumps, rain collectors, tanks and pipes, feeding sprinklers and drip lines; it can be silty, oily, salty or foul, so there are filters, a test kit, a solar still and a desalinator. Fridges only keep food cold while they have power.
+- Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenhouses and seasons matter. Fields tilled with a hoe or a tractor's plough, then sown, sprayed and harvested with its implements; irrigation timers.
+- Cooking from a campfire to a stove, oven, kitchen range and cannery, and brewing. Sheep, shearing, spinning and weaving, beehives, hay and feed, a stable, leather goods, snares and a butchering table. Hurt animals can be treated.
+- A production chain: dig soil, wash it for ore, then smelt metals, fire glass and lime, burn charcoal and mix concrete and asphalt. Crude oil comes from pumpjacks and is refined into petrol, diesel and oil. A forge and anvil, steel, a machine shop; a rock crusher, a stamp mill, gold panning and sluices; a saw bench and sawmill, brick moulds.
 - Crafting is timed and happens at stations (workbench, stove, furnace, kiln, still, garage, slipway and others). The results come in crude, sturdy or fine quality.
 - Sea bases: domes, tunnels, a shore entrance and a docking collar for the submarine.
 
