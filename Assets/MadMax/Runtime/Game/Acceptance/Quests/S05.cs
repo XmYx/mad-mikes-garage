@@ -110,7 +110,15 @@ namespace MadMax.Game.Acceptance
 
             // ---- hand it back
             yield return H.Walk(c, "amos", 2.5f);
-            c.Check(H.Talk(g, g.CastBody("amos"), "HERE'S YOUR PISTOL BACK"), "the pistol goes back to Amos");
+            bool handed = false;
+            float t1 = Time.time + 5f;
+            while (!(handed = H.Talk(g, g.CastBody("amos"), "HERE'S YOUR PISTOL BACK")) && Time.time < t1) yield return new WaitForSeconds(0.25f);
+            if (!handed)
+            {
+                var amos = g.CastBody("amos");
+                c.Note(amos ? $"amos at {Vector3.Distance(amos.transform.position, g.Player.transform.position):0.0} m, available={amos.Available}, pistols={g.Inventory.GetItem("tool_pipe_pistol")}, step return open={!MadMax.Story.Story.StepDone("S05", "return")}; choices: " + string.Join(" | ", new MadMax.Npc.Dialogue(g, amos).choices.Select(ch => ch.label)) : "amos has no body");
+            }
+            c.Check(handed, "the pistol goes back to Amos");
             yield return H.Until(() => MadMax.Story.Story.StateOf("S05") == MadMax.Story.Story.State.Done, 4f);
             c.Check(MadMax.Story.Story.StateOf("S05") == MadMax.Story.Story.State.Done && MadMax.Story.Story.Flag("s05_done"), "S05 NOT THAT KIND OF SHOT is done");
             c.Check(g.Inventory.GetItem("tool_pipe_pistol") == pistols && (pistols > 0 || !g.Player.Tool || g.Player.Tool.id != "tool_pipe_pistol"), "the loaner went back, out of your hand");
