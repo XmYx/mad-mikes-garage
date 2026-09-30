@@ -15,7 +15,7 @@ namespace MadMax.Game
         readonly Dictionary<uint, int> s05Hits = new Dictionary<uint, int>();
         readonly List<Placeable> s05Boards = new List<Placeable>();
         RangedTool s05Tool, s05Jammed;
-        int s05Rounds = -1, s05Fired;
+        int s05Shots = -1, s05Fired;
         bool s05JamSet, s05Restored, s05Warned;
         float s05LastShot = -9f;
 
@@ -60,6 +60,7 @@ namespace MadMax.Game
 
         /// <summary>Test diagnostics: shots counted from the line, whether the dummy round is loaded, the gun it is in.</summary>
         internal int S05Fired => s05Fired;
+        internal string S05Probe => $"atLine={S05_AtLine()} seen={s05Shots} tool={(s05Tool ? s05Tool.id : "-")} state={Story.Story.StateOf("S05")} rules={Story.Story.StepDone("S05", "rules")} current={(bool)Current} seated={(bool)Player.SeatedIn}";
         internal bool S05JamSet => s05JamSet;
         internal string S05JammedGun => s05Jammed ? s05Jammed.GetEntityId().ToString() : "-";
 
@@ -110,19 +111,19 @@ namespace MadMax.Game
             }
             bool atLine = S05_AtLine();
 
-            // shots: rounds leaving the held gun
+            // shots fired with the held gun
             var gun = Player.Tool as RangedTool;
-            if (gun != s05Tool && (!gun || !s05Tool || gun.id != s05Tool.id)) s05Rounds = gun ? Rounds(gun.id) : -1;   // another gun: start counting afresh
+            if (gun != s05Tool && (!gun || !s05Tool || gun.id != s05Tool.id)) s05Shots = gun ? ShotsFired : -1;       // another gun: start counting afresh
             s05Tool = gun;
             if (gun)
             {
-                int left = Rounds(gun.id);
-                if (s05Rounds >= 0 && left < s05Rounds)
+                int fired = ShotsFired;
+                if (s05Shots >= 0 && fired > s05Shots)
                 {
-                    if (atLine) { s05Fired += s05Rounds - left; s05LastShot = Time.time; }
+                    if (atLine) { s05Fired += fired - s05Shots; s05LastShot = Time.time; }
                     else if (!s05Warned) { s05Warned = true; Toast("AMOS: BEHIND THE LINE WHEN YOU SHOOT. THAT ONE DOESN'T COUNT."); }
                 }
-                s05Rounds = left;
+                s05Shots = fired;
                 // the dummy round Amos loaded: the gun stops after the second shot from the line
                 if (!Story.Story.StepDone("S05", "jam"))
                 {

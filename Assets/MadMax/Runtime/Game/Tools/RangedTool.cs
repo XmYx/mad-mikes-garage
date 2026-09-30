@@ -111,6 +111,7 @@ namespace MadMax.Game
                 return;
             }
             game.SetRounds(id, game.Rounds(id) - 1);
+            game.ShotsFired++;
 
             var aim = game.AimDirection(user, origin, range);
             var stats = game.Stats;

@@ -94,7 +94,7 @@ namespace MadMax.Game.Acceptance
                     i++;
                 }
                 yield return new WaitForSeconds(0.3f);
-                c.Note($"after shot: jammed={gun.Jammed} counted {g.S05Fired}, dummy loaded={g.S05JamSet}");
+                c.Note($"after shot: jammed={gun.Jammed} counted {g.S05Fired}, dummy loaded={g.S05JamSet}; {g.S05Probe}");
             }
             c.Fixture("each shot lands on the next board (IDamageable hit from the player)");
             c.Metric("rounds_fired", shots, "");

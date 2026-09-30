@@ -116,6 +116,8 @@ namespace MadMax.Game
         public readonly Dictionary<string, int> GunRounds = new Dictionary<string, int>();
         public int Rounds(string id) => GunRounds.TryGetValue(id, out var n) ? n : 0;
         public void SetRounds(string id, int n) => GunRounds[id] = Mathf.Max(0, n);
+        /// <summary>Rounds the player has fired this session (hooks count shots by it; sampling rounds misses a reload and shot in one frame).</summary>
+        public int ShotsFired { get; set; }
 
         /// <summary>Holding RMB with a ranged weapon on foot.</summary>
         public bool Aiming { get; private set; }
