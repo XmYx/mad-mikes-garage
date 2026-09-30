@@ -29,6 +29,8 @@ namespace MadMax.Game
         public Transform muzzle;
 
         public bool Jammed { get; private set; }
+        /// <summary>A stoppage on the next trigger pull (training dummy round, story S05); cleared like any jam.</summary>
+        public void ForceJam() => Jammed = true;
         static readonly System.Collections.Generic.List<DebrisSystem.Chunk> casing = new System.Collections.Generic.List<DebrisSystem.Chunk>();
         public bool Reloading => Time.time < reloadUntil;
         float reloadUntil;

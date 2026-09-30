@@ -58,11 +58,10 @@ namespace MadMax.Game
             return along <= 0.8f && along >= -5f && Mathf.Abs(side) <= 6f;
         }
 
-        static void S05_Jam(RangedTool gun, bool on)
-        {
-            var set = typeof(RangedTool).GetProperty("Jammed")?.GetSetMethod(true);                   // the dummy round: the same stoppage a worn gun gets
-            if (set != null) set.Invoke(gun, new object[] { on });
-        }
+        /// <summary>Test diagnostics: shots counted from the line, whether the dummy round is loaded, the gun it is in.</summary>
+        internal int S05Fired => s05Fired;
+        internal bool S05JamSet => s05JamSet;
+        internal string S05JammedGun => s05Jammed ? s05Jammed.GetEntityId().ToString() : "-";
 
         partial void Tick_S05()
         {
@@ -113,7 +112,8 @@ namespace MadMax.Game
 
             // shots: rounds leaving the held gun
             var gun = Player.Tool as RangedTool;
-            if (gun != s05Tool) { s05Tool = gun; s05Rounds = gun ? Rounds(gun.id) : -1; }
+            if (gun != s05Tool && (!gun || !s05Tool || gun.id != s05Tool.id)) s05Rounds = gun ? Rounds(gun.id) : -1;   // another gun: start counting afresh
+            s05Tool = gun;
             if (gun)
             {
                 int left = Rounds(gun.id);
@@ -128,10 +128,10 @@ namespace MadMax.Game
                 {
                     if (!s05JamSet && s05Fired >= 2)
                     {
-                        s05JamSet = true; s05Jammed = gun; S05_Jam(gun, true);
+                        s05JamSet = true; s05Jammed = gun; gun.ForceJam();
                         Toast("AMOS: THE NEXT ONE'S A DUMMY. WHEN IT CLICKS, KEEP IT POINTED AT THE BERM AND CLEAR IT: [R]");
                     }
-                    else if (s05JamSet && gun != s05Jammed) { s05Jammed = gun; S05_Jam(gun, true); }       // swapped guns: the dummy's in this one now
+                    else if (s05JamSet && gun != s05Jammed) { s05Jammed = gun; gun.ForceJam(); }       // swapped guns: the dummy's in this one now
                     else if (s05JamSet && gun == s05Jammed && !gun.Jammed)
                     {
                         Story.Story.Note("s05:jam");

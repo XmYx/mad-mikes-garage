@@ -64,7 +64,14 @@ namespace MadMax.Game.Acceptance
             float t0 = Time.time;
             for (int i = 0; i < 6 && Time.time - t0 < 60f;)
             {
-                yield return H.Until(() => gun && !gun.Reloading && g.Rounds(gun.id) > 0, 4f);
+                yield return H.Until(() => g.Player.Tool is RangedTool r && !r.Reloading && g.Rounds(r.id) > 0, 4f);
+                if (g.Player.Tool != gun)                                                              // the gun in hand, whatever instance it is now
+                {
+                    c.Note($"held gun changed: {(gun ? gun.GetEntityId().ToString() : "-")} -> {(g.Player.Tool ? g.Player.Tool.GetEntityId().ToString() : "-")}");
+                    gun = g.Player.Tool as RangedTool;
+                    if (!gun) break;
+                }
+                c.Note($"before shot {i + 1}: gun {gun.GetEntityId().ToString()} jammed={gun.Jammed} rounds={g.Rounds(gun.id)}; counted {g.S05Fired} from the line, dummy loaded={g.S05JamSet} in {g.S05JammedGun}");
                 if (gun.Jammed)
                 {
                     sawJam = true;
@@ -72,6 +79,7 @@ namespace MadMax.Game.Acceptance
                     yield return new WaitForSeconds(0.3f);
                     c.Check(g.Rounds(gun.id) > 0, "a stoppage fires nothing");
                     gun.ReloadKey(g);                                                              // [R]
+                    c.Note($"cleared: jammed={gun.Jammed}");
                     yield return new WaitForSeconds(1.1f);
                     continue;
                 }
@@ -86,6 +94,7 @@ namespace MadMax.Game.Acceptance
                     i++;
                 }
                 yield return new WaitForSeconds(0.3f);
+                c.Note($"after shot: jammed={gun.Jammed} counted {g.S05Fired}, dummy loaded={g.S05JamSet}");
             }
             c.Fixture("each shot lands on the next board (IDamageable hit from the player)");
             c.Metric("rounds_fired", shots, "");
