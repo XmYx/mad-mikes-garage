@@ -34,7 +34,7 @@ namespace MadMax.Game
         void SyncHotbar()
         {
             for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) <= 0) Hotbar[i] = null;
-            var order = new List<string>(ToolLibrary.Order);
+            var order = new List<string>(ToolLibrary.AllIds);
             foreach (var kv in Inventory.Items) if (kv.Value > 0 && !order.Contains(kv.Key)) order.Add(kv.Key);
             foreach (var id in order)
             {

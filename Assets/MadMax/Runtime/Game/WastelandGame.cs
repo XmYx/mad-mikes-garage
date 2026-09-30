@@ -485,7 +485,7 @@ namespace MadMax.Game
         public List<string> OwnedTools()
         {
             var l = new List<string>();
-            foreach (var id in ToolLibrary.Order) if (Inventory.GetItem(id) > 0) l.Add(id);
+            foreach (var id in ToolLibrary.AllIds) if (Inventory.GetItem(id) > 0) l.Add(id);
             return l;
         }
 
