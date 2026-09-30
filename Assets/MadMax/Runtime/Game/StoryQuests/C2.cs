@@ -16,6 +16,9 @@ namespace MadMax.Game
         float c2T0, c2Fuel0, c2Wear0, c2Dist, c2GateMin, c2PubMin;
         Vector3 c2Last;
         bool c2Drove;
+        int c2Knocks;
+        float c2KnockAt;
+        VehicleDamage c2Watched;
 
         partial void Scene_C2()
         {
@@ -51,6 +54,13 @@ namespace MadMax.Game
         partial void Tick_C2()
         {
             var truck = ArcCTagged("c2_trial");
+            var dmg = truck ? truck.GetComponent<VehicleDamage>() : null;
+            if (dmg != c2Watched)
+            {
+                if (c2Watched) c2Watched.Impact -= C2Knock;
+                c2Watched = dmg;
+                if (dmg) dmg.Impact += C2Knock;
+            }
             if (truck) C2Survey(truck);
             if (Time.frameCount % 30 != 0) return;
             if (ArcCStep("C2") == "survey" && !Story.Story.Flag("c2_way"))
@@ -74,13 +84,29 @@ namespace MadMax.Game
             {
                 if (c2From != '\0' && zone != c2From && c2Dist > 60f) C2Finish(truck);
                 c2From = zone; c2T0 = Time.time; c2Fuel0 = truck.TryGetComponent<VehicleSystems>(out var s0) ? s0.fuel : 0f;
-                c2Wear0 = ArcCWear(truck); c2Dist = 0f; c2GateMin = c2PubMin = float.MaxValue; c2Last = p; c2Drove = Current == truck;
+                c2Wear0 = ArcCWear(truck); c2Dist = 0f; c2Knocks = 0; c2GateMin = c2PubMin = float.MaxValue; c2Last = p; c2Drove = Current == truck;
                 return;
             }
             if (c2From == '\0') return;
             c2Dist += ArcCFlat(p, c2Last); c2Last = p;
             c2GateMin = Mathf.Min(c2GateMin, ArcCFlat(p, StoryAnchors.Get("c2_gate")));
             c2PubMin = Mathf.Min(c2PubMin, Mathf.Min(ArcCFlat(p, StoryAnchors.Get("c2_public")), ArcCFlat(p, StoryAnchors.Get("c2_crossing"))));
+        }
+
+        /// <summary>A hard knock to the trial truck while a run is under way (one per half second).</summary>
+        void C2Knock(float strength, Vector3 point)
+        {
+            if (c2From == '\0' || strength < 3f || Time.time < c2KnockAt) return;
+            c2KnockAt = Time.time + 0.5f;
+            c2Knocks++;
+        }
+
+        /// <summary>Condition the truck's parts lost on the run, as a share of the whole (0..100 %).</summary>
+        static float C2WearShare(VehicleDriver truck, float wear0)
+        {
+            int parts = 0;
+            foreach (var p in truck.GetComponentsInChildren<VehiclePart>()) if (p.Socket) parts++;
+            return Mathf.Clamp(Mathf.Max(0f, ArcCWear(truck) - wear0) / Mathf.Max(1, parts + 1) * 100f, 0f, 100f);
         }
 
         void C2Finish(VehicleDriver truck)
@@ -93,7 +119,8 @@ namespace MadMax.Game
             float fuel = truck.TryGetComponent<VehicleSystems>(out var s) ? s.fuel : c2Fuel0;
             ArcCRecord.Put(k + "s", Mathf.RoundToInt(Time.time - c2T0));
             ArcCRecord.Put(k + "dl", Mathf.RoundToInt(Mathf.Max(0f, c2Fuel0 - fuel) * 10f));
-            ArcCRecord.Put(k + "dmg", Mathf.RoundToInt(Mathf.Max(0f, ArcCWear(truck) - c2Wear0) * 100f));
+            ArcCRecord.Put(k + "dmg", Mathf.RoundToInt(C2WearShare(truck, c2Wear0)));
+            ArcCRecord.Put(k + "kn", c2Knocks);
             ArcCRecord.Put(k + "m", Mathf.RoundToInt(c2Dist));
             string line = StoryLibrary.C2Run(route);
             Journal.Add("SURVEY", line);

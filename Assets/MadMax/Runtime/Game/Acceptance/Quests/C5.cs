@@ -112,7 +112,9 @@ namespace MadMax.Game.Acceptance
             if (produce.Engine.GetComponent<VehiclePart>().damage >= 0.9f) { produce.Engine.GetComponent<VehiclePart>().damage = 0.65f; c.Fixture("the repair kit's patch applied directly (the work animation didn't finish)"); }
             yield return ArcCT.Done("C5", "breakdown", 5f);
             c.Check(StoryState.Route("C5", "breakdown") == "PATCHED IT ON THE ROADSIDE", "patched on the roadside: " + StoryState.Route("C5", "breakdown"));
-            yield return new WaitForSeconds(0.5f);
+            // the convoy tick that lets the patched truck go is frame-throttled: wait for it
+            yield return H.Until(() => ap && ap.enabled && ap.goal == AiDriver.Goal.Escort, 6f);
+            c.Note($"Pru's truck: ai {(ap ? (ap.enabled ? "on" : "off") : "none")}, goal {(ap ? ap.goal.ToString() : "-")}, target {(ap && ap.target ? ap.target.name : "-")}, aiDriven {produce.aiDriven}, engine {produce.Engine.GetComponent<VehiclePart>().damage:0.00}, player in {(g.Current ? g.Current.name : "nothing")}");
             c.Check(ap && ap.enabled && ap.goal == AiDriver.Goal.Escort, "Pru's truck falls back in");
 
             // ---- halfway: Wren's cart
@@ -121,8 +123,8 @@ namespace MadMax.Game.Acceptance
             yield return H.Until(() => StoryState.Flag("c5_met_wren") && g.CastBody("c5_wren") != null, 6f);
             c.Check(ArcCT.Say(g, "c5_wren", "WE'LL STOP HERE EVERY RUN"), "promise Wren custom every run");
             yield return ArcCT.Done("C5", "dispute", 5f);
-            yield return new WaitForSeconds(0.6f);
             var cart = ArcCT.Tagged("c5_cart");
+            yield return H.Until(() => StoryState.Flag("c5_disp_done") && cart && ArcCT.Flat(cart.transform.position, StoryAnchors.Get("c5_dispute")) > 7f, 5f);
             c.Check(StoryState.Flag("c5_eggs") && cart && ArcCT.Flat(cart.transform.position, StoryAnchors.Get("c5_dispute")) > 7f, "the cart rolls into the verge; the promise is remembered");
 
             // ---- the checkpoint lifts for the column
