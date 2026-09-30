@@ -17,8 +17,6 @@ namespace MadMax.Game
 
         partial void Tick_P3_3()
         {
-            if (Time.time < p3Check) return;
-            p3Check = Time.time + 0.5f;
             string how = Story.Story.Route("P3.3", "settle");
             if (how == null) return;
             bool honest = StoryLibrary.P3Honest(how);

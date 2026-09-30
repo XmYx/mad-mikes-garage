@@ -87,7 +87,7 @@ namespace MadMax.Game
                     if (arrived) return;
                     if (dark && !home) { P1Say("NELL: NOT IN THE DARK. FIRST LIGHT, SUNDAY OR NOT."); return; }
                     var door = car.transform.position - car.transform.right * 1.8f;
-                    if (Flat(nell.transform.position - car.transform.position) > 9f) { nell.home = door; nell.homeRadius = 1.5f; return; }   // walks over to the car
+                    if (Flat(nell.transform.position - car.transform.position) > 30f) { nell.home = door; nell.homeRadius = 1.5f; return; }   // far off (a reload): walks over first
                     nell.homeRadius = 5f;
                     nell.TakeWheel(car);
                     if (car.TryGetComponent<AiDriver>(out var ai0)) ai0.goal = AiDriver.Goal.Park;

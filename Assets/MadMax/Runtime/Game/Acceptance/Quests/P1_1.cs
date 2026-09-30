@@ -115,7 +115,14 @@ namespace MadMax.Game.Acceptance
             c.Check(H.Talk(g, g.CastBody("nell"), "YOU DRIVE, NELL"), "Nell drives; you ride");
             var nell = g.CastBody("nell");
             yield return H.Until(() => nell && nell.Driving, 20f);
-            if (!c.Check(nell && nell.Driving, "Nell walks over and takes the wheel")) yield break;
+            if (!(nell && nell.Driving))
+            {
+                var cq = MadMax.Story.Story.Current(StoryLibrary.Get("P1.3"));
+                c.Note($"step {(cq != null ? cq.id : "-")}, route '{MadMax.Story.Story.Route("P1.3", "who")}', body {(nell ? "yes" : "no")}, listed {(g.CastBody("nell") == nell)}, " +
+                       (nell ? $"mode {nell.mode}, available {nell.Available}, riding {nell.Riding}, companion {nell.companion}, to car {Vector3.Distance(nell.transform.position, car.transform.position):0.0} m, home {Vector3.Distance(nell.home, car.transform.position):0.0} m from car, " : "") +
+                       $"car aiDriven {car.aiDriven}, hours {DayNight.Hours:0.0}");
+            }
+            if (!c.Check(nell && nell.Driving, "Nell takes the wheel")) yield break;
             var seat = car.GetComponentInChildren<PassengerSeat>();
             if (!c.Check(seat && seat.Prompt(g) != null, "the passenger door offers a ride: " + (seat ? seat.Prompt(g) : "-"))) yield break;
             seat.Use(g, false);
@@ -138,6 +145,7 @@ namespace MadMax.Game.Acceptance
             yield return null;
             c.Check(H.Talk(g, nell, "WHAT WAS TOM LIKE"), "an ordinary conversation at the view");
             yield return H.Until(() => nell.Driving, 25f);
+            if (!nell.Driving) c.Note($"home leg: step {MadMax.Story.Story.Current(StoryLibrary.Get("P1.3"))?.id}, to car {Vector3.Distance(nell.transform.position, car.transform.position):0.0} m, available {nell.Available}");
             c.Check(nell.Driving, "Nell takes the wheel for home");
             seat.Use(g, false);
             yield return H.Until(() => MadMax.Story.Story.StateOf("P1.3") == MadMax.Story.Story.State.Done, 60f);

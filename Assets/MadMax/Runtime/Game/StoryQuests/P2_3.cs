@@ -23,14 +23,14 @@ namespace MadMax.Game
 
         partial void Tick_P2_3()
         {
-            if (Time.time < p2Check) return;
-            p2Check = Time.time + 0.5f;
-            StoryAnchors.PersonalMarketSync();
             string how = Story.Story.Route("P2.3", "dispute");
             if (how != null)
                 StoryLibrary.Get("P2.3").payoff = how.StartsWith("THE GATE TALLY") ? "THE GATE TALLY SETTLED IT: SIX CABBAGES, TWELVE SCRAP, ONE SHEEPISH GOATHERD. THE RECORDS HELD."
                     : how.StartsWith("PAY HER") ? "SIX CABBAGES WILL BE PAID FOR IN GOAT MANURE, A SACK A WEEK. ODA'S BEDS HAVE NEVER LOOKED BETTER."
                     : "YOU COVERED HALF THE CABBAGES, BARNABY THE OTHER HALF. BOTH ELDERS CLAIM THEY WON.";
+            if (Time.time < p2Check) return;
+            p2Check = Time.time + 0.5f;
+            StoryAnchors.PersonalMarketSync();
             p2Goats.RemoveAll(a => !a);
             var at = StoryAnchors.Get("p2_market");
             if (p2Goats.Count >= 2 || Flat(at - FocusPos) > 120f) return;

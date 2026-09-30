@@ -92,6 +92,8 @@ namespace MadMax.Game.Acceptance
             yield return H.Until(() => MadMax.Story.Story.StepDone("P2.3", "dispute"), 4f);
             c.Check(H.Talk(g, g.CastBody("hamlets"), "SHAKE ON IT"), "they shake on it");
             yield return H.Until(() => MadMax.Story.Story.StateOf("P2.3") == MadMax.Story.Story.State.Done, 4f);
+            c.Note($"P2.3: state {MadMax.Story.Story.StateOf("P2.3")}, step {MadMax.Story.Story.Current(StoryLibrary.Get("P2.3"))?.id}, dispute route '{MadMax.Story.Story.Route("P2.3", "dispute")}', " +
+                   $"tally {g.Inventory.GetItem("story_p2_tally")}, payoff '{StoryLibrary.Get("P2.3").payoff}'");
             c.Check(MadMax.Story.Story.StateOf("P2.3") == MadMax.Story.Story.State.Done && StoryLibrary.Get("P2.3").payoff.StartsWith("THE GATE TALLY"), "P2.3 OPENING DAY is done; settled by the records");
 
             // ---- P2.4: the supply run and the evening
@@ -106,12 +108,14 @@ namespace MadMax.Game.Acceptance
             yield return H.Until(() => MadMax.Story.Story.StepDone("P2.4", "purse"), 4f);
             c.Check(g.Inventory.Get(ResourceType.Scrap) >= scrap + 30, "thirty scrap for the run");
             g.Inventory.Add(ResourceType.Fuel, 10 - Mathf.Min(10, g.Inventory.Get(ResourceType.Fuel)));
+            int food0 = g.Inventory.GetItem("food_can");
             g.Inventory.AddItem("food_can", 6);
             c.Fixture("10 L petrol and six tins bought in town");
             yield return H.Until(() => MadMax.Story.Story.StepDone("P2.4", "food"), 4f);
             c.Check(H.Talk(g, g.CastBody("hamlets"), "THE SUPPLIES ARE HERE"), "supplies delivered");
             yield return H.Until(() => MadMax.Story.Story.Flag("p2_lamps"), 4f);
-            c.Check(g.Inventory.GetItem("food_can") == 0 && MadMax.Story.Story.Flag("p2_lamps"), "the tins and the lamp fuel went to the market");
+            c.Note($"P2.4 deliver: step {MadMax.Story.Story.Current(StoryLibrary.Get("P2.4"))?.id}, deliver done {MadMax.Story.Story.StepDone("P2.4", "deliver")}, tins {food0} + 6 -> {g.Inventory.GetItem("food_can")}, fuel {g.Inventory.Get(ResourceType.Fuel)}");
+            c.Check(MadMax.Story.Story.StepDone("P2.4", "deliver") && g.Inventory.GetItem("food_can") <= food0 && MadMax.Story.Story.Flag("p2_lamps"), "six tins and the lamp fuel went to the market");
             DayNight.SetHours(19f);
             c.Fixture("waited until 19:00");
             yield return H.Until(() => MadMax.Story.Story.StepDone("P2.4", "evening"), 4f);

@@ -44,7 +44,8 @@ namespace MadMax.Game
 
         partial void Tick_P3_1()
         {
-            if (Time.time < p3Check) return;
+            bool due = Time.time >= p3Check || (Story.Story.Route("P3.1", "repair") != null && !Story.Story.Flag("p3_seam_fixed"));
+            if (!due) return;
             p3Check = Time.time + 0.5f;
             var boat = P3Boat();
             if (!boat) { if (Time.time > p3Ensure) { p3Ensure = Time.time + 3f; P3SpawnTrawler(); } return; }

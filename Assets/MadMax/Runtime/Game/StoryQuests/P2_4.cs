@@ -24,7 +24,8 @@ namespace MadMax.Game
 
         partial void Tick_P2_4()
         {
-            if (Time.time < p2Check) return;
+            bool due = Time.time >= p2Check || (Story.Story.Route("P2.4", "upkeep") != null && !Story.Story.Flag("p2_upkeep_read"));
+            if (!due) return;
             p2Check = Time.time + 0.5f;
             StoryAnchors.PersonalMarketSync();
             if (Story.Story.StepDone("P2.4", "deliver") && !Story.Story.Flag("p2_lamps"))
@@ -40,6 +41,7 @@ namespace MadMax.Game
                 Story.Story.Note("p2_4:evening");
             string upkeep = Story.Story.Route("P2.4", "upkeep");
             if (upkeep == null) return;
+            Story.Story.SetFlag("p2_upkeep_read");
             bool recurs = StoryLibrary.P2Recurs(upkeep);
             if (recurs && !Story.Story.Flag("p2_market")) { Story.Story.SetFlag("p2_market"); Journal.Add("PLACE", "THE HAMLETS' MARKET: EVERY THIRD DAY, 8:00 TO 19:00, ODA AND BARNABY SELL THERE"); }
             StoryLibrary.Get("P2.4").payoff = recurs
