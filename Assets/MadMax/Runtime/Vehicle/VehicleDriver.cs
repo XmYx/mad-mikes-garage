@@ -127,6 +127,7 @@ namespace MadMax.Vehicles
         VehicleChassis chassis;
         EngineStats engine;
         float steer, massPerWheel, k, c, restComp, shiftTimer, restTimer;
+        float steerVelocity, driveFiltered, directionHold;
 
         /// <summary>Wheels touching the ground last step (0 = airborne: jumps, hang time).</summary>
         public int WheelsDown { get { int n = 0; foreach (var w in wheels) if (w.part && w.grounded) n++; return n; } }
@@ -215,7 +216,10 @@ namespace MadMax.Vehicles
             // Rest: a parked vehicle would otherwise jiggle forever on its springs (forces keep it awake), and every
             // camera following it re-samples the low-res image each frame (visible "blinking" terrain).
             if (KeepAwakeUntil > Time.time) { restTimer = 0f; if (rb.IsSleeping()) rb.WakeUp(); }
-            bool idleInput = KeepAwakeUntil <= Time.time && throttleInput < 0.01f && Mathf.Abs(steerInput) < 0.01f && (handbrake || brakeInput > 0.1f);
+            // In automatic reverse the brake pedal is the accelerator: never park-sleep against it.
+            float drivePedal = !manual && Reversing ? brakeInput : throttleInput;
+            float stopPedal = !manual && Reversing ? throttleInput : brakeInput;
+            bool idleInput = KeepAwakeUntil <= Time.time && drivePedal < 0.01f && Mathf.Abs(steerInput) < 0.01f && (handbrake || stopPedal > 0.1f);
             if (idleInput && rb.linearVelocity.sqrMagnitude < 0.02f && rb.angularVelocity.sqrMagnitude < 0.02f && AllGroundedLastStep())
             {
                 restTimer += dt;
@@ -229,7 +233,11 @@ namespace MadMax.Vehicles
 
             float speedFactor = Mathf.Lerp(1f, 0.3f, Mathf.Abs(ForwardSpeed) / 40f);
             float wantSteer = float.IsNaN(steerOverride) ? steerInput * maxSteer * speedFactor : steerOverride;
-            steer = Mathf.MoveTowards(steer, wantSteer + steerPull, maxSteer * steerSpeed * dt);
+            bool touring = !aiDriven && !aircraft && float.IsNaN(steerOverride);
+            if (touring)
+                steer = Mathf.SmoothDamp(steer, wantSteer + steerPull, ref steerVelocity,
+                    Mathf.Lerp(0.10f, 0.22f, Mathf.Abs(ForwardSpeed) / 30f), maxSteer * steerSpeed, dt);
+            else { steerVelocity = 0f; steer = Mathf.MoveTowards(steer, wantSteer + steerPull, maxSteer * steerSpeed * dt); }
 
             // ---- transmission: automatic (brake at standstill = reverse) or manual (R N 1..n via ShiftUp/ShiftDown)
             float driveCmd, brakeCmd;
@@ -241,11 +249,18 @@ namespace MadMax.Vehicles
             else
             {
                 if (Gear < 1) Gear = 1;
-                if (!Reversing && !aircraft && brakeInput > 0.1f && throttleInput < 0.1f && ForwardSpeed < 0.5f) Reversing = true;
-                if (Reversing && throttleInput > 0.1f && ForwardSpeed > -0.5f) Reversing = false;
+                bool changeDirection = !aircraft && Mathf.Abs(ForwardSpeed) < 0.35f &&
+                    (Reversing ? throttleInput > 0.1f && brakeInput < 0.1f : brakeInput > 0.1f && throttleInput < 0.1f);
+                directionHold = changeDirection ? directionHold + dt : 0f;
+                if (changeDirection && (!touring || directionHold >= 0.35f))
+                { Reversing = !Reversing; directionHold = 0f; driveFiltered = 0f; }
                 driveCmd = Reversing ? brakeInput : throttleInput;
                 brakeCmd = Reversing ? throttleInput : brakeInput;
             }
+            // A short pedal ramp makes keyboard starts gentle; braking and lift-off remain immediate.
+            driveFiltered = touring ? Mathf.MoveTowards(driveFiltered, driveCmd, dt * (driveCmd > driveFiltered ? 2.8f : 8f)) : driveCmd;
+            if (handbrake && driveCmd < 0.01f) driveFiltered = 0f;
+            driveCmd = driveFiltered;
             DriveCommand = driveCmd;
 
             int driven = 0;
@@ -467,7 +482,10 @@ namespace MadMax.Vehicles
                 var biome = MadMax.World.DeformableTerrain.Instance ? MadMax.World.DeformableTerrain.Instance.BiomeAt(w.contact.x, w.contact.z) : MadMax.World.Biome.Desert;
                 var dust = biome == MadMax.World.Biome.Desert ? new Color(0.78f, 0.55f, 0.36f, 0.55f) : biome == MadMax.World.Biome.Nuclear ? new Color(0.55f, 0.58f, 0.46f, 0.5f)
                          : biome == MadMax.World.Biome.Forest || biome == MadMax.World.Biome.Tropical ? new Color(0.5f, 0.4f, 0.3f, 0.4f) : new Color(0.68f, 0.52f, 0.38f, 0.5f);
-                MadMax.World.Fx.Smoke(w.contact + Vector3.up * 0.3f, -w.fwd * Mathf.Sign(w.vf) * speed * 0.15f + Vector3.up * 0.8f + Random.insideUnitSphere * 0.5f, 0.9f + speed * 0.03f, dust, 2.2f);
+                dust.a *= 0.65f;
+                MadMax.World.Fx.Smoke(w.contact + Vector3.up * 0.18f,
+                    -w.fwd * Mathf.Sign(w.vf) * speed * 0.10f + Vector3.up * 0.45f + MadMax.World.Fx.Wind * 0.15f,
+                    0.55f + Mathf.Min(speed, 30f) * 0.018f, dust, 1.6f);
             }
             if (scrub > 0.25f && Random.value < scrub * dt * 30f)
             {

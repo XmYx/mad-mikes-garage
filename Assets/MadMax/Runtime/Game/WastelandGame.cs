@@ -195,6 +195,7 @@ namespace MadMax.Game
                 SpawnWrecks(p);
                 UnityEngine.Profiling.Profiler.EndSample();
                 GiveStartingKit(Rules.startingKit);
+                SpawnHomestead();
             }
             Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
             ScreenFader.Progress(0.85f);
@@ -342,21 +343,42 @@ namespace MadMax.Game
         int CountRes(List<Inventory> src, ResourceType t) { int n = 0; foreach (var i in src) n += i.Get(t); return n; }
         int CountItem(List<Inventory> src, string id) { int n = 0; foreach (var i in src) n += i.GetItem(id); return n; }
 
-        public bool CanCraft(Recipe r, CraftingStation station)
+        public bool CanCraft(Recipe r, CraftingStation station) => CraftBlockReason(r, station) == null;
+
+        /// <summary>One source of truth for the recipe list, detail card and queue action.</summary>
+        public string CraftBlockReason(Recipe r, CraftingStation station)
         {
+            if (r == null) return "SELECT A RECIPE";
+            if (!Stats.Knows(RecipeLibrary.KnowledgeFor(r))) return "LEARN THE RECIPE FIRST";
+            if (station && !station.Powered) return "CONNECT STATION POWER";
+            if (station && station.queue.Count >= CraftingStation.MaxQueue) return "QUEUE FULL - X CANCELS LAST";
             var src = CraftSources(station);
-            foreach (var (t, n) in r.resources) if (t != ResourceType.None && CountRes(src, t) < RecipeLibrary.Amount(n)) return false;
-            foreach (var (i, n) in r.items) if (CountItem(src, i) < n) return false;
-            if (r.fuel != ResourceType.None && PickFuel(src, r) == ResourceType.None) return false;
-            return true;
+            foreach (var (t, n) in r.resources)
+                if (t != ResourceType.None && CountRes(src, t) < RecipeLibrary.Amount(n)) return "NEED " + ResourceInfo.Name(t);
+            foreach (var (i, n) in r.items) if (CountItem(src, i) < n) return "NEED " + ItemIds.Name(i);
+            if (r.fuel != ResourceType.None && PickFuel(src, r) == ResourceType.None) return "ADD " + ResourceInfo.Name(r.fuel) + " FUEL";
+            return null;
+        }
+
+        public ResourceType CraftFuel(Recipe r, CraftingStation station)
+        {
+            var fuel = PickFuel(CraftSources(station), r);
+            return fuel == ResourceType.None ? r.fuel : fuel;
         }
 
         /// <summary>The fuel a station burns for a recipe: the asked one, else hotter stand-ins (wood → charcoal → coal).</summary>
         ResourceType PickFuel(List<Inventory> src, Recipe r)
         {
-            if (CountRes(src, r.fuel) >= r.fuelAmount) return r.fuel;
-            if (r.fuel == ResourceType.Wood && CountRes(src, ResourceType.Charcoal) >= r.fuelAmount) return ResourceType.Charcoal;
-            if ((r.fuel == ResourceType.Wood || r.fuel == ResourceType.Charcoal) && CountRes(src, ResourceType.Coal) >= r.fuelAmount) return ResourceType.Coal;
+            int Available(ResourceType fuel)
+            {
+                int n = CountRes(src, fuel);
+                foreach (var input in r.resources) if (input.type == fuel) n -= RecipeLibrary.Amount(input.amount);
+                return n;
+            }
+            if (r.fuel == ResourceType.None) return ResourceType.None;
+            if (Available(r.fuel) >= r.fuelAmount) return r.fuel;
+            if (r.fuel == ResourceType.Wood && Available(ResourceType.Charcoal) >= r.fuelAmount) return ResourceType.Charcoal;
+            if ((r.fuel == ResourceType.Wood || r.fuel == ResourceType.Charcoal) && Available(ResourceType.Coal) >= r.fuelAmount) return ResourceType.Coal;
             return ResourceType.None;
         }
 
@@ -372,11 +394,12 @@ namespace MadMax.Game
             if (station && station.queue.Count >= CraftingStation.MaxQueue) { Toast("THE QUEUE IS FULL"); return; }
             if (!CanCraft(r, station)) { Toast("MISSING MATERIALS"); return; }
             var src = CraftSources(station);
+            var paidFuel = PickFuel(src, r);
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) PayFrom(src, t, RecipeLibrary.Amount(n));
             foreach (var (i, n) in r.items) TakeFrom(src, i, n);
-            if (r.fuel != ResourceType.None) PayFrom(src, PickFuel(src, r), r.fuelAmount);
+            if (r.fuel != ResourceType.None) PayFrom(src, paidFuel, r.fuelAmount);
             if (!station) { Produce(r, null); return; }
-            station.Enqueue(r, CraftSpeed(r));
+            station.Enqueue(r, CraftSpeed(r), paidFuel);
             MadMax.Audio.Sfx.Play2D("click", 0.5f);
             Toast("QUEUED " + r.name + " (" + Mathf.CeilToInt(RecipeLibrary.Seconds(r) / CraftSpeed(r)) + " S)");
         }

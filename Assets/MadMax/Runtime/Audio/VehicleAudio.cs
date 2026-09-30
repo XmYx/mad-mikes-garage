@@ -47,7 +47,7 @@ namespace MadMax.Audio
                 foreach (var s in chassis.Sockets)
                     if (s.accepts == PartCategory.Exhaust) { exhaustSocket = true; if (s.Current) { exhaustId = s.Current.partId; exhaust = s.Current.transform; } }
             string key = engineId + "|" + exhaustId + "|" + exhaustSocket;
-            if (key == fitted && engineVoice) return;
+            if (key == fitted && engineVoice && tyres != null) return;
             fitted = key;
 
             uint seed = (uint)GetHashCode();
@@ -56,7 +56,9 @@ namespace MadMax.Audio
             var local = transform.InverseTransformPoint(at.position);
             if (!engineVoice) engineVoice = SynthVoice.Create(transform, "EngineAudio", local, engine, 120f);
             else { engineVoice.transform.localPosition = local; engineVoice.synth = engine; }
-            if (!tyreVoice) { tyres = new TyreSynth(seed * 31u); tyreVoice = SynthVoice.Create(transform, "TyreAudio", new Vector3(0f, 0.3f, 0f), tyres, 70f); }
+            if (tyres == null) tyres = new TyreSynth(seed * 31u);        // also after a play-mode script reload
+            if (!tyreVoice) tyreVoice = SynthVoice.Create(transform, "TyreAudio", new Vector3(0f, 0.3f, 0f), tyres, 70f);
+            else tyreVoice.synth = tyres;
         }
 
         void Update()

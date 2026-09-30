@@ -1,4 +1,5 @@
 using System;
+using MadMax.Voxel;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -60,9 +61,11 @@ namespace MadMax.Rendering
 
         public void Panel(int x, int y, int rw, int rh)
         {
-            Rect(x, y, rw, rh, new Color32(22, 12, 8, 185));
-            Frame(x, y, rw, rh, new Color32(120, 64, 32, 255));
-            for (int i = x + 1; i < x + rw - 1; i++) Set(i, y + 1, new Color32(170, 96, 48, 255));
+            Rect(x + 2, y + 2, rw, rh, new Color32(8, 12, 12, 100));
+            var fill = Pal.Panel; fill.a = 235;
+            Rect(x, y, rw, rh, fill);
+            Frame(x, y, rw, rh, Pal.PanelEdge);
+            for (int i = x + 1; i < x + rw - 1; i++) Set(i, y + 1, Pal.PanelLight);
         }
 
         public void Line(int x0, int y0, int x1, int y1, Color32 c)

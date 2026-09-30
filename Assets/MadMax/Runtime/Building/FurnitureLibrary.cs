@@ -167,6 +167,7 @@ namespace MadMax.Building
             defs.AddRange(BaseDefs());
             defs.AddRange(Power());
             defs.AddRange(Sea());
+            defs.AddRange(Homestead());
             Upgrades();
         }
 
@@ -354,6 +355,21 @@ namespace MadMax.Building
             g.Box(6, 11, 1, 7, 12, 3, Pal.Ramp(Pal.Metal, 2, 624));                           // vise
             g.Box(-5, 11, -2, -1, 11, -2, Pal.Solid(Pal.Chrome[2]));                          // wrench
             g.Box(-3, 11, 0, -3, 11, 2, Pal.Solid(Pal.Wood[1]));
+            // Salvaged pegboard, drawers, paint tin, folded shop cloth and a task lamp.
+            g.Mat(Wood); g.Box(-8, 11, -4, 8, 21, -4, Pal.Ramp(Pal.Wood, 2, 625));
+            g.Mat(Scrap);
+            for (int x = -6; x <= 6; x += 3)
+            {
+                g.Box(x, 15, -3, x, 18, -3, Pal.Ramp(Pal.Chrome, 1, x + 630));
+                g.Set(x + 1, 18, -3, Pal.Solid(Pal.Chrome[2]));
+            }
+            g.Box(-7, 4, -3, -1, 8, 2, Pal.Weathered(Pal.RigGreen, 0.12f, 627, 3));
+            g.Box(-5, 6, 3, -3, 6, 3, Pal.Solid(Pal.Chrome[2]));
+            g.Box(2, 11, -1, 4, 11, 2, Pal.Ramp(Pal.PaleBlue, 2, 628));
+            g.Box(-7, 11, 1, -6, 13, 2, Pal.Ramp(Pal.Cream, 2, 629));
+            g.Box(7, 11, -3, 7, 22, -3, Pal.Ramp(Pal.Metal, 2, 630));
+            g.Box(3, 22, -3, 7, 22, -3, Pal.Ramp(Pal.RigGreen, 3, 631));
+            g.Box(2, 21, -3, 4, 21, -1, Pal.Solid(Pal.LightW));
             return g;
         }
 

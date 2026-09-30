@@ -38,7 +38,7 @@ Shader "Hidden/MadMax/Grade"
                 float3 c = tex2D(_MainTex, uv).rgb;
                 float l = dot(c, float3(0.299, 0.587, 0.114));
                 c = lerp(l.xxx, c, _Saturation);
-                c = (c - 0.5) * _Contrast + 0.5;
+                c = (c - 0.18) * _Contrast + 0.18; // linear mid-grey: soften contrast without a milky black floor
                 c *= _GradeTint.rgb;
                 c += _Flash * float3(0.55, 0.6, 0.75) * (0.4 + l);
                 return float4(saturate(c), 1);

@@ -5,23 +5,25 @@ namespace MadMax.Audio
     /// <summary>World ambience around the listener: wind always, rain while it rains (muffled indoors or in a cab), thunder in storms.</summary>
     public class AmbientAudio : MonoBehaviour
     {
-        float rain, crickets, nextThunder = 20f;
+        float rain, crickets, shelter, nextThunder = 20f;
 
         void Update()
         {
             if (Application.isBatchMode) return;
             var g = MadMax.Game.WastelandGame.Instance;
-            bool sheltered = g && (g.Current || (g.Player && g.Player.Interior));
+            bool sheltered = g && (g.Sheltered || (g.Player && g.Player.Interior) ||
+                (g.Current && g.Current.TryGetComponent<MadMax.Vehicles.VehicleClimate>(out var cabin) && cabin.Enclosed));
+            shelter = Mathf.MoveTowards(shelter, sheltered ? 1f : 0f, Time.deltaTime * 1.2f);
             bool raining = MadMax.World.Weather.Raining && !MadMax.World.Weather.Snowing;
             rain = Mathf.MoveTowards(rain, raining ? 1f : 0f, Time.deltaTime * 0.3f);
             float amb = MadMax.Game.TitleSequence.OnMoon ? 0f : MadMax.Game.GameSettings.Current.ambientVolume;   // no air on the Moon
-            Sfx.Loop(this, "rain", rain * (sheltered ? 0.35f : 0.6f) * amb, 1f, 30f, true);
+            Sfx.Loop(this, "rain", rain * Mathf.Lerp(0.6f, 0.3f, shelter) * amb, 1f, 30f, true);
             // crickets on warm dry nights (not in winter, not in the rain, not deep underground)
             float night = MadMax.World.DayNight.Darkness;
             bool insects = night > 0.5f && !MadMax.World.Weather.Raining && MadMax.World.Weather.Temperature > 9f && !(g && g.Current && g.Current.GetComponent<MadMax.Vehicles.VehicleClimate>() is MadMax.Vehicles.VehicleClimate vc && vc.Enclosed);
             crickets = Mathf.MoveTowards(crickets, insects ? 1f : 0f, Time.deltaTime * 0.2f);
             Sfx.Loop(this, "insects", crickets * 0.22f * amb, 1f, 30f, true);
-            Sfx.Loop(this, "wind", Mathf.Clamp(0.05f + MadMax.World.WindDust.Strength * 0.04f + MadMax.World.WindDust.Gust * 0.08f, 0.05f, 0.45f) * amb, 0.8f + MadMax.World.WindDust.Gust * 0.25f, 30f, true);
+            Sfx.Loop(this, "wind", Mathf.Clamp(0.05f + MadMax.World.WindDust.Strength * 0.04f + MadMax.World.WindDust.Gust * 0.08f, 0.05f, 0.45f) * Mathf.Lerp(1f, 0.4f, shelter) * amb, 0.8f + MadMax.World.WindDust.Gust * 0.25f, 30f, true);
             var net = MadMax.Net.NetSession.Instance;
             if (raining && !MadMax.Game.TitleSequence.OnMoon && Time.time > nextThunder && !(net && net.IsClient))                   // clients get the host's strikes
             {

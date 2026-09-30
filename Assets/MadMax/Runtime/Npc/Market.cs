@@ -9,7 +9,8 @@ namespace MadMax.Npc
     /// world: villages grow food and want tools and parts, cities pay for food and water and sell tools and media, towns
     /// by an oil field sell cheap fuel, by an ore deposit cheap metal, in the nuclear zone medicine is dear. On top sits
     /// the market's pressure: selling a good floods it (the price drops), buying drains it (the price rises); it drifts
-    /// back ~15 % a day, plus a small daily wobble. Roadside vendors charge a little more and pay a little less.</summary>
+    /// back ~15 % a day, plus a small daily wobble and the season (<see cref="SeasonFactor"/>). Roadside vendors charge a
+    /// little more and pay a little less.</summary>
     public static class Market
     {
         public static readonly string[] Goods = { "FUEL", "WATER", "FOOD", "MEDICINE", "ARMS", "TOOLS", "PARTS", "METALS", "BUILDING", "CLOTH", "MEDIA" };
@@ -116,8 +117,34 @@ namespace MadMax.Npc
             if (st == null) return 1.1f;
             var r = new System.Random(Seed(st.index, g * 7717 + 1, DayNight.Day));
             float wobble = 0.94f + 0.12f * (float)r.NextDouble();
-            return Mathf.Clamp(Base(st, g) * (1f + Pressure(st.index)[g]) * wobble, 0.4f, 2.2f);
+            return Mathf.Clamp(Base(st, g) * (1f + Pressure(st.index)[g]) * wobble * SeasonFactor(g, st.kind), 0.4f, 2.2f);
         }
+
+        /// <summary>The season's pull on a good: food is cheap at the autumn harvest (cheapest where it grows) and dear
+        /// through winter and the hungry spring, winter wants fuel, cloth and medicine, summer wants water.</summary>
+        public static float SeasonFactor(int good, Biome kind)
+        {
+            int season = Weather.Season;                        // 0 summer, 1 autumn, 2 winter, 3 spring
+            switch (good)
+            {
+                case Food:
+                    float f = season == 1 ? 0.8f : season == 2 ? 1.3f : season == 3 ? 1.15f : 0.95f;
+                    return kind == Biome.Village ? 1f + (f - 1f) * 1.3f : f;       // farm towns swing hardest
+                case Fuel: return season == 2 ? 1.18f : season == 0 ? 0.95f : 1f;
+                case Cloth: return season == 2 ? 1.2f : season == 0 ? 0.9f : 1f;
+                case Medicine: return season == 2 ? 1.12f : 1f;
+                case Water: return season == 0 ? 1.18f : season == 2 ? 0.9f : 1f;
+                case Building: return season == 3 ? 1.1f : season == 2 ? 0.92f : 1f;   // spring is building season
+                default: return 1f;
+            }
+        }
+
+        /// <summary>What the season does to prices, one line (journal, radio).</summary>
+        public static string SeasonNews(int season) =>
+            season == 1 ? "HARVEST IS IN: FOOD IS CHEAP, CHEAPEST IN THE FARM VILLAGES"
+            : season == 2 ? "WINTER PRICES: FOOD, FUEL, CLOTH AND MEDICINE GO DEAR"
+            : season == 3 ? "HUNGRY SPRING: FOOD STAYS DEAR, TIMBER AND BRICK ARE IN DEMAND"
+            : "SUMMER: WATER FETCHES A PRICE, WARM CLOTHES SELL CHEAP";
 
         /// <summary>The player sold <paramref name="n"/> of a good here: the market floods.</summary>
         public static void Sold(Settlement st, string id, int n)
@@ -158,7 +185,7 @@ namespace MadMax.Npc
             for (int g = 0; g < Goods.Length; g++)
             {
                 var r = new System.Random(Seed(st.index, g * 7717 + 1, DayNight.Day));
-                float f = Base(st, g) * (1f + Pressure(st.index)[g]) * (0.94f + 0.12f * (float)r.NextDouble());
+                float f = Base(st, g) * (1f + Pressure(st.index)[g]) * (0.94f + 0.12f * (float)r.NextDouble()) * SeasonFactor(g, st.kind);
                 if (f < flo) { flo = f; lo = g; }
                 if (f > fhi) { fhi = f; hi = g; }
             }

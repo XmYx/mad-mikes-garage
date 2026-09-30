@@ -25,7 +25,7 @@ namespace MadMax.Building
         public float tier;
         public const int MaxQueue = 8;
 
-        public class Job { public string recipe; public float progress, speed = 1f; }
+        public class Job { public string recipe; public float progress, speed = 1f; public ResourceType paidFuel; }
         public readonly List<Job> queue = new List<Job>();
         /// <summary>Finished items waiting for the crafter.</summary>
         public readonly Inventory tray = new Inventory();
@@ -72,7 +72,7 @@ namespace MadMax.Building
             }
         }
 
-        public void Enqueue(Recipe r, float speed) { queue.Add(new Job { recipe = r.id, speed = speed }); Dirty(); }
+        public void Enqueue(Recipe r, float speed, ResourceType paidFuel = ResourceType.None) { queue.Add(new Job { recipe = r.id, speed = speed, paidFuel = paidFuel == ResourceType.None ? r.fuel : paidFuel }); Dirty(); }
 
         void Update()
         {
@@ -86,9 +86,23 @@ namespace MadMax.Building
             if ((fxT -= Time.deltaTime) <= 0f)
             {
                 fxT = Random.Range(0.6f, 1.4f);
-                bool fire = type == "stove" || type == "furnace" || type == "kiln" || type == "smokehouse" || type == "still";
-                if (fire) MadMax.World.Fx.Smoke(OutputPoint + Vector3.up * 0.3f, Vector3.up * 0.8f, 0.3f, new Color(0.35f, 0.33f, 0.3f, 0.5f), 2f);
-                else if (MadMax.World.DebrisSystem.Instance) MadMax.World.DebrisSystem.Instance.EmitPuff(OutputPoint, new Color32(255, 220, 140, 255), 0.02f, Random.insideUnitSphere + Vector3.up, 0.2f);
+                var game = MadMax.Game.WastelandGame.Instance;
+                var listener = game && game.Current ? game.Current.transform : game && game.Player ? game.Player.transform : null;
+                if (listener && (listener.position - transform.position).sqrMagnitude < 28f * 28f)
+                {
+                    bool cooking = type == "stove" || type == "oven" || type == "still" || type == "smokehouse";
+                    bool hot = type == "furnace" || type == "arc_furnace" || type == "kiln";
+                    if (cooking || hot)
+                    {
+                        Color steam = cooking ? MadMax.Voxel.Pal.Steam : MadMax.Voxel.Pal.WorkshopDust; steam.a = 0.28f;
+                        MadMax.World.Fx.Smoke(OutputPoint + Vector3.up * 0.15f, Vector3.up * 0.45f + MadMax.World.Fx.Wind * 0.08f, 0.18f, steam, 1.6f);
+                    }
+                    else if (type == "garage" || type == "workbench" || type == "gunsmith")
+                    {
+                        MadMax.World.Fx.Sparks(OutputPoint, Vector3.up, 2, MadMax.Voxel.Pal.Accent);
+                        MadMax.Audio.Sfx.Play("ratchet", OutputPoint, 0.14f, 0.9f, 7f, 0.8f);
+                    }
+                }
             }
             if (job.progress < 1f) return;
             queue.RemoveAt(0);
@@ -108,11 +122,11 @@ namespace MadMax.Building
 
         void Dirty() => GetComponent<Placeable>()?.Dirty();
 
-        // state: "recipe:progress:speed;...|tray inventory"
+        // state: "recipe:progress:speed:paidFuel;...|tray inventory" (older jobs omit paidFuel)
         public string SaveState()
         {
             var sb = new StringBuilder();
-            foreach (var j in queue) sb.Append(j.recipe).Append(':').Append(j.progress.ToString("0.###", CultureInfo.InvariantCulture)).Append(':').Append(j.speed.ToString("0.##", CultureInfo.InvariantCulture)).Append(';');
+            foreach (var j in queue) sb.Append(j.recipe).Append(':').Append(j.progress.ToString("0.###", CultureInfo.InvariantCulture)).Append(':').Append(j.speed.ToString("0.##", CultureInfo.InvariantCulture)).Append(':').Append((int)j.paidFuel).Append(';');
             sb.Append('\u001d').Append(InventoryCodec.Encode(tray));
             return sb.ToString();
         }
@@ -128,7 +142,9 @@ namespace MadMax.Building
                 if (p.Length < 3 || RecipeLibrary.Get(p[0]) == null) continue;
                 float.TryParse(p[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var prog);
                 float.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var sp);
-                queue.Add(new Job { recipe = p[0], progress = prog, speed = sp > 0f ? sp : 1f });
+                var fuel = RecipeLibrary.Get(p[0]).fuel;
+                if (p.Length > 3 && int.TryParse(p[3], out int paid) && paid >= 0 && paid < ResourceInfo.Count) fuel = (ResourceType)paid;
+                queue.Add(new Job { recipe = p[0], progress = prog, speed = sp > 0f ? sp : 1f, paidFuel = fuel });
             }
             if (halves.Length > 1) InventoryCodec.Decode(tray, halves[1]);
         }

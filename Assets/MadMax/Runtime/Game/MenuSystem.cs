@@ -49,10 +49,12 @@ namespace MadMax.Game
         int cursor, category, scroll;
         Page settingsFrom;
         CraftingStation station;
+        int craftDetailScroll;
+        string craftDetailRecipe;
         Vector2 lastMouse;
 
-        static readonly Color32 Text = new Color32(255, 226, 170, 255), Dim = new Color32(150, 110, 75, 255), Amber = new Color32(255, 170, 50, 255),
-            Hi = new Color32(110, 55, 25, 230);
+        static readonly Color32 Text = MadMax.Voxel.Pal.Ink, Dim = MadMax.Voxel.Pal.MutedInk, Amber = MadMax.Voxel.Pal.Accent,
+            Hi = MadMax.Voxel.Pal.Selection;
         static Color32 Red => PixelHud.Bad;
         static Color32 Green => PixelHud.Good;
 
@@ -1032,6 +1034,11 @@ namespace MadMax.Game
             if (Current == Page.Crafting && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
             if (Current == Page.Crafting && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
             if (Current == Page.Crafting && kb != null && kb.yKey.wasPressedThisFrame) { Open(Page.Salvage); return; }
+            if (Current == Page.Crafting && kb != null)
+            {
+                if (kb.pageDownKey.wasPressedThisFrame) craftDetailScroll++;
+                if (kb.pageUpKey.wasPressedThisFrame) craftDetailScroll = Mathf.Max(0, craftDetailScroll - 1);
+            }
             if (Current == Page.Crafting && kb != null && kb.xKey.wasPressedThisFrame) { game.CancelLastJob(station); return; }
             if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
@@ -1421,28 +1428,30 @@ namespace MadMax.Game
             if (items.Count > 0 && items[cursor].hint != null) c.Text((c.w - PixelCanvas.TextWidth(items[cursor].hint)) / 2, c.h - 12, items[cursor].hint, Amber);
         }
 
+        static string FitCraft(string text, int width)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            int chars = Mathf.Max(1, (width + 1) / 4);
+            return text.Length <= chars ? text : text.Substring(0, Mathf.Max(0, chars - 2)) + "..";
+        }
+
         void DrawCrafting(PixelCanvas c)
         {
-            c.Text(6, c.h - 10, (station && station.type == "sewing" ? "T MEND CLOTHES" : "R RESEARCH   T REPAIR TOOLS") + "   Y SALVAGE   X CANCEL LAST", Dim);
-            int w = Mathf.Min(c.w - 12, 300), h = Mathf.Min(c.h - 20, 170);
-            int x = (c.w - w) / 2, y = (c.h - h) / 2;
+            int w = Mathf.Min(c.w - 12, 450), h = Mathf.Min(c.h - 38, 244);
+            int x = (c.w - w) / 2, y = Mathf.Max(6, (c.h - h) / 2 - 5);
+            int split = x + w * 43 / 100, dx = split + 9, dw = x + w - dx - 8;
             c.Panel(x, y, w, h);
-            c.Text(x + 6, y + 5, station ? station.title : "WORKBENCH", Amber);
-            // category tabs
-            int tx = x + 6;
+            c.Text(x + 8, y + 7, station ? station.title : "HANDCRAFT", Amber);
+            string source = station ? "PACK + STORAGE WITHIN 5 M" : "FROM YOUR PACK";
+            c.Text(x + 8, y + 17, source, Dim);
             var cats = StationCategories();
-            for (int i = 0; i < cats.Count; i++)
-            {
-                string name = cats[i].ToString().ToUpperInvariant();
-                if (name == "ATTACHMENTS") name = "PARTS";
-                int tw = PixelCanvas.TextWidth(name) + 6;
-                if (i == category) c.Rect(tx - 1, y + 13, tw, 9, Hi);
-                c.Text(tx + 2, y + 15, name, i == category ? Amber : Dim);
-                tx += tw + 2;
-            }
-            // recipe list
-            int listW = w / 2 - 8, lx = x + 6, ly = y + 27, lh = 9;
-            int visible = (h - 40) / lh;
+            string cat = cats.Count > 0 ? cats[Mathf.Clamp(category, 0, cats.Count - 1)].ToString().ToUpperInvariant() : "RECIPES";
+            c.Rect(x + 1, y + 27, w - 2, 14, Hi);
+            c.Text(x + 8, y + 31, "< " + cat + " >", Amber);
+            c.Text(split + 9, y + 31, "RECIPE / MATERIALS", Text);
+            c.Line(split, y + 42, split, y + h - 48, MadMax.Voxel.Pal.PanelEdge);
+            int lx = x + 8, ly = y + 48, listW = split - lx - 6, lh = 12;
+            int visible = Mathf.Max(1, (h - 99) / lh);
             if (cursor < scroll) scroll = cursor;
             if (cursor >= scroll + visible) scroll = cursor - visible + 1;
             for (int i = 0; i < items.Count; i++)
@@ -1450,60 +1459,69 @@ namespace MadMax.Game
                 var it = items[i];
                 if (i < scroll || i >= scroll + visible) { it.rect = new RectInt(-99, -99, 0, 0); continue; }
                 int iy = ly + (i - scroll) * lh;
-                it.rect = new RectInt(lx - 2, iy - 2, listW + 4, lh);
-                bool sel = i == cursor;
-                if (sel) c.Rect(lx - 2, iy - 2, listW + 4, lh, Hi);
-                c.Text(lx, iy, it.label, Enabled(it) ? (sel ? Amber : Text) : Dim);
+                it.rect = new RectInt(lx - 3, iy - 3, listW + 5, lh);
+                bool sel = i == cursor, ready = Enabled(it);
+                if (sel) { c.Rect(lx - 3, iy - 3, listW + 5, lh, Hi); c.Rect(lx - 3, iy - 3, 2, lh, Amber); }
+                c.Text(lx + 2, iy, FitCraft(it.label, listW - 4), ready ? Text : Dim);
             }
-            // detail panel
-            int dx = x + w / 2 + 2, dy = y + 27;
             if (items.Count > 0)
             {
                 var r = items[cursor].recipe;
-                c.Text(dx, dy, r.name, Amber);
-                c.Text(dx, dy + 9, r.description ?? "", Dim);
-                int ry = dy + 22;
-                c.Text(dx, ry, "NEEDS", Text); ry += 8;
-                foreach (var (t, n) in r.resources)
-                {
-                    if (t == ResourceType.None) continue;
-                    int have = PoolRes(t);
-                    c.Rect(dx, ry + 1, 3, 3, ResourceInfo.Color(t));
-                    c.Text(dx + 6, ry, $"{ResourceInfo.Name(t)} {n}  ({have})", have >= n ? Green : Red);
-                    ry += 8;
-                }
-                foreach (var (i2, n) in r.items)
-                {
-                    int have = PoolItem(i2);
-                    c.Text(dx + 6, ry, $"{ItemIds.Name(i2)} {n}  ({have})", have >= n ? Green : Red);
-                    ry += 8;
-                }
-                if (r.fuel != ResourceType.None) { c.Text(dx + 6, ry, $"FUEL: {ResourceInfo.Name(r.fuel)} {r.fuelAmount}", Dim); ry += 8; }
-                if (r.byproducts != null) foreach (var (bt, bn) in r.byproducts) { c.Text(dx + 6, ry, $"+ {ResourceInfo.Name(bt)} {bn}", Dim); ry += 8; }
+                if (craftDetailRecipe != r.id) { craftDetailRecipe = r.id; craftDetailScroll = 0; }
+                int ry = ly;
+                c.Text(dx, ry, FitCraft(r.name, dw), Amber); ry += 10;
+                var lines = Wrap(r.description ?? "", dw);
+                for (int i = 0; i < lines.Count && i < 2; i++) { c.Text(dx, ry, FitCraft(lines[i], dw), Dim); ry += 8; }
                 ry += 4;
-                string owned = r.kind == OutputKind.Item ? $"OWNED {game.Inventory.GetItem(r.output)}" : r.kind == OutputKind.Resource ? $"HAVE {game.Inventory.Get(r.outputResource)} L" : "SPAWNS ON THE BENCH";
-                c.Text(dx, ry, owned, Dim);
-                bool can = game.CanCraft(r, station);
-                c.Text(dx, y + h - 10, can ? "[ENTER] QUEUE (" + Mathf.CeilToInt(RecipeLibrary.Seconds(r)) + " S)" : "MISSING MATERIALS", can ? Green : Red);
-            }
-            else c.Text(dx, dy, "NOTHING HERE", Dim);
-            c.Text(x + 6, y + h - 10, "A/D TAB  W/S SELECT  ESC CLOSE", Dim);
-            // the station's queue, under the panel
-            if (station && station.queue.Count > 0)
-            {
-                int qy = y + h + 3, qx = x;
-                for (int i = 0; i < station.queue.Count && qx < x + w - 40; i++)
+                c.Text(dx, ry, "MATERIAL", Dim);
+                c.Text(dx + dw - PixelCanvas.TextWidth("HAVE / NEED"), ry, "HAVE / NEED", Dim); ry += 9;
+                int limit = y + h - 77, hidden = 0, inputIndex = 0;
+                int inputCount = r.items.Length + (r.fuel != ResourceType.None ? 1 : 0);
+                foreach (var input in r.resources) if (input.type != ResourceType.None) inputCount++;
+                int capacity = Mathf.Max(1, (limit - ry) / 9 + 1);
+                craftDetailScroll = Mathf.Clamp(craftDetailScroll, 0, Mathf.Max(0, inputCount - capacity));
+                void Ingredient(string name, int have, int need)
                 {
-                    var job = station.queue[i];
-                    var jr = RecipeLibrary.Get(job.recipe);
-                    string label = (jr != null ? jr.name : "?") + (i == 0 ? " " + Mathf.RoundToInt(job.progress * 100f) + "%" : "");
-                    int tw = PixelCanvas.TextWidth(label) + 6;
-                    c.Panel(qx, qy, tw, 11);
-                    if (i == 0) c.Rect(qx + 1, qy + 9, Mathf.RoundToInt((tw - 2) * Mathf.Clamp01(job.progress)), 1, Green);
-                    c.Text(qx + 3, qy + 2, label, i == 0 ? Amber : Dim);
-                    qx += tw + 2;
+                    if (inputIndex++ < craftDetailScroll) return;
+                    if (ry > limit) { hidden++; return; }
+                    string count = have + " / " + need;
+                    c.Text(dx, ry, FitCraft(name, dw - PixelCanvas.TextWidth(count) - 8), have >= need ? Text : Red);
+                    c.Text(dx + dw - PixelCanvas.TextWidth(count), ry, count, have >= need ? Green : Red);
+                    ry += 9;
                 }
+                foreach (var (t, n) in r.resources) if (t != ResourceType.None) Ingredient(ResourceInfo.Name(t), PoolRes(t), RecipeLibrary.Amount(n));
+                foreach (var (id, n) in r.items) Ingredient(ItemIds.Name(id), PoolItem(id), n);
+                if (r.fuel != ResourceType.None)
+                {
+                    var fuel = game.CraftFuel(r, station);
+                    Ingredient("FUEL " + ResourceInfo.Name(fuel), PoolRes(fuel), r.fuelAmount);
+                }
+                if (hidden > 0 || craftDetailScroll > 0) c.Text(dx, y + h - 68, FitCraft("PGUP/PGDN: MORE MATERIALS", dw), Dim);
+                string blocked = game.CraftBlockReason(r, station);
+                c.Text(dx, y + h - 57, FitCraft(blocked ?? "[ENTER] MAKE - " + Mathf.CeilToInt(RecipeLibrary.Seconds(r) / game.CraftSpeed(r)) + " S", dw), blocked == null ? Green : Amber);
             }
+            else c.Text(dx, ly, "NO RECIPES IN THIS CATEGORY", Dim);
+            // A fixed queue footer stays on screen even with eight jobs and long recipe names.
+            int qy = y + h - 44;
+            c.Line(x + 7, qy, x + w - 8, qy, MadMax.Voxel.Pal.PanelEdge);
+            string status = "READY WHEN YOU ARE";
+            float progress = 0f;
+            if (station && station.Current != null)
+            {
+                var job = station.Current;
+                var recipe = RecipeLibrary.Get(job.recipe);
+                progress = Mathf.Clamp01(job.progress);
+                int seconds = recipe != null ? Mathf.CeilToInt((1f - progress) * RecipeLibrary.Seconds(recipe) / Mathf.Max(0.01f, job.speed)) : 0;
+                status = (station.Powered ? "MAKING " : "PAUSED - NO POWER: ") + (recipe != null ? recipe.name : "...")
+                    + "  " + Mathf.RoundToInt(progress * 100f) + "% / " + seconds + " S  [" + station.queue.Count + "/8]";
+            }
+            else if (station && station.TrayCount > 0) status = "FINISHED GOODS IN THE TRAY - COLLECT OUTSIDE THIS MENU";
+            c.Text(x + 8, qy + 5, FitCraft(status, w - 16), Amber);
+            c.Rect(x + 8, qy + 14, w - 16, 3, Hi);
+            c.Rect(x + 8, qy + 14, Mathf.RoundToInt((w - 16) * progress), 3, Green);
+            c.Text(x + 8, qy + 23, FitCraft("JOBS KEEP WORKING WHILE YOU EXPLORE", w - 16), Dim);
+            c.Text(x + 8, qy + 33, FitCraft("A/D CATEGORY   W/S SELECT   ENTER MAKE   ESC LEAVE", w - 16), Text);
+            c.Text(x + 4, y + h + 5, FitCraft("R RESEARCH   T REPAIR   Y SALVAGE   X CANCEL LAST", w - 8), Dim);
         }
     }
 }

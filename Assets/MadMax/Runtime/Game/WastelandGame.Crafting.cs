@@ -38,7 +38,7 @@ namespace MadMax.Game
         }
 
         /// <summary>Work speed of a job: the crafter's skill for its kind of work.</summary>
-        float CraftSpeed(Recipe r) => 1f + Stats.Level(SkillFor(r)) * 0.08f;
+        public float CraftSpeed(Recipe r) => 1f + Stats.Level(SkillFor(r)) * 0.08f;
 
         static Skill SkillFor(Recipe r) => r.kind == OutputKind.Part || r.kind == OutputKind.Vehicle ? Skill.Mechanics
             : r.category == RecipeCategory.Cooking || r.category == RecipeCategory.Farming ? Skill.Farming : Skill.Crafting;
@@ -95,7 +95,7 @@ namespace MadMax.Game
             }
             if (r.byproducts != null) foreach (var (t, n) in r.byproducts) { if (near) Inventory.Add(t, n); else station.tray.Add(t, n); }
             if (MadMax.World.DebrisSystem.Instance && station)
-                for (int i = 0; i < 6; i++) MadMax.World.DebrisSystem.Instance.EmitPuff(station.OutputPoint, new Color32(255, 220, 120, 255), 0.03f, Random.insideUnitSphere * 2f + Vector3.up, 0.3f);
+                for (int i = 0; i < 6; i++) MadMax.World.DebrisSystem.Instance.EmitPuff(station.OutputPoint, MadMax.Voxel.Pal.Accent, 0.03f, Random.insideUnitSphere * 2f + Vector3.up, 0.3f);
             Stats.Practice(SkillFor(r), 4f + r.resources.Length * 1.5f + (q == 2 ? 3f : 0f));
             if (station) MadMax.Audio.Sfx.Play("ding", station.OutputPoint, near ? 0.6f : 0.3f, 1f, 30f);
             Toast((near || !station ? "CRAFTED " : "READY AT THE " + station.title + ": ") + r.name + make);
@@ -121,11 +121,12 @@ namespace MadMax.Game
         /// <summary>Cancel the last queued job at a station: its inputs come back.</summary>
         public void CancelLastJob(CraftingStation st)
         {
+            var paidFuel = st && st.queue.Count > 0 ? st.queue[st.queue.Count - 1].paidFuel : ResourceType.None;
             var r = st ? st.CancelLast() : null;
             if (r == null) { Toast("NOTHING QUEUED"); return; }
             foreach (var (t, n) in r.resources) if (t != ResourceType.None) Inventory.Add(t, RecipeLibrary.Amount(n));
             foreach (var (i, n) in r.items) Inventory.AddItem(i, n);
-            if (r.fuel != ResourceType.None) Inventory.Add(r.fuel, r.fuelAmount);
+            if (paidFuel != ResourceType.None) Inventory.Add(paidFuel, r.fuelAmount);
             Toast("CANCELLED " + r.name);
         }
 

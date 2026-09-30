@@ -71,6 +71,7 @@ namespace MadMax.Game
         float targetScale = 1f;
         float yaw = 45f, orbitYaw, orbitPitch = 12f, lookYaw, lookPitch;
         Vector3 smoothFocus, lastTargetPos, velocity, filteredTarget, lastCamPos;
+        float travelFraming;
         Quaternion lastCamRot = Quaternion.identity;
         Vector3 rawCamPos;
         bool snapNext = true, cursorReleased;
@@ -219,20 +220,24 @@ namespace MadMax.Game
 
             if (dt > 0f)
             {
-                var v = (target.position - lastTargetPos) / dt;
+                var v = snapNext ? Vector3.zero : (target.position - lastTargetPos) / dt;
                 velocity = Vector3.Lerp(velocity, Vector3.ClampMagnitude(v, 40f), 1f - Mathf.Exp(-4f * dt));
             }
             lastTargetPos = target.position;
             // low-pass the followed position: sub-centimetre suspension/physics noise must not shift the pixel grid
             var p = target.position;
             if (snapNext || (p - filteredTarget).sqrMagnitude > 0.0004f) filteredTarget = Vector3.Lerp(filteredTarget, p, snapNext ? 1f : 1f - Mathf.Exp(-25f * dt));
-            Vector3 focus = filteredTarget + Vector3.up * (player ? 1.0f : 0.8f) + velocity * 0.25f;
+            // Look along the road, never along suspension bounce; cap lead to keep the car in frame.
+            var lead = Vector3.ClampMagnitude(new Vector3(velocity.x, 0f, velocity.z) * (player ? 0.16f : 0.3f), player ? 0.8f : 4f);
+            Vector3 focus = filteredTarget + Vector3.up * (player ? 1.0f : 0.8f) + lead;
+            float framing = vehicle ? Mathf.SmoothStep(0f, 1.8f, Mathf.Abs(vehicle.ForwardSpeed) / 24f) : 0f;
+            travelFraming = snapNext ? framing : Mathf.Lerp(travelFraming, framing, 1f - Mathf.Exp(-1.8f * dt));
             smoothFocus = snapNext ? focus : Vector3.Lerp(smoothFocus, focus, 1f - Mathf.Exp(-6f * dt));
 
             if (!vehicle && (mode == ViewMode.Hood || mode == ViewMode.Bumper)) mode = ViewMode.FirstPerson;
             bool perspectiveFog = CrosshairView;
             float mistAmount = MadMax.World.Atmosphere.Fog;
-            var sky = MadMax.World.DayNight.Tint(Color.Lerp(fogColor, new Color(0.7f, 0.7f, 0.68f), Mathf.Clamp01(mistAmount * 1.3f)));
+            var sky = MadMax.World.DayNight.Tint(Color.Lerp(Color.Lerp(fogColor, MadMax.Voxel.Pal.HazeDay, 0.65f), MadMax.Voxel.Pal.HazeDay, Mathf.Clamp01(mistAmount * 1.3f)));
             RenderSettings.fog = perspectiveFog || mistAmount > 0.02f;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = sky;
@@ -274,7 +279,7 @@ namespace MadMax.Game
                 case ViewMode.Isometric:
                 {
                     cam.orthographic = true;
-                    cam.orthographicSize = isoSize * (BinocularsTool.Looking ? 1.8f : 1f);     // binoculars: see further
+                    cam.orthographicSize = (isoSize + travelFraming) * (BinocularsTool.Looking ? 1.8f : 1f);     // binoculars: see further
                     cam.nearClipPlane = 0.3f; cam.farClipPlane = 300f;
                     var r = Quaternion.Euler(player && player.Interior ? 68f : Mathf.Clamp(isoPitch + tilt, 12f, 85f), yaw, 0f);   // look down into interiors
                     ct.rotation = r;

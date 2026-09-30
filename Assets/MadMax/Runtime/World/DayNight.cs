@@ -1,4 +1,5 @@
 using UnityEngine;
+using MadMax.Voxel;
 
 namespace MadMax.World
 {
@@ -62,7 +63,11 @@ namespace MadMax.World
         public static void SetDay(int d) { Day = Mathf.Max(0, d); }
 
         /// <summary>Sky / fog colour at the current time.</summary>
-        public static Color Tint(Color day) => Color.Lerp(day, new Color(0.05f, 0.06f, 0.12f), Darkness * 0.92f);
+        public static Color Tint(Color day)
+        {
+            float dusk = Mathf.Clamp01(1f - Mathf.Abs(SunDirection.y - 0.12f) * 4f) * (1f - Darkness);
+            return Color.Lerp(Color.Lerp(day, Pal.HazeDusk, dusk * 0.35f), Pal.HazeNight, Darkness * 0.92f);
+        }
 
         void Update()
         {
@@ -90,7 +95,7 @@ namespace MadMax.World
             float el = Mathf.Max(8f, Mathf.Asin(Mathf.Clamp(toSun.y, -1f, 1f)) * Mathf.Rad2Deg);
             var dir = Quaternion.AngleAxis(-el, Vector3.Cross(Vector3.up, flat.normalized)) * flat.normalized;
             sun.transform.rotation = Quaternion.LookRotation(-dir);
-            sun.color = Color.Lerp(new Color(1f, 0.95f, 0.85f), new Color(1f, 0.55f, 0.3f), Mathf.Clamp01(1f - elev * 2.5f));
+            sun.color = Color.Lerp(Color.Lerp(Pal.SunDay, Pal.SunDusk, Mathf.Clamp01(1f - elev * 2.5f)), Pal.MoonLight, Darkness);
             RenderSettings.ambientLight = Color.Lerp(new Color(0.5f, 0.45f, 0.4f), new Color(0.05f, 0.06f, 0.1f), Darkness) * weatherDim;
         }
 

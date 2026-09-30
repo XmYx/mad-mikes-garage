@@ -37,6 +37,12 @@ namespace MadMax.Voxel
         public static readonly Color32[] Pink = R("7a3c3a", "a05a56", "c07a70", "d8988a", "eab4a4");
         /// <summary>Ramp of a dye (1 red, 2 blue, 3 green, 4 yellow, 5 black, 6 white); null = undyed.</summary>
         public static Color32[] DyeRamp(int dye) => dye switch { 1 => Crimson, 2 => Navy, 3 => Moss, 4 => Ochre, 5 => Black, 6 => Cream, _ => null };
+        // Shared workshop / HUD colours: charcoal enamel, linen, brass and sage.
+        public static readonly Color32 Panel = Hex("202a29"), PanelEdge = Hex("68746a"), PanelLight = Hex("b2a17c");
+        public static readonly Color32 Ink = Hex("f2e6cd"), MutedInk = Hex("b6b6a0"), Accent = Hex("e6b76c"), Selection = Hex("405651");
+        public static readonly Color32 HazeDay = Hex("b7c2ba"), HazeDusk = Hex("c7a18a"), HazeNight = Hex("171e31");
+        public static readonly Color32 SunDay = Hex("fff0d8"), SunDusk = Hex("ffc08a"), MoonLight = Hex("a5badb");
+        public static readonly Color32 Steam = Hex("c8c5b6"), WorkshopDust = Hex("bbab8b");
         public static readonly Color32 Void = Hex("07070a");
         public static readonly Color32 LightY = Hex("ffd15a");
         public static readonly Color32 LightW = Hex("fff3c0");

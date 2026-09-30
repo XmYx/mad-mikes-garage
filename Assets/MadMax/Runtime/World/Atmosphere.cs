@@ -66,7 +66,7 @@ namespace MadMax.World
             CloudCover = Mathf.MoveTowards(CloudCover, cover, dt * 0.02f);
             var wind = Fx.Wind;
             offset += new Vector2(wind.x, wind.z) * (dt * 2.2f * CloudScale);
-            Shader.SetGlobalVector(CloudsId, new Vector4(CloudCover, Weather.Raining ? 0.6f : 0.4f, CloudScale, 0f));
+            Shader.SetGlobalVector(CloudsId, new Vector4(CloudCover, Weather.Raining ? 0.5f : 0.24f, CloudScale, 0f));
             Shader.SetGlobalVector(OffsetId, new Vector4(-offset.x, -offset.y, 0f, 0f));
 
             UpdatePuffs(cam, dt);
@@ -95,12 +95,12 @@ namespace MadMax.World
             Vector3 tint; float sat, con;
             switch (b)
             {
-                case Biome.Desert: tint = new Vector3(1.05f, 1.0f, 0.92f); sat = 1.1f; con = 1.05f; break;
+                case Biome.Desert: tint = new Vector3(1.05f, 1.0f, 0.92f); sat = 0.98f; con = 0.96f; break;
                 case Biome.Forest: tint = new Vector3(0.96f, 1.02f, 0.98f); sat = 1.05f; con = 1f; break;
-                case Biome.Tropical: tint = new Vector3(0.97f, 1.03f, 1f); sat = 1.15f; con = 1.02f; break;
+                case Biome.Tropical: tint = new Vector3(0.97f, 1.03f, 1f); sat = 1.04f; con = 0.98f; break;
                 case Biome.Nuclear: tint = new Vector3(0.95f, 1.06f, 0.86f); sat = 0.85f; con = 1.08f; break;
                 case Biome.Tundra: tint = new Vector3(0.93f, 0.98f, 1.06f); sat = 0.8f; con = 1.04f; break;
-                default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 1f; con = 1.03f; break;
+                default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 0.98f; con = 0.97f; break;
             }
             if (MadMax.Game.TitleSequence.OnMoon) { tint = new Vector3(0.97f, 1f, 1.05f); sat = 0.85f; con = 1.12f; }   // airless: cold and hard
             bool moonSet = MadMax.Game.TitleSequence.OnMoon;

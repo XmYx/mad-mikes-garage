@@ -187,7 +187,12 @@ namespace MadMax.World
             {
                 float d = (DayNight.Day + DayNight.Hours / 24f) / DaysPerSeason;
                 int s = (SeasonStart + Mathf.FloorToInt(d)) % 4;
-                if (s != Season) { Season = s; MadMax.Game.WastelandGame.Instance?.Toast(SeasonNames[s] + " IS HERE"); }
+                if (s != Season)
+                {
+                    Season = s;
+                    MadMax.Game.WastelandGame.Instance?.Toast(SeasonNames[s] + " IS HERE - " + MadMax.Npc.Market.SeasonNews(s));
+                    MadMax.Audio.RadioNetwork.Flash(SeasonNames[s] + " MARKETS: " + MadMax.Npc.Market.SeasonNews(s), 120f);
+                }
                 SeasonProgress = d - Mathf.Floor(d);
             }
             // foliage turns gold and rust through autumn, stays brown in winter, greens up in spring

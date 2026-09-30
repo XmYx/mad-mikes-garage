@@ -187,7 +187,10 @@ Shader "MadMax/PixelVoxel"
                 half night = _MadMaxNight;
                 half3 shade = _ShadowTint.rgb * (1.0h - night * 0.85h);
                 half3 amb = _Ambient.rgb * (1.0h - night * 0.6h) + half3(0.012h, 0.016h, 0.035h) * night + half3(0.05h, 0.052h, 0.06h) * _MadMaxUnderFill;
-                half3 c = albedo * (lerp(shade, light.color, q) + amb);
+                // Soft sky bounce preserves rusty silhouettes; the sun keeps its pixel light bands.
+                half3 bounce = half3(0.075h, 0.095h, 0.105h) * (1.0h - night * 0.9h);
+                half3 sunColor = light.color / (1.0h + max(light.color - 1.0h, 0.0h) * 0.45h);
+                half3 c = albedo * (lerp(shade + bounce, sunColor, q) + amb);
                 #if defined(_ADDITIONAL_LIGHTS)
                 // point lights (lamps, stoves), banded like the sun
                 InputData inputData = (InputData)0;

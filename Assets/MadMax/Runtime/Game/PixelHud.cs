@@ -27,8 +27,8 @@ namespace MadMax.Game
         GameObject overlay;
         Color32[] map; int mapSize; float mapHalf, mapCz;
 
-        static readonly Color32 Text = new Color32(255, 226, 170, 255), Dim = new Color32(190, 140, 90, 255), Amber = new Color32(255, 170, 50, 255),
-            Empty = new Color32(70, 45, 30, 255);
+        static readonly Color32 Text = MadMax.Voxel.Pal.Ink, Dim = MadMax.Voxel.Pal.MutedInk, Amber = MadMax.Voxel.Pal.Accent,
+            Empty = MadMax.Voxel.Pal.Selection;
         // bad / good: red / green, or orange / blue with COLOUR-BLIND HUD
         static Color32 Red = new Color32(235, 50, 35, 255), Green = new Color32(130, 210, 90, 255);
         public static Color32 Bad => GameSettings.Current.colourBlind ? new Color32(255, 130, 20, 255) : new Color32(235, 50, 35, 255);

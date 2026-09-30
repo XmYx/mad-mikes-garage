@@ -872,8 +872,10 @@ namespace MadMax.World
                 case 5:                                                                             // faded runway paint
                     return hs < 0.18f ? Asphalt[1] : Line;
                 case 6:                                                                             // start yard: packed gravel, oil stains
-                    if (Mathf.PerlinNoise(gx * 0.35f + 11f, gz * 0.35f + 23f) > 0.78f) return Dirt[0];
-                    return hs > 0.92f ? RockGrey[1] : Gravel[hs < 0.45f ? 0 : 1];
+                    float patch = Mathf.PerlinNoise(gx * 0.18f + 11f, gz * 0.18f + 23f);
+                    var gravel = Color32.Lerp(Gravel[1], Gravel[2], Mathf.Clamp01(patch + (hs - 0.5f) * 0.2f));
+                    if (patch > 0.78f) gravel = Color32.Lerp(gravel, Dirt[0], 0.3f);
+                    return hs > 0.97f ? Color32.Lerp(gravel, RockGrey[2], 0.25f) : gravel;
                 default:
                     return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
             }

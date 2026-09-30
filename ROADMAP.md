@@ -737,7 +737,8 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] Wet and dry roads, puddles that clear when it is sunny. *Done:* wet-asphalt sheen and road/paved puddles in `DeformableTerrain`; drying × sun and temperature in `Weather`.
 
 ### Audio
-- [ ] New hillbilly / Southern US voice sources; an armada of NPC lines (greetings, reactions in conversation, bumped into, nearby chatter, NPC-to-NPC exchanges) with some rough language, sarcasm and wasteland puns.
+- [x] New hillbilly / Southern US voice sources; an armada of NPC lines (greetings, reactions in conversation, bumped into, nearby chatter, NPC-to-NPC exchanges) with some rough language, sarcasm and wasteland puns.
+      *Done:* `Npc/NpcVoice` — 10 Southern voices by temper and gender, 1265 unique lines, 110 two-voice exchanges, speech bubbles (see CLAUDE.md, NPC voices).
 
 ### Game / HUD
 - [x] Separate audio channel volumes in the settings. *Done:* MASTER / EFFECTS / VEHICLE / WEAPON / VOICE / AMBIENT / INTERFACE / RADIO (`Sfx.Channel` by key).
@@ -771,3 +772,20 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] Intro lands on the Moon with the neon sign, Earth visible in space. *Done:* the title climbs into a darkening, starry sky and cuts to the Moon (`Designs/MoonArt`: cratered regolith, Mad Mike's crash-landed scrap rocket and its tyre tracks, an old-world lander with a bleached flag, the planet sampled from this world's generator under a cloud shell); `TitleSequence.OnMoon` stands weather, clouds and ambience down; boot film re-recorded.
 - [x] Everything new ties into crafting and resources and fits the post-apocalyptic look and lore. *Done:* boats and the sub from `slipway` recipes (scrap, wood, iron, aluminium, rubber, cloth, copper; the sub needs `bp_submarine`), dive gear at the workbench, sea base pieces paid in iron, glass, concrete and scrap, wildlife drops (hides, meat, chitin, venom) into food and clothing recipes, blueprints from loot; rusted, patched voxel looks from `Pal` ramps.
 
+## Scheduled update (2026-09-30)
+
+### Done
+- [x] **Homestead rest stop** at the start yard for a new game with a starting kit: patchwork awning, porch lanterns, workbench, chest, rug, chair, table with a radio and lamp, two tin herb planters. Ordinary placed pieces (editable, salvageable, saved). *Done:* `WastelandGame.SpawnHomestead`, pieces in `FurnitureLibrary.Homestead` (`porch_awning`, `porch_lights`, `herb_planter`); the workbench model gained a pegboard, drawers and a task lamp.
+- [x] **Crafting page readability**: wider two-column layout, HAVE / NEED material table (PgUp/PgDn scrolls long lists), one reason why a recipe is blocked (`WastelandGame.CraftBlockReason`: knowledge, power, queue, the first missing input or fuel). Menu colours come from `Pal` (`Ink`, `MutedInk`, `Accent`, `Selection`, `PanelEdge`).
+- [x] **Fuel bookkeeping**: the fuel a job actually burned (wood, charcoal or coal stand-in) is stored on the job (`CraftingStation.Job.paidFuel`, saved) and refunded on cancel; fuel that is also a recipe input is no longer double-counted (`PickFuel`). Stations near the player puff steam / heat haze, workbenches spark and ratchet.
+- [x] **Seasonal markets**: `Market.SeasonFactor` — food is cheap at the autumn harvest (cheapest in farm villages) and dear in winter and the hungry spring; winter raises fuel, cloth and medicine, summer water, spring timber and brick. The season change toasts and breaks into WasteTalk with the news (`Market.SeasonNews`).
+- [x] **Feel pass**: keyboard driving eases the steering and pedal (short ramps, a 0.35 s hold before switching between forward and automatic reverse; AI, bikes and aircraft unchanged), no park-sleep while reversing on the brake pedal; the iso camera leads along the road and widens with speed instead of bouncing with the suspension; lower wheel dust; softer grade contrast, sky bounce in `PixelVoxel`, dusk/night haze and sun colours from `Pal`; rain and wind duck smoothly under a roof or in a closed cabin; 168 m shadow distance.
+- [x] `VehicleAudio` survives a play-mode script reload (the tyre synth is rebuilt instead of throwing every frame).
+
+### Suggestions (tie the experience together)
+- [ ] **Store the harvest, sell the winter**: the seasonal price swing only pays if food keeps. Give preserved foods (smoked, dried, canned, pickled) near-zero spoilage and a recipe chain from the garden and the smokehouse, and let a root cellar / cold store piece slow spoilage in containers. Turns farming + crafting + trading into one loop across the year.
+- [ ] **Seasonal stock and chores**: vendors carry seeds and saplings in spring, preserves and firewood in winter, fishing gear in summer; residents work the village fields at harvest (`NpcLore` errands: bring in the crop, cut firewood before the first snow).
+- [ ] **Hemisphere seasons** (goes with the deferred regional weather): south of `ZEquator` the seasons should run half a year out of phase, and markets with them, so a long haul across the equator is a trade run.
+- [ ] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. Its spot sits close to the parked machines in the start yard (the excavator arm reaches the awning): move it to the yard's open side.
+- [ ] **Station sounds**: only workbenches have a working sound; stoves (sizzle), furnaces (roar), mixers (churn), stills (bubble) and sewing (clack) would let a base be heard working, through `ProceduralSfx`.
+- [ ] **Town notice boards as a news digest**: the bounty board could also post the last few journal/radio headlines about that town (raids beaten, skirmish wrecks, season prices), so what happens off-screen is visible where the player trades.
