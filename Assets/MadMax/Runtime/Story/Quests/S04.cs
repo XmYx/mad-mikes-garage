@@ -40,7 +40,7 @@ namespace MadMax.Story
                 .Pays(r => r.training.Add((Skill.Construction, 3f)));
             Step(q, "unload", "TAKE THE WEIGHT OFF BEFORE YOU WORK UNDER IT: EMPTY DELLA'S PANTRY (JARS AND HER SPARE BRICKS: KEEP THE BRICKS)", "s04_kitchen")
                 .When(Goal.Event, "s04:unloaded");
-            Step(q, "shore", "SHORE UP THE CORNER: A POST OR A WALL STANDING ON THE GROUND UNDER IT AND REACHING THE KITCHEN FLOOR ([B])", "s04_corner")
+            Step(q, "shore", "SHORE UP THE CORNER: A POST, A MINE PROP OR A WALL STANDING ON THE GROUND UNDER IT AND REACHING THE KITCHEN FLOOR ([B])", "s04_corner")
                 .When(Goal.Event, "s04:shored")
                 .Pays(r => r.training.Add((Skill.Construction, 5f)));
             Step(q, "drain", "SEND THE WATER ELSEWHERE: DIG A DITCH AT THE FLAG (SHOVEL OR A DIGGER), OR MOVE THE RAIN BARREL THERE", "s04_ditch")

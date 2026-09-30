@@ -70,6 +70,18 @@ namespace MadMax.Game
             var q = StoryLibrary.Get("S05");
             if (q != null) q.payoff = StoryLibrary.S05_Payoff(Story.Story.Route("S05", "course"), Story.Story.StepDone("S05", "medal"));
             if (Time.frameCount % 15 == 0) S05_Boards();
+            if (Story.Story.StepDone("S05", "return") && !Story.Story.StepDone("S05", "card"))
+            {
+                // the loaner has gone back: out of your hand, and the round still in it back in your pack
+                if (Inventory.GetItem("tool_pipe_pistol") <= 0)
+                {
+                    if (Player.Tool && Player.Tool.id == "tool_pipe_pistol") Player.Equip(null);
+                    int left = Rounds("tool_pipe_pistol");
+                    if (left > 0) { SetRounds("tool_pipe_pistol", 0); Inventory.AddItem("ammo_cartridge", left); }
+                }
+                Story.Story.Note("s05:card");
+                return;
+            }
 
             // the boards restored: three whole ones on the line
             if (!Story.Story.StepDone("S05", "targets") && Time.frameCount % 15 == 0)

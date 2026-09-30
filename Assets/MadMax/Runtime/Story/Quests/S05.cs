@@ -61,6 +61,7 @@ namespace MadMax.Story
                 .Says("amos", "s05_return", "HERE'S YOUR PISTOL BACK.", "CLEAN, UNLOADED, MUZZLE AWAY FROM ME. YOU'D BE AMAZED HOW RARE THAT IS. THE ROUNDS ARE ON THE HOUSE, AND I OILED YOUR KIT WHILE YOU WERE AT IT.")
                 .Needs("tool_pipe_pistol")
                 .Pays(r => r.take.Add(("tool_pipe_pistol", 1)));
+            Step(q, "card", "AMOS SIGNS YOUR RANGE CARD", "amos").When(Goal.Event, "s05:card");
             q.reward.scrap = 10; q.reward.items.Add(("ammo_cartridge", 6)); q.reward.training.Add((Skill.Firearms, 8f)); q.reward.flag = "s05_done";
             q.payoff = S05Default;
         }

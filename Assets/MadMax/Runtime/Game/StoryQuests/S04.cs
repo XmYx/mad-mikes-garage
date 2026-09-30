@@ -11,9 +11,10 @@ namespace MadMax.Game
     /// carries the floor, that the water was sent elsewhere and that the kitchen can be walked into.</summary>
     public partial class WastelandGame
     {
-        static readonly HashSet<string> S04Supports = new HashSet<string> { "post", "wall_wood", "wall_brick", "wall_concrete", "wall_scrap", "foundation_wood", "foundation_stone" };
+        static readonly HashSet<string> S04Supports = new HashSet<string> { "post", "mine_prop", "sandbag_wall", "wall_wood", "wall_plank", "wall_brick", "wall_brick_fired", "wall_concrete", "wall_panel", "wall_scrap", "foundation_wood", "foundation_stone" };
         readonly HashSet<uint> s04Warned = new HashSet<uint>();
         Placeable s04Tile, s04Pantry;
+        string s04Drain = "-"; bool s04WallSeen;
 
         partial void Scene_S04()
         {
@@ -70,7 +71,8 @@ namespace MadMax.Game
         {
             if (!StoryAnchors.Has("s04_house")) return;
             var q = StoryLibrary.Get("S04");
-            if (q != null) q.payoff = StoryLibrary.S04_Payoff(Story.Story.Route("S04", "drain"), Story.Story.Flag("s04_wall"));
+            string drain = Story.Story.Route("S04", "drain"); bool wall = Story.Story.Flag("s04_wall");
+            if (q != null && (drain != s04Drain || wall != s04WallSeen || q.payoff == null)) { s04Drain = drain; s04WallSeen = wall; q.payoff = StoryLibrary.S04_Payoff(drain, wall); }
             if (Story.Story.StepDone("S04", "tell") && !Story.Story.Flag("s04_plan")) { S04_GivePlan(); Story.Story.SetFlag("s04_plan"); Story.Story.Note("s04:plan"); }
             if (Time.frameCount % 20 != 0) return;
             var corner = StoryAnchors.Get("s04_corner");
@@ -100,10 +102,10 @@ namespace MadMax.Game
                     var reach = b; reach.Expand(0.15f);
                     if (StructureSupport.Grounded(p, b) && reach.Intersects(tile))
                     {
-                        if (p.id.StartsWith("wall")) Story.Story.SetFlag("s04_wall");
+                        if (p.id.StartsWith("wall") || p.id == "sandbag_wall") Story.Story.SetFlag("s04_wall");
                         Story.Story.Note("s04:shored");
                         MadMax.Audio.Sfx.Play("creak", corner, 0.7f, 0.8f);
-                        Toast("THE KITCHEN SETTLES ONTO THE NEW " + (p.id.StartsWith("wall") ? "WALL" : "SUPPORT") + " WITH A LONG CREAK");
+                        Toast("THE KITCHEN SETTLES ONTO THE NEW " + (FurnitureLibrary.Get(p.id)?.name ?? "SUPPORT") + " WITH A LONG CREAK");
                         break;
                     }
                     if (s04Warned.Add(p.Id)) Toast("THAT " + (FurnitureLibrary.Get(p.id)?.name ?? "PIECE") + " ISN'T CARRYING THE FLOOR: IT HAS TO STAND ON THE GROUND AND REACH THE KITCHEN");
