@@ -159,6 +159,10 @@ Pull requests are welcome. Some places to start:
 Open a pull request with a screenshot of what you added. Bug reports help most with a save file and the steps that lead to the problem.
 
 The full list of what is done and what is planned lives in [ROADMAP.md](ROADMAP.md).
+Planned [unattended acceptance playtests](ROADMAP.md#26-quality-of-life--unattended-acceptance-playtests-t2t3--planned)
+cover feature correctness, quality of life and complete journeys; the accompanying
+[world-coherence audit](ROADMAP.md#27-world-coherence--gaps-to-investigate-and-close-t2t3--planned)
+prioritises how the systems connect. These are implementation plans, not an existing test suite.
 
 ---
 
