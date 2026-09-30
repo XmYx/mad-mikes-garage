@@ -52,7 +52,7 @@ namespace MadMax.Story
             E("water_quality", true, "F", "water samples, contamination and clean-up");
             E("power_control", true, "F", "switches, timers, priority loads, outages");
             E("animal_treatment", false, "E", "treat an injured animal");
-            E("clinic", false, "G", "clinic bed and treatment of others");
+            E("clinic", true, "G", "clinic bed and treatment of others");
             E("nonlethal_bout", false, "N4", "supervised fist fight with a stop state");
             E("performance", false, "N4", "a public recital or ceremony scene");
             E("transfer", false, "N3", "readiness-gated rescue / escort operations");
