@@ -54,11 +54,11 @@ namespace MadMax.Game
 
         /// <summary>A small house of story props: <paramref name="w"/> × <paramref name="d"/> wall pieces (2 m each)
         /// centred on <paramref name="c"/> in the anchor's frame, a doorway at the front-left (+Z), a window at the
-        /// front-right, timber foundations level with the highest ground under it, optionally a flat roof. Returns the
+        /// front-right, timber foundations level with the highest ground under it (and a metre round), optionally a flat roof. Returns the
         /// height the walls stand on (a flat roof's top is 2.46 m above it).</summary>
         float Q2House(string anchor, Vector3 c, int w, int d, string wall, string door, string window, bool roof)
         {
-            float floor = Q2Ground(anchor, c, w, d) + 0.02f;
+            float floor = Q2Ground(anchor, c, w + 1f, d + 1f) + 0.02f;                             // a metre past the walls: no ledge low enough to mantle
             float y = floor + 0.12f;                                                                  // on the foundation deck
             for (int i = 0; i < w; i++)
                 for (int j = 0; j < d; j++)

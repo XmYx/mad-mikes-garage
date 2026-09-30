@@ -60,7 +60,7 @@ namespace MadMax.Story
                 .Pays(r => r.items.Add(("food_apple", 3)));
             Step(q, "home", "THE ROUND IS DONE. TELL REVA HOW EACH LETTER ENDED", "reva")
                 .Says("reva", "s11_home", "THE LETTERS FOUND THEIR ENDS. NOT ALL THE WAY YOU'D WRITE IT.",
-                      "THAT'S POST. YOU TAKE IT AS FAR AS IT GOES AND NOT A STEP FURTHER. HERE: MY OLD SATCHEL. IT'S CARRIED WORSE NEWS THAN YOURS.")
+                      "THAT'S POST. YOU TAKE IT AS FAR AS IT GOES AND NOT A STEP FURTHER. HERE: MY OLD SHOULDER BAG. IT'S CARRIED WORSE NEWS THAN YOURS.")
                 .Pays(r => r.take.Add((S11LetterHal + "|" + S11LetterIda + "|" + S11LetterPell, 3)));
             q.reward.scrap = 18; q.reward.items.Add(("cloth_schoolbag", 1)); q.reward.training.Add((Skill.Speech, 6f)); q.reward.flag = "s11_done";
             q.payoff = "REVA'S POSTBAG IS EMPTY FOR THE FIRST TIME IN TWENTY YEARS.";

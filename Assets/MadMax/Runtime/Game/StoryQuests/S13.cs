@@ -109,12 +109,14 @@ namespace MadMax.Game
                 var r = Story.Story.Route("S13", "steady");
                 if (r != null && r.StartsWith("LET ME STRAP")) Inventory.TakeItem("med_bandage");
                 else if (r != null && r.StartsWith("SPLINT")) Inventory.TakeItem("med_splint");
+                else if (r != null && r.StartsWith("FIRST AID")) Inventory.TakeItem("med_firstaid");
             }
             if (!Story.Story.Flag("s13_down_told") && Story.Story.StepDone("S13", "down"))
             {
                 Story.Story.SetFlag("s13_down_told");
                 var r = Story.Story.Route("S13", "down");
-                Toast(r != null && r.StartsWith("I'LL SHOUT") ? "CAL'S CREW ARRIVE WITH THE LONG LADDER AND A GREAT DEAL OF ADVICE" : "MARGO COMES DOWN THE LADDER RUNG BY RUNG, SWEARING POLITELY");
+                if (r != null && r.StartsWith("I'LL LOWER")) { Inventory.TakeItem("misc_rope"); Toast("THE ROPE STAYS ROUND THE CHIMNEY; MARGO IS ON THE GROUND"); }
+                else Toast(r != null && r.StartsWith("I'LL SHOUT") ? "CAL'S CREW ARRIVE WITH THE LONG LADDER AND A GREAT DEAL OF ADVICE" : "MARGO COMES DOWN THE LADDER RUNG BY RUNG, SWEARING POLITELY");
             }
 
             string up = Story.Story.Route("S13", "up"), std = Story.Story.Route("S13", "steady"), dn = Story.Story.Route("S13", "down");

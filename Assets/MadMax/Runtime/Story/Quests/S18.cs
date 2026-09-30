@@ -55,7 +55,7 @@ namespace MadMax.Story
                 .Says("tamsin", "s18_wrap", "GOOD RACE. SAME TIME NEXT WEEK?",
                       "ONLY IF YOU BRING SNACKS. HERE: A COURIER'S SATCHEL, FOR ALL THAT SHOUTING, AND A REPAIR KIT FOR WHATEVER YOU SCRAPED IN THE WASH.")
                 .Pays(r => r.take.Add((S18Ticket, 1)));
-            q.reward.items.Add(("cloth_schoolbag", 1)); q.reward.items.Add(("use_repair_kit", 1)); q.reward.resources.Add((ResourceType.Rubber, 3));
+            q.reward.items.Add(("cloth_leather_satchel", 1)); q.reward.items.Add(("use_repair_kit", 1)); q.reward.resources.Add((ResourceType.Rubber, 3));
             q.reward.training.Add((Skill.Athletics, 4f)); q.reward.flag = "s18_done";
             q.payoff = "TAMSIN'S LOOP IS RUN. SHE'S ALREADY LOOKING FOR THE NEXT MOTORIST.";
         }

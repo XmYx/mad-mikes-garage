@@ -9,7 +9,8 @@ namespace MadMax.Story
 {
     // S13 ONE GOOD ROOF (storyline §10): Cal Nix's partner Margo is on a flat roof above a collapsed outside stair with a
     // bad ankle. Assess it, get up (climb the crates at the back and mantle, the grappling hook, or a ladder you build),
-    // steady her (bandage, splint or an improvised brace), bring her down (a ladder, or pay Cal's crew for the long one).
+    // steady her (bandage, splint, first aid kit or an improvised brace), bring her down (a ladder, a rope, or pay Cal's
+    // crew for the long one).
     // Cal lends his hook, a bandage and ladder rails, so no skill or kit gates the rescue. No timer: there is no storm.
     public static partial class StoryLibrary
     {
@@ -39,19 +40,23 @@ namespace MadMax.Story
                       "OW. OKAY. THAT'S... ACTUALLY BETTER. DON'T TELL CAL I SAID OW.").Needs("med_bandage")
                 .Says("s13_margo", "s13_splint", "SPLINT FIRST, THEN WE MOVE.",
                       "PROPER KIT. EITHER YOU'VE DONE THIS BEFORE OR YOU'RE A VERY CONFIDENT LIAR. EITHER WAY: THANK YOU.").Needs("med_splint")
+                .Says("s13_margo", "s13_kit", "FIRST AID KIT. HOLD STILL, THIS WILL STING.",
+                      "IT STINGS. YOU SAID IT WOULD AND IT DOES. ...SPLINTED, CLEANED, WRAPPED. YOU CARRY A WHOLE CLINIC ROUND, DO YOU?").Needs("med_firstaid")
                 .Says("s13_margo", "s13_brace", "SIT STILL. I'LL BRACE IT WITH A ROOF BATTEN AND YOUR BELT.",
                       "MY GOOD BELT. FINE. ...IT'S HOLDING. YOU'D MAKE A ROOFER: YOU IMPROVISE BADLY, WITH CONFIDENCE.")
                 .Pays(r => r.training.Add((Skill.Survival, 4f)));
-            Step(q, "down", "BRING MARGO DOWN SAFELY: A LADDER AGAINST THE WALL ([B]), OR SHOUT FOR CAL'S CREW AND THEIR LONG LADDER", "s13_house")
+            Step(q, "down", "BRING MARGO DOWN SAFELY: A LADDER AGAINST THE WALL ([B]), A ROPE ROUND THE CHIMNEY, OR SHOUT FOR CAL'S CREW AND THEIR LONG LADDER", "s13_house")
                 .When(Goal.Build, "ladder", 5f, "DOWN A LADDER")
+                .Says("s13_margo", "s13_rope", "I'LL LOWER YOU ON A ROPE ROUND THE CHIMNEY. SLOWLY.",
+                      "A BOWLINE UNDER THE ARMS, YOUR WEIGHT ON THE CHIMNEY. SLOWLY. SLOWER. ...FEET ON THE GROUND. I MAY NEVER CLIMB AGAIN. I WILL, BUT I MAY NOT.").Needs("misc_rope")
                 .Says("s13_margo", "s13_crew", "I'LL SHOUT FOR CAL'S CREW AND THEIR LONG LADDER.",
                       "THEY'LL CHARGE CAL DOUBLE AND TELL THE STORY FOR A YEAR. WORTH IT. ...HERE THEY COME, ARGUING.");
-            q.steps[q.steps.Count - 1].any[1].price = 15;
+            q.steps[q.steps.Count - 1].any[2].price = 15;
             Step(q, "tell", "MARGO'S DOWN. TELL CAL", "cal")
                 .Says("cal", "s13_tell", "SHE'S DOWN. KEEP HER OFF ROOFS FOR A WEEK.",
                       "A WEEK. SHE'LL LAST TWO DAYS. ...THANK YOU. REALLY. KEEP WHATEVER YOU BORROWED, AND HAVE MY OLD HANDBOOK: " +
                       "THE ROOFING CHAPTER'S THE ONE WITH THE TEA STAINS.");
-            q.reward.items.Add(("book_builder", 1)); q.reward.resources.Add((ResourceType.Cloth, 6));
+            q.reward.items.Add(("book_builder", 1)); q.reward.items.Add(("misc_rope", 2)); q.reward.resources.Add((ResourceType.Cloth, 3));
             q.reward.training.Add((Skill.Athletics, 5f)); q.reward.training.Add((Skill.Construction, 5f)); q.reward.flag = "s13_done";
             q.payoff = "MARGO NIX IS DOWN OFF THE ROOF, ANKLE AND PRIDE BOTH STRAPPED.";
         }
@@ -60,8 +65,10 @@ namespace MadMax.Story
         public static string S13Payoff()
         {
             string up = Story.Route("S13", "up"), st = Story.Route("S13", "steady"), dn = Story.Route("S13", "down");
-            string how = st == null ? "" : st.StartsWith("LET ME STRAP") ? " WITH A STRAPPED ANKLE" : st.StartsWith("SPLINT") ? " IN A PROPER SPLINT" : " IN A BATTEN-AND-BELT BRACE";
-            string way = dn != null && dn.StartsWith("I'LL SHOUT") ? "CAL'S CREW BROUGHT THE LONG LADDER, ARGUING" : "SHE CAME DOWN YOUR LADDER RUNG BY RUNG";
+            string how = st == null ? "" : st.StartsWith("LET ME STRAP") ? " WITH A STRAPPED ANKLE" : st.StartsWith("SPLINT") ? " IN A PROPER SPLINT"
+                       : st.StartsWith("FIRST AID") ? " PATCHED FROM A FIRST AID KIT" : " IN A BATTEN-AND-BELT BRACE";
+            string way = dn == null ? "SHE CAME DOWN" : dn.StartsWith("I'LL SHOUT") ? "CAL'S CREW BROUGHT THE LONG LADDER, ARGUING"
+                       : dn.StartsWith("I'LL LOWER") ? "YOU LOWERED HER ON A ROPE ROUND THE CHIMNEY" : "SHE CAME DOWN YOUR LADDER RUNG BY RUNG";
             string cal = up == "THE GRAPPLING HOOK" ? "HOOK LIKE A PIRATE" : up == "UP A LADDER" ? "BUILD LADDERS LIKE A SENSIBLE PERSON" : "CLIMB LIKE A CAT";
             return "MARGO NIX IS OFF THE ROOF" + how + ": " + way + ". CAL TELLS PEOPLE YOU " + cal + ".";
         }
