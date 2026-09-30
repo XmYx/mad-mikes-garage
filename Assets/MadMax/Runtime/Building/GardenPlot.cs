@@ -23,6 +23,8 @@ namespace MadMax.Building
         float irrigatedUntil;        // kept moist by a drip line or a channel (grows a little faster)
         public bool Irrigated => Time.time < irrigatedUntil;
         public Vector3 soil = new Vector3(0, 0.18f, 0);
+        /// <summary>Harvest multiplier: a 2 m field bed gives more than a small garden plot.</summary>
+        public float yieldScale = 1f;
         MeshFilter plantMesh;
         int shownStage = -1;
         float roofCheck, pestT, crowUntil, irrigT;
@@ -172,6 +174,29 @@ namespace MadMax.Building
             if (g && g.Player && Vector3.Distance(g.Player.transform.position, transform.position) < 40f) g.Toast(s);
         }
 
+        /// <summary>Sow (a seeder, or a hand without the [E] prompt): true if the bed was empty.</summary>
+        public bool Sow(string seed, float quality)
+        {
+            if (crop != null || FoodLibrary.Crop(seed) == null) return false;
+            crop = seed; growth = 0f; health = 1f; shownStage = -1; seedQuality = quality;
+            GetComponent<Placeable>()?.Dirty();
+            return true;
+        }
+
+        /// <summary>Machine harvest (a harvester passing over): the crop goes to <paramref name="g"/>'s store, the bed is cleared.</summary>
+        public bool Reap(MadMax.Game.WastelandGame g, float scale, Inventory into = null)
+        {
+            var def = FoodLibrary.Crop(crop);
+            if (def == null || def.tree) return false;
+            if (Dead) { crop = null; growth = 0f; health = 1f; shownStage = -1; GetComponent<Placeable>()?.Dirty(); return false; }
+            if (!Ripe) return false;
+            g.Harvest(def, transform.position, fertility, health, seedQuality, yieldScale * scale, false, into);
+            fertility = Mathf.Max(0.1f, fertility - 0.25f);
+            crop = null; growth = 0f; health = 1f; shownStage = -1;
+            GetComponent<Placeable>()?.Dirty();
+            return true;
+        }
+
         public void Water(float amount) { water = Mathf.Min(1f, water + amount); GetComponent<Placeable>()?.Dirty(); }
         /// <summary>Drip line / channel: water plus the steady-moisture growth bonus for a while.</summary>
         public void Irrigate(float amount) { water = Mathf.Min(1f, water + amount); irrigatedUntil = Time.time + 12f; }
@@ -223,7 +248,7 @@ namespace MadMax.Building
             else if (Dead) { crop = null; growth = 0f; health = 1f; shownStage = -1; g.Toast("CLEARED THE BED"); }
             else if (Ripe)
             {
-                g.Harvest(def, transform.position, fertility, health, seedQuality);
+                g.Harvest(def, transform.position, fertility, health, seedQuality, yieldScale);
                 fertility = Mathf.Max(0.1f, fertility - (def.tree ? 0.1f : 0.25f));               // a harvest takes from the soil
                 crop = null; growth = 0f; health = 1f; shownStage = -1;
             }

@@ -32,7 +32,7 @@ namespace MadMax.Vehicles
     /// <see cref="DeformableTerrain.ApplyTerraform"/> and are replicated.</summary>
     public class Machine : MonoBehaviour
     {
-        public enum Kind { Excavator, Backhoe, Dozer, DumpTruck, Paver, Roller }
+        public enum Kind { Excavator, Backhoe, Dozer, DumpTruck, Paver, Roller, Tractor }
         public Kind kind;
         public float load;                      // m³ of soil in the bucket / blade pile
         public ResourceType loadType = ResourceType.Sand;
@@ -53,6 +53,8 @@ namespace MadMax.Vehicles
         float bladeLift = -14f, bladePitch = 0f, bladeAngle = 0f;      // dozer: carried up (negative) until the operator lowers it
         float bed;                                                      // dump truck 0..50
         float screed;                                                   // paver
+        float hitch = 1f;                                               // tractor: implement 0 lowered .. 1 raised
+        public int Worked { get; private set; }                         // tractor: field cells worked by the implement
         Vector3 lastPos;
         SoilHeap heap, rearHeap, bedHeap;
         float bedFill, bedScan, trickle;
@@ -81,11 +83,11 @@ namespace MadMax.Vehicles
                 if (s.name == "tool") toolSocket = s;
                 if (s.name == "tool_rear") rearSocket = s;
             }
-            if (kind == Kind.DumpTruck || kind == Kind.Paver)
+            if (kind == Kind.DumpTruck || kind == Kind.Paver || kind == Kind.Tractor)
             {
                 store = gameObject.AddComponent<Container>();
-                store.title = kind == Kind.DumpTruck ? "TIPPER BED" : "PAVER HOPPER";
-                store.capacity = kind == Kind.DumpTruck ? 12000f : 4000f;
+                store.title = kind == Kind.DumpTruck ? "TIPPER BED" : kind == Kind.Paver ? "PAVER HOPPER" : "SEED HOPPER, TANK AND GRAIN BIN";
+                store.capacity = kind == Kind.DumpTruck ? 12000f : kind == Kind.Paver ? 4000f : 1500f;
             }
             lastPos = transform.position;
         }
@@ -206,6 +208,10 @@ namespace MadMax.Vehicles
                     break;
                 case Kind.Roller:
                     Status = "ROLLER  COMPACTS WET PAVING";
+                    break;
+                case Kind.Tractor:
+                    Hinge(ref hitch, Mathf.Clamp(MachineKeys.Axis(k.h2, k.h1) + k.up, -1f, 1f), 1.6f, 0f, 1f, dt);
+                    Status = "TRACTOR  " + (Implement != null ? ImplementName(Implement) + (hitch < 0.15f ? " LOWERED: DRIVE TO WORK" : " RAISED") : "NO IMPLEMENT") + "  UP/DN RAISE/LOWER  " + Worked + " BEDS";
                     break;
             }
         }
@@ -370,6 +376,11 @@ namespace MadMax.Vehicles
                     if (cut > 0f) { loadType = soil; Clods(blade + Vector3.up * 0.5f + transform.forward * 0.5f, soil, 4, 0.9f, transform.forward * (speed + 1f)); }
                     break;
                 }
+                case Kind.Tractor:
+                    if (!Tool || hitch > 0.15f || speed < 0.3f || speed > 9f || travel < 0.9f) break;
+                    travel = 0f;
+                    WorkField(terrain);
+                    break;
                 case Kind.DumpTruck:
                     if (bed < 35f || (tick -= dt) > 0f) break;
                     tick = 0.5f;
@@ -504,6 +515,52 @@ namespace MadMax.Vehicles
                 case Kind.Paver:
                     if (tool) tool.localRotation = Quaternion.Euler(screed, 0f, 0f);
                     break;
+                case Kind.Tractor:
+                    if (tool) { tool.localPosition = Vector3.up * (hitch * 0.45f); tool.localRotation = Quaternion.Euler(-hitch * 6f, 0f, 0f); }
+                    break;
+            }
+        }
+
+        // ---------------------------------------------------------------- tractor implements (depth stage B)
+        string Implement => toolSocket && toolSocket.Current ? toolSocket.Current.partId : null;
+
+        static string ImplementName(string id) => id == "tool_plough" ? "PLOUGH" : id == "tool_seeder" ? "SEEDER" : id == "tool_harvester" ? "HARVESTER" : id == "tool_sprayer" ? "SPRAYER" : "IMPLEMENT";
+
+        /// <summary>The lowered implement works the field cells across its width behind the tractor: the plough tills,
+        /// the seeder sows (from the hopper, then the driver's pack), the sprayer waters (tank, then pack), the
+        /// harvester reaps into the grain bin.</summary>
+        void WorkField(DeformableTerrain terrain)
+        {
+            var game = MadMax.Game.WastelandGame.Instance;
+            if (!game) return;                                                                   // runs where the machine is simulated (FixedUpdate checks Simulated)
+            string id = Implement;
+            float half = id == "tool_sprayer" ? 2.4f : 1.9f;                                    // two 2 m cells across (the sprayer's booms reach wider)
+            float back = id == "tool_plough" ? 2.2f : id == "tool_harvester" ? 1.4f : id == "tool_sprayer" ? 1.4f : 0.9f;
+            var at = Tool.position - transform.forward * back;
+            for (float off = -half; off <= half + 0.01f; off += 1f)
+            {
+                var p = at + transform.right * off;
+                bool did = false;
+                switch (id)
+                {
+                    case "tool_plough":
+                        did = Fields.Till(game, p) != null;
+                        if (did) Clods(new Vector3(p.x, terrain.Height(p.x, p.z) + 0.3f, p.z), ResourceType.Clay, 3, 0.6f, transform.right * Mathf.Sign(off + 0.01f) * 1.2f + Vector3.up);
+                        break;
+                    case "tool_seeder": did = Fields.Sow(game, p, store ? store.inventory : null); break;
+                    case "tool_sprayer":
+                        did = Fields.Spray(game, p, store ? store.inventory : null);
+                        if (did) Fx.Smoke(new Vector3(p.x, terrain.Height(p.x, p.z) + 0.6f, p.z), Vector3.down * 0.4f, 0.4f, new Color(0.75f, 0.85f, 0.95f, 0.45f), 0.8f);
+                        break;
+                    case "tool_harvester":
+                    {
+                        var bed = Fields.BedAt(p);
+                        did = bed && bed.Reap(game, 1f, store ? store.inventory : null);
+                        if (did) Fx.Smoke(bed.transform.position + Vector3.up * 0.8f, Vector3.up + transform.right, 0.5f, new Color(0.85f, 0.75f, 0.45f, 0.6f), 1.2f);
+                        break;
+                    }
+                }
+                if (did) { Worked++; if (driver && driver.Occupied) game.Stats.Practice(MadMax.RPG.Skill.Farming, 0.3f); }
             }
         }
     }

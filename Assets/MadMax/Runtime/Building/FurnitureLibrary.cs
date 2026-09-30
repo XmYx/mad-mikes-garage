@@ -158,6 +158,11 @@ namespace MadMax.Building
                 D("skull_pole", "SKULL POLE", De, BuildPieces.SkullPole(), 2, false, null, (W, 1), (St, 1)),
                 D("flower_pot", "FLOWER POT", De, BuildPieces.FlowerPot(), 1, false, null, (St, 1)).Needs("crop_flower"),
 
+                // tilled field beds (the hoe or a tractor's plough makes them, not the build menu)
+                new FurnitureDef { id = "field_bed", name = "FIELD BED", category = BuildCategory.Hidden, grid = BuildPieces.FieldBed(), cost = new (ResourceType, int)[0], hits = 2,
+                    mesh = VoxelMesher.Build(BuildPieces.FieldBed(), "Furniture_field_bed"),
+                    setup = go => { var p = go.AddComponent<GardenPlot>(); p.yieldScale = 2.2f; p.soil = new Vector3(0f, 0.1f, 0f); p.fertility = 0.6f; var c = go.GetComponent<Collider>(); if (c) c.isTrigger = true; } },   // implements and wheels pass over
+
                 // planted trees (placed with saplings, not from the build menu)
                 new FurnitureDef { id = "tree_planted", name = "TREE", category = BuildCategory.Hidden, cost = new[] { (W, 10) }, hits = 6, mesh = Spool(false), setup = go => go.AddComponent<PlantedTree>() },
             };
@@ -169,6 +174,7 @@ namespace MadMax.Building
             defs.AddRange(Sea());
             defs.AddRange(Homestead());
             defs.AddRange(KitchenPieces());
+            defs.AddRange(FarmPieces());
             Upgrades();
         }
 

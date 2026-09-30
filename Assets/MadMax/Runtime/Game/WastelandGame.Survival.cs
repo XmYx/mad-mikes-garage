@@ -227,16 +227,16 @@ namespace MadMax.Game
 
         /// <summary>Pick a crop: more from fertile soil and healthy plants; seeds saved carry the harvest's make
         /// (Farming skill, soil, parent seeds), and better seeds grow faster.</summary>
-        public void Harvest(CropDef def, Vector3 at, float fertility, float health, float seedQuality)
+        public void Harvest(CropDef def, Vector3 at, float fertility, float health, float seedQuality, float scale = 1f, bool byHand = true, Inventory into = null)
         {
             var got = new List<string>();
             int farm = Stats.Level(Skill.Farming);
-            float skill = (1f + farm * 0.08f) * (0.6f + 0.6f * fertility) * Mathf.Max(0.3f, health) * (0.9f + 0.1f * seedQuality);
+            float skill = (1f + farm * 0.08f) * (0.6f + 0.6f * fertility) * Mathf.Max(0.3f, health) * (0.9f + 0.1f * seedQuality) * scale;
             foreach (var (item, min, max) in def.yields)
             {
                 int n = Mathf.RoundToInt(Random.Range(min, max + 1) * skill);
                 if (n <= 0) continue;
-                Inventory.AddItem(item, n);
+                (into ?? Inventory).AddItem(item, n);
                 got.Add(n + " " + ItemCatalog.Name(item));
             }
             if (!def.tree && Random.value < def.seedChance + 0.35f + farm * 0.04f)
@@ -247,9 +247,8 @@ namespace MadMax.Game
                 got.Add(n + " " + QualityNames[q] + " SEEDS");
             }
             if (def.tree && Random.value < def.seedChance) { Inventory.AddItem(def.seed); got.Add("SAPLING"); }
-            Stats.Practice(Skill.Farming, 6f);
-            Soil(2f);
-            Toast("HARVESTED " + string.Join(", ", got));
+            Stats.Practice(Skill.Farming, byHand ? 6f : 2f);
+            if (byHand) { Soil(2f); Toast("HARVESTED " + string.Join(", ", got)); }
         }
 
         /// <summary>Plant a sapling on the ground in front of the player.</summary>

@@ -43,9 +43,9 @@ namespace MadMax.Story
             E("cast", true, "N1", "authored characters placed at story anchors");
             // still to build (depth stages B-I and story stages N1-N5)
             E("evidence", false, "N2", "evidence records that survive losing one copy");
-            E("fields", false, "B", "tilled field beds on open ground");
-            E("tractor", false, "B", "tractor with plough, seeder, harvester, sprayer");
-            E("irrigation_control", false, "B", "irrigation timers and river pumps");
+            E("fields", true, "B", "tilled field beds on open ground");
+            E("tractor", true, "B", "tractor with plough, seeder, harvester, sprayer");
+            E("irrigation_control", true, "B", "irrigation timers and river pumps");
             E("roads", false, "C", "gravel, road paint, signs, player roads on the map");
             E("bridges", false, "C", "timber and steel bridge decks");
             E("cold_storage", false, "F", "fridges that keep food by temperature and power");

@@ -34,6 +34,7 @@ namespace MadMax.Game.Acceptance
             yield return new DeformationSetting();
             yield return new ExhaustSmoke();
             yield return new CookingLadder();
+            yield return new FarmingLadder();
             yield return new ScrapeMarks();
             yield return new SunAndMoon();
             yield return new CrawlerMud("Bulldozer");

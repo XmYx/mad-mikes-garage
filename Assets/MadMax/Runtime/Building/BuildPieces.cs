@@ -423,6 +423,18 @@ namespace MadMax.Building
         }
 
         // ------------------------------------------------------------------ garden & industry
+        /// <summary>A tilled field bed (depth stage B): 2 × 2 m of ridged soil, no boards, level with the ground.</summary>
+        public static VoxelGrid FieldBed()
+        {
+            var g = new VoxelGrid().Mat((byte)ResourceType.Clay);
+            for (int x = -12; x <= 12; x++) for (int z = -12; z <= 12; z++)
+            {
+                g.Set(x, 0, z, Pal.Ramp(Soil, 1, 983));
+                if ((x + 12) % 4 != 0) g.Set(x, 1, z, Pal.Ramp(Soil, (x + 12) % 4 == 2 ? 3 : 2, 984));   // ridges and furrows
+            }
+            return g;
+        }
+
         public static VoxelGrid GardenBed(int hx, int hz)
         {
             var g = new VoxelGrid().Mat(Wood);

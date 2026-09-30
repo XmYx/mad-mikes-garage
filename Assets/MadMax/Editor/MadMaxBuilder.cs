@@ -121,7 +121,7 @@ namespace MadMax.EditorTools
             game.terrainMaterial = terrainMat;
             game.propMaterial = propMat;
             game.vehiclePrefabs = new[] { vehicles["Interceptor"], vehicles["Scavenger"], vehicles["Trabant"], vehicles["Hauler"],
-                                          vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Wrecker"],
+                                          vehicles["Excavator"], vehicles["Backhoe"], vehicles["Bulldozer"], vehicles["DumpTruck"], vehicles["Paver"], vehicles["Roller"], vehicles["Tractor"], vehicles["Wrecker"],
                                           vehicles["Pickup"], vehicles["Coupe"], vehicles["Sedan"], vehicles["Wagon"], vehicles["TowTruck"],
                                           vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
                                           vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"],
@@ -204,7 +204,7 @@ namespace MadMax.EditorTools
 
             vehicles = new Dictionary<string, GameObject>();
             foreach (var d in new[] { VehicleDesigns.Interceptor(), VehicleDesigns.Scavenger(), VehicleDesigns.Trabant(), VehicleDesigns.Hauler(), VehicleDesigns.Tanker(), VehicleDesigns.TankerSmall(), VehicleDesigns.CargoTrailer(),
-                                      VehicleDesigns.Excavator(), VehicleDesigns.Backhoe(), VehicleDesigns.Bulldozer(), VehicleDesigns.DumpTruck(), VehicleDesigns.Paver(), VehicleDesigns.Roller(),
+                                      VehicleDesigns.Excavator(), VehicleDesigns.Backhoe(), VehicleDesigns.Bulldozer(), VehicleDesigns.DumpTruck(), VehicleDesigns.Paver(), VehicleDesigns.Roller(), VehicleDesigns.Tractor(),
                                       VehicleDesigns.Wrecker(), VehicleDesigns.CarTrailer(), VehicleDesigns.CarTrailerDouble(),
                                       VehicleDesigns.Pickup(), VehicleDesigns.Coupe(), VehicleDesigns.Sedan(), VehicleDesigns.Wagon(), VehicleDesigns.TowTruck(),
                                       VehicleDesigns.Bus(), VehicleDesigns.Ambulance(), VehicleDesigns.Apc(), VehicleDesigns.SemiTractor(), VehicleDesigns.BoxTrailer(),
