@@ -4,7 +4,8 @@ using MadMax.RPG;
 namespace MadMax.Story
 {
     // P2.2 A THIRD FIELD: choose the field between the hamlets or a rotation (Oda's field first), tell Barnaby, then
-    // build two market stalls, a latrine and a water point on the market field (the hamlets chip in timber and canvas).
+    // build two market stalls, a latrine and a water point on the market field, the water well clear of the latrine
+    // (WaterQuality: a used pit fouls a well within 12 m). The hamlets chip in timber and canvas.
     public static partial class StoryLibrary
     {
         static partial void Author_P2_2(QuestDef q)
@@ -22,7 +23,7 @@ namespace MadMax.Story
             Step(q, "stalls", "BUILD TWO MARKET STALLS ON THE MARKET FIELD ([B], FURNITURE)", "p2_market").When(Goal.Event, "p2_2:stalls")
                 .Pays(r => r.training.Add((Skill.Construction, 4f)));
             Step(q, "latrine", "SANITATION: BUILD A LATRINE BY THE MARKET FIELD", "p2_market").When(Goal.Build, "latrine", 22f);
-            Step(q, "water", "WATER FOR THE MARKET: A WELL, RAIN COLLECTOR OR WATER TANK", "p2_market").When(Goal.Build, "well|rain_collector|water_tank", 24f);
+            Step(q, "water", "WATER FOR THE MARKET: A WELL, RAIN COLLECTOR OR WATER TANK, 12 M OR MORE FROM THE LATRINE (A USED PIT FOULS A WELL)", "p2_market").When(Goal.Event, "p2_2:water");
             q.reward.scrap = 25; q.reward.training.Add((Skill.Construction, 6f));
             q.payoff = "THE MARKET FIELD HAS STALLS, A LATRINE AND WATER.";
         }

@@ -68,7 +68,7 @@ namespace MadMax.Game
                 // at the view: out of the car, standing by the drop
                 nell.companion = false;
                 if (nell.Driving && Mathf.Abs(car.ForwardSpeed) < 1f) nell.LeaveWheel();
-                if (StoryAnchors.Has("p1_view")) { nell.home = StoryAnchors.Get("p1_view"); nell.homeYaw = StoryAnchors.Yaw("p1_view"); }
+                if (StoryAnchors.Has("p1_view")) { nell.home = StoryAnchors.Get("p1_view"); nell.homeYaw = StoryAnchors.Yaw("p1_view"); nell.homeRadius = 2f; }
                 return;
             }
             // travelling: to the lookout, then home
@@ -87,7 +87,8 @@ namespace MadMax.Game
                     if (arrived) return;
                     if (dark && !home) { P1Say("NELL: NOT IN THE DARK. FIRST LIGHT, SUNDAY OR NOT."); return; }
                     var door = car.transform.position - car.transform.right * 1.8f;
-                    if (Flat(nell.transform.position - car.transform.position) > 6f) { nell.home = door; return; }   // walks over to the car
+                    if (Flat(nell.transform.position - car.transform.position) > 9f) { nell.home = door; nell.homeRadius = 1.5f; return; }   // walks over to the car
+                    nell.homeRadius = 5f;
                     nell.TakeWheel(car);
                     if (car.TryGetComponent<AiDriver>(out var ai0)) ai0.goal = AiDriver.Goal.Park;
                     return;
@@ -135,7 +136,7 @@ namespace MadMax.Game
 
         void P1RestoreNell(MadMax.Npc.Npc nell)
         {
-            nell.companion = false;
+            nell.companion = false; nell.homeRadius = 5f;
             if (p1HomeSaved) { nell.home = p1NellHome; nell.homeYaw = p1NellYaw; }
             castBodies["nell"] = nell; castAt["nell"] = "nell";
             p1Nell = null; p1HomeSaved = false;

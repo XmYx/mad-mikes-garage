@@ -26,11 +26,30 @@ namespace MadMax.Game
             StoryLibrary.Get("P2.2").payoff = turns
                 ? "ODA'S FIELD HOSTS THE FIRST MARKET: TWO STALLS, A LATRINE, WATER. NEXT MONTH IT'S BARNABY'S TURN, AND HE'S ALREADY COMPLAINING ABOUT IT."
                 : "THE FIELD BETWEEN THE HAMLETS HAS TWO STALLS, A LATRINE AND WATER. IT BELONGS TO NEITHER, WHICH IS THE POINT.";
-            if (Story.Story.StepDone("P2.2", "stalls")) return;
-            var at = StoryAnchors.Get("p2_market"); int stalls = 0;
-            foreach (var p in Placeable.All)
-                if (p && p.id == "player_stall" && !IsStoryProp(p) && Flat(p.transform.position - at) <= 18f) stalls++;
-            if (stalls >= 2) Story.Story.Note("p2_2:stalls");
+            var at = StoryAnchors.Get("p2_market");
+            if (!Story.Story.StepDone("P2.2", "stalls"))
+            {
+                int stalls = 0;
+                foreach (var p in Placeable.All)
+                    if (p && p.id == "player_stall" && !IsStoryProp(p) && Flat(p.transform.position - at) <= 18f) stalls++;
+                if (stalls >= 2) Story.Story.Note("p2_2:stalls");
+            }
+            if (Story.Story.StepDone("P2.2", "latrine") && !Story.Story.StepDone("P2.2", "water"))
+            {
+                // water within 24 m of the field, and no latrine of the player's within the sewage reach of it
+                bool ok = false, tooClose = false;
+                foreach (var wp in Placeable.All)
+                {
+                    if (!wp || IsStoryProp(wp) || (wp.id != "well" && wp.id != "rain_collector" && wp.id != "water_tank") || Flat(wp.transform.position - at) > 24f) continue;
+                    bool clear = true;
+                    foreach (var lp in Placeable.All)
+                        if (lp && lp.id == "latrine" && Flat(lp.transform.position - wp.transform.position) < WaterQuality.SewageReach) { clear = false; break; }
+                    if (clear) { ok = true; break; }
+                    tooClose = true;
+                }
+                if (ok) Story.Story.Note("p2_2:water");
+                else if (tooClose) P1Say("ODA: NOT NEXT TO THE LATRINE. TWELVE PACES AT LEAST, OR NOBODY DRINKS HERE TWICE.");
+            }
         }
     }
 }

@@ -31,6 +31,7 @@ namespace MadMax.Game
             {
                 Story.Story.SetFlag("p1_2_dealt");
                 var trophy = StoryLibrary.P1Trophy(deal);
+                using var feed = MadMax.Items.Inventory.Source("TRADED", "TRADED");
                 if (trophy != null && Inventory.TakeItem(trophy)) Journal.Add("TRADE", "OTIS VANE TOOK THE " + MadMax.Items.ItemCatalog.Name(trophy));
                 if (StoryLibrary.P1Bought(deal))
                 {

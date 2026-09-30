@@ -30,6 +30,7 @@ namespace MadMax.Game
             if (Story.Story.StepDone("P2.4", "deliver") && !Story.Story.Flag("p2_lamps"))
             {
                 Story.Story.SetFlag("p2_lamps");
+                using var feed = MadMax.Items.Inventory.Source("SUPPLIED", "SUPPLIED");
                 int f = Mathf.Min(10, Inventory.Get(ResourceType.Fuel));
                 if (f > 0) Inventory.TrySpend(ResourceType.Fuel, f);
                 Journal.Add("SUPPLY", f + " L OF LAMP FUEL INTO THE MARKET'S LANTERNS");

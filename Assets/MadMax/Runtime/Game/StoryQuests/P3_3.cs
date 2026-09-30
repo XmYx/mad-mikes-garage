@@ -25,8 +25,11 @@ namespace MadMax.Game
             if (!Story.Story.Flag("p3_settled"))
             {
                 Story.Story.SetFlag("p3_settled");
-                if (how.StartsWith("THESE WERE IN THE MERIDIAN")) Inventory.TakeItem("story_p3_letters");
-                else if (how.StartsWith("THIS WAS IN THE ALBA")) Inventory.TakeItem("story_p3_photo");
+                using (MadMax.Items.Inventory.Source("RETURNED"))
+                {
+                    if (how.StartsWith("THESE WERE IN THE MERIDIAN")) Inventory.TakeItem("story_p3_letters");
+                    else if (how.StartsWith("THIS WAS IN THE ALBA")) Inventory.TakeItem("story_p3_photo");
+                }
                 if (honest)
                 {
                     Story.Story.SetFlag("p3_mooring");

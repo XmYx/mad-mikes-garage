@@ -67,7 +67,7 @@ namespace MadMax.Game
             if (how != null && !fixedUp)
             {
                 Story.Story.SetFlag("p3_seam_fixed");
-                if (how.StartsWith("HERE'S A REPAIR KIT")) Inventory.TakeItem("use_repair_kit");
+                using (MadMax.Items.Inventory.Source("HANDED OVER")) if (how.StartsWith("HERE'S A REPAIR KIT")) Inventory.TakeItem("use_repair_kit");
                 if (dmg) dmg.StraightenFrame(1f);
                 if (hold) foreach (var fish in new[] { "food_fish_raw", "food_fish_glow" }) { int n = hold.inventory.GetItem(fish); if (n > 0) hold.inventory.TakeItem(fish, n); }   // the old catch went over the side
                 Journal.Add("STORY", how.StartsWith("WELDED") ? "YOU WELDED THE TRAWLER'S SEAM SHUT" : how.StartsWith("HERE'S") ? "HALVARD PATCHED THE SEAM WITH YOUR REPAIR KIT" : "THE BOATYARD CLOSED THE SEAM ON YOUR SCRAP");
