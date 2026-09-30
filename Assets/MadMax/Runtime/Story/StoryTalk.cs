@@ -24,10 +24,12 @@ namespace MadMax.Story
                     {
                         if (Story.StepDone(q.id, s.id) || (s != Story.Current(q) && !s.optional)) continue;
                         foreach (var c in s.any)
-                            if (c.goal == Goal.Talk && c.key == key && c.say != null && (c.requires == null || g.Inventory.GetItem(c.requires) > 0))
+                            if (c.goal == Goal.Talk && c.key == key && c.say != null && (c.requires == null || g.Inventory.GetItem(c.requires) > 0)
+                                && (c.price <= 0 || g.Inventory.Get(MadMax.Items.ResourceType.Scrap) >= c.price))
                             {
-                                string note = "talk:" + key + ":" + c.topic;
-                                list.Add(new Topic { say = c.say, reply = c.reply, act = () => Story.Note(note) });
+                                string note = "talk:" + key + ":" + c.topic; int price = c.price;
+                                list.Add(new Topic { say = c.say + (price > 0 ? " [" + price + " SCRAP]" : ""), reply = c.reply,
+                                    act = () => { if (price > 0) g.Inventory.TrySpend(MadMax.Items.ResourceType.Scrap, price); Story.Note(note); } });
                             }
                     }
                 }

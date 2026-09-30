@@ -20,6 +20,9 @@ namespace MadMax.Story
         Craft,      // a crafting job with the output id finished (event "craft:{id}")
         Drive,      // drive n metres in a fleet vehicle
         Event,      // any other noted event key (Story.Note)
+        Steps,      // at least `amount` of the quest's steps listed in key ("a,b,c") are done
+        Bring,      // a vehicle carrying story tag `key` within radius of the step's waypoint anchor
+        Ground,     // the ground at anchor `key` moved by `amount` m since the quest began (negative = dug, positive = raised)
     }
 
     public class Condition
@@ -31,6 +34,7 @@ namespace MadMax.Story
         public string label;        // shown when a step has alternatives
         public string say, reply;   // Talk: the player's line and the answer
         public string requires;     // Talk: the topic only shows while carrying this item
+        public int price;           // Talk: costs this much scrap (shown only when the player can pay)
     }
 
     public class StepDef
@@ -57,7 +61,8 @@ namespace MadMax.Story
         public readonly List<(MadMax.RPG.Skill skill, float xp)> training = new List<(MadMax.RPG.Skill, float)>();
         public string flag;         // a world flag set on payment ("car_owned", ...)
         public readonly List<(string item, int n)> take = new List<(string, int)>();   // handed over by the player
-        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null && take.Count == 0;
+        public readonly List<string> evidence = new List<string>();                     // evidence records (Story.Evidence)
+        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null && take.Count == 0 && evidence.Count == 0;
     }
 
     public class QuestDef

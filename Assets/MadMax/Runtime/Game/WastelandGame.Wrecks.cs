@@ -81,6 +81,7 @@ namespace MadMax.Game
                 }
                 int wseed = rnd.Next();
                 if (i >= 3 && (World.YardWeight(pos.x, pos.z) > 0f || World.Sample(pos.x, pos.z).roadDist < 4.5f)) continue;   // never on a lane or in the yard
+                if (World.Reserved(pos.x, pos.z)) continue;                                              // campaign scenes stay clear
                 wreckPlans.Add(new WreckPlan { prefab = pf, pos = pos, dir = dir, seed = wseed, cold = i < 3 });
             }
             // four in each scrapyard lot

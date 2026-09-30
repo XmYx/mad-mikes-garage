@@ -62,7 +62,7 @@ namespace MadMax.Items
             { "misc_coil", "GENERATOR COIL" }, { "misc_blade", "TURBINE BLADE" }, { "misc_solar_cell", "SOLAR CELL" },
             { "kit_solar_panel", "SOLAR PANEL KIT" }, { "kit_wind_large", "LARGE WIND TURBINE KIT" }, { "kit_water_turbine", "WATER WHEEL KIT" },
             { "relic_block", "RELIC: V12 BLOCK" }, { "relic_heads", "RELIC: V12 HEADS" }, { "relic_crank", "RELIC: V12 CRANKSHAFT" }, { "relic_blower", "RELIC: TWIN BLOWERS" },
-            { "keepsake_badge", "CONVOY ENAMEL BADGE" }, { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
+            { "keepsake_badge", "CONVOY ENAMEL BADGE" }, { "misc_delivery_chit", "DELIVERY CHIT" }, { "evidence_receipt", "FUEL RECEIPT (EVIDENCE)" }, { "evidence_manifest", "FORGED MANIFEST (EVIDENCE)" }, { "trophy_plate", "LICENCE PLATE" }, { "trophy_ornament", "HOOD ORNAMENT" }, { "trophy_hubcap", "CHROME HUBCAP" }, { "trophy_skull", "BULL SKULL" },
         };
 
         public static string Name(string id)
@@ -241,6 +241,12 @@ namespace MadMax.Items
             list.AddRange(Roadmap());
             list.AddRange(Wildlife());
             list.AddRange(Kitchen());
+            list.AddRange(RoadsRecipes());
+            list.AddRange(MetalRecipes());
+            list.AddRange(HusbandryRecipes());
+            list.AddRange(UtilitiesRecipes());
+            list.AddRange(MedMineRecipes());
+            list.AddRange(DefenceRecipes());
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {

@@ -1114,7 +1114,7 @@ The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladde
 | Story stage | Quests | Needs from the depth ladders | Status |
 |---|---|---|---|
 | **N0 story contract** | all 56 quests with stable ids, prerequisites, needs | — | **done**: `Story/` (QuestDef, StoryLibrary + .Side, Systems, Story runtime, StoryCast, StoryAnchors, StoryTalk), `story.contract`, `story.anchor_seeds` |
-| **N1 first hour** | A1, B1, S09, S24 (done); A2, S03 | evidence records (A2); towing a car (S03); **B fields** (done) | A1, B1, S09, S24 playable (`story.first_hour`, `story.side_quests`); stage B done (`farming.ladder`); A2 / S03 / S06 next |
+| **N1 first hour** | A1, B1, A2, S03, S06, S09, S24 (done) | evidence records, tagged vehicles, ground goals (done); **B fields** (done) | playable: `story.first_hour`, `story.a2`, `story.side_quests`, `story.work_quests` |
 | **N2 parallel lives** | A3-A4, B2-B3, C1-C3 | **C roads** (C2), **F water quality + power control** (C1, B3), cooking (A, done) | outline |
 | **N3 rescue and reckoning** | A5-A6, B4-B5, C4-C5, F1 | **C bridges** (C4), **G clinic** (A5), residents, broadcast, allocation, player convoy | outline |
 | **N4 other stories** | S01-S24, P1-P3, L1-L5 | **F cold storage** (S01), **E animal treatment** (S12), nonlethal bout, performance | outline |
@@ -1139,4 +1139,25 @@ Order of work: N1 remainder with stage B (fields and tractor) → N2 with stages
 - [x] **Grain silo** (1200 kg store).
 - Verified by `farming.ladder`: hoe tills a bed, sown by hand; the tractor ploughs 8 beds in one pass, seeds 8, sprays 8, and harvests 72 wheat; the timer holds at noon, lets a dry bed through, runs at dawn.
 - Open: tractors at village farms to borrow (S06), hay and feed (stage E), more orchard trees, a proper headland turn in the test (the test places the tractor back at the headland between passes).
+
+### N1 complete (2026-09-30)
+- [x] **A2 THE DEAD DON'T BUY DIESEL**: the freight clerk (Holland Cross) turns your chit away; three leads in the first town (the pump's receipt spike, Mae the cook, tyre marks at the repair stall), any two will do; the receipt or a 10-scrap fee makes the clerk talk; Len Pike at his stall testifies, goes to the boss or runs (remembered). Evidence records (receipt, cook, manifest) survive losing the paper.
+- [x] **S03 HEARSE POWER**: Sol Moss's black hearse is seized on the road out of town; winch it behind your car or patch its engine and drive it to the chapel; a tip for no new scratches.
+- [x] **S06 MUD, SWEAT AND GEARS**: Jo Kettle's buried trench: three flags to dig out (ground goals: 0.6 m below where it was), the soil tipped on her patch, her excavator to borrow.
+- [x] Quest engine: `Goal.Steps` (any n of listed steps), `Goal.Bring` (a tagged vehicle at a place), `Goal.Ground` (dug / raised since the quest began), priced talk options, evidence, `StoryTag` (saved with the vehicle), `Story.Complete` (chapter skip); optional steps are checked before required ones (a bonus met on arrival counts).
+- [x] Engine start odds by condition (user request): 75 %+ always catches, about 80 % at half condition, rarely below 20 %; a failed crank says why (no fuel, wrong fuel, seized, worn plugs, cold). `vehicle.start_chance`.
+
+## Parallel depth blocks (2026-09-30)
+Each block is built on its own branch by its own agent against a scaffold in `main` (own partial files for pieces, recipes, parts, tools, game hooks, saved state and scenarios, already registered), then merged, compiled in Unity and tested together. `tools/compile_check.py` compiles any checkout exactly like the editor.
+
+| Block | Scope |
+|---|---|
+| **Items** | every carriable or attachable thing can be placed in the world and shows there as an object; pop-ups for everything received or handed over |
+| **Anim** | interaction animations at vehicles: service, refuel, repair, mount/take parts, siphon, salvage |
+| **Roads** (C) | gravel and cobbles, road paint, rock crusher, rake, dump-truck spreading, signs, guard rails, bridges, player roads on the map |
+| **Metal** (D) | forge and anvil, steel, machine shop, gearbox / brake / suspension kits, more exhausts, radiators, lights, armour |
+| **Husbandry** (E) | hay and feed, shearing and wool, bees, stable, spinning, rope, leather goods, snares, butchering table, animal treatment |
+| **Utilities** (F) | water quality, desalination, switches / timers / sensors, biogas, cold storage |
+| **MedMine** (G, H) | herbal remedies, first aid, clinic, gold pan and sluice, mine supports and carts, powered crusher |
+| **Defence** (I) | sawmill and planks, bricks, prefab concrete, watchtower, sandbags, mines and tripwires, motorised gate, emplacements |
 

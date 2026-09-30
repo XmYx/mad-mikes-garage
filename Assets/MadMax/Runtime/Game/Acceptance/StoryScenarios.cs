@@ -20,6 +20,8 @@ namespace MadMax.Game.Acceptance
             yield return new StoryFirstHour();
             yield return new StorySandbox();
             yield return new StorySideQuests();
+            yield return new StoryTownQuests();
+            yield return new StoryWorkQuests();
         }
     }
 
@@ -372,6 +374,144 @@ namespace MadMax.Game.Acceptance
         }
 
         static bool Talk(WastelandGame g, MadMax.Npc.Npc npc, string say)
+        {
+            if (!npc) return false;
+            var d = new MadMax.Npc.Dialogue(g, npc);
+            foreach (var ch in d.choices) if (ch.label.StartsWith(say)) { ch.act(); return true; }
+            return false;
+        }
+    }
+
+    /// <summary>A2 THE DEAD DON'T BUY DIESEL in a story world (A1 finished as a disclosed fixture): the clerk turns
+    /// the chit away, two of three leads (the pump's receipt, the cook), the receipt convinces the clerk, Len Pike at the
+    /// stall becomes a witness; the evidence records are kept.</summary>
+    class StoryTownQuests : Scenario
+    {
+        public override string Id => "story.a2";
+        public override float Timeout => 150f;
+        public override GameRules WorldRules => new GameRules { randomSeed = false, story = true };
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game;
+            MadMax.Story.Story.Complete(g, "A1");
+            c.Fixture("A1 finished (chapter skip)");
+            yield return new WaitForSeconds(1.5f);
+            c.Check(MadMax.Story.Story.StateOf("A2") == MadMax.Story.Story.State.Open, "A2 is on offer after A1");
+            c.Check(g.Inventory.GetItem("misc_delivery_chit") > 0, "your delivery chit came out of the satchel");
+            yield return H.Walk(c, "a2_office", 2.5f);
+            yield return H.Until(() => g.CastBody("clerk") != null, 5f);
+            if (!c.Check(H.Talk(g, g.CastBody("clerk"), "I'M HERE TO CASH"), "the freight clerk turns the chit away")) yield break;
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A2") == MadMax.Story.Story.State.Active, 3f);
+            c.Check(!H.Talk(g, g.CastBody("clerk"), "HERE'S YOUR RECEIPT"), "no proof to show yet");
+            yield return H.Walk(c, "a2_pump", 1f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A2", "receipt"), 4f);
+            c.Check(MadMax.Story.Story.Evidence("receipt") && g.Inventory.GetItem("evidence_receipt") > 0, "the fuel receipt: evidence");
+            yield return H.Walk(c, "a2_diner", 2f);
+            yield return H.Until(() => g.CastBody("mae") != null, 5f);
+            c.Check(H.Talk(g, g.CastBody("mae"), "DID SOMEONE EAT HERE"), "the cook remembers 'you'");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A2", "leads"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("A2", "leads") && !MadMax.Story.Story.StepDone("A2", "tracks"), "two of three leads are enough");
+            yield return H.Walk(c, "a2_office", 2.5f);
+            yield return H.Until(() => g.CastBody("clerk") != null, 5f);
+            c.Check(H.Talk(g, g.CastBody("clerk"), "HERE'S YOUR RECEIPT"), "the receipt makes the clerk listen");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A2", "clerk"), 4f);
+            yield return H.Walk(c, "a2_stall", 2.5f);
+            yield return H.Until(() => g.CastBody("len") != null, 5f);
+            c.Screenshot("len_stall");
+            yield return null;
+            c.Check(H.Talk(g, g.CastBody("len"), "COME WITH ME"), "Len Pike agrees to testify");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("A2") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("A2") == MadMax.Story.Story.State.Done, "A2 THE DEAD DON'T BUY DIESEL is done");
+            c.Check(MadMax.Story.Story.Evidence("manifest") && g.Inventory.GetItem("evidence_manifest") > 0, "the forged manifest is evidence");
+            c.Check(MadMax.Story.Story.Route("A2", "len") != null && MadMax.Story.Story.Route("A2", "len").StartsWith("COME WITH ME"), "Len's fate is remembered");
+            g.Inventory.TakeItem("evidence_manifest", 1);
+            c.Check(MadMax.Story.Story.Evidence("manifest"), "losing the paper doesn't lose the evidence");
+        }
+    }
+
+    /// <summary>S03 HEARSE POWER and S06 MUD, SWEAT AND GEARS in a sandbox world: the hearse (seized, black, tagged) is
+    /// brought to the chapel; the trench is dug out at three flags and the soil tipped on Jo's patch (ground goals).</summary>
+    class StoryWorkQuests : Scenario
+    {
+        public override string Id => "story.work_quests";
+        public override float Timeout => 150f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game;
+            yield return new WaitForSeconds(2f);
+            if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
+            // ---- S03
+            yield return H.Walk(c, "chapel", 2f);
+            yield return H.Until(() => g.CastBody("sol") != null, 5f);
+            if (!c.Check(H.Talk(g, g.CastBody("sol"), "SOMEONE SAID"), "Sol Moss asks for a mechanic")) yield break;
+            yield return H.Until(() => StoryTag.Find("hearse") != null, 4f);
+            var hearse = StoryTag.Find("hearse") ? StoryTag.Find("hearse").GetComponent<VehicleDriver>() : null;
+            if (!c.Check(hearse, "the hearse waits on the road out of town")) yield break;
+            var hsys = hearse.GetComponent<VehicleSystems>();
+            c.Check(hearse.Engine && hearse.Engine.GetComponent<VehiclePart>().damage >= 1f, "its engine is seized");
+            var hp = hearse.transform.position + hearse.transform.right * 3.5f; hp.y = MadMax.World.DeformableTerrain.Instance.Height(hp.x, hp.z) + 0.3f;
+            g.Player.Teleport(hp, 0f); c.Fixture("walked to the hearse (teleport)");
+            yield return new WaitForSeconds(1.2f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("S03", "find"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S03", "find"), "found the hearse");
+            c.Screenshot("hearse");
+            yield return null;
+            hearse.Engine.GetComponent<VehiclePart>().damage = 0.6f;
+            c.Fixture("engine patched with a repair kit");
+            var ch = StoryAnchors.Get("chapel");
+            yield return TestWorld.Place(c, hearse, ch + Quaternion.Euler(0f, StoryAnchors.Yaw("chapel"), 0f) * new Vector3(0f, 0f, 6f), Vector3.forward, 1f);
+            c.Fixture("driven to the chapel (placed)");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("S03") == MadMax.Story.Story.State.Done, 5f);
+            c.Check(MadMax.Story.Story.StateOf("S03") == MadMax.Story.Story.State.Done && MadMax.Story.Story.Flag("paint_hearse"), "S03 HEARSE POWER is done");
+            c.Check(MadMax.Story.Story.StepDone("S03", "gentle"), "not a scratch: Sol tips");
+
+            // ---- S06
+            yield return H.Walk(c, "jo", 4f);
+            yield return H.Until(() => g.CastBody("jo") != null, 5f);
+            if (!c.Check(H.Talk(g, g.CastBody("jo"), "YOU LOOK LIKE YOU COULD"), "Jo Kettle needs her trench dug")) yield break;
+            yield return H.Until(() => StoryTag.Find("jo_digger") != null, 4f);
+            c.Check(StoryTag.Find("jo_digger"), "her excavator is by the shed");
+            c.Screenshot("jo_farm");
+            yield return null;
+            var t = MadMax.World.DeformableTerrain.Instance;
+            foreach (var k in new[] { "jo_t1", "jo_t2", "jo_t3" }) { var p = StoryAnchors.Get(k); t.ApplyTerraform((byte)MadMax.World.DeformableTerrain.TerraOp.Dig, new Vector3(p.x, t.Height(p.x, p.z), p.z), 1.4f, 0.9f, 0); }
+            c.Fixture("dug at the three flags (the excavator's dig)");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("S06", "dig"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S06", "dig"), "the trench is open at all three flags");
+            var gp = StoryAnchors.Get("jo_garden");
+            t.ApplyTerraform((byte)MadMax.World.DeformableTerrain.TerraOp.Dump, new Vector3(gp.x, t.Height(gp.x, gp.z), gp.z), 1.6f, 0.5f, 0);
+            c.Fixture("soil tipped on the garden patch (the excavator's dump)");
+            yield return H.Until(() => MadMax.Story.Story.StepDone("S06", "soil"), 4f);
+            c.Check(MadMax.Story.Story.StepDone("S06", "soil"), "the soil is on Jo's patch");
+            int diesel = g.Inventory.Get(ResourceType.Diesel);
+            c.Check(H.Talk(g, g.CastBody("jo"), "THE TRENCH IS OPEN"), "tell Jo");
+            yield return H.Until(() => MadMax.Story.Story.StateOf("S06") == MadMax.Story.Story.State.Done, 4f);
+            c.Check(MadMax.Story.Story.StateOf("S06") == MadMax.Story.Story.State.Done && g.Inventory.Get(ResourceType.Diesel) >= diesel + 30, "S06 done: diesel paid back");
+        }
+    }
+
+    /// <summary>Shared test steps for story scenarios.</summary>
+    static class H
+    {
+        public static IEnumerator Walk(ScenarioContext c, string anchor, float off)
+        {
+            var g = c.Game;
+            var p = StoryAnchors.Get(anchor) + Quaternion.Euler(0f, StoryAnchors.Yaw(anchor), 0f) * new Vector3(0f, 0f, off);
+            p.y = MadMax.World.DeformableTerrain.Instance.Height(p.x, p.z) + 0.3f;
+            g.Player.Teleport(p, StoryAnchors.Yaw(anchor) + 180f);
+            c.Fixture("walked to " + anchor + " (teleport)");
+            yield return new WaitForSeconds(1.2f);
+        }
+
+        public static IEnumerator Until(System.Func<bool> ok, float seconds)
+        {
+            float t0 = Time.time;
+            while (!ok() && Time.time - t0 < seconds) yield return null;
+        }
+
+        public static bool Talk(WastelandGame g, MadMax.Npc.Npc npc, string say)
         {
             if (!npc) return false;
             var d = new MadMax.Npc.Dialogue(g, npc);

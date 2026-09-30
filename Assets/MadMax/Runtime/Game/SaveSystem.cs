@@ -19,6 +19,7 @@ namespace MadMax.Game
         public float fuel, oil, coolant, frame, salvage = -1f, additive;
         public int tank;                   // ResourceType in the tank (0: whatever the engine burns)
         public bool fourWheel, diffLocked, disconnected;
+        public string storyTag;            // MadMax.Story.StoryTag key (the hearse, ...)
         public int towedBy = -1;
         public string cargo;               // machine bed / hopper contents
         public string radio;               // RadioReceiver state (on, station, volume)
@@ -94,7 +95,16 @@ namespace MadMax.Game
         public List<uint> homestead = new List<uint>();                 // placed-piece ids that came with the homestead
         public List<string> lastEngine = new List<string>();            // LastEngine flags
         public List<string> story = new List<string>();                 // campaign state (MadMax.Story.Story.Save)
-        public List<uint> storyProps = new List<uint>();                // placed-piece ids set up by the campaign (Nell's stop, the garage)
+        public List<uint> storyProps = new List<uint>();
+        // depth blocks (WastelandGame.Blocks): each block's own saved state
+        public List<string> blockItems = new List<string>();
+        public List<string> blockAnim = new List<string>();
+        public List<string> blockRoads = new List<string>();
+        public List<string> blockMetal = new List<string>();
+        public List<string> blockHusbandry = new List<string>();
+        public List<string> blockUtilities = new List<string>();
+        public List<string> blockMedMine = new List<string>();
+        public List<string> blockDefence = new List<string>();                // placed-piece ids set up by the campaign (Nell's stop, the garage)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

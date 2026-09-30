@@ -33,6 +33,7 @@ namespace MadMax.Game.Acceptance
             yield return new GlassAndLamps();
             yield return new DeformationSetting();
             yield return new ExhaustSmoke();
+            yield return new StartChance();
             yield return new CookingLadder();
             yield return new FarmingLadder();
             yield return new ScrapeMarks();
@@ -41,6 +42,14 @@ namespace MadMax.Game.Acceptance
             yield return new CrawlerMud("Excavator");
             yield return new Boarding();
             foreach (var s in StoryScenarios.All()) yield return s;
+            foreach (var s in ItemsScenarios.All()) yield return s;
+            foreach (var s in AnimScenarios.All()) yield return s;
+            foreach (var s in RoadsScenarios.All()) yield return s;
+            foreach (var s in MetalScenarios.All()) yield return s;
+            foreach (var s in HusbandryScenarios.All()) yield return s;
+            foreach (var s in UtilitiesScenarios.All()) yield return s;
+            foreach (var s in MedMineScenarios.All()) yield return s;
+            foreach (var s in DefenceScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);
@@ -658,6 +667,29 @@ namespace MadMax.Game.Acceptance
 
         static int Output(WastelandGame g, Recipe r, CraftingStation st) =>
             r.kind == OutputKind.Resource ? g.Inventory.Get(r.outputResource) + st.tray.Get(r.outputResource) : g.Inventory.GetItem(r.output) + st.tray.GetItem(r.output);
+    }
+
+    /// <summary>Engine start odds by condition: a sound engine (75 %+) always catches, half condition still mostly
+    /// (about 80 %), a wreck rarely.</summary>
+    class StartChance : Scenario
+    {
+        public override string Id => "vehicle.start_chance";
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var v = TestWorld.Vehicle("Sedan");
+            if (!v) { c.Block("sedan missing"); yield break; }
+            var sys = v.GetComponent<VehicleSystems>(); var ep = v.Engine.GetComponent<VehiclePart>();
+            float keep = ep.damage;
+            float At(float condition) { ep.damage = 1f - condition; return sys.StartChance; }
+            float c97 = At(0.97f), c75 = At(0.75f), c50 = At(0.5f), c20 = At(0.2f);
+            ep.damage = keep;
+            c.Metric("start_97", c97, ""); c.Metric("start_50", c50, ""); c.Metric("start_20", c20, "");
+            c.Check(c97 >= 0.99f && c75 >= 0.99f, $"a sound engine always catches (97 %: {c97:0.00}, 75 %: {c75:0.00})");
+            c.Check(c50 >= 0.75f && c50 < 0.95f, $"half condition mostly catches ({c50:0.00})");
+            c.Check(c20 < 0.5f, $"a wreck of an engine rarely does ({c20:0.00})");
+            yield break;
+        }
     }
 
     /// <summary>The tailpipe smokes while the engine runs; a worn engine smokes thicker and blacker than a healthy one.</summary>

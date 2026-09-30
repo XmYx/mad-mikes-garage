@@ -187,6 +187,84 @@ namespace MadMax.Game
             PutAt("gus", "barrel", new Vector3(-3f, 0f, 0.5f), 0f);
         }
 
+        /// <summary>A2: Len Pike's roadside repair stall: a table, tyres, a barrel and a bench.</summary>
+        void BuildLenStall()
+        {
+            if (!StoryAnchors.Has("a2_stall") || !Build || !Build.Structures) return;
+            PutAt("a2_stall", "table", new Vector3(0f, 0f, -1.2f), 0f);
+            PutAt("a2_stall", "tyres", new Vector3(2.2f, 0f, -1.8f), 15f);
+            PutAt("a2_stall", "tyres", new Vector3(3.1f, 0f, -0.4f), 50f);
+            PutAt("a2_stall", "barrel", new Vector3(-2.2f, 0f, -1.5f), 0f);
+            PutAt("a2_stall", "bench", new Vector3(-1.2f, 0f, 1.4f), 90f);
+        }
+
+        /// <summary>S03: Sol's black hearse on the road out of town, engine seized (repair it or winch it).</summary>
+        void SpawnHearse()
+        {
+            if (!StoryAnchors.Has("hearse")) return;
+            var pf = PrefabFor("Wagon") ?? PrefabFor("Sedan");
+            if (!pf) return;
+            var rot = Quaternion.Euler(0f, StoryAnchors.Yaw("hearse"), 0f);
+            var p = StoryAnchors.Get("hearse");
+            for (int k = 0; k < 6; k++)                                                             // step along the verge past anything parked there
+            {
+                bool busy = false;
+                foreach (var o in vehicles) if (o && Vector2.Distance(new Vector2(o.transform.position.x, o.transform.position.z), new Vector2(p.x, p.z)) < 7f) { busy = true; break; }
+                if (!busy) break;
+                p += rot * Vector3.forward * 9f;
+            }
+            p.y = terrain.HeightNoLoad(p.x, p.z) + 0.7f;
+            var v = Instantiate(pf, p, rot).GetComponent<VehicleDriver>();
+            v.name = "Hearse";
+            Register(v, null);
+            StoryTag.Set(v.gameObject, "hearse");
+            var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+            paint.colour = 5; paint.Apply();
+            if (v.Engine && v.Engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = 1f;                     // seized
+            if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = 12f;
+        }
+
+        void HearseCheck()
+        {
+            var tag = StoryTag.Find("hearse");
+            if (!tag || !StoryAnchors.Has("chapel")) return;
+            var a = StoryAnchors.Get("chapel");
+            if (new Vector2(tag.transform.position.x - a.x, tag.transform.position.z - a.z).magnitude > 14f) return;
+            var dmg = tag.GetComponent<VehicleDamage>();
+            if (!dmg || dmg.FrameDamage < 0.15f) Story.Story.Note("s03:gentle");
+        }
+
+        /// <summary>S06: Jo's farm: flags along the buried trench, a sign on the garden patch, dry beds and a fuelled
+        /// excavator anyone may borrow.</summary>
+        void BuildJoFarm()
+        {
+            if (!StoryAnchors.Has("jo") || !Build || !Build.Structures) return;
+            foreach (var t in new[] { "jo_t1", "jo_t2", "jo_t3" })
+            {
+                var r = Quaternion.Euler(0f, StoryAnchors.Yaw("jo"), 0f);
+                var p = StoryAnchors.Get(t) + r * new Vector3(0f, 0f, 2.6f); p.y = terrain.HeightNoLoad(p.x, p.z);
+                var f = FurnitureLibrary.Spawn("flag", Build.Structures, p, r, propMaterial);
+                if (f) storyProps.Add(f.Id);
+            }
+            PutAt("jo_garden", "sign", new Vector3(2.8f, 0f, 0f), 0f);
+            for (int i = 0; i < 3; i++)
+            {
+                var bed = PutAt("jo", "field_bed", new Vector3(-8f + i * 2f, 0f, 12f), 0f);
+                if (bed && bed.TryGetComponent<GardenPlot>(out var plot)) { plot.crop = "seed_corn"; plot.growth = 0.3f; plot.water = 0f; bed.Dirty(); }
+            }
+            PutAt("jo", "water_tank", new Vector3(9f, 0f, -9f), 0f);
+            var pf = PrefabFor("Excavator");
+            if (pf && StoryAnchors.Has("jo_digger"))
+            {
+                var p = StoryAnchors.Get("jo_digger"); p.y = terrain.HeightNoLoad(p.x, p.z) + 0.8f;
+                var ex = Instantiate(pf, p, Quaternion.Euler(0f, StoryAnchors.Yaw("jo_digger"), 0f)).GetComponent<VehicleDriver>();
+                ex.name = "Jo's Excavator";
+                Register(ex, null);
+                StoryTag.Set(ex.gameObject, "jo_digger");
+                if (ex.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = sys.fuelCapacity * 0.8f;
+            }
+        }
+
         void UpdateStory()
         {
             if (!played || !Player) return;
@@ -194,6 +272,10 @@ namespace MadMax.Game
             if (Story.Story.StateOf("S09") != Story.Story.State.Locked && !Story.Story.Flag("scene:S09")) { BuildUnaGarden(); Story.Story.SetFlag("scene:S09"); }
             if (Story.Story.StateOf("S24") != Story.Story.State.Locked && !Story.Story.Flag("scene:S24")) { BuildGusCorner(); Story.Story.SetFlag("scene:S24"); }
             if (Story.Story.StateOf("S09") == Story.Story.State.Active && Time.frameCount % 30 == 0 && UnaWatered()) Story.Story.Note("una:watered");
+            if (Story.Story.StateOf("A2") != Story.Story.State.Locked && !Story.Story.Flag("scene:A2")) { BuildLenStall(); Story.Story.SetFlag("scene:A2"); }
+            if (Story.Story.StateOf("S03") != Story.Story.State.Locked && !Story.Story.Flag("scene:S03")) { SpawnHearse(); Story.Story.SetFlag("scene:S03"); }
+            if (Story.Story.StateOf("S06") != Story.Story.State.Locked && !Story.Story.Flag("scene:S06")) { BuildJoFarm(); Story.Story.SetFlag("scene:S06"); }
+            if (Story.Story.StateOf("S03") == Story.Story.State.Active) HearseCheck();
             Story.Story.Tick(this);
             if (Time.time < castCheck) return;
             castCheck = Time.time + 1f;
@@ -230,7 +312,12 @@ namespace MadMax.Game
         {
             if (key == "nell") return Story.Story.Campaign;
             foreach (var q in StoryLibrary.All)
-                if (q.giver == key && Story.Story.Runs(q) && Story.Story.StateOf(q.id) != Story.Story.State.Locked) return true;
+            {
+                if (!Story.Story.Runs(q) || Story.Story.StateOf(q.id) == Story.Story.State.Locked) continue;
+                if (q.giver == key) return true;
+                if (Story.Story.StateOf(q.id) != Story.Story.State.Active) continue;
+                foreach (var s in q.steps) foreach (var c in s.any) if (c.goal == Goal.Talk && c.key == key) return true;
+            }
             return false;
         }
 

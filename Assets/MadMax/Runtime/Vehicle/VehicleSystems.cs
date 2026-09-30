@@ -86,14 +86,17 @@ namespace MadMax.Vehicles
                 var e = driver ? driver.Engine : null;
                 if (!e) return 0f;
                 var ep = e.GetComponent<VehiclePart>();
+                // condition: a sound engine (75 %+) always catches; below that the chance falls gently to ~80 % at half
+                // condition, then steeply towards a wreck
                 float cond = 1f - (ep ? ep.damage : 0f);
-                float c = 0.3f + 0.7f * cond * cond + (ep ? (ep.quality - 1) * 0.05f : 0f);
+                float c = cond >= 0.75f ? 1f : cond >= 0.5f ? Mathf.Lerp(0.8f, 1f, (cond - 0.5f) / 0.25f) : Mathf.Lerp(0.12f, 0.8f, cond / 0.5f);
+                c += ep ? (ep.quality - 1) * 0.04f : 0f;
                 float ambient = MadMax.World.Weather.Temperature;
-                if (Temperature < 45f) c -= ambient < -10f ? 0.3f : ambient < 0f ? 0.15f : 0f;                   // a cold engine is stubborn
+                if (Temperature < 45f) c -= ambient < -10f ? 0.25f : ambient < 0f ? 0.1f : 0f;                   // a cold engine is stubborn
                 if (UsesPlugs && plugs < 0.3f) c -= 0.2f;
                 if (airFilter < 0.3f) c -= 0.1f;
                 if (!oilInFuel && OilFraction < 0.25f) c -= 0.1f;
-                return Mathf.Clamp(c, 0.05f, 0.97f);
+                return Mathf.Clamp(c, 0.05f, 1f);
             }
         }
 
@@ -185,6 +188,14 @@ namespace MadMax.Vehicles
                 crankUntil = -1f;
                 Started = crankCatches;
                 CrankResult?.Invoke(crankCatches);
+                if (!crankCatches && driver.Occupied && !driver.aiDriven)
+                {
+                    var eng = driver.Engine ? driver.Engine.GetComponent<VehiclePart>() : null;
+                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "WRONG FUEL IN THE TANK: SIPHON IT" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
+                               : UsesPlugs && plugs < 0.3f ? "WORN PLUGS: TRY AGAIN, OR REPLACE THEM" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
+                               : "IT DIDN'T CATCH: TRY AGAIN (ENGINE " + Mathf.RoundToInt(StartChance * 100f) + "%)";
+                    MadMax.Game.WastelandGame.Instance?.Toast(why);
+                }
             }
             var f = Fault.None;
             var ep = engine ? engine.GetComponent<VehiclePart>() : null;

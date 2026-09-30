@@ -42,7 +42,7 @@ namespace MadMax.Story
             E("story_start", true, "N1", "STORY start: almost nothing, a stranded car, Nell's stop");
             E("cast", true, "N1", "authored characters placed at story anchors");
             // still to build (depth stages B-I and story stages N1-N5)
-            E("evidence", false, "N2", "evidence records that survive losing one copy");
+            E("evidence", true, "N1", "evidence records that survive losing one copy");
             E("fields", true, "B", "tilled field beds on open ground");
             E("tractor", true, "B", "tractor with plough, seeder, harvester, sprayer");
             E("irrigation_control", true, "B", "irrigation timers and river pumps");

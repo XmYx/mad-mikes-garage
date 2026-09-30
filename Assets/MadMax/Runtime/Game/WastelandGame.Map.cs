@@ -111,6 +111,7 @@ namespace MadMax.Game
             SaveHomestead(d);
             d.lastEngine = LastEngine.Save();
             SaveStory(d);
+            BlocksSave(d);
             d.records = Racing.Save();
             SaveWreckPlan(d);
         }
@@ -124,6 +125,7 @@ namespace MadMax.Game
             LoadHomestead(d);
             LastEngine.Load(d.lastEngine);
             LoadStory(d);
+            BlocksLoad(d);
             Racing.Load(d.records);
             LoadWreckPlan(d);
             if (d.hasWaypoint) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }

@@ -175,6 +175,12 @@ namespace MadMax.Building
             defs.AddRange(Homestead());
             defs.AddRange(KitchenPieces());
             defs.AddRange(FarmPieces());
+            defs.AddRange(RoadsPieces());
+            defs.AddRange(MetalPieces());
+            defs.AddRange(HusbandryPieces());
+            defs.AddRange(UtilitiesPieces());
+            defs.AddRange(MedMinePieces());
+            defs.AddRange(DefencePieces());
             Upgrades();
         }
 

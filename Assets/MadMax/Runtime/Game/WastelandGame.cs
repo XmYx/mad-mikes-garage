@@ -204,6 +204,7 @@ namespace MadMax.Game
                 UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
                 SpawnWrecks(p);
                 UnityEngine.Profiling.Profiler.EndSample();
+                BlocksNewGame();
                 if (Rules.story) StoryNewGame();
                 else
                 {
@@ -719,6 +720,7 @@ namespace MadMax.Game
             UpdateGarage();
             UpdateStarter();
             UpdateStory();
+            BlocksUpdate();
             UpdateWreckStreaming();
             RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
             UpdatePlanet();

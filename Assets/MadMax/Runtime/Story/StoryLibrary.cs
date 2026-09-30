@@ -68,7 +68,7 @@ namespace MadMax.Story
             a1.build = Build.Playable;
             a1.hook = "A VOICE ON THE RADIO COUNTED THE CONVOY. IT STOPPED AT YOUR CALLSIGN: KEEP THE LIGHT ON.";
             Step(a1, "things", "SEARCH THE WRECK FOR YOUR THINGS", "satchel").When(Goal.Reach, "satchel", 2.6f)
-                .Pays(r => { r.items.Add((ItemIds.Wrench, 1)); r.items.Add(("tool_knife", 1)); r.items.Add((ItemIds.Canteen, 1)); r.items.Add(("food_can", 1)); r.items.Add(("med_bandage", 1)); r.resources.Add((ResourceType.Water, 1)); });
+                .Pays(r => { r.items.Add((ItemIds.Wrench, 1)); r.items.Add(("tool_knife", 1)); r.items.Add((ItemIds.Canteen, 1)); r.items.Add(("food_can", 1)); r.items.Add(("med_bandage", 1)); r.items.Add(("misc_delivery_chit", 1)); r.resources.Add((ResourceType.Water, 1)); });
             Step(a1, "stop", "FOLLOW THE SMOKE TO THE ROADSIDE STOP", "nell").When(Goal.Reach, "nell", 9f);
             Step(a1, "nell", "TALK TO NELL MERCER", "nell").Says("nell", "a1_arrive", "I CRAWLED OUT OF A WRECKED CONVOY UP THE ROAD.",
                     "NELL MERCER. HEARD THE CRASH TWO NIGHTS BACK AND FIGURED NOBODY WALKED AWAY. WATER'S IN THE BARREL. MY RAIN COLLECTOR'S CRACKED: " +
@@ -87,7 +87,29 @@ namespace MadMax.Story
             a1.payoff = "NELL KNOWS THAT VOICE: MARA'S TRANSMITTER WAS SUPPOSED TO HAVE BURNED. SOMEONE HAS BEEN USING IT.";
 
             // ---- the rest of arc A (Outline until its verbs exist)
-            Q("A2", Arc.A, "THE DEAD DON'T BUY DIESEL", "clerk", "A clerk says you collected your pay and died yesterday. Three leads in one town; find Len Pike.", new[] { "A1" }, "cast", "dialogue", "trade", "evidence");
+            var a2 = Q("A2", Arc.A, "THE DEAD DON'T BUY DIESEL", "clerk", "A clerk says you collected your pay and died yesterday. Three leads in one town; find Len Pike.", new[] { "A1" }, "cast", "dialogue", "trade", "evidence");
+            a2.build = Build.Playable;
+            a2.offerSay = "I'M HERE TO CASH MY DELIVERY CHIT.";
+            a2.offerReply = "THIS CHIT? IT WAS CASHED YESTERDAY. BY YOU, APPARENTLY. AND THEN YOU DIED: IT'S IN THE BOOK. I DON'T PAY DEAD PEOPLE TWICE.";
+            a2.hook = "THE FREIGHT OFFICE SAYS YOU CASHED YOUR OWN CHIT AFTER THE CRASH, THEN DIED. SOMEONE IS WEARING YOUR NAME.";
+            Step(a2, "receipt", "LEAD: THE FUEL PUMP'S RECEIPT SPIKE", "a2_pump").When(Goal.Reach, "a2_pump", 3.5f).Optional()
+                .Pays(r => { r.items.Add(("evidence_receipt", 1)); r.evidence.Add("receipt"); });
+            Step(a2, "cook", "LEAD: THE COOK WHO SERVED 'YOU'", "a2_diner").Says("mae", "a2_cook", "DID SOMEONE EAT HERE UNDER MY NAME?",
+                    "A SKINNY KID. PAID IN GUILD COUPONS, WHICH NOBODY DOES, AND ASKED WHERE A MAN GETS A TYRE PATCHED CHEAP. I SENT HIM TO THE STALL ON THE EDGE OF TOWN.").Optional()
+                .Pays(r => r.evidence.Add("cook"));
+            Step(a2, "tracks", "LEAD: TYRE MARKS BY THE REPAIR STALL", "a2_tracks").When(Goal.Reach, "a2_tracks", 3.5f).Optional();
+            Step(a2, "leads", "FOLLOW THE LEADS: THE PUMP, THE COOK, THE TYRE MARKS (ANY TWO)", "a2_pump").When(Goal.Steps, "receipt,cook,tracks", 2f);
+            Step(a2, "clerk", "MAKE THE CLERK LISTEN", "a2_office")
+                .Says("clerk", "a2_proof", "HERE'S YOUR RECEIPT: MY CHIT NUMBER, THE DAY AFTER THE CRASH, NOT MY HAND.", "...THAT'S NOT YOUR SIGNATURE. FINE. THE BOOK IS WRONG AND SO AM I. HE WENT TO THE STALL AT THE EDGE OF TOWN.").Needs("evidence_receipt")
+                .Says("clerk", "a2_pay", "I'LL COVER THE DISPUTED FEE. NOW TELL ME WHO CASHED IT.", "MONEY TALKS. A KID WITH A LIMP AND A BIG GRIN. TRY THE REPAIR STALL ON THE EDGE OF TOWN.");
+            a2.steps[a2.steps.Count - 1].any[1].price = 10;
+            Step(a2, "len", "FIND WHOEVER WORE YOUR NAME: THE REPAIR STALL", "a2_stall")
+                .Says("len", "a2_witness", "COME WITH ME AND TELL THEM WHO PAID YOU.", "I... YEAH. OKAY. THEY SAID YOU WERE DEAD. I'LL SAY IT TO ANYONE WHO ASKS.")
+                .Says("len", "a2_turn", "YOU'RE GOING TO THE TOWN BOSS.", "PLEASE, I JUST DROVE WHAT THEY TOLD ME... FINE. FINE. I'LL GO.")
+                .Says("len", "a2_flee", "GET OUT OF MY SIGHT BEFORE I CHANGE MY MIND.", "YOU WON'T SEE ME AGAIN. HERE: THE MANIFEST THEY GAVE ME. I DON'T WANT IT.");
+            a2.reward.scrap = 25; a2.reward.items.Add(("use_repair_kit", 1)); a2.reward.items.Add(("evidence_manifest", 1)); a2.reward.evidence.Add("manifest");
+            a2.reward.training.Add((Skill.Speech, 6f)); a2.reward.flag = "a2_done";
+            a2.payoff = "THE FORGED MANIFEST CARRIES ADA VENN'S OFFICE STAMP. SOMEONE SCRAWLED A RADIO CALLSIGN ON THE BACK: JUNE BELL'S.";
             Q("A3", Arc.A, "A VOICE WITH YESTERDAY'S WEATHER", "june", "Repair a relay mast's power and compare three recorded fragments with June.", new[] { "A2" }, "radio", "power", "evidence");
             Q("A4", Arc.A, "THE WEIGHT OF EMPTY TRUCKS", "june", "Get inside the depot the convoy's trucks are hauling to.", new[] { "A3" }, "evidence", "trade", "towing");
             Q("A5", Arc.A, "NO ONE RIDES IN THE BACK", "mara", "Prepare seats, water and medicine, then free the convoy workers.", new[] { "A4" }, "transfer", "companions", "clinic");
@@ -126,6 +148,7 @@ namespace MadMax.Story
         }
 
         /// <summary>Every step's anchors and every quest's givers the catalogue refers to.</summary>
-        public static readonly string[] Anchors = { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch", "una", "gus" };
+        public static readonly string[] Anchors = { "wreck", "satchel", "nell", "car", "badge", "town1", "garage", "relay", "depot", "dispatch", "una", "gus",
+                                                     "a2_pump", "a2_diner", "a2_office", "a2_stall", "a2_tracks", "chapel", "hearse", "jo", "jo_t1", "jo_t2", "jo_t3", "jo_garden", "jo_digger" };
     }
 }

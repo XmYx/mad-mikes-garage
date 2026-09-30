@@ -74,8 +74,62 @@ namespace MadMax.Story
                     }
             }
 
+            // A2 inside the first town: the fuel pump, a diner (shop), the freight office (a house) and, S03, the chapel
+            if (town != null)
+            {
+                var blds = new List<(string id, Vector2 pos, float yaw)>();
+                BiomeProps.Buildings(world, town, blds);
+                Vector3 Front((string id, Vector2 pos, float yaw) b, float d)
+                {
+                    var f = Quaternion.Euler(0f, b.yaw, 0f) * Vector3.forward;
+                    return new Vector3(b.pos.x, 0f, b.pos.y) + f * d;
+                }
+                var used = new HashSet<int>();
+                int Pick(System.Func<string, bool> want)
+                {
+                    for (int i = 0; i < blds.Count; i++) if (!used.Contains(i) && want(blds[i].id)) { used.Add(i); return i; }
+                    return -1;
+                }
+                int pump = Pick(id => id.StartsWith("GasPump")), diner = Pick(id => id.StartsWith("Shop")),
+                    office = Pick(id => id.StartsWith("BrickHouse") || id.StartsWith("Shop") || id.StartsWith("Farmhouse")),
+                    chapel = Pick(id => id.StartsWith("BrickHouse") || id.StartsWith("Farmhouse") || id.StartsWith("Shack") || id.StartsWith("Tower"));
+                var tc = new Vector3(town.pos.x, 0f, town.pos.y);
+                Set("a2_pump", pump >= 0 ? Front(blds[pump], 2.5f) : tc + new Vector3(8f, 0f, 0f));
+                if (diner >= 0) Set("a2_diner", Front(blds[diner], 6.5f), blds[diner].yaw + 180f); else Set("a2_diner", tc + new Vector3(-10f, 0f, 6f));
+                if (office >= 0) Set("a2_office", Front(blds[office], 6.5f), blds[office].yaw + 180f); else Set("a2_office", tc + new Vector3(6f, 0f, -10f));
+                if (chapel >= 0) Set("chapel", Front(blds[chapel], 7.5f), blds[chapel].yaw + 180f); else Set("chapel", tc + new Vector3(-12f, 0f, -8f));
+                // Len's repair stall at the town's edge on a road, the tyre marks beside it
+                if (Roadside(world, tc, town.radius + 15f, town.radius + 140f, 14f, p => Clear(town, p, 8f) && Away(p, 50f, "una", "gus"), out var stall, out var sy))
+                {
+                    Set("a2_stall", stall, sy);
+                    Set("a2_tracks", stall + Quaternion.Euler(0f, sy, 0f) * new Vector3(3f, 0f, 4f));
+                }
+                // S03: the hearse seized on the road out of town
+                if (Roadside(world, tc, town.radius + 150f, town.radius + 500f, 14f, p => Clear(town, p, 100f) && Away(p, 120f, "wreck", "nell", "garage", "a2_stall"), out var hearse, out var hy))
+                    Set("hearse", hearse, hy + 90f);
+                // S06: Jo Kettle's farm: level ground for a trench, a garden and an excavator
+                for (float rr = town.radius + 60f; rr <= town.radius + 360f && !at.ContainsKey("jo"); rr += 20f)
+                    for (int k = 0; k < 36 && !at.ContainsKey("jo"); k++)
+                    {
+                        float ang = (k * 10f + 3f) * Mathf.Deg2Rad;
+                        var pp = new Vector3(town.pos.x + Mathf.Sin(ang) * rr, 0f, town.pos.y + Mathf.Cos(ang) * rr);
+                        if (!Open(world, pp) || !Clear(town, pp, 40f) || !Away(pp, 90f, "wreck", "nell", "garage", "hearse", "a2_stall", "una", "gus") || !Level(world, pp, 13f, 1.4f)) continue;
+                        bool dry = true;
+                        for (float x = -13f; x <= 13f && dry; x += 6.5f) for (float z = -13f; z <= 13f && dry; z += 6.5f) if (!Open(world, pp + new Vector3(x, 0f, z))) dry = false;
+                        if (!dry) continue;
+                        Set("jo", pp, ang * Mathf.Rad2Deg + 180f);
+                    }
+                if (at.ContainsKey("jo"))
+                {
+                    var jq = Quaternion.Euler(0f, yaw["jo"], 0f); var j = at["jo"];
+                    Set("jo_t1", j + jq * new Vector3(-6f, 0f, -6f)); Set("jo_t2", j + jq * new Vector3(0f, 0f, -6f)); Set("jo_t3", j + jq * new Vector3(6f, 0f, -6f));
+                    Set("jo_garden", j + jq * new Vector3(0f, 0f, 7f));
+                    Set("jo_digger", j + jq * new Vector3(-10f, 0f, 3f), yaw["jo"] + 90f);
+                }
+            }
+
             // clear ground for the scenes (wild props skip these circles)
-            foreach (var (k, r) in new[] { ("wreck", 26f), ("car", 14f), ("nell", 18f), ("garage", 16f), ("una", 12f), ("gus", 8f) })
+            foreach (var (k, r) in new[] { ("wreck", 26f), ("car", 14f), ("nell", 18f), ("garage", 16f), ("una", 12f), ("gus", 8f), ("a2_stall", 9f), ("hearse", 12f), ("jo", 22f) })
                 if (at.ContainsKey(k)) world.Reserve(new Vector3(at[k].x, at[k].z, r));
 
             // the relay: the radio mast nearest the first town
@@ -125,6 +179,24 @@ namespace MadMax.Story
             var s = w.Sample(p.x, p.z);
             return s.roadDist >= 6f && float.IsNaN(s.water) && s.feature == 0 && w.SettlementAt(p.x, p.z) == null && w.YardWeight(p.x, p.z) <= 0f
                    && w.SiteAt(p.x, p.z) == null && !w.RiverAt(p.x, p.z, out _, out _, out _);
+        }
+
+        static bool Away(Vector3 p, float d, params string[] keys)
+        {
+            foreach (var k in keys) if (at.TryGetValue(k, out var q) && Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)) < d) return false;
+            return true;
+        }
+
+        static bool Level(WorldGen w, Vector3 p, float half, float tol)
+        {
+            float lo = float.MaxValue, hi = float.MinValue;
+            for (float x = -half; x <= half; x += half / 2f)
+            for (float z = -half; z <= half; z += half / 2f)
+            {
+                float h = w.Sample(p.x + x, p.z + z).height;
+                lo = Mathf.Min(lo, h); hi = Mathf.Max(hi, h);
+            }
+            return hi - lo <= tol;
         }
 
         static bool Clear(Settlement town, Vector3 p, float margin) =>

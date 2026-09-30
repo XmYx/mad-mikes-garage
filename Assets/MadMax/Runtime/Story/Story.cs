@@ -22,6 +22,8 @@ namespace MadMax.Story
         static readonly HashSet<string> flags = new HashSet<string>();
         static readonly Dictionary<string, string> routes = new Dictionary<string, string>();
         static readonly Dictionary<string, float> driven = new Dictionary<string, float>();
+        static readonly Dictionary<string, float> baseline = new Dictionary<string, float>();   // Ground goals: height when the quest began
+        static readonly HashSet<string> evidence = new HashSet<string>();
         static float nextTick;
         static Vector3 lastPos;
 
@@ -33,7 +35,7 @@ namespace MadMax.Story
 
         public static void Clear()
         {
-            states.Clear(); steps.Clear(); met.Clear(); done.Clear(); ledger.Clear(); flags.Clear(); routes.Clear(); driven.Clear();
+            states.Clear(); steps.Clear(); met.Clear(); done.Clear(); ledger.Clear(); flags.Clear(); routes.Clear(); driven.Clear(); baseline.Clear(); evidence.Clear();
             nextTick = 0f; lastPos = Vector3.zero;
         }
 
@@ -44,6 +46,9 @@ namespace MadMax.Story
         public static bool StepDone(string q, string step) => done.Contains(q + ":" + step);
         public static string Route(string q, string step) => routes.TryGetValue(q + ":" + step, out var r) ? r : null;
         public static bool Paid(string key) => ledger.Contains(key);
+        /// <summary>Evidence records the player holds (storyline A: they survive losing the paper copy).</summary>
+        public static bool Evidence(string key) => evidence.Contains(key);
+        public static IEnumerable<string> AllEvidence => evidence;
         public static float Driven(string q, string step) => driven.TryGetValue(q + ":" + step, out var d) ? d : 0f;
 
         /// <summary>Quests that may run in this world: Playable ones, and story-only ones only in a campaign.</summary>
@@ -84,9 +89,36 @@ namespace MadMax.Story
             var q = StoryLibrary.Get(id);
             if (q == null || StateOf(id) == State.Active || StateOf(id) == State.Done) return;
             states[id] = State.Active; steps[id] = 0;
+            CaptureBaselines(q);
             if (q.hook != null) Journal.Add("STORY", q.title + ": " + q.hook);
             Journal.Add("JOB", q.title);
             if (g) { g.Toast("NEW: " + q.title); Guide(g, q); }
+        }
+
+        /// <summary>Finish a quest outright: every required step, its rewards, the quest (tests and chapter skips).</summary>
+        public static void Complete(WastelandGame g, string id)
+        {
+            var q = StoryLibrary.Get(id);
+            if (q == null || StateOf(id) == State.Done) return;
+            if (StateOf(id) != State.Active) Activate(g, id);
+            foreach (var s in q.steps) if (!s.optional && !done.Contains(q.id + ":" + s.id)) Finish(g, q, s, 0);
+            Complete(g, q);
+        }
+
+        static void CaptureBaselines(QuestDef q)
+        {
+            var t = MadMax.World.DeformableTerrain.Instance;
+            if (!t) return;
+            foreach (var s in q.steps)
+                for (int c = 0; c < s.any.Count; c++)
+                {
+                    var cond = s.any[c];
+                    if (cond.goal != Goal.Ground || !StoryAnchors.Has(cond.key)) continue;
+                    string k = q.id + ":" + s.id + ":" + c;
+                    if (baseline.ContainsKey(k)) continue;
+                    var p = StoryAnchors.Get(cond.key);
+                    baseline[k] = t.Height(p.x, p.z);
+                }
         }
 
         /// <summary>Once a second: open quests whose prerequisites are done, check the active ones' steps.</summary>
@@ -112,16 +144,17 @@ namespace MadMax.Story
             {
                 if (!Runs(q) || StateOf(q.id) != State.Active) continue;
                 bool advanced = false;
-                foreach (var s in q.steps)
-                {
-                    if (done.Contains(q.id + ":" + s.id)) continue;
-                    bool current = s == Current(q);
-                    if (!current && !s.optional) continue;
-                    int hit = Satisfied(g, q, s, pos);
-                    if (hit < 0) continue;
-                    Finish(g, q, s, hit);
-                    advanced |= current;
-                }
+                for (int pass = 0; pass < 2; pass++)                                                     // optional steps first: a bonus met on arrival still counts
+                    foreach (var s in q.steps)
+                    {
+                        if (s.optional != (pass == 0) || done.Contains(q.id + ":" + s.id)) continue;
+                        bool current = s == Current(q);
+                        if (!current && !s.optional) continue;
+                        int hit = Satisfied(g, q, s, pos);
+                        if (hit < 0) continue;
+                        Finish(g, q, s, hit);
+                        advanced |= current;
+                    }
                 if (Current(q) == null) Complete(g, q);
                 else if (advanced) Guide(g, q);
             }
@@ -145,8 +178,11 @@ namespace MadMax.Story
                 switch (cond.goal)
                 {
                     case Goal.Reach:
-                        if (StoryAnchors.Has(cond.key) && Flat(pos, StoryAnchors.Get(cond.key)) <= cond.amount) return c;
+                    {
+                        var tagged = StoryTag.Find(cond.key);                                           // a tagged vehicle is where it is, not where it started
+                        if ((tagged || StoryAnchors.Has(cond.key)) && Flat(pos, tagged ? tagged.transform.position : StoryAnchors.Get(cond.key)) <= cond.amount) return c;
                         break;
+                    }
                     case Goal.Have:
                         if (cond.key.StartsWith("res:") && int.TryParse(cond.key.Substring(4), out int t) ? g.Inventory.Get((ResourceType)t) >= cond.amount : g.Inventory.GetItem(cond.key) >= cond.amount) return c;
                         break;
@@ -160,6 +196,31 @@ namespace MadMax.Story
                     case Goal.Drive:
                         if (driven.TryGetValue(q.id + ":" + s.id, out var d) && d >= cond.amount) return c;
                         break;
+                    case Goal.Steps:
+                    {
+                        int n = 0;
+                        foreach (var id in cond.key.Split(',')) if (done.Contains(q.id + ":" + id.Trim())) n++;
+                        if (n >= cond.amount) return c;
+                        break;
+                    }
+                    case Goal.Bring:
+                    {
+                        if (s.waypoint == null || !StoryAnchors.Has(s.waypoint)) break;
+                        var at = StoryAnchors.Get(s.waypoint);
+                        foreach (var tag in StoryTag.All)
+                            if (tag && tag.key == cond.key && Flat(tag.transform.position, at) <= cond.amount) return c;
+                        break;
+                    }
+                    case Goal.Ground:
+                    {
+                        string k = q.id + ":" + s.id + ":" + c;
+                        var ter = MadMax.World.DeformableTerrain.Instance;
+                        if (!ter || !baseline.TryGetValue(k, out var b0) || !StoryAnchors.Has(cond.key)) break;
+                        var gp = StoryAnchors.Get(cond.key);
+                        float delta = ter.Height(gp.x, gp.z) - b0;
+                        if (cond.amount < 0f ? delta <= cond.amount : delta >= cond.amount) return c;
+                        break;
+                    }
                     default:
                         if (met.Contains(q.id + ":" + s.id + ":" + c)) return c;
                         break;
@@ -198,6 +259,7 @@ namespace MadMax.Story
             foreach (var (t, n) in r.resources) { g.Inventory.Add(t, n); parts.Add(n + " " + ResourceInfo.Name(t)); }
             foreach (var (skill, xp) in r.training) g.Stats.Practice(skill, xp);
             if (r.flag != null) flags.Add(r.flag);
+            foreach (var e in r.evidence) if (evidence.Add(e)) { Journal.Add("EVIDENCE", EvidenceText(e)); parts.Add("EVIDENCE: " + EvidenceName(e)); }
             if (parts.Count > 0) Journal.Add(kind, what + " (+" + string.Join(", ", parts) + ")");
         }
 
@@ -224,6 +286,16 @@ namespace MadMax.Story
             }
         }
 
+        static string EvidenceName(string e) => e switch { "receipt" => "FUEL RECEIPT", "manifest" => "FORGED MANIFEST", "cook" => "THE COOK'S STATEMENT", "len" => "LEN PIKE'S TESTIMONY", _ => e.ToUpperInvariant() };
+        static string EvidenceText(string e) => e switch
+        {
+            "receipt" => "FUEL RECEIPT: YOUR CHIT NUMBER, CASHED THE DAY AFTER THE CRASH, SIGNED IN SOMEONE ELSE'S HAND.",
+            "manifest" => "FORGED MANIFEST: YOUR NAME AS DRIVER, ADA VENN'S OFFICE STAMP, A ROUTE THAT OFFICIALLY RECEIVES NOTHING.",
+            "cook" => "THE COOK SAW 'YOU' PAY IN GUILD COUPONS AND ASK FOR A CHEAP TYRE PATCH.",
+            "len" => "LEN PIKE WAS PAID TO WEAR YOUR NAME ON THE FREIGHT BOOKS. HE'LL SAY SO.",
+            _ => e.ToUpperInvariant()
+        };
+
         public static List<string> Save()
         {
             var l = new List<string>();
@@ -234,6 +306,8 @@ namespace MadMax.Story
             foreach (var k in flags) l.Add("f|" + k);
             foreach (var kv in routes) l.Add("r|" + kv.Key + "|" + kv.Value);
             foreach (var kv in driven) l.Add("v|" + kv.Key + "|" + kv.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            foreach (var kv in baseline) l.Add("b|" + kv.Key + "|" + kv.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            foreach (var k in evidence) l.Add("e|" + k);
             if (Campaign) l.Add("campaign");
             return l;
         }
@@ -255,6 +329,8 @@ namespace MadMax.Story
                     case "f" when p.Length >= 2: flags.Add(p[1]); break;
                     case "r" when p.Length >= 3: routes[p[1]] = p[2]; break;
                     case "v" when p.Length >= 3: driven[p[1]] = float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture); break;
+                    case "b" when p.Length >= 3: baseline[p[1]] = float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture); break;
+                    case "e" when p.Length >= 2: evidence.Add(p[1]); break;
                     case "campaign": Campaign = true; break;
                 }
             }

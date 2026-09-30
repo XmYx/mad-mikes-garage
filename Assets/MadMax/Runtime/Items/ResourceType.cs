@@ -16,12 +16,14 @@ namespace MadMax.Items
         // fluids
         Water, DirtyWater, Ethanol,
         // roadmap: crafting, refining, mining (append only: saves store the index)
-        Hide, Leather, Gunpowder, Sulfur, CrudeOil, Diesel, Tar, SeedOil, Coal, LeadOre, Lead, Acid, UraniumOre
+        Hide, Leather, Gunpowder, Sulfur, CrudeOil, Diesel, Tar, SeedOil, Coal, LeadOre, Lead, Acid, UraniumOre,
+        // depth ladders (stages C-I), allocated together so parallel work never collides on the index
+        Gravel, Steel, Wool, Honey, Beeswax, Hay, Feed, SeaWater, Biogas, Brick, Plank, Thread, GoldOre, Gold, Salt
     }
 
     public static class ResourceInfo
     {
-        public const int Count = 44;
+        public const int Count = 59;
 
         static readonly string[] Names =
         {
@@ -30,7 +32,8 @@ namespace MadMax.Items
             "IRON ORE", "COPPER ORE", "TIN ORE", "BAUXITE", "SILICA",
             "IRON", "COPPER", "BRONZE", "ALUMINIUM", "CHARCOAL", "ASPHALT", "CONCRETE", "LIME",
             "WATER", "DIRTY WATER", "ETHANOL",
-            "HIDE", "LEATHER", "GUNPOWDER", "SULFUR", "CRUDE OIL", "DIESEL", "TAR", "SEED OIL", "COAL", "LEAD ORE", "LEAD", "ACID", "URANIUM ORE"
+            "HIDE", "LEATHER", "GUNPOWDER", "SULFUR", "CRUDE OIL", "DIESEL", "TAR", "SEED OIL", "COAL", "LEAD ORE", "LEAD", "ACID", "URANIUM ORE",
+            "GRAVEL", "STEEL", "WOOL", "HONEY", "BEESWAX", "HAY", "ANIMAL FEED", "SEA WATER", "BIOGAS", "BRICK", "PLANKS", "THREAD", "GOLD ORE", "GOLD", "SALT"
         };
         static readonly Color32[] Colors =
         {
@@ -44,7 +47,10 @@ namespace MadMax.Items
             new Color32(90, 150, 230, 255), new Color32(120, 110, 80, 255), new Color32(200, 220, 120, 255),
             new Color32(170, 120, 90, 255), new Color32(120, 72, 40, 255), new Color32(60, 60, 64, 255), new Color32(230, 210, 60, 255),
             new Color32(24, 22, 20, 255), new Color32(200, 150, 50, 255), new Color32(18, 16, 16, 255), new Color32(210, 190, 90, 255),
-            new Color32(36, 36, 40, 255), new Color32(120, 124, 136, 255), new Color32(96, 100, 112, 255), new Color32(170, 230, 90, 255), new Color32(120, 190, 60, 255)
+            new Color32(36, 36, 40, 255), new Color32(120, 124, 136, 255), new Color32(96, 100, 112, 255), new Color32(170, 230, 90, 255), new Color32(120, 190, 60, 255),
+            new Color32(140, 132, 120, 255), new Color32(150, 160, 175, 255), new Color32(235, 228, 210, 255), new Color32(225, 160, 40, 255), new Color32(230, 200, 110, 255),
+            new Color32(210, 190, 110, 255), new Color32(180, 150, 90, 255), new Color32(60, 120, 170, 255), new Color32(170, 200, 160, 255), new Color32(170, 70, 50, 255),
+            new Color32(196, 150, 100, 255), new Color32(220, 214, 200, 255), new Color32(170, 150, 90, 255), new Color32(240, 200, 70, 255), new Color32(240, 240, 236, 255)
         };
         // resistance to carving (radius divides by sqrt(hardness))
         static readonly float[] Hardness =
@@ -54,7 +60,8 @@ namespace MadMax.Items
             2.4f, 2.4f, 2.4f, 2f, 2f,
             3f, 2f, 2.6f, 1.6f, 0.6f, 1.4f, 3f, 1.2f,
             1f, 1f, 1f,
-            0.7f, 0.9f, 0.4f, 1.2f, 1f, 1f, 0.8f, 1f, 1.4f, 2.4f, 2.2f, 1f, 2.6f
+            0.7f, 0.9f, 0.4f, 1.2f, 1f, 1f, 0.8f, 1f, 1.4f, 2.4f, 2.2f, 1f, 2.6f,
+            1.4f, 3.4f, 0.4f, 0.5f, 0.6f, 0.3f, 0.4f, 1f, 1f, 2.2f, 1f, 0.4f, 2.4f, 2.2f, 1f
         };
         // pickups produced per destroyed voxel
         static readonly float[] Yield =
@@ -64,7 +71,8 @@ namespace MadMax.Items
             1f / 30f, 1f / 30f, 1f / 30f, 1f / 30f, 1f / 30f,
             1f / 40f, 1f / 40f, 1f / 40f, 1f / 40f, 1f / 20f, 1f / 30f, 1f / 40f, 1f / 30f,
             0f, 0f, 0f,
-            1f / 20f, 1f / 20f, 1f / 30f, 1f / 25f, 0f, 0f, 1f / 30f, 0f, 1f / 25f, 1f / 30f, 1f / 40f, 0f, 1f / 40f
+            1f / 20f, 1f / 20f, 1f / 30f, 1f / 25f, 0f, 0f, 1f / 30f, 0f, 1f / 25f, 1f / 30f, 1f / 40f, 0f, 1f / 40f,
+            1f / 25f, 1f / 40f, 1f / 20f, 0f, 1f / 30f, 1f / 15f, 1f / 20f, 0f, 0f, 1f / 30f, 1f / 20f, 1f / 20f, 1f / 30f, 1f / 40f, 1f / 30f
         };
         static readonly bool[] Fluid =
         {
@@ -73,7 +81,8 @@ namespace MadMax.Items
             false, false, false, false, false,
             false, false, false, false, false, false, false, false,
             true, true, true,
-            false, false, false, false, true, true, false, true, false, false, false, true, false
+            false, false, false, false, true, true, false, true, false, false, false, true, false,
+            false, false, false, false, false, false, false, true, true, false, false, false, false, false, false
         };
         /// <summary>HUD order: the everyday materials first, fluids last; others only when carried.</summary>
         public static readonly ResourceType[] HudOrder =

@@ -1,3 +1,4 @@
+using MadMax.Items;
 using MadMax.RPG;
 
 namespace MadMax.Story
@@ -17,10 +18,36 @@ namespace MadMax.Story
             }
             S("S01", "A FRIDGE FULL OF FLOWERS", "orla", "Fix a flower seller's warm cold cabinet: ventilation, a failed connection, a part from an appliance wreck.", "cold_storage", "power", "salvage");
             S("S02", "THE GOAT HAS A LAWYER", "bess", "Track an escaped goat by damaged plants, lure it, mend the pen, settle who pays.", "animals", "building", "dialogue");
-            S("S03", "HEARSE POWER", "sol", "Tow a seized hearse down a hill without tipping the flower trailer.", "towing", "driving");
+            var s03 = S("S03", "HEARSE POWER", "sol", "Tow a seized hearse down a hill without tipping the flower trailer.", "towing", "driving");
+            s03.build = Build.Playable;
+            s03.offerSay = "SOMEONE SAID YOU NEEDED A MECHANIC.";
+            s03.offerReply = "MY HEARSE SEIZED ON THE ROAD OUT OF TOWN WITH MRS ABERNATHY IN THE BACK, AND THE SERVICE IS TODAY. " +
+                             "TOW IT WITH A WINCH, FIX IT, I DON'T MIND HOW. JUST BRING HER TO THE CHAPEL IN ONE PIECE.";
+            s03.hook = "SOL MOSS'S HEARSE SEIZED OUT OF TOWN. MRS ABERNATHY NEEDS TO REACH THE CHAPEL.";
+            Step(s03, "find", "FIND THE HEARSE ON THE ROAD OUT OF TOWN", "hearse").When(Goal.Reach, "hearse", 9f);
+            Step(s03, "bring", "BRING THE HEARSE TO THE CHAPEL: WINCH IT BEHIND YOUR CAR, OR REPAIR ITS ENGINE AND DRIVE IT", "chapel").When(Goal.Bring, "hearse", 14f);
+            Step(s03, "gentle", "OPTIONAL: GET HER THERE WITHOUT A SCRATCH", "chapel").When(Goal.Event, "s03:gentle").Optional()
+                .Pays(r => r.scrap = 15);
+            s03.reward.scrap = 30; s03.reward.training.Add((Skill.Driving, 5f)); s03.reward.training.Add((Skill.Mechanics, 4f)); s03.reward.flag = "paint_hearse";
+            s03.payoff = "MRS ABERNATHY MADE HER OWN FUNERAL. SOL SAYS A BLACK-AND-CREAM PAINT JOB SUITS ANY CAR.";
             S("S04", "THE HOUSE THAT WALKED", "della", "Erosion under a kitchen: unload, shore the building, move a drain.", "building", "machinery");
             S("S05", "NOT THAT KIND OF SHOT", "amos", "Restore a range's targets and shoot a safe accuracy course.", "building");
-            S("S06", "MUD, SWEAT AND GEARS", "jo", "Dig out a buried irrigation trench with a borrowed excavator; soil to the garden.", "machinery", "fields", "irrigation_control");
+            var s06 = S("S06", "MUD, SWEAT AND GEARS", "jo", "Dig out a buried irrigation trench with a borrowed excavator; soil to the garden.", "machinery", "fields", "irrigation_control");
+            s06.build = Build.Playable;
+            s06.offerSay = "YOU LOOK LIKE YOU COULD USE A HAND.";
+            s06.offerReply = "THE LAST STORM FILLED MY IRRIGATION TRENCH TO THE BRIM. THE EXCAVATOR BY THE SHED HAS DIESEL IN IT. " +
+                             "DIG THE CHANNEL OUT WHERE THE FLAGS ARE AND PUT THE SOIL ON MY GARDEN PATCH, NOT ON MY NEIGHBOUR'S.";
+            s06.hook = "JO KETTLE'S IRRIGATION TRENCH IS BURIED. THERE'S AN EXCAVATOR AT HER FARM.";
+            Step(s06, "t1", "DIG OUT THE TRENCH AT THE FIRST FLAG", "jo_t1").When(Goal.Ground, "jo_t1", -0.6f).Optional();
+            Step(s06, "t2", "DIG OUT THE TRENCH AT THE SECOND FLAG", "jo_t2").When(Goal.Ground, "jo_t2", -0.6f).Optional();
+            Step(s06, "t3", "DIG OUT THE TRENCH AT THE THIRD FLAG", "jo_t3").When(Goal.Ground, "jo_t3", -0.6f).Optional();
+            Step(s06, "dig", "DIG THE TRENCH OUT AT ALL THREE FLAGS (EXCAVATOR: UP/DN BOOM, Q CURL TO DIG, E DUMP)", "jo_t2").When(Goal.Steps, "t1,t2,t3", 3f)
+                .Pays(r => r.training.Add((Skill.Construction, 6f)));
+            Step(s06, "soil", "TIP THE SOIL ON JO'S GARDEN PATCH (THE SIGN)", "jo_garden").When(Goal.Ground, "jo_garden", 0.25f);
+            Step(s06, "tell", "TELL JO THE WATER CAN RUN", "jo").Says("jo", "s06_tell", "THE TRENCH IS OPEN AND YOUR PATCH HAS ITS SOIL.",
+                "AND MY NEIGHBOUR'S INTAKE IS STILL DRY. GOOD. TAKE THE DIESEL YOU BURNED AND SOME OF MY BEST MUCK. BORROW THE DIGGER ANY TIME.");
+            s06.reward.resources.Add((ResourceType.Diesel, 30)); s06.reward.items.Add(("farm_fertilizer", 4)); s06.reward.training.Add((Skill.Farming, 5f)); s06.reward.flag = "jo_discount";
+            s06.payoff = "JO'S TRENCH RUNS AGAIN AND HER DIGGER IS YOURS TO BORROW.";
             S("S07", "AN HONEST FISH", "milt", "Catch a fair fish and expose a doctored weigh scale.", "fishing", "dialogue");
             S("S08", "THE WEDDING AT THE WRONG END OF THE ROAD", "fen", "Two villages with one name: deliver clothes and musicians, mend an outfit.", "sewing", "companions", "performance");
             var s09 = S("S09", "THE SMALLEST WAR", "una", "Crows or thirst? Watch the beds, fix the water, move the scarecrow.", "garden", "building");

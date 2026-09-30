@@ -10,7 +10,7 @@ namespace MadMax.Game
 {
     /// <summary>Screen HUD drawn at the pixel-art resolution: vehicle panel, parts damage map, minimap, weather, prompts.</summary>
     [DefaultExecutionOrder(200)]
-    public class PixelHud : MonoBehaviour
+    public partial class PixelHud : MonoBehaviour
     {
         public float minimapMetresPerPixel = 4f;
 
@@ -262,6 +262,8 @@ namespace MadMax.Game
                 canvas.Text((canvas.w - PixelCanvas.TextWidth(starter)) / 2, rig.CrosshairView ? 16 : 4, starter, new Color32(235, 200, 120, 255));
             }
             DrawResources(6, 22);
+            DrawItemFeed();                                                                      // Items block: what came in and went out
+            DrawWorkProgress();                                                                  // Anim block: timed work at a vehicle
             if (!car && !(game.Build && game.Build.Active) && !(game.Menus && game.Menus.IsOpen)) DrawToolbar();
             if (!car) DrawVitals(6, canvas.h - 16);
             else DrawVitalsCompact(6, 31);                                                        // in a car: under the resources, clear of the fault lines
@@ -1227,5 +1229,8 @@ namespace MadMax.Game
             canvas.Text(x + 5, y + 4, line, Amber);
         }
 
+    
+        partial void DrawItemFeed();
+        partial void DrawWorkProgress();
     }
 }

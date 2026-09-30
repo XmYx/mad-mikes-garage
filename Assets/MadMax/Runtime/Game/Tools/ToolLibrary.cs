@@ -14,6 +14,17 @@ namespace MadMax.Game
             "tool_spear", "tool_nail_bat", "tool_knife", "tool_leaf_blade", "tool_slingshot", "tool_bow", "tool_crossbow", "tool_pipe_pistol", "tool_revolver", "tool_bolt_rifle", "tool_flare_gun",
             "tool_grapple" };
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
+
+        /// <summary>Tools added by the depth blocks (<c>RoadsTools.Register</c> ...): voxel model and the component.</summary>
+        public static readonly Dictionary<string, (System.Func<VoxelGrid> model, System.Func<GameObject, Transform, HandTool> make)> Extra =
+            new Dictionary<string, (System.Func<VoxelGrid>, System.Func<GameObject, Transform, HandTool>)>();
+        static bool blocksRegistered;
+        static void EnsureBlocks()
+        {
+            if (blocksRegistered) return;
+            blocksRegistered = true;
+            RoadsTools.Register(); MetalTools.Register(); HusbandryTools.Register(); UtilitiesTools.Register(); MedMineTools.Register(); DefenceTools.Register();
+        }
         const float S = VoxelMesher.DefaultSize;
 
         public static bool Has(string id) => System.Array.IndexOf(Order, id) >= 0;
@@ -21,6 +32,8 @@ namespace MadMax.Game
         public static Mesh MeshFor(string id)
         {
             if (meshes.TryGetValue(id, out var m) && m) return m;
+            EnsureBlocks();
+            if (Extra.TryGetValue(id, out var ext)) { var eg = ext.model(); eg.Bevel(); return meshes[id] = VoxelMesher.Build(eg, "Tool_" + id); }
             var g = new VoxelGrid();
             switch (id)
             {
@@ -244,7 +257,9 @@ namespace MadMax.Game
             var tip = new GameObject("Tip").transform;
             tip.SetParent(go.transform, false);
             HandTool tool;
-            if (id == ItemIds.Shotgun || Guns.ContainsKey(id))
+            EnsureBlocks();
+            if (Extra.TryGetValue(id, out var block)) tool = block.make(go, tip);
+            else if (id == ItemIds.Shotgun || Guns.ContainsKey(id))
             {
                 var r = go.AddComponent<RangedTool>();
                 r.muzzle = tip;
