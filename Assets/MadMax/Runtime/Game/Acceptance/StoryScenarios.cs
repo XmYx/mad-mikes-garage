@@ -516,7 +516,8 @@ namespace MadMax.Game.Acceptance
             yield return H.Until(() => g.CastBody("june") != null, 5f);
             if (!c.Check(H.Talk(g, g.CastBody("june"), "THE CALLSIGN"), "June Bell at her relay")) yield break;
             yield return H.Until(() => MadMax.Story.Story.Flag("scene:A3"), 3f);
-            var gen = Placeable.All.FirstOrDefault(p => p && p.id == "generator" && g.IsStoryProp(p));
+            var ra = StoryAnchors.Get("relay_gen");
+            var gen = Placeable.All.FirstOrDefault(p => p && p.id == "generator" && g.IsStoryProp(p) && (p.transform.position - ra).sqrMagnitude < 9f);
             var gc = gen ? gen.GetComponent<Generator>() : null;
             if (!c.Check(gc && gc.fuel <= 0f && !gc.on, "the relay generator is dry and off")) yield break;
             g.Inventory.Add(ResourceType.Fuel, 10);
