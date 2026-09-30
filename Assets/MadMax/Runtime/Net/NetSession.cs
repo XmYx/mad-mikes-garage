@@ -437,7 +437,7 @@ namespace MadMax.Net
             w.SByte((sbyte)Mathf.Clamp(Mathf.RoundToInt(pl.Velocity.y * 4f), -127, 127));
             w.SByte((sbyte)Mathf.Clamp(Mathf.RoundToInt(pl.lookPitch), -90, 90));
             w.Byte((byte)Mathf.RoundToInt(pl.SwingProgress * 255f));
-            w.Byte((byte)(pl.Tool ? Array.IndexOf(ToolLibrary.Order, pl.Tool.id) : 255));
+            w.Byte((byte)(pl.Tool ? ToolIndex(pl.Tool.id) : 255));
         }
 
         static void WriteAvatar(NetWriter w, Peer p) { w.Bytes(p.lastState, 0, p.lastState.Length); }
@@ -1077,5 +1077,7 @@ namespace MadMax.Net
             if (IsServer) { if (rep) Destroy(rep); rb.isKinematic = false; rb.linearVelocity = velocity; }
             else { rep = rep ?? part.gameObject.AddComponent<NetReplica>(); rep.SetActive(true); }
         }
+    
+        static int ToolIndex(string id) { var ids = ToolLibrary.AllIds; for (int i = 0; i < ids.Count; i++) if (ids[i] == id) return i; return 255; }
     }
 }

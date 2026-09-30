@@ -79,6 +79,10 @@ namespace MadMax.Items
                 F("food_bug_skewer", "FRIED BUG SKEWER", 22, 0, 30, H("8a6a2a"), 0.05f, 2f),
                 F("food_fish_cooked", "GRILLED FISH", 30, 2, 25, H("c09060"), 0f, 3f),
                 F("food_fish_smoked", "SMOKED FISH", 26, -2, 0, H("a06a3a")),
+                // depth stage F: preserved with salt (counter)
+                F("food_meat_salted", "SALT MEAT", 30, -8, 0, H("9a4a3e"), 0f, 2f),
+                F("food_fish_salted", "SALT FISH", 24, -8, 0, H("c8b898")),
+                F("food_pickles", "PICKLED VEGETABLES", 16, 4, 0, H("8a9a3a")),
                 F("food_hempseed", "HEMP SEEDS", 6, -2, 0, H("4a4a2a")),
                 F("food_mushroom", "MUSHROOMS", 6, 1, 20, H("b8a888"), 0.05f),
                 Rad(F("food_fish_glow", "GLOWING FISH", 10, 2, 15, H("8aff5a"), 0.5f), 14f),
@@ -97,6 +101,7 @@ namespace MadMax.Items
                 F("food_mush_skewer", "MUSHROOM SKEWER", 16, 0, 25, H("9a7a50")),
                 F("food_flatbread", "FLATBREAD", 20, -3, 40, H("d8b070")),
                 F("drink_tea", "HERB TEA", 2, 30, 30, H("8a6a2a"), 0f, 3f),
+                F("drink_bark_tea", "WILLOW-BARK TEA", 1, 26, 30, H("6a4a24"), 0f, 2f),       // depth stage G: dulls pain (WastelandGame.MedMine)
                 F("food_meat_stew", "MEAT STEW", 70, 10, 40, H("7a3a1a"), 0f, 10f),
                 F("food_fish_soup", "FISH SOUP", 46, 18, 30, H("c0a070"), 0f, 6f),
                 F("food_pancakes", "PANCAKES", 40, -2, 30, H("e0b060"), 0f, 3f),
@@ -111,6 +116,9 @@ namespace MadMax.Items
                 F("food_can_fruit", "TINNED FRUIT", 26, 14, 0, H("d06040"), 0f, 2f),
                 F("drink_beer", "BEER", 8, 22, 0, H("d8a030")),
                 F("drink_cider", "CIDER", 6, 26, 0, H("e0c060")),
+                // depth stage E: the beehive
+                F("food_honey", "JAR OF HONEY", 22, -2, 0, H("e0a030"), 0f, 3f),
+                F("drink_mead", "MEAD", 10, 20, 0, H("d8a040")),
             }) foods[f.id] = f;
 
             crops = new List<CropDef>

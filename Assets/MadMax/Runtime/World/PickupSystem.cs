@@ -89,7 +89,7 @@ namespace MadMax.World
                 p.go.transform.position = Vector3.Lerp(p.from, target, p.magnet * p.magnet);
                 if (p.magnet >= 1f)
                 {
-                    inventory.Add(p.type, p.amount);
+                    using (Inventory.Source("PICKED UP")) inventory.Add(p.type, p.amount);
                     MadMax.Audio.Sfx.Play("pickup", target, 0.35f, Random.Range(0.95f, 1.15f), 20f, 0.08f);
                     Destroy(p.go);
                     live.RemoveAt(i);

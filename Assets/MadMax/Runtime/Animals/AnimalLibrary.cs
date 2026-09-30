@@ -112,6 +112,11 @@ namespace MadMax.Animals
                     Coat = R(Pal.Cream, 2), Belly = R(Pal.Cream, 1), Accent = R(Pal.Metal, 2), features = "horns beard ears_long udder",
                     walk = 1.1f, run = 6f, health = 35f, mass = 45f, sight = 20f, hearing = 25f, herdMin = 2, herdMax = 4, drops = new[] { (meat, 2, 3), (hide, 1, 1), ("misc_bone", 1, 1) },
                     product = "drink_milk", productPerDay = 1, adultDays = 3f, feedPerDay = 0.6f, young = "animal_kid", likes = new[] { "food_cabbage", "food_carrot", "food_apple", "crop_wheat", "food_beet" } },
+                // depth stage E: a woolly grazer; the fleece grows back after shearing (Animal.Husbandry)
+                new AnimalDef { id = "sheep", name = "SHEEP", nature = Nature.Livestock, len = 12, depth = 6, width = 5, leg = 6, neck = 3, head = 3, snout = 2, tail = 2,
+                    Coat = R(Pal.Cream, 1), Belly = R(Pal.Cream, 1), Accent = R(Pal.Black, 1), features = "ears_long fleece",
+                    walk = 1f, run = 5.5f, health = 40f, mass = 60f, sight = 20f, hearing = 25f, herdMin = 2, herdMax = 5, drops = new[] { (meat, 3, 4), (hide, 1, 2), ("misc_bone", 1, 1) },
+                    adultDays = 3f, feedPerDay = 0.6f, young = "animal_lamb", likes = new[] { "crop_wheat", "food_cabbage", "food_carrot", "food_apple", "food_beet" } },
                 new AnimalDef { id = "cow", name = "COW", nature = Nature.Livestock, len = 20, depth = 9, width = 8, leg = 9, neck = 3, head = 5, snout = 3, tail = 7,
                     Coat = R(Pal.Cream, 3), Belly = R(Pal.Cream, 2), Accent = R(Pal.Black, 1), features = "horns spots udder ears_long",
                     walk = 1f, run = 5f, health = 120f, bite = 8f, mass = 550f, sight = 20f, hearing = 25f, herdMin = 2, herdMax = 4, drops = new[] { (meat, 7, 10), (hide, 3, 4), ("misc_bone", 2, 4), ("trophy_skull", 0, 1) },

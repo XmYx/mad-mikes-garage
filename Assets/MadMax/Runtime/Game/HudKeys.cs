@@ -166,7 +166,7 @@ namespace MadMax.Game
                 MoveKeys(b, "WALK");
                 Add(b, Controls.Act.Jump, "JUMP / CLIMB", Grp.Move); Add(b, Controls.Act.Run, "RUN", Grp.Move); Add(b, Controls.Act.Crouch, "CROUCH / SLIDE", Grp.Move);
                 Add(b, Controls.Act.Use, "USE / TAKE / TALK", Grp.Action); Add(b, Controls.Act.Second, "SECOND ACTION", Grp.Action);
-                Add(b, Controls.Act.Drop, "DROP PART", Grp.Action); Add(b, Controls.Act.Enter, "GET IN / RIDE", Grp.Action);
+                Add(b, Controls.Act.Drop, "DROP PART / TOOL", Grp.Action); Add(b, Controls.Act.Enter, "GET IN / RIDE", Grp.Action);
                 Add(b, Controls.Act.Build, "BUILD", Grp.Build); Add(b, Controls.Act.Reload, "RELOAD / RESEARCH", Grp.Action);
                 Add(b, Controls.Act.Hitch, "HITCH", Grp.Action); Add(b, Controls.Act.Service, "SERVICE", Grp.Action);
                 Add(b, Controls.Act.Siphon, "SIPHON", Grp.Action); Add(b, Controls.Act.Armour, "WELD ARMOUR", Grp.Action);

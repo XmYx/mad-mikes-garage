@@ -33,13 +33,16 @@ namespace MadMax.Building
 
         public bool Inside(Vector3 p) { var d = p - transform.position; d.y = 0f; return d.sqrMagnitude < Radius * Radius; }
 
-        /// <summary>Rough strength of the defences: armed turrets, spike walls, wire, bells, stone and concrete walls.</summary>
+        /// <summary>Rough strength of the defences: armed turrets, spike walls, wire, bells, stone and concrete walls, and
+        /// the stage I works (<see cref="DefenceWorks.Score"/>).</summary>
         public int Defence()
         {
             float s = MadMax.Npc.Companions.GuardsAt(transform.position, 40f) * 3f;              // companions on guard (roadmap 20)
             foreach (var p in Placeable.All)
             {
                 if (!p || !Inside(p.transform.position)) continue;
+                float works = DefenceWorks.Score(p);                                                // mines, wires, towers, gates, nests, processed walls
+                if (works >= 0f) { s += works; continue; }
                 if (p.TryGetComponent<AutoTurret>(out var t)) s += t.on ? 4f : 1f;
                 else if (p.TryGetComponent<DefenceHazard>(out var h)) s += h.kind == DefenceHazard.Kind.Spikes ? 1f : 0.7f;
                 else if (p.GetComponent<AlarmBell>()) s += 1f;

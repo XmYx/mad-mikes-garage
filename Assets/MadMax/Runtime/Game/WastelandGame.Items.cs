@@ -34,7 +34,7 @@ namespace MadMax.Game
         void SyncHotbar()
         {
             for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) <= 0) Hotbar[i] = null;
-            var order = new List<string>(ToolLibrary.Order);
+            var order = new List<string>(ToolLibrary.AllIds);
             foreach (var kv in Inventory.Items) if (kv.Value > 0 && !order.Contains(kv.Key)) order.Add(kv.Key);
             foreach (var id in order)
             {
@@ -321,7 +321,7 @@ namespace MadMax.Game
             var id = LootMedia[Random.Range(0, LootMedia.Length)];
             if (Random.value < 0.35f) id = Random.value < 0.5f ? ItemIds.Shells : ItemIds.Cutter;
             if (id == ItemIds.Cutter && Inventory.GetItem(id) > 0) id = LootMedia[Random.Range(0, LootMedia.Length)];
-            Inventory.AddItem(id, id == ItemIds.Shells ? 6 : 1);
+            using (Inventory.Source("FOUND")) Inventory.AddItem(id, id == ItemIds.Shells ? 6 : 1);
             Toast("FOUND: " + ItemCatalog.Name(id));
         }
     }

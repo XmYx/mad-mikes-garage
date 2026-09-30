@@ -50,6 +50,7 @@ namespace MadMax.World
             foreach (var x in extra) found.Add((x, 1));
             MadMax.Game.LastEngine.AddFinds(g, key, found);
             if (found.Count == 0) { g.Toast("NOTHING USEFUL"); return; }
+            using var feed = Inventory.Source("FOUND");
             var names = new List<string>();
             foreach (var (id, n) in found)
             {
