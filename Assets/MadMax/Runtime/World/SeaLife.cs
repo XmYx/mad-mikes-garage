@@ -88,6 +88,7 @@ namespace MadMax.World
                 for (int i = 0; i < n; i++)
                 {
                     var tr = Make(FishMesh(kind), "Fish");
+                    MadMax.Rendering.HDVisual.Dress(tr.gameObject, MadMax.Rendering.HDDomain.Animal, "SeaFish" + kind, MadMax.Rendering.HDAssets.NoShadow);
                     var off = Random.insideUnitSphere * 1.6f; off.y *= 0.4f;
                     sc.fish.Add(new Fish { t = tr, off = off, vel = sc.drift });
                     tr.position = sc.centre + off;
@@ -104,6 +105,7 @@ namespace MadMax.World
                 if (!float.IsNaN(lvl) && t.World.Ocean(x, z) && lvl - t.HeightNoLoad(x, z) > 2f)
                 {
                     var tr = Make(JellyMesh(), "Jellyfish");
+                    MadMax.Rendering.HDVisual.Dress(tr.gameObject, MadMax.Rendering.HDDomain.Animal, "Jellyfish", MadMax.Rendering.HDAssets.NoShadow);
                     tr.position = new Vector3(x, lvl - Random.Range(0.4f, 1.6f), z);
                     jellies.Add(new Jelly { t = tr, drift = new Vector3(Random.Range(-0.2f, 0.2f), 0f, Random.Range(-0.2f, 0.2f)), phase = Random.value * 6f });
                 }

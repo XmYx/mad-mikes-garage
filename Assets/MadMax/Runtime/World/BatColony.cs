@@ -38,6 +38,7 @@ namespace MadMax.World
                 go.transform.localRotation = Quaternion.Euler(180f, Random.Range(0f, 360f), 0f);     // hanging upside down
                 go.GetComponent<MeshFilter>().sharedMesh = batMesh;
                 var mr = go.GetComponent<MeshRenderer>(); mr.sharedMaterial = mat; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.Animal, "Bat", MadMax.Rendering.HDAssets.NoShadow);
                 bats[i] = go.transform;
             }
         }
