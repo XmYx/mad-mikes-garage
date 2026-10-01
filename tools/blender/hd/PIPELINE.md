@@ -246,8 +246,15 @@ Sidecar format 2 adds `gameId`, `gameScale`, `exporter`, per object `parentBone`
 * **Names**: multi-asset files number duplicate object names (`Body.003`); the exporter restores the clean name
   inside each asset. Asset folder names are the game id with characters other than `A-Za-z0-9_.-` replaced by `_`
   (`gameId` keeps the original).
-* **UVs**: an asset whose meshes were unwrapped one by one (islands of different meshes overlap > 15 %) is
-  re-unwrapped into one atlas (log line "uv islands of ... overlap").
+* **UVs**: world / furniture / animals sources (hdkit) unwrap every mesh on its own: the exporter always re-unwraps
+  their multi-mesh assets into one atlas. Other groups are re-unwrapped only when islands of different meshes
+  overlap > 15 % (log line "uv islands of ... overlap"). Meshes without faces are dropped.
+* **Freshness**: a sidecar newer than its .blend and from the current `EXPORTER_VERSION` is up to date; bump
+  `EXPORTER_VERSION` in export_hd.py when an exporter change must re-export everything (or use `--force <filter>`).
+* **Where parts live**: vehicle-specific doors/hoods come with their vehicle's export (cars/heavy), the machine tools
+  modelled on their machine (`tool_dump_bed`, `tool_excavator_arm`, `tool_dozer_blade`, `tool_hoe_arm`,
+  `tool_backhoe_loader`, `tool_harvester` ...) are objects inside the heavy exports (and `Tractor_implements`);
+  `parts/` holds the 82 generic parts.
 * **Vegetation**: the source `Sway` attribute (0 root -> 1 tip) becomes `Col.a = 1 - Sway` (1 = rooted, the voxel
   convention); the atlas material gets `_SwayTip = swayTip` (0.12) so HDLit bends the tips with the wind.
 * **Animals**: root empty -> `Rig` armature (one bone per part, named like `Animal`'s rig parts) -> rigid part meshes

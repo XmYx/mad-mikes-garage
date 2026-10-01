@@ -42,9 +42,10 @@ GROUPS = {
     # wave 6 content (parts_all/, items/, world/, furniture/, animals/): all use the cars mapping, no mirror
     "parts": dict(mirror=False, atlas="asset", size=512, ao=0.25, kind="part"),
     "items": dict(mirror=False, atlas="asset", size=256, ao=0.08, kind="item"),
-    "world": dict(mirror=False, atlas="asset", size=1024, ao=0.8, kind="prop"),
-    "furniture": dict(mirror=False, atlas="asset", size=512, ao=0.4, kind="prop"),
-    "animals": dict(mirror=False, atlas="asset", size=1024, ao=0.15, kind="animal"),
+    # hdkit (world / furniture / animals) smart-projects every mesh on its own: always one shared re-unwrap
+    "world": dict(mirror=False, atlas="asset", size=1024, ao=0.8, kind="prop", unwrap=True),
+    "furniture": dict(mirror=False, atlas="asset", size=512, ao=0.4, kind="prop", unwrap=True),
+    "animals": dict(mirror=False, atlas="asset", size=1024, ao=0.15, kind="animal", unwrap=True),
 }
 SWAY_TIP = 0.12                 # HDLit _SwayTip for meshes with a Sway attribute (Col.a = 1 - Sway)
 
@@ -173,7 +174,14 @@ def uv_overlap(objs, res=128):
         seen.add(me.name)
         uv = np.empty(len(me.loops) * 2, np.float32)
         me.uv_layers[0].data.foreach_get("uv", uv)
-        cells = np.unique((np.clip(uv.reshape(-1, 2), 0, 0.9999) * res).astype(np.int32), axis=0)
+        uv = uv.reshape(-1, 2)
+        me.calc_loop_triangles()
+        tri = np.empty(len(me.loop_triangles) * 3, np.int32)
+        me.loop_triangles.foreach_get("loops", tri)
+        t = uv[tri.reshape(-1, 3)]
+        w = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1 / 3, 1 / 3, 1 / 3], [.5, .5, 0], [0, .5, .5], [.5, 0, .5]], np.float32)
+        pts = np.einsum("kj,tjc->tkc", w, t).reshape(-1, 2)
+        cells = np.unique((np.clip(pts, 0, 0.9999) * res).astype(np.int32), axis=0)
         count[cells[:, 1], cells[:, 0]] += 1
     used = (count > 0).sum()
     return float((count > 1).sum()) / max(1, used)
@@ -829,12 +837,12 @@ def game_scale(name, kind):
 
 
 def fresh(out_dir, name, src):
-    """The asset's sidecar is newer than its source file and this exporter (and from this exporter version)."""
+    """The asset's sidecar is newer than its source file and comes from this exporter version."""
     sc = os.path.join(out_dir, name + ".hd.json")
     if not os.path.exists(sc):
         return False
     t = os.path.getmtime(sc)
-    if t < os.path.getmtime(src) or t < os.path.getmtime(os.path.abspath(__file__)):
+    if t < os.path.getmtime(src):                      # exporter changes that need a re-export bump EXPORTER_VERSION
         return False
     try:
         return json.load(open(sc)).get("exporter", 0) >= EXPORTER_VERSION
@@ -851,7 +859,14 @@ def export_asset(name, root, objs, o, cfg):
     apply_modifiers(meshes, drop={"MASK"} if o["group"] == "character" else ())
     for ob in meshes:
         ob.data.name = ob.name if ob.data.users == 1 else ob.data.name
-    # ---- atlas groups
+    # ---- atlas groups (meshes without faces are dropped: nothing to bake or draw)
+    for ob in [ob for ob in meshes if not ob.data.polygons]:
+        log("dropping empty mesh", ob.name)
+        for c in list(ob.children):
+            c.parent = ob.parent
+        meshes.remove(ob)
+        objs.remove(ob)
+        bpy.data.objects.remove(ob, do_unlink=True)
     if cfg["atlas"] == "object":
         groups = [(ob.name, [ob], atlas_size(o, cfg, ob)) for ob in meshes]
     else:
@@ -860,7 +875,7 @@ def export_asset(name, root, objs, o, cfg):
         for ob in meshes:
             if ob.data.users > 1:
                 ob.data = ob.data.copy()             # each mesh gets its own layout
-    ensure_uvs(groups, force=cfg["atlas"] == "object")
+    ensure_uvs(groups, force=cfg["atlas"] == "object" or (cfg.get("unwrap", False) and len(meshes) > 1))
     # ---- material classes, the body paint (vehicles)
     classes = {}
     for ob in meshes:
@@ -966,6 +981,13 @@ def export_asset(name, root, objs, o, cfg):
         bpy.context.view_layer.update()
     fbx = os.path.join(out_dir, name + ".fbx")
     select([ob for ob in objs], objs[0])
+    for ob in objs:                                    # the FBX writer packs 3-vectors as doubles: int arrays fail
+        for k in list(ob.keys()):
+            v = ob[k]
+            if hasattr(v, "to_list") and not isinstance(v, str):
+                lv = v.to_list()
+                if lv and all(isinstance(x, (int, float)) for x in lv):
+                    ob[k] = [float(x) for x in lv]
     write_fbx(fbx, bake_space=arm is None)
     side["fbx"] = name + ".fbx"
     side["files"] = [{"file": f, "bytes": os.path.getsize(os.path.join(out_dir, f))} for f in sorted(os.listdir(out_dir))

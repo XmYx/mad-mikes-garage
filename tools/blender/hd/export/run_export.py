@@ -12,7 +12,8 @@ override with HD_SRC_VEHICLES / HD_SRC_PARTS / HD_SRC_WORLD / HD_SRC_CHARACTER):
     character  character/blend/wardrobe_<M|M2|F|F2>.blend (build_wardrobe.py) -> Character_<KEY>
 --out      Unity folder (default <this checkout>/Assets/MadMax/Models/HD).
 filter     job names or prefixes (e.g. "cars/Sedan", "world/", "items/food_"); default: all jobs.
---force    re-export even when up to date (default: skip assets whose sidecar is newer than source + exporter).
+--force    re-export even when up to date (default: skip assets whose sidecar is newer than the source and from the
+           current export_hd.EXPORTER_VERSION; jobs whose state file is newer than the source).
 Writes <out>/hd_index.json (every exported asset), tools/blender/hd/export/hd_report.json, appends to the log file
 ($HD_EXPORT_LOG, default <MadMaxUnity>/hd_export.log), per-job Blender output in <MadMaxUnity>/hd_export_logs/.
 """
@@ -96,8 +97,16 @@ def up_to_date(name, blend):
     sf = state_file(name)
     if not os.path.exists(sf):
         return False
-    t = os.path.getmtime(sf)
-    return t > os.path.getmtime(blend) and t > os.path.getmtime(EXPORTER) and t > os.path.getmtime(__file__)
+    with open(sf) as f:
+        if f.readline().strip() != "v%d" % exporter_version():
+            return False                          # exporter changes that need a re-export bump EXPORTER_VERSION
+    return os.path.getmtime(sf) > os.path.getmtime(blend)
+
+
+def exporter_version():
+    import re
+    m = re.search(r"^EXPORTER_VERSION = (\d+)", open(EXPORTER).read(), re.M)
+    return int(m.group(1)) if m else 0
 
 
 def run(name, job, out, force):
@@ -118,7 +127,7 @@ def run(name, job, out, force):
     if p.returncode == 0:
         os.makedirs(STATE, exist_ok=True)
         with open(state_file(name), "w") as f:
-            f.write("\n".join(done))
+            f.write("v%d\n" % exporter_version() + "\n".join(done))
         return name, "ok", time.time() - t0, "%d assets" % len(done)
     tail = "\n".join([ln for ln in lines if "FAILED" in ln or "failed" in ln][-5:] + (p.stdout + p.stderr).splitlines()[-12:])
     return name, "fail", time.time() - t0, tail
