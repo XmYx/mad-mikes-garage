@@ -1,0 +1,126 @@
+[
+ {
+  "id": "tool_excavator_drill",
+  "kind": "part",
+  "family": "machine_tools",
+  "label": "tool_excavator_drill (boom > stick > bucket > bit)",
+  "tris": 5920,
+  "size_m_game_xyz": [
+   0.523,
+   3.588,
+   3.656
+  ],
+  "fit": {
+   "boom": {
+    "dev_before": 0.118,
+    "scale": [
+     1.176,
+     0.96,
+     0.905
+    ],
+    "fitted": true
+   },
+   "stick": {
+    "dev_before": 0.1,
+    "scale": [
+     1.25,
+     1.0,
+     1.0
+    ],
+    "fitted": true
+   },
+   "bucket": {
+    "dev_before": 0.281,
+    "scale": [
+     1.0,
+     1.136,
+     0.78
+    ],
+    "fitted": true
+   },
+   "bit": {
+    "dev_before": 0.147,
+    "scale": [
+     1.415,
+     1.409,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "boom": {
+    "parent": "tool_excavator_drill",
+    "pivot_game": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   },
+   "stick": {
+    "parent": "boom",
+    "pivot_game": [
+     -0.0,
+     1.121,
+     1.8161
+    ]
+   },
+   "bucket": {
+    "parent": "stick",
+    "pivot_game": [
+     -0.0,
+     -0.639,
+     3.2561
+    ]
+   },
+   "bit": {
+    "parent": "bucket",
+    "pivot_game": [
+     -0.0,
+     -1.0478,
+     3.2493
+    ]
+   }
+  },
+  "props": {
+   "category": "Tool",
+   "socket": "tool (excavator)",
+   "mass": 950.0,
+   "size_class": 4
+  },
+  "tile": "machine_drill",
+  "blend": "parts_all/blend/tool_excavator_drill.blend"
+ },
+ {
+  "id": "tool_baler",
+  "kind": "part",
+  "family": "machine_tools",
+  "label": "tool_baler",
+  "tris": 12900,
+  "size_m_game_xyz": [
+   2.357,
+   1.529,
+   2.912
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.033,
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "fitted": false
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Tool",
+   "socket": "hitch (tractor)",
+   "mass": 800.0,
+   "size_class": 3
+  },
+  "tile": "machine_baler",
+  "blend": "parts_all/blend/tool_baler.blend"
+ }
+]

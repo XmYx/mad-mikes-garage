@@ -1,0 +1,482 @@
+[
+ {
+  "id": "lights_bar",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_bar",
+  "tris": 2340,
+  "size_m_game_xyz": [
+   1.84,
+   0.4,
+   0.24
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.667,
+     1.075
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 12.0,
+   "size_class": 1
+  },
+  "tile": "lights_1",
+  "blend": "parts_all/blend/lights_bar.blend"
+ },
+ {
+  "id": "lights_led_bar",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_led_bar",
+  "tris": 3692,
+  "size_m_game_xyz": [
+   1.99,
+   0.48,
+   0.24
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.951,
+     1.2
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 9.0,
+   "size_class": 1
+  },
+  "tile": "lights_1",
+  "blend": "parts_all/blend/lights_led_bar.blend"
+ },
+ {
+  "id": "lights_fog",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_fog",
+  "tris": 1052,
+  "size_m_game_xyz": [
+   1.32,
+   0.64,
+   0.48
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.242,
+    "scale": [
+     1.0,
+     1.348,
+     1.122
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 8.0,
+   "size_class": 1
+  },
+  "tile": "lights_1",
+  "blend": "parts_all/blend/lights_fog.blend"
+ },
+ {
+  "id": "lights_emergency",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_emergency",
+  "tris": 3320,
+  "size_m_game_xyz": [
+   1.68,
+   0.4,
+   0.24
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.1,
+    "scale": [
+     1.0,
+     1.0,
+     1.143
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 10.0,
+   "size_class": 1
+  },
+  "tile": "lights_1",
+  "blend": "parts_all/blend/lights_emergency.blend"
+ },
+ {
+  "id": "lights_search",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_search",
+  "tris": 2988,
+  "size_m_game_xyz": [
+   0.4,
+   0.733,
+   0.56
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.0,
+     1.333
+    ],
+    "fitted": true
+   },
+   "lamp": {
+    "dev_before": 0.158,
+    "scale": [
+     0.825,
+     0.952,
+     1.001
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "lamp": {
+    "parent": "lights_search",
+    "pivot_game": [
+     -0.0,
+     0.1733,
+     -0.0
+    ]
+   }
+  },
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 25.0,
+   "size_class": 1
+  },
+  "tile": "lights_2",
+  "blend": "parts_all/blend/lights_search.blend"
+ },
+ {
+  "id": "lights_search_pod",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "lights_search_pod",
+  "tris": 1584,
+  "size_m_game_xyz": [
+   0.54,
+   0.866,
+   0.72
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.0,
+     1.333
+    ],
+    "fitted": true
+   },
+   "lamp": {
+    "dev_before": 0.099,
+    "scale": [
+     1.0,
+     1.222,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "lamp": {
+    "parent": "lights_search_pod",
+    "pivot_game": [
+     -0.0,
+     0.1733,
+     -0.0
+    ]
+   }
+  },
+  "props": {
+   "category": "Lights",
+   "socket": "lights",
+   "mass": 30.0,
+   "size_class": 1
+  },
+  "tile": "lights_2",
+  "blend": "parts_all/blend/lights_search_pod.blend"
+ },
+ {
+  "id": "exhaust_stack",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "exhaust_stack",
+  "tris": 2700,
+  "size_m_game_xyz": [
+   0.32,
+   2.75,
+   0.4
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.175,
+    "scale": [
+     0.928,
+     1.127,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Exhaust",
+   "socket": "exhaust (right; exhaust_L mirrors)",
+   "mass": 25.0,
+   "size_class": 2
+  },
+  "tile": "exhausts",
+  "blend": "parts_all/blend/exhaust_stack.blend"
+ },
+ {
+  "id": "exhaust_side_pipes",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "exhaust_side_pipes",
+  "tris": 696,
+  "size_m_game_xyz": [
+   0.24,
+   0.24,
+   1.36
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     0.843,
+     1.115,
+     0.795
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Exhaust",
+   "socket": "exhaust (right; exhaust_L mirrors)",
+   "mass": 18.0,
+   "size_class": 1
+  },
+  "tile": "exhausts",
+  "blend": "parts_all/blend/exhaust_side_pipes.blend"
+ },
+ {
+  "id": "exhaust_twin_chrome",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "exhaust_twin_chrome",
+  "tris": 1796,
+  "size_m_game_xyz": [
+   0.48,
+   0.4,
+   1.39
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.128,
+    "scale": [
+     1.247,
+     1.0,
+     0.95
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Exhaust",
+   "socket": "exhaust (right; exhaust_L mirrors)",
+   "mass": 16.0,
+   "size_class": 1
+  },
+  "tile": "exhausts",
+  "blend": "parts_all/blend/exhaust_twin_chrome.blend"
+ },
+ {
+  "id": "exhaust_flame_stack",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "exhaust_flame_stack",
+  "tris": 2208,
+  "size_m_game_xyz": [
+   0.4,
+   1.09,
+   0.381
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.15,
+    "scale": [
+     1.067,
+     1.0,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Exhaust",
+   "socket": "exhaust (right; exhaust_L mirrors)",
+   "mass": 14.0,
+   "size_class": 1
+  },
+  "tile": "exhausts",
+  "blend": "parts_all/blend/exhaust_flame_stack.blend"
+ },
+ {
+  "id": "radiator_car",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "radiator_car",
+  "tris": 864,
+  "size_m_game_xyz": [
+   1.32,
+   0.675,
+   0.24
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.652,
+    "scale": [
+     1.0,
+     0.576,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Radiator",
+   "socket": "radiator"
+  },
+  "tile": "radiators",
+  "blend": "parts_all/blend/radiator_car.blend"
+ },
+ {
+  "id": "radiator_truck",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "radiator_truck",
+  "tris": 864,
+  "size_m_game_xyz": [
+   1.48,
+   0.995,
+   0.24
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.652,
+    "scale": [
+     1.0,
+     0.576,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Radiator",
+   "socket": "radiator"
+  },
+  "tile": "radiators",
+  "blend": "parts_all/blend/radiator_truck.blend"
+ },
+ {
+  "id": "radiator_bigcore",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "radiator_bigcore",
+  "tris": 3232,
+  "size_m_game_xyz": [
+   1.48,
+   1.04,
+   0.48
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.174,
+    "scale": [
+     1.0,
+     1.153,
+     1.137
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Radiator",
+   "socket": "radiator",
+   "mass": 34.0,
+   "size_class": 2
+  },
+  "tile": "radiators",
+  "blend": "parts_all/blend/radiator_bigcore.blend"
+ },
+ {
+  "id": "radiator_oil_cooler",
+  "kind": "part",
+  "family": "lights_exhaust",
+  "label": "radiator_oil_cooler",
+  "tris": 2488,
+  "size_m_game_xyz": [
+   1.329,
+   0.855,
+   0.4
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.087,
+    "scale": [
+     1.0,
+     0.95,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Radiator",
+   "socket": "radiator",
+   "mass": 22.0,
+   "size_class": 1
+  },
+  "tile": "radiators",
+  "blend": "parts_all/blend/radiator_oil_cooler.blend"
+ }
+]

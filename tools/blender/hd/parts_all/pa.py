@@ -56,7 +56,7 @@ def G(x, y, z):
 def extra_mats(M):
     S, T, H, Pp = kit.surface, kit.textured, kit._hex, kit.P
     M["bar_steel"] = S("BarSteel", Pp("metal", 2), rust=0.35, dust=0.35, metal=0.75, rough=0.5, var=0.15, streaks=0.4)
-    M["ram_steel"] = S("RamSteel", Pp("metal", 1), rust=0.5, dust=0.4, metal=0.6, rough=0.65, var=0.2, streaks=0.5, bump=0.6)
+    M["ram_steel"] = S("RamSteel", Pp("metal", 1), rust=0.28, dust=0.4, metal=0.6, rough=0.65, var=0.2, streaks=0.35, bump=0.6)
     M["hazard_bar"] = T("HazardStripes", "planks", H("d4b020"), Pp("black", 1), scale=1.0, dust=0.3, rough=0.6, bump=0.1, rot="X")
     M["fins"] = T("RadiatorFins", "corrugated", Pp("metal", 1), Pp("metal", 3), Pp("rust", 2), scale=2.0, dust=0.2, rough=0.5, bump=0.8, rot="X")
     M["fins_cu"] = T("RadiatorCore", "corrugated", Pp("bronze", 1), Pp("bronze", 3), Pp("rust", 1), scale=2.0, dust=0.2, rough=0.5, bump=0.8, rot="X")
@@ -101,6 +101,7 @@ def extra_mats(M):
     M["nylon"] = S("NylonOlive", Pp("riggreen", 3), dust=0.35, rough=0.75, var=0.12, bump=0.3)
     M["nylon_red"] = S("NylonRed", Pp("crimson", 2), dust=0.35, rough=0.75, var=0.12, bump=0.3)
     M["nylon_blue"] = S("NylonBlue", Pp("navy", 3), dust=0.35, rough=0.75, var=0.12, bump=0.3)
+    M["hay"] = T("Hay", "hay", Pp("ochre", 3), Pp("sand", 4), Pp("ochre", 2), dust=0.1, rough=0.95, bump=0.8)
     M["webbing"] = T("Webbing", "canvas", Pp("black", 2), Pp("black", 3), dust=0.3, rough=0.9, bump=0.3)
 
 
@@ -125,7 +126,8 @@ def seg(ob, name, pivot_kit=None, parent=None):
     if pivot_kit is not None:
         kit.recentre(ob, pivot_kit)
     if parent is not None:
-        w = ob.matrix_world.translation.copy()
+        bpy.context.view_layer.update()
+        w = ob.location.copy() if ob.parent is None else ob.matrix_world.translation.copy()
         ob.parent = parent
         pw = Vector((0, 0, 0))
         q = parent

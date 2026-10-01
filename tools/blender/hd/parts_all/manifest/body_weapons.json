@@ -1,0 +1,395 @@
+[
+ {
+  "id": "snorkel",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "snorkel",
+  "tris": 1128,
+  "size_m_game_xyz": [
+   0.32,
+   1.506,
+   0.55
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.088,
+    "scale": [
+     1.185,
+     1.0,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Snorkel",
+   "socket": "snorkel (right side)",
+   "mass": 8.0,
+   "size_class": 1
+  },
+  "tile": "body_addons",
+  "blend": "parts_all/blend/snorkel.blend"
+ },
+ {
+  "id": "spoiler_ducktail",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "spoiler_ducktail",
+  "tris": 140,
+  "size_m_game_xyz": [
+   1.84,
+   0.24,
+   0.48
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.167,
+    "scale": [
+     1.0,
+     1.157,
+     1.2
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Spoiler",
+   "socket": "spoiler",
+   "mass": 7.0,
+   "size_class": 1
+  },
+  "tile": "body_addons",
+  "blend": "parts_all/blend/spoiler_ducktail.blend"
+ },
+ {
+  "id": "spoiler_rear",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "spoiler_rear",
+  "tris": 888,
+  "size_m_game_xyz": [
+   1.852,
+   0.32,
+   0.26
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.094,
+    "scale": [
+     1.0,
+     1.0,
+     1.103
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Spoiler",
+   "socket": "spoiler",
+   "mass": 12.0,
+   "size_class": 1
+  },
+  "tile": "body_addons",
+  "blend": "parts_all/blend/spoiler_rear.blend"
+ },
+ {
+  "id": "steps_side",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "steps_side",
+  "tris": 864,
+  "size_m_game_xyz": [
+   0.32,
+   0.24,
+   1.52
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.125,
+    "scale": [
+     1.143,
+     1.0,
+     1.091
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Steps",
+   "socket": "steps (right; steps_L mirrors)",
+   "mass": 15.0,
+   "size_class": 1
+  },
+  "tile": "body_addons",
+  "blend": "parts_all/blend/steps_side.blend"
+ },
+ {
+  "id": "steps_ladder",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "steps_ladder",
+  "tris": 796,
+  "size_m_game_xyz": [
+   0.16,
+   1.395,
+   0.53
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.143,
+    "scale": [
+     1.31,
+     1.0,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Steps",
+   "socket": "steps (right; steps_L mirrors)",
+   "mass": 12.0,
+   "size_class": 1
+  },
+  "tile": "body_addons",
+  "blend": "parts_all/blend/steps_ladder.blend"
+ },
+ {
+  "id": "weapon_mg",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "weapon_mg",
+  "tris": 5384,
+  "size_m_game_xyz": [
+   0.84,
+   0.881,
+   1.76
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.0,
+     1.758
+    ],
+    "fitted": true
+   },
+   "mount": {
+    "dev_before": 0.125,
+    "scale": [
+     1.0,
+     1.171,
+     1.0
+    ],
+    "fitted": true
+   },
+   "gun": {
+    "dev_before": 0.188,
+    "scale": [
+     1.189,
+     1.107,
+     1.067
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "mount": {
+    "parent": "weapon_mg",
+    "pivot_game": [
+     -0.0,
+     0.2413,
+     -0.0
+    ]
+   },
+   "gun": {
+    "parent": "mount",
+    "pivot_game": [
+     -0.0,
+     0.5213,
+     -0.0498
+    ]
+   }
+  },
+  "props": {
+   "category": "Weapon",
+   "socket": "roof",
+   "mass": 90.0,
+   "size_class": 2
+  },
+  "tile": "weapons",
+  "blend": "parts_all/blend/weapon_mg.blend"
+ },
+ {
+  "id": "weapon_harpoon",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "weapon_harpoon",
+  "tris": 7966,
+  "size_m_game_xyz": [
+   0.58,
+   0.64,
+   1.68
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.25,
+    "scale": [
+     1.0,
+     1.0,
+     1.758
+    ],
+    "fitted": true
+   },
+   "mount": {
+    "dev_before": 0.792,
+    "scale": [
+     1.12,
+     1.0,
+     0.585
+    ],
+    "fitted": true
+   },
+   "launcher": {
+    "dev_before": 0.156,
+    "scale": [
+     1.0,
+     0.928,
+     0.941
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "mount": {
+    "parent": "weapon_harpoon",
+    "pivot_game": [
+     -0.0,
+     0.2413,
+     -0.0
+    ]
+   },
+   "launcher": {
+    "parent": "mount",
+    "pivot_game": [
+     -0.0,
+     0.4003,
+     -0.0
+    ]
+   }
+  },
+  "props": {
+   "category": "Weapon",
+   "socket": "roof",
+   "mass": 110.0,
+   "size_class": 2
+  },
+  "tile": "weapons",
+  "blend": "parts_all/blend/weapon_harpoon.blend"
+ },
+ {
+  "id": "weapon_flamer",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "weapon_flamer",
+  "tris": 6136,
+  "size_m_game_xyz": [
+   0.724,
+   0.64,
+   1.462
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.062,
+    "scale": [
+     1.0,
+     1.0,
+     1.032
+    ],
+    "fitted": true
+   },
+   "mount": {
+    "dev_before": 0.25,
+    "scale": [
+     1.5,
+     2.0,
+     1.021
+    ],
+    "fitted": true
+   },
+   "nozzle": {
+    "dev_before": 0.154,
+    "scale": [
+     1.09,
+     1.0,
+     1.152
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {
+   "mount": {
+    "parent": "weapon_flamer",
+    "pivot_game": [
+     -0.0,
+     0.1252,
+     -0.0
+    ]
+   },
+   "nozzle": {
+    "parent": "mount",
+    "pivot_game": [
+     -0.0,
+     0.3303,
+     -0.0
+    ]
+   }
+  },
+  "props": {
+   "category": "Weapon",
+   "socket": "roof",
+   "mass": 100.0,
+   "size_class": 2
+  },
+  "tile": "weapons",
+  "blend": "parts_all/blend/weapon_flamer.blend"
+ },
+ {
+  "id": "weapon_turret_cannon",
+  "kind": "part",
+  "family": "body_weapons",
+  "label": "weapon_turret_cannon",
+  "tris": 5680,
+  "size_m_game_xyz": [
+   0.96,
+   1.401,
+   2.376
+  ],
+  "fit": {
+   "body": {
+    "dev_before": 0.082,
+    "scale": [
+     1.042,
+     1.0,
+     1.0
+    ],
+    "fitted": true
+   }
+  },
+  "segments": {},
+  "props": {
+   "category": "Weapon",
+   "socket": "roof",
+   "mass": 180.0,
+   "size_class": 3
+  },
+  "tile": "weapons",
+  "blend": "parts_all/blend/weapon_turret_cannon.blend"
+ }
+]
