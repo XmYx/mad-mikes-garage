@@ -45,6 +45,7 @@ namespace MadMax.Vehicles
             v = GetComponent<VehicleDriver>();
             rb = GetComponent<Rigidbody>();
             sys = GetComponent<VehicleSystems>();
+            if (!GetComponent<HullMask>()) gameObject.AddComponent<HullMask>();               // no water surface inside the hull
             if (v) { v.aircraft = true; v.drag = 0.01f; }                                   // no wheels: the engine revs with the lever, the hull does the rest
             // float points: across the beam and along the keel, a little in from the ends
             int nx = hull.x > 2.5f ? 3 : 2, nz = hull.z > 6f ? 6 : 4;
