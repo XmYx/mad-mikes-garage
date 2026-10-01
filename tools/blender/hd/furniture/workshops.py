@@ -143,7 +143,7 @@ def hangar():
     for zi in range(-L, L + 1, 10):                         # half-ring ribs
         pts = [(math.cos(k / 24 * math.pi) * (R - 0.03), math.sin(k / 24 * math.pi) * (R - 0.03)) for k in range(25)]
         for (p0, p1) in zip(pts, pts[1:]):
-            fe.beam("black", (p0[0], p0[1], c(zi, v)), (p1[0], p1[1], c(zi, v)), 0.14, 0.1)
+            fe.beam("black", (p0[0], p0[1], c(zi, v)), (p1[0], p1[1], c(zi, v)), 0.14, 0.1, bevel=0.0)
     n = 30
     for k in range(n):
         a0 = k / n * math.pi
