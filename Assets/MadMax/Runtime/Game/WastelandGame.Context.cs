@@ -22,6 +22,10 @@ namespace MadMax.Game
     public partial class WastelandGame
     {
         const float ContextReach = 2.1f;
+        /// <summary>Seconds the respawn list waits for a choice before taking the default (the acceptance runner shortens
+        /// it so a scenario that dies by accident still goes on).</summary>
+        public static float RespawnWait = 60f;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetContextStatics() => RespawnWait = 60f;
 
         ContextTarget contextTarget;
         ContextOption walkOption; ContextTarget walkTarget; float walkUntil, walkStuck; Vector3 walkLast;
@@ -55,7 +59,7 @@ namespace MadMax.Game
             if (dying && respawnOpenedAt >= 0f)
             {
                 if (Menus.Current != MenuSystem.Page.Respawn) Menus.Open(MenuSystem.Page.Respawn);     // nothing else while dead
-                if (Time.unscaledTime > respawnOpenedAt + 60f) { var pts = RespawnPoints(); Menus.Close(); RespawnAt(pts[0]); }   // nobody chose: the default
+                if (Time.unscaledTime > respawnOpenedAt + RespawnWait) { var pts = RespawnPoints(); Menus.Close(); RespawnAt(pts[0]); }   // nobody chose: the default
                 return;
             }
             UpdateContextWalk();
@@ -683,7 +687,7 @@ namespace MadMax.Game
             return (bd < 1000f ? Mathf.RoundToInt(bd / 10f) * 10 + " M " : (bd / 1000f).ToString("0.0") + " KM ") + Compass[c] + " OF " + town;
         }
 
-        /// <summary>Dead: show the respawn list (4 s after the fall). Without a choice within a minute the default is taken.</summary>
+        /// <summary>Dead: show the respawn list (4 s after the fall). Without a choice within <see cref="RespawnWait"/> the default is taken.</summary>
         void RespawnChoice()
         {
             if (!dying) return;

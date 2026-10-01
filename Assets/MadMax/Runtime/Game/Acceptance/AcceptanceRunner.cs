@@ -66,6 +66,7 @@ namespace MadMax.Game.Acceptance
 
         void Awake()
         {
+            WastelandGame.RespawnWait = 8f;                                                   // a death the scenario did not plan picks the default
             Instance = this;
             Directory.CreateDirectory(resultsDir ?? (resultsDir = Path.Combine(Profile.Dir, "acceptance")));
             Application.logMessageReceivedThreaded += OnLog;
