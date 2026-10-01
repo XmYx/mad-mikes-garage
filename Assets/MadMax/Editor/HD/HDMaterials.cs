@@ -57,6 +57,7 @@ namespace MadMax.EditorTools
             m.SetTexture("_EmissionMap", emit);
             m.SetFloat("_EmissionScale", emit ? Mathf.Max(0.01f, a.emissionScale) : 0f);
             m.SetFloat("_OutlinePx", 0f);                       // the sheets have no outline
+            m.SetFloat("_SwayTip", a.swayTip);                  // vegetation: Col.a = 1 - Sway (1 = rooted)
             if (a.paintRef != null && a.paintRef.Length >= 3)
                 m.SetColor("_PaintRef", new Color(a.paintRef[0], a.paintRef[1], a.paintRef[2], 1f).gamma);   // stored linear; SetColor takes sRGB
             m.enableInstancing = false;

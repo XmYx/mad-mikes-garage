@@ -13,7 +13,7 @@ namespace MadMax.EditorTools
     /// LOD groups for models used as-is; textures by suffix (_Base sRGB, _Mask linear, _Normal normal map, _Emission sRGB).</summary>
     public class HDAssetPostprocessor : AssetPostprocessor
     {
-        public override uint GetVersion() => 3;
+        public override uint GetVersion() => 4;
 
         static bool IsHD(string path) => path.Replace('\\', '/').StartsWith(HDSidecar.Root + "/");
 
@@ -22,7 +22,7 @@ namespace MadMax.EditorTools
             if (!IsHD(assetPath) || !(assetImporter is ModelImporter mi)) return;
             var side = HDSidecar.Load(HDSidecar.PathFor(assetPath));
             context.DependsOnSourceAsset(HDSidecar.PathFor(assetPath));
-            bool character = side != null && side.kind == "character";
+            bool character = side != null && side.bones != null && side.bones.Length > 0;     // characters, animals: rigs
             mi.globalScale = 1f;
             mi.useFileScale = true;
             mi.bakeAxisConversion = side != null && side.bakeAxisConversion;
