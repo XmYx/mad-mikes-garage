@@ -5,11 +5,32 @@ using UnityEngine;
 namespace MadMax.World
 {
     /// <summary>A searchable spot in a building (cupboard, shelf, toolbox, fridge, seed box). Searched once per world;
-    /// the searched keys are saved.</summary>
+    /// the searched keys are saved. [E] SEARCH puts the finds straight into the pack; looked through in the loot window
+    /// the finds stay in the spot (<see cref="Left"/>, saved by the context block) until taken.</summary>
     public class Lootable : MonoBehaviour, MadMax.Building.IInteractable
     {
         public static readonly HashSet<string> Searched = new HashSet<string>();
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => Searched.Clear();
+        /// <summary>What is still lying in a searched spot (searched into the loot window and not all taken), by key.</summary>
+        public static readonly Dictionary<string, Inventory> Left = new Dictionary<string, Inventory>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Searched.Clear(); Left.Clear(); }
+
+        /// <summary>The spot's leftovers (null when none and <paramref name="create"/> is false).</summary>
+        public Inventory Leftovers(bool create)
+        {
+            if (key == null) return null;
+            if (Left.TryGetValue(key, out var inv) || !create) return inv;
+            return Left[key] = new Inventory();
+        }
+
+        /// <summary>Searched, with something still in it.</summary>
+        public bool HasLeftovers => key != null && Left.TryGetValue(key, out var inv) && HasAny(inv);
+
+        public static bool HasAny(Inventory inv)
+        {
+            foreach (var n in inv.ResourceArray) if (n > 0) return true;
+            foreach (var kv in inv.Items) if (kv.Value > 0) return true;
+            return false;
+        }
 
         public string key, table = "house", title = "CUPBOARD";
         /// <summary>Found for sure on top of the rolled table (a raider's armour).</summary>
@@ -22,7 +43,7 @@ namespace MadMax.World
         /// <summary>Lockers and crates in towns and bunkers are sometimes padlocked (deterministic per key).</summary>
         public static bool RollLocked(string key, string visual) => (visual == "locker" || visual == "crate") && ((key.GetHashCode() & 0x7fffffff) % 100) < 40;
 
-        public string Prompt(MadMax.Game.WastelandGame g) => Searched.Contains(key) ? title + " (EMPTY)" : locked ? "[E] PRY OPEN " + title + (g.Inventory.GetItem("tool_crowbar") > 0 ? "" : " (NEED A CROWBAR)") : "[E] SEARCH " + title;
+        public string Prompt(MadMax.Game.WastelandGame g) => Searched.Contains(key) ? (HasLeftovers ? "[E] LOOT " + title : title + " (EMPTY)") : locked ? "[E] PRY OPEN " + title + (g.Inventory.GetItem("tool_crowbar") > 0 ? "" : " (NEED A CROWBAR)") : "[E] SEARCH " + title;
 
         /// <summary>Force the lock (crowbar in the pack): noise, a Strength roll, a little wear on the bar.</summary>
         public bool Pry(MadMax.Game.WastelandGame g)
@@ -41,25 +62,35 @@ namespace MadMax.World
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
-            if (secondary || Searched.Contains(key)) return;
-            if (locked && !Pry(g)) return;
+            if (secondary) return;
+            if (Searched.Contains(key)) { if (HasLeftovers) g.Menus.OpenLoot(this); return; }
+            Search(g, g.Inventory);
+        }
+
+        /// <summary>Search the spot once: the rolled finds go into <paramref name="into"/> (the pack for [E], the spot's
+        /// leftovers for the loot window); parts land beside it. False when it was searched already or stays locked.</summary>
+        public bool Search(MadMax.Game.WastelandGame g, Inventory into)
+        {
+            if (Searched.Contains(key)) return false;
+            if (locked && !Pry(g)) return false;
             Searched.Add(key);
             MadMax.Net.NetSession.Instance?.SendSearched(key);
             var rnd = new System.Random(key.GetHashCode() ^ g.seed);
             var found = LootTables.Roll(table, rnd, MadMax.Game.GameRules.Current.loot, g.Stats.Attribute(MadMax.RPG.Attr.Perception));
             foreach (var x in extra) found.Add((x, 1));
             MadMax.Game.LastEngine.AddFinds(g, key, found);
-            if (found.Count == 0) { g.Toast("NOTHING USEFUL"); return; }
+            if (found.Count == 0) { g.Toast("NOTHING USEFUL"); return true; }
             using var feed = Inventory.Source("FOUND");
             var names = new List<string>();
             foreach (var (id, n) in found)
             {
-                if (id.StartsWith("res:")) { var t = (ResourceType)int.Parse(id.Substring(4)); g.Inventory.Add(t, n); names.Add(n + " " + ResourceInfo.Name(t)); }
+                if (id.StartsWith("res:")) { var t = (ResourceType)int.Parse(id.Substring(4)); into.Add(t, n); names.Add(n + " " + ResourceInfo.Name(t)); }
                 else if (id.StartsWith("part:")) { var part = g.SpawnPart(id.Substring(5), transform.position + Vector3.up, Quaternion.identity); if (part) { part.gameObject.AddComponent<Rigidbody>().mass = part.mass; MadMax.Net.NetSession.Instance?.SendLooseSpawn(part); names.Add(part.partId.ToUpperInvariant()); } }
-                else { g.Inventory.AddItem(id, n); names.Add((n > 1 ? n + " " : "") + ItemCatalog.Name(id)); }
+                else { into.AddItem(id, n); names.Add((n > 1 ? n + " " : "") + ItemCatalog.Name(id)); }
             }
             g.Toast("FOUND: " + string.Join(", ", names));
             g.Stats.Practice(MadMax.RPG.Skill.Salvaging, 2f);
+            return true;
         }
     }
 

@@ -331,6 +331,7 @@ namespace MadMax.Game
                 canvas.Panel((canvas.w - w) / 2, 44, w, 12);
                 canvas.Text((canvas.w - w) / 2 + 5, 48, toast, Text);
             }
+            DrawContextUi();                                                                     // container preview (PixelHud.Context)
             if (game.Menus) game.Menus.Draw(canvas);
             canvas.Upload();
         }
@@ -1235,5 +1236,6 @@ namespace MadMax.Game
     
         partial void DrawItemFeed();
         partial void DrawWorkProgress();
+        partial void DrawContextUi();
     }
 }

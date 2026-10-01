@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public partial class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots, Context, Respawn }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -41,6 +41,8 @@ namespace MadMax.Game
             public string hint;
             public string id;
             public string drop;                           // inventory page: item id or "res:N" to drop / place (Items block)
+            public string loot;                           // loot window: item id or "res:N" of the row
+            public int pane;                              // loot window: 0 = the pack, 1 = the storage
             public RectInt rect;
         }
 
@@ -131,7 +133,7 @@ namespace MadMax.Game
         // ---- container transfer
         Container container;
         bool containerSide;              // false = player's items, true = container's
-        public void OpenContainer(Container c) { container = c; containerSide = false; Open(Page.Container); }
+        public void OpenContainer(Container c) { container = c; containerSide = false; OpenLoot(LootSource.Of(c)); }
 
         MadMax.Building.BountyBoard boardTarget;
         /// <summary>A town's bounty board: jobs to take, to claim, crates to hand in.</summary>
@@ -219,35 +221,6 @@ namespace MadMax.Game
 
         static string VehicleArmorName(MadMax.Vehicles.ArmorMat m) => m == MadMax.Vehicles.ArmorMat.Steel ? "STEEL" : m == MadMax.Vehicles.ArmorMat.Composite ? "COMPOSITE" : m == MadMax.Vehicles.ArmorMat.Scrap ? "SCRAP" : "NONE";
 
-        void MoveRes(Inventory from, Inventory to, ResourceType t, int n, bool intoBox)
-        {
-            if (n <= 0) return;
-            if (intoBox)
-            {
-                float room = container.capacity - container.Weight;
-                float w = MadMax.Items.ItemCatalog.ResourceWeight(t);
-                if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
-                if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
-            }
-            using (Inventory.Source("TAKEN", "STORED")) if (from.TrySpend(t, n)) to.Add(t, n);
-            Rebuild();
-        }
-
-        void MoveItem(Inventory from, Inventory to, string id, int n, bool intoBox)
-        {
-            if (n <= 0) return;
-            if (intoBox)
-            {
-                float room = container.capacity - container.Weight;
-                float w = MadMax.Items.ItemCatalog.Weight(id);
-                if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
-                if (n <= 0) { game.Toast(container.title + " IS FULL"); return; }
-            }
-            using (Inventory.Source("TAKEN", "STORED")) if (from.TakeItem(id, n)) to.AddItem(id, n);
-            if (!intoBox && id.StartsWith("tool_")) game.UpdateHotbarNow();
-            Rebuild();
-        }
-
         /// <summary>Automation: put the cursor on the open page's entry labelled <paramref name="label"/> and press A/D
         /// on it (<paramref name="dx"/> = -1 / +1) or confirm it (0), exactly as the keys do. False when the page has no
         /// such entry, or it can't be adjusted / is greyed out.</summary>
@@ -300,6 +273,7 @@ namespace MadMax.Game
                 case Page.Repair: Open(Page.Crafting); break;
                 case Page.Salvage: Open(Page.Crafting); break;
                 case Page.Trade: if (talk != null && !talk.Ended) Open(Page.Talk); else Close(); break;
+                case Page.Respawn: break;                                // dead: a place must be chosen
                 default: Close(); break;
             }
         }
@@ -611,40 +585,8 @@ namespace MadMax.Game
                     }
                     break;
                 }
-                case Page.Container:
-                {
-                    if (!container) { Close(); break; }
-                    var box = container.inventory;
-                    void Side(Inventory from, Inventory to, string header, bool intoBox)
-                    {
-                        items.Add(new Item { label = header, enabled = () => false });
-                        for (int t = 1; t < ResourceInfo.Count; t++)
-                        {
-                            var rt = (ResourceType)t;
-                            if (from.Get(rt) <= 0) continue;
-                            items.Add(new Item
-                            {
-                                label = ResourceInfo.Name(rt), value = () => from.Get(rt) + (ResourceInfo.IsFluid(rt) ? "L" : ""),
-                                confirm = () => MoveRes(from, to, rt, Mathf.Min(5, from.Get(rt)), intoBox), adjust = d => MoveRes(from, to, rt, from.Get(rt), intoBox),
-                                hint = "ENTER MOVE 5   A/D MOVE ALL"
-                            });
-                        }
-                        foreach (var kv in new List<KeyValuePair<string, int>>(from.Items))
-                        {
-                            if (kv.Value <= 0) continue;
-                            var id = kv.Key;
-                            items.Add(new Item
-                            {
-                                id = intoBox ? id : null, label = MadMax.Items.ItemCatalog.Name(id), value = () => "X" + from.GetItem(id),
-                                confirm = () => MoveItem(from, to, id, 1, intoBox), adjust = d => MoveItem(from, to, id, from.GetItem(id), intoBox),
-                                hint = "ENTER MOVE 1   A/D MOVE ALL"
-                            });
-                        }
-                    }
-                    Side(game.Inventory, box, "- YOUR PACK -", true);
-                    Side(box, game.Inventory, "- " + container.title + " -", false);
-                    break;
-                }
+                case Page.Container: BuildLoot(); break;                                    // the loot window (MenuSystem.Loot)
+                case Page.Respawn: BuildRespawn(); break;
                 case Page.Health:
                 {
                     var st = game.Stats;
@@ -1072,6 +1014,8 @@ namespace MadMax.Game
                 if (esc && !game.CancelPlacing()) Open(Page.Pause);                              // Esc first puts a PLACE preview away
                 return;
             }
+            if (PopupTick(kb, mouse, pad, esc)) return;                                         // a context menu over the page (MenuSystem.Context)
+            if (RowContextTick(kb, mouse, pad)) return;
             if (esc || (pad != null && pad.buttonEast.wasPressedThisFrame)) { if (Current == Page.Join) Open(Page.Main); else Back(); return; }
             if ((Current == Page.Talk || Current == Page.Trade) && (!talkNpc || !talkNpc.Alive || Vector3.Distance(talkNpc.transform.position, game.Current ? game.Current.transform.position : game.Player.transform.position) > (game.Current ? 40f : 6f))) { Close(); return; }
             if (items.Count > 0 && items[cursor].text != null)
@@ -1082,6 +1026,7 @@ namespace MadMax.Game
                 if (kb != null && kb.backspaceKey.wasPressedThisFrame && v.Length > 0) field.setText(v.Substring(0, v.Length - 1));
             }
             typed = "";
+            if (Current == Page.Container && LootTick(kb, mouse, pad)) return;               // tabs, drag and drop (MenuSystem.Loot)
             if (Current == Page.Map) { MapInput(kb, mouse, pad); return; }
             if (Current == Page.Journal && kb != null && kb.tabKey.wasPressedThisFrame) { Open(Page.Map); return; }
             if ((Current == Page.Map || Current == Page.Journal) && Controls.Down(Controls.Act.Map)) { Close(); return; }
@@ -1124,7 +1069,7 @@ namespace MadMax.Game
 
             // mouse: hover selects, click confirms / adjusts
             var canvas = PixelHud.Canvas;
-            if (mouse != null && canvas != null)
+            if (mouse != null && canvas != null && Current != Page.Container)                  // the loot window does its own mouse
             {
                 var m = mouse.position.ReadValue();
                 var p = new Vector2Int(Mathf.FloorToInt(m.x / Screen.width * canvas.w), Mathf.FloorToInt((1f - m.y / Screen.height) * canvas.h));
@@ -1251,10 +1196,9 @@ namespace MadMax.Game
                     if (talkNpc) DrawList(c, MadMax.Npc.NpcLore.TradeTitle(talkNpc.Profile.kind) + " - " + talkNpc.Profile.Name + "   YOUR SCRAP " + game.Inventory.Get(ResourceType.Scrap), 290);
                     DrawHint(c);
                     break;
-                case Page.Container:
-                    if (container) DrawList(c, container.title + "  " + container.Weight.ToString("0") + "/" + container.capacity.ToString("0") + " KG" + (container.fridge ? (container.Cooling ? "  COLD" : "  NO POWER") : ""), 240);
-                    DrawHint(c);
-                    break;
+                case Page.Container: DrawLoot(c); break;
+                case Page.Context: break;                                                      // only the popup (drawn below)
+                case Page.Respawn: DrawList(c, "YOU DIED - WAKE UP AT", 320); DrawHint(c); break;
                 case Page.Creation:
                     DrawList(c, "CHARACTER CREATION   POINTS LEFT " + PointsLeft(), 250);
                     DrawHint(c);
@@ -1267,6 +1211,7 @@ namespace MadMax.Game
                 case Page.Slots: DrawList(c, slotsSave ? "SAVE GAME" : "LOAD GAME", 300); DrawHint(c); break;
                 default: DrawList(c, Current == Page.Pause ? "PAUSED" : "SETTINGS", 180); break;
             }
+            DrawPopup(c);
         }
 
         void DrawMain(PixelCanvas c)
