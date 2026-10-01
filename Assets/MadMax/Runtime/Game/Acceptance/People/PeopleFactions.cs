@@ -61,12 +61,11 @@ namespace MadMax.Game.Acceptance
             else c.Note("no raider gang on an open road to test territory");
 
             // ---- prices follow standing
-            yield return PH.ToTown(c, st);
-            var centre = PH.Centre(st);
-            float reach = st.radius + 40f;
-            yield return PH.Until(() => PH.Nearest(centre, reach, n => n.Profile.Vendor && n.Available && !n.Hostile && !n.Closed && Factions.Of(n) != Faction.None) != null, 25f);
-            var vendor = PH.Nearest(centre, reach, n => n.Profile.Vendor && n.Available && !n.Hostile && !n.Closed && Factions.Of(n) != Faction.None);
-            if (!c.Check(vendor, "a town vendor")) yield break;
+            var found = new PH.Found();
+            yield return PH.FindIn(c, n => n.Profile.Vendor && !n.Profile.Cast && n.Available && !n.Hostile && !n.Closed && Factions.Of(n) != Faction.None
+                                           && (n.Profile.role == NpcRole.Stallkeeper || n.Profile.role == NpcRole.Shopkeeper), false, 4, found);
+            var vendor = found.npc;
+            if (!c.Check(vendor, "a town vendor in one of the four towns nearest the start")) yield break;
             var side = Factions.Of(vendor);
             yield return PH.Face(c, vendor, vendor.Profile.role == NpcRole.Stallkeeper ? 2.4f : 1.6f);
             int Price()

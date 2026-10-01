@@ -57,14 +57,26 @@ namespace MadMax.Building
             foreach (var c in All) if (c && Vector3.Distance(c.transform.position, p) < max) into.Add(c);
         }
 
-        /// <summary>Contents fall out as pickups when the container breaks.</summary>
+        /// <summary>Contents fall out when the container breaks (or a companion empties their pack): resources as pickups,
+        /// items as objects on the ground ([E] picks them up); fluids are lost. The container is left empty (it used to
+        /// keep its contents, so a dismissed companion still carried them and items in a broken chest were gone).</summary>
         public void Spill()
         {
-            if (!PickupSystem.Instance) return;
+            var at = transform.position + Vector3.up * 0.4f;
             for (int t = 1; t < ResourceInfo.Count; t++)
             {
-                int n = inventory.Get((ResourceType)t);
-                if (n > 0 && !ResourceInfo.IsFluid((ResourceType)t)) PickupSystem.Instance.Spawn((ResourceType)t, n, transform.position + Vector3.up * 0.4f, Random.insideUnitSphere * 1.5f + Vector3.up * 2f);
+                var rt = (ResourceType)t;
+                int n = inventory.Get(rt);
+                if (n <= 0) continue;
+                if (PickupSystem.Instance && !ResourceInfo.IsFluid(rt)) PickupSystem.Instance.Spawn(rt, n, at, Random.insideUnitSphere * 1.5f + Vector3.up * 2f);
+                inventory.TrySpend(rt, n);
+            }
+            var g = MadMax.Game.WastelandGame.Instance;
+            foreach (var kv in new List<KeyValuePair<string, int>>(inventory.Items))
+            {
+                if (kv.Value <= 0) continue;
+                if (g) { var off = Random.insideUnitCircle * 0.6f; g.SpawnWorldItem(kv.Key, kv.Value, -1f, at + new Vector3(off.x, 0f, off.y), Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null); }
+                inventory.TakeItem(kv.Key, kv.Value);
             }
         }
 
