@@ -23,7 +23,7 @@ namespace MadMax.Game
         {
             if (blocksRegistered) return;
             blocksRegistered = true;
-            RoadsTools.Register(); MetalTools.Register(); HusbandryTools.Register(); UtilitiesTools.Register(); MedMineTools.Register(); DefenceTools.Register();
+            RoadsTools.Register(); MetalTools.Register(); HusbandryTools.Register(); UtilitiesTools.Register(); MedMineTools.Register(); DefenceTools.Register(); FluidTools.Register();
         }
         const float S = VoxelMesher.DefaultSize;
 

@@ -11,7 +11,8 @@ namespace MadMax.Vehicles
     {
         None = 0, NoEngine = 1, NoFuel = 2, LowFuel = 4, LowOil = 8, NoOil = 16, Overheat = 32,
         CoolantLeak = 64, OilLeak = 128, FuelLeak = 256, Seized = 512, LowCoolant = 1024, NoRadiator = 2048, Flooded = 4096, OnFire = 8192, WrongFuel = 16384,
-        ServiceDue = 32768, Clogged = 65536, Misfire = 131072, Labouring = 262144, EngineOff = 524288
+        ServiceDue = 32768, Clogged = 65536, Misfire = 131072, Labouring = 262144, EngineOff = 524288,
+        RoughFuel = 1048576, BadOil = 2097152, Frozen = 4194304, BadCoolant = 8388608
     }
 
     /// <summary>Engine fluids and health. Fuel burns with load; oil keeps the engine alive; coolant carries heat away.
@@ -24,8 +25,49 @@ namespace MadMax.Vehicles
         public float fuel = 40f, oil = 5f, coolant = 8f;
         /// <summary>Litres of fuel treated with additive still in the tank (burns 25 % leaner).</summary>
         public float additive;
-        /// <summary>What is in the tank: petrol (Fuel) or Diesel; None while empty. Set by whatever goes in first.</summary>
-        public ResourceType tankKind = ResourceType.None;
+        /// <summary>Blends by volume (roadmap "Fluids", <see cref="FuelBlend"/>): the fuel tank, the sump, the cooling
+        /// system. Burning or draining keeps the fractions; pouring blends. Empty = the system's own fluid (factory fill).</summary>
+        [System.NonSerialized] public readonly FluidMix fuelMix = new FluidMix(), oilMix = new FluidMix(), coolantMix = new FluidMix();
+
+        /// <summary>What is in the tank, simplified: Diesel or petrol (Fuel) by the larger share; None while empty.
+        /// Setting a kind the tank does not already hold makes the tank pure that kind (fixtures, old saves).</summary>
+        public ResourceType tankKind
+        {
+            get
+            {
+                if (fuelMix.Empty) return ResourceType.None;
+                float d = fuelMix[ResourceType.Diesel], p = fuelMix[ResourceType.Fuel] + fuelMix[ResourceType.Ethanol];
+                return d > 0f && d >= p ? ResourceType.Diesel : p > 0f ? ResourceType.Fuel : fuelMix.Main;
+            }
+            set
+            {
+                if (value == ResourceType.None) { fuelMix.Clear(); return; }
+                var k = value == ResourceType.Ethanol ? ResourceType.Fuel : value;
+                if (tankKind != k) fuelMix.Set(value);
+            }
+        }
+
+        /// <summary>The tank's blend, or the engine's own fuel while it is unknown (empty mix).</summary>
+        public FluidMix EffectiveFuelMix => fuelMix.Empty ? new FluidMix(FuelKind) : fuelMix;
+
+        /// <summary>The mounted engine's native fuel class (two-strokes run petrol with oil mixed in).</summary>
+        public EngineFuel EngineFuelKind => FuelKind == ResourceType.Diesel ? EngineFuel.Diesel : oilInFuel ? EngineFuel.TwoStroke : EngineFuel.Petrol;
+
+        BlendEffect blend = BlendEffect.Clean;
+        int blendVersion = -1; EngineFuel blendEngine;
+        /// <summary>How the tank's blend runs in the mounted engine right now (cached per blend change).</summary>
+        public BlendEffect Blend
+        {
+            get
+            {
+                var e = EngineFuelKind;
+                if (blendVersion != fuelMix.Version || blendEngine != e) { blend = FuelBlend.Evaluate(fuelMix, e); blendVersion = fuelMix.Version; blendEngine = e; }
+                return blend;
+            }
+        }
+        /// <summary>0..1 how well the sump protects the engine; the coolant blend's freezing point (°C).</summary>
+        public float OilProtection => oilInFuel ? 1f : FuelBlend.OilProtection(oilMix);
+        public float FreezePoint => FuelBlend.FreezePoint(coolantMix);
 
         /// <summary>The fuel the mounted engine burns: diesel engines take Diesel, the rest petrol (Fuel; Ethanol works too).</summary>
         public ResourceType FuelKind
@@ -37,18 +79,79 @@ namespace MadMax.Vehicles
                 return p && p.partId.Contains("diesel") ? ResourceType.Diesel : ResourceType.Fuel;
             }
         }
-        /// <summary>The tank holds the other kind of fuel: the engine won't run until it is siphoned out.</summary>
-        public bool WrongFuel => fuel > 0.5f && tankKind != ResourceType.None && tankKind != FuelKind && driver && driver.Engine;
-        /// <summary>Can this fuel go in (ethanol counts as petrol)? An empty tank takes anything.</summary>
+        /// <summary>The tank's blend won't run in this engine (the other fuel, too much water...): siphon it out.</summary>
+        public bool WrongFuel => fuel > 0.5f && !fuelMix.Empty && driver && driver.Engine && !Blend.runs;
+        /// <summary>Automatic fills (pumps, tankers, the garage) only top up the same kind (ethanol counts as petrol); an
+        /// empty tank takes anything. Hand pours from a container mix freely (<see cref="AddFuel(FluidMix, float)"/>).</summary>
         public bool Accepts(ResourceType t) => fuel < 0.5f || tankKind == ResourceType.None || tankKind == (t == ResourceType.Ethanol ? ResourceType.Fuel : t);
-        /// <summary>Pour fuel in (litres), remembering its kind.</summary>
+        /// <summary>Pour fuel in (litres), blending it in. False (nothing poured) when <see cref="Accepts"/> refuses.</summary>
         public bool AddFuel(ResourceType t, float litres)
         {
             if (!Accepts(t)) return false;
-            if (fuel < 0.5f || tankKind == ResourceType.None) tankKind = t == ResourceType.Ethanol ? ResourceType.Fuel : t;
+            if (fuel < 0.05f) fuelMix.Clear();
+            float add = Mathf.Min(litres, Mathf.Max(0f, fuelCapacity - fuel));
+            fuelMix.Blend(fuelMix.Empty ? 0f : fuel, t, Mathf.Max(add, 1e-3f));
             fuel = Mathf.Min(fuelCapacity, fuel + litres);
             if (litres > 0.5f) MadMax.Game.WastelandGame.StarterNote("fuel");
             return true;
+        }
+
+        /// <summary>Pour a blend into the tank (no kind check: it mixes). Returns the litres that went in.</summary>
+        public float AddFuel(FluidMix mix, float litres) => Pour(FluidSystem.Fuel, mix, litres);
+
+        /// <summary>The engine's fluid systems a container can draw from or pour into.</summary>
+        public enum FluidSystem { Fuel, Oil, Coolant }
+
+        public float Level(FluidSystem s) => s == FluidSystem.Fuel ? fuel : s == FluidSystem.Oil ? oil : coolant;
+        public float Capacity(FluidSystem s) => s == FluidSystem.Fuel ? fuelCapacity : s == FluidSystem.Oil ? (oilInFuel ? 0f : oilCapacity) : (usesCoolant ? coolantCapacity : 0f);
+        public FluidMix MixOf(FluidSystem s) => s == FluidSystem.Fuel ? fuelMix : s == FluidSystem.Oil ? oilMix : coolantMix;
+        /// <summary>The blend in a system, the system's own fluid while unknown.</summary>
+        public FluidMix EffectiveMix(FluidSystem s) => s == FluidSystem.Fuel ? EffectiveFuelMix : MixOf(s).Empty ? new FluidMix(s == FluidSystem.Oil ? ResourceType.Oil : ResourceType.Coolant) : MixOf(s);
+        public static string SystemName(FluidSystem s) => s == FluidSystem.Fuel ? "FUEL TANK" : s == FluidSystem.Oil ? "ENGINE OIL" : "COOLANT";
+
+        /// <summary>Pour up to <paramref name="litres"/> of <paramref name="mix"/> into a system (blends by volume).
+        /// Returns what went in (the rest did not fit).</summary>
+        public float Pour(FluidSystem s, FluidMix mix, float litres)
+        {
+            float have = Level(s), cap = Capacity(s);
+            float add = Mathf.Min(litres, Mathf.Max(0f, cap - have));
+            if (add <= 0f || mix == null || mix.Empty) return 0f;
+            var m = MixOf(s);
+            if (have < 0.05f) m.Clear();
+            else if (m.Empty) m.CopyFrom(EffectiveMix(s));
+            m.Blend(have, mix, add);
+            if (s == FluidSystem.Fuel) { fuel = have + add; if (add > 0.5f) MadMax.Game.WastelandGame.StarterNote("fuel"); }
+            else if (s == FluidSystem.Oil) oil = have + add;
+            else coolant = have + add;
+            return add;
+        }
+
+        /// <summary>Draw up to <paramref name="litres"/> out of a system: every component in proportion (a bad blend
+        /// comes out as it is). <paramref name="drawn"/> is the blend taken. Returns the litres.</summary>
+        public float Draw(FluidSystem s, float litres, FluidMix drawn)
+        {
+            float have = Level(s);
+            float take = Mathf.Min(litres, have);
+            if (take <= 0f) { drawn?.Clear(); return 0f; }
+            drawn?.CopyFrom(EffectiveMix(s));
+            float left = have - take;
+            if (left < 0.001f) { left = 0f; MixOf(s).Clear(); }
+            if (s == FluidSystem.Fuel) fuel = left; else if (s == FluidSystem.Oil) oil = left; else coolant = left;
+            return take;
+        }
+
+        /// <summary>The three blends as one string (saved in <c>VehicleSave.fluids</c>, sent with the vehicle meta).</summary>
+        public string FluidState() => "f=" + fuelMix.Save() + "|o=" + oilMix.Save() + "|c=" + coolantMix.Save();
+
+        public void LoadFluidState(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            foreach (var part in s.Split('|'))
+            {
+                if (part.Length < 2 || part[1] != '=') continue;
+                var v = part.Substring(2);
+                switch (part[0]) { case 'f': fuelMix.Load(v); break; case 'o': oilMix.Load(v); break; case 'c': coolantMix.Load(v); break; }
+            }
         }
         public bool usesCoolant = true;
         [Tooltip("Two-stroke: oil is mixed into the fuel, no separate oil system.")]
@@ -96,6 +199,11 @@ namespace MadMax.Vehicles
                 if (UsesPlugs && plugs < 0.3f) c -= 0.2f;
                 if (airFilter < 0.3f) c -= 0.1f;
                 if (!oilInFuel && OilFraction < 0.25f) c -= 0.1f;
+                if (fuel > 0f && !fuelMix.Empty)
+                {
+                    var b = Blend;                                                                       // a poor blend is hard to light
+                    c -= b.start * (Temperature < 45f && ambient < 15f ? 1.5f : 1f);
+                }
                 return Mathf.Clamp(c, 0.05f, 1f);
             }
         }
@@ -125,8 +233,12 @@ namespace MadMax.Vehicles
             if (ep && ep.partId == "engine_pedals") { Started = true; return; }
             crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f);
             nextCrank = crankUntil + 0.6f;
-            crankCatches = fuel > 0f && !WrongFuel && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
+            crankCatches = fuel > 0f && !WrongFuel && !Frozen && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
+            if (WrongFuel && ep) ep.damage = Mathf.Min(1f, ep.damage + Blend.crankWear);                        // churning a bad blend
         }
+
+        /// <summary>The cooling system's blend is frozen (parked below its freezing point): no start until it thaws.</summary>
+        public bool Frozen => usesCoolant && coolant > 0.5f && !Started && MadMax.World.Weather.Temperature < FreezePoint;
 
         /// <summary>Running without a crank (the title film's car, a vehicle handed over already running).</summary>
         public void ForceStart() { Started = true; crankUntil = -1f; }
@@ -195,7 +307,7 @@ namespace MadMax.Vehicles
                 if (!crankCatches && driver.Occupied && !driver.aiDriven)
                 {
                     var eng = driver.Engine ? driver.Engine.GetComponent<VehiclePart>() : null;
-                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "WRONG FUEL IN THE TANK: SIPHON IT" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
+                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "BAD FUEL (" + fuelMix.Label() + "): SIPHON IT" : Frozen ? "THE COOLANT IS FROZEN: WARM IT, OR DRAIN THE WATER" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
                                : UsesPlugs && plugs < 0.3f ? "WORN PLUGS: TRY AGAIN, OR REPLACE THEM" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
                                : "IT DIDN'T CATCH: TRY AGAIN (ENGINE " + Mathf.RoundToInt(StartChance * 100f) + "%)";
                     MadMax.Game.WastelandGame.Instance?.Toast(why);
@@ -218,8 +330,10 @@ namespace MadMax.Vehicles
             }
             if (damage && damage.FrameDamage > 0.5f && fuel > 0f) { fuel = Mathf.Max(0f, fuel - (damage.FrameDamage - 0.5f) * 0.02f * dt); f |= Fault.FuelLeak; }
 
-            if (fuel < 0.5f) tankKind = ResourceType.None;
-            else if (tankKind == ResourceType.None && engine) tankKind = FuelKind;      // factory fill matches the engine
+            if (fuel < 0.05f) fuelMix.Clear();
+            else if (fuelMix.Empty && engine) fuelMix.Set(FuelKind);                      // factory fill matches the engine
+            if (oil < 0.05f) oilMix.Clear(); else if (oilMix.Empty) oilMix.Set(ResourceType.Oil);
+            if (coolant < 0.05f) coolantMix.Clear(); else if (coolantMix.Empty) coolantMix.Set(ResourceType.Coolant);
             if (!engine) { Faults = f | Fault.NoEngine; PowerFactor = 0f; Cool(dt, speed); return; }
             if (ep && ep.partId == "engine_pedals")
             {
@@ -239,7 +353,21 @@ namespace MadMax.Vehicles
             }
             bool seized = engineDamage >= 1f;
             bool wrong = WrongFuel;
+            var bl = fuel > 0f ? Blend : BlendEffect.Clean;
             if (wrong) f |= Fault.WrongFuel;
+            else if (bl.rough && fuel > 0.5f) f |= Fault.RoughFuel;
+            float protect = OilProtection;
+            if (!oilInFuel && oil > 0.05f && protect < 0.8f) f |= Fault.BadOil;
+            if (usesCoolant && coolant > 0.5f)
+            {
+                if (Frozen)
+                {
+                    f |= Fault.Frozen;
+                    if (MadMax.World.Weather.Temperature < FreezePoint - 5f && radiatorSocket && radiatorSocket.Current)
+                        radiatorSocket.Current.damage = Mathf.Min(1f, radiatorSocket.Current.damage + 0.0003f * dt);   // ice cracks the core
+                }
+                if (FuelBlend.CoolingFactor(coolantMix) < 0.95f) f |= Fault.BadCoolant;
+            }
             if (seized) f |= Fault.Seized;
             if (fuel <= 0f) f |= Fault.NoFuel; else if (FuelFraction < 0.1f) f |= Fault.LowFuel;
             if (!oilInFuel) { if (oil <= 0f) f |= Fault.NoOil; else if (OilFraction < 0.25f) f |= Fault.LowOil; }
@@ -265,7 +393,7 @@ namespace MadMax.Vehicles
             {
                 float load = driver.DriveCommand;
                 float rpmFrac = driver.Rpm / engine.maxRpm;
-                float burn = consumption * fuelMultiplier * (0.12f + 0.88f * load) * (0.3f + rpmFrac) * engine.maxTorque / 500f * 0.004f * dt;
+                float burn = consumption * fuelMultiplier * (0.12f + 0.88f * load) * (0.3f + rpmFrac) * engine.maxTorque / 500f * 0.004f * dt * bl.burn;
                 if (additive > 0f) { burn *= 0.75f; additive = Mathf.Max(0f, additive - burn); }
                 fuel = Mathf.Max(0f, fuel - burn);
                 if (!oilInFuel) oil = Mathf.Max(0f, oil - 0.00008f * load * dt);
@@ -275,7 +403,7 @@ namespace MadMax.Vehicles
                 bool pinned = speed < 1.5f && load > 0.8f && rpmFrac > 0.93f;
                 float heat = (0.25f + load * rpmFrac * (pinned ? 0.6f : 1f)) * 4.4f * (TryGetComponent<VehicleTuning>(out var tune) ? tune.HeatFactor : 1f);   // hot engine maps, boost, nitrous
                 float radiatorEff = !hasRadiatorSocket ? 1f : radiator ? (1f - 0.6f * Mathf.Clamp01(radiator.damage)) * MetalPartFunctions.Cooling(radiator.partId) : 0f;
-                float cooling = usesCoolant ? CoolantFraction * radiatorEff * (0.72f + 0.28f * Mathf.Clamp01(speed / 20f)) : 0.6f + Mathf.Clamp01(speed / 25f) * 0.4f;   // fan at a standstill
+                float cooling = usesCoolant ? CoolantFraction * FuelBlend.CoolingFactor(coolantMix) * radiatorEff * (0.72f + 0.28f * Mathf.Clamp01(speed / 20f)) : 0.6f + Mathf.Clamp01(speed / 25f) * 0.4f;   // fan at a standstill
                 Temperature += (heat - (Temperature - Ambient) * 0.08f * Mathf.Max(cooling, 0.05f)) * 0.45f * dt;   // ~30 s time constant
                 if (pinned && Temperature > 95f) f |= Fault.Labouring;
 
@@ -295,6 +423,16 @@ namespace MadMax.Vehicles
                 if (airFilter < 0.3f) { f |= Fault.Clogged; power *= 0.7f + airFilter; }
                 if (UsesPlugs && plugs < 0.3f) { f |= Fault.Misfire; if (Mathf.PerlinNoise(Time.time * 9f, 3.3f) < 0.35f - plugs) power *= 0.4f; }
                 power *= 1f - 0.5f * Mathf.Clamp01(engineDamage - 0.5f) * 2f * (0.5f + 0.5f * Mathf.PerlinNoise(Time.time * 6f, 1.7f)); // misfires
+                // the blend (FuelBlend): power, misfires, wear; contaminated oil and coolant
+                power *= bl.power;
+                if (bl.misfire > 0.01f && Mathf.PerlinNoise(Time.time * 7f, 5.1f) < bl.misfire * 0.6f) power *= 0.45f;
+                if (bl.wear > 0f) ep.damage += bl.wear * (0.3f + load) * dt;
+                if (!oilInFuel && protect < 0.95f)
+                {
+                    oilLife = Mathf.Max(0f, oilLife - dt * 0.0001f * (1f - protect) * 4f);
+                    ep.damage += 0.0015f * (0.95f - protect) * (0.3f + load) * dt;
+                }
+                if (usesCoolant && radiator && coolantMix[ResourceType.SeaWater] > 0f) radiator.damage = Mathf.Min(1f, radiator.damage + 0.00002f * coolantMix[ResourceType.SeaWater] * dt);
             }
             else Cool(dt, speed);
             PowerFactor = power;
@@ -316,6 +454,7 @@ namespace MadMax.Vehicles
             wear = Mathf.Max(wear, (0.35f - airFilter) * 1.4f);
             if (!oilInFuel) wear = Mathf.Max(wear, Mathf.Max((0.3f - oilLife) * 1.2f, (0.25f - OilFraction) * 1.6f));
             else wear = Mathf.Max(wear, 0.25f);                                                          // two-strokes burn their oil
+            if (fuel > 0f) wear = Mathf.Max(wear, Blend.smoke);                                         // a poor blend smokes
             wear = Mathf.Clamp01(wear);
             bool diesel = FuelKind == ResourceType.Diesel;
             float dark = Mathf.Clamp01(0.08f + wear * 0.95f + (diesel ? 0.35f * load * (0.5f + rpm) : 0f));
@@ -422,9 +561,9 @@ namespace MadMax.Vehicles
         {
             int moved = 0;
             var kind = FuelKind;
-            if (Accepts(kind)) { int n = Fill(inv, kind, ref fuel, fuelCapacity); if (n > 0) { tankKind = kind; moved += n; } }
-            if (!oilInFuel) moved += Fill(inv, ResourceType.Oil, ref oil, oilCapacity);
-            if (usesCoolant) moved += Fill(inv, ResourceType.Coolant, ref coolant, coolantCapacity);
+            if (Accepts(kind)) moved += Fill(inv, kind, FluidSystem.Fuel);
+            if (!oilInFuel) moved += Fill(inv, ResourceType.Oil, FluidSystem.Oil);
+            if (usesCoolant) moved += Fill(inv, ResourceType.Coolant, FluidSystem.Coolant);
             return moved;
         }
 
@@ -432,10 +571,10 @@ namespace MadMax.Vehicles
         public int Siphon(Inventory inv, int maxLitres = 200)
         {
             int moved = 0;
-            moved += Drain(inv, tankKind == ResourceType.Diesel ? ResourceType.Diesel : ResourceType.Fuel, ref fuel, maxLitres);
-            if (fuel < 1f) fuel = 0f;                                                    // the dregs go on the ground
-            moved += Drain(inv, ResourceType.Oil, ref oil, maxLitres);
-            moved += Drain(inv, ResourceType.Coolant, ref coolant, maxLitres);
+            moved += Drain(inv, FluidSystem.Fuel, maxLitres);
+            if (fuel < 1f) { fuel = 0f; fuelMix.Clear(); }                               // the dregs go on the ground
+            moved += Drain(inv, FluidSystem.Oil, maxLitres);
+            moved += Drain(inv, FluidSystem.Coolant, maxLitres);
             return moved;
         }
 
@@ -446,21 +585,33 @@ namespace MadMax.Vehicles
 
         public float TotalFluids => fuel + oil + coolant;
 
-        static int Fill(Inventory inv, ResourceType t, ref float level, float cap)
+        int Fill(Inventory inv, ResourceType t, FluidSystem s)
         {
-            int n = Mathf.Min(inv.Get(t), Mathf.FloorToInt(cap - level));
+            int n = Mathf.Min(inv.Get(t), Mathf.FloorToInt(Capacity(s) - Level(s)));
             if (n <= 0) return 0;
             inv.TrySpend(t, n);
-            level += n;
+            Pour(s, new FluidMix(t), n);
             return n;
         }
 
-        static int Drain(Inventory inv, ResourceType t, ref float level, int max)
+        /// <summary>Pack fallback (no container in hand): whole litres into the pack, each liquid of the blend as its
+        /// own resource (the pack has no blends).</summary>
+        int Drain(Inventory inv, FluidSystem s, int max)
         {
-            int n = Mathf.Min(max, Mathf.FloorToInt(level));
+            int n = Mathf.Min(max, Mathf.FloorToInt(Level(s)));
             if (n <= 0) return 0;
-            level -= n;
-            inv.Add(t, n);
+            var mix = new FluidMix();
+            Draw(s, n, mix);
+            int given = 0;
+            var main = mix.Main;
+            for (int i = 1; i < ResourceInfo.Count; i++)
+            {
+                var t = (ResourceType)i;
+                if (t == main || mix[t] <= 0f) continue;
+                int k = Mathf.FloorToInt(mix[t] * n + 0.5f);
+                if (k > 0) { inv.Add(t, k); given += k; }
+            }
+            if (main != ResourceType.None && n - given > 0) inv.Add(main, n - given);
             return n;
         }
 
@@ -492,7 +643,8 @@ namespace MadMax.Vehicles
             var f = Faults;
             if ((f & Fault.OnFire) != 0) return "ON FIRE!";
             if ((f & Fault.Flooded) != 0) return "ENGINE FLOODED";
-            if ((f & Fault.WrongFuel) != 0) return "WRONG FUEL IN THE TANK: SIPHON IT (K)";
+            if ((f & Fault.WrongFuel) != 0) return "BAD FUEL: " + fuelMix.Label() + " WON'T RUN: SIPHON IT (K)";
+            if ((f & Fault.Frozen) != 0) return "COOLANT FROZEN (" + Mathf.RoundToInt(FreezePoint) + " C): DRAIN THE WATER";
             if ((f & Fault.NoEngine) != 0) return "NO ENGINE";
             if ((f & Fault.Seized) != 0) return "ENGINE SEIZED";
             if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";
@@ -507,6 +659,9 @@ namespace MadMax.Vehicles
             if ((f & Fault.LowFuel) != 0) return "LOW FUEL";
             if ((f & Fault.LowOil) != 0) return "LOW OIL";
             if ((f & Fault.LowCoolant) != 0) return "LOW COOLANT";
+            if ((f & Fault.RoughFuel) != 0) return "RUNNING ROUGH: " + fuelMix.Label();
+            if ((f & Fault.BadOil) != 0) return "OIL CONTAMINATED: " + oilMix.Label();
+            if ((f & Fault.BadCoolant) != 0) return "COOLANT FOULED: " + coolantMix.Label();
             if ((f & Fault.Misfire) != 0) return "MISFIRING: WORN SPARK PLUGS";
             if ((f & Fault.Clogged) != 0) return "AIR FILTER CLOGGED";
             if ((f & Fault.ServiceDue) != 0) return "OIL CHANGE DUE";

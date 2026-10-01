@@ -419,6 +419,7 @@ namespace MadMax.Game
         // ------------------------------------------------------------------ fluids
         string FluidInteraction(bool G, bool K)
         {
+            if (Player.Tool is FluidCanTool) return CanInteraction(G, K);                      // the container in hand (WastelandGame.Fluids)
             var v = FindNearby(enterDistance + 0.5f, true);
             if (!v && Player.Interior) v = Player.Interior.GetComponent<VehicleDriver>();
             if (!v || !v.TryGetComponent<VehicleSystems>(out var sys)) return null;
@@ -452,7 +453,7 @@ namespace MadMax.Game
             if (sys.TotalFluids >= 1f)
             {
                 text = Join(text, $"[K] SIPHON {Mathf.FloorToInt(sys.TotalFluids)} L");
-                if (K) SiphonVehicle(v);
+                if (K && !EquipCanFor(v)) SiphonVehicle(v);                                     // a container in the pack: equip it and choose
             }
             return text;
         }

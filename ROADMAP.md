@@ -1255,3 +1255,27 @@ acceptance runner's `-scenario` filter takes a comma list of prefixes. All four 
 - [ ] **Cellar in the story**: B2/B4 (supper, residents eating at 19:00) could draw from the root cellar first and complain when stores rot — residents as the reason to keep a pantry.
 - [ ] **Seasonal fishing**: species bite rates by season (`FishLibrary.BiteRate` × season), so the summer rods at the stalls mean something and winter ice fishing (hole through `Weather.Ice`) is its own activity.
 
+
+## Fluids: containers, siphon and pour, blends (2026-10-01, wave 4)
+- [x] Hand liquid containers equipped like tools: jerry can 20 L (`tool_jerrycan`), fuel can 5 L, water bottle 1 L, bucket 10 L, oil jug 4 L (`Items/FluidContainers`, recipes at the workbench, one empty jerry can in a sandbox new game). Each holds one blend; contents per container in the pack (`WastelandGame.Fluids`: `CansOf(id)`, index 0 in hand; containers leaving the pack leave their contents in a per-id pool the next one takes back), weight counted, shown on the HUD (toolbar line) and in the inventory label; LMB dips at open water, drinks clean water, douses fires. No hand drum: 200 L is tanker / pump / vehicle-tank work.
+- [x] Siphon (K) and pour (G) with the container in hand open a radial of what fits: a vehicle's fuel tank, sump and cooling system, a tanker, a pump (player-built pumps take clean fuel back), a liquid generator, open water / the sea, the pack's liquids (pure liquids back into the pack), the ground. Siphon fills up to the container's capacity with that single fluid (sources of another family than the can's contents are not offered); pour shows the blend the tank ends up with ("WON'T RUN" / "ROUGH"). Timed work at vehicles (filler for fuel, engine bay for oil / coolant, the container in hand). Without one in hand, K equips the best container in the pack and opens the choice; no container at all = the old siphon into the pack (each liquid of a blend to its own resource). Scenario `fluids.siphon_refill`.
+- [x] Blends by volume in every tank (`FluidMix`: fractions per liquid; pour blends, draining / burning keeps the fractions) replace the binary wrong-fuel flag: `FuelBlend` (table below) feeds `PowerFactor`, burn, misfires, exhaust smoke, start chance and wear; `Fault.WrongFuel` = a blend that won't run, `RoughFuel`, `BadOil`, `BadCoolant`, `Frozen`. Pumps, tankers and the garage still top up only the same kind; the tanker hose carries the blend as it is. Saved (`VehicleSave.fluids`, old saves load as the pure tank kind; `SaveData.blockFluids` for containers) and sent with the vehicle meta. Scenarios `fluids.mixing`, `fluids.save`.
+
+| engine | in the tank | runs fine up to | rough until | won't run above | effect |
+|---|---|---|---|---|---|
+| petrol | ethanol | 100 % | – | – | E85: −4 % power, +30 % burn; harder cold starts near E100 |
+| petrol | diesel | 10 % | 25 % | 25 % | misfire, smoke |
+| petrol / diesel | water (+dirty, sea ×3 wear, coolant ×2 wear) | 10 % | – | 10 % | −15 % power and +15 % burn at 10 %, misfires, slow engine wear |
+| petrol (4-stroke) | oil | 4 % (2T mix: smoky) | 20 % | 20 % | smoke, fouled plugs |
+| two-stroke | oil | 8 % (the proper mix) | 25 % | 25 % | pure petrol counts as pump pre-mix |
+| diesel | petrol | 15 % (−6 % power, knock) | 35 % | 35 % | damage on cranking a dead blend |
+| diesel | ethanol | 5 % | 20 % | 20 % | poor |
+| diesel | engine oil / seed oil | 15 % / 30 % | 50 % / 80 % | 50 % / 80 % | smoke; veg oil runs a diesel |
+| any | crude | 2–5 % | 12–30 % | 12–30 % | thick smoke, wear |
+
+Contaminants add up (Σ fraction / limit > 1 = won't run). Sump: protection = 1 − 5·water − 2.5·fuel − 1.5·crude − 0.6·seed oil (oil ages faster and the engine wears below 0.95). Cooling: the COOLANT resource is a ready mix rated −37 °C, so the freezing point is −37 °C × its share (pure water 0 °C: a parked engine below it won't start, the radiator cracks 5 °C under it); fuel or oil in the radiator cut cooling, sea water corrodes it.
+
+### Suggestions
+- [ ] Containers in storages and on the ground keep their own contents (today they share a per-id pool in the pack): a per-instance item state in `Container` / `WorldItem`.
+- [ ] Water network ends (taps, barrels, `WaterOutlet`, vehicle water tanks) and the still / refinery as siphon and pour targets; drums as vehicle cargo.
+- [ ] Settling: water sinks to the bottom of a parked tank over hours, a drain plug lets the first litres out (clean the tank without siphoning it all).

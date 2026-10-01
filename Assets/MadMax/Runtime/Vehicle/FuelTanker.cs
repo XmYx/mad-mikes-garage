@@ -68,6 +68,8 @@ namespace MadMax.Vehicles
             if (hose) hose.enabled = false;
         }
 
+        readonly FluidMix hoseMix = new FluidMix();
+
         void Update()
         {
             if (Pumping == Mode.Off) return;
@@ -82,8 +84,13 @@ namespace MadMax.Vehicles
             var kind = from.tankKind != ResourceType.None ? from.tankKind : from.FuelKind;
             if (!to.Accepts(kind)) { Stop("WRONG FUEL: " + ResourceInfo.Name(kind) + " INTO " + ResourceInfo.Name(to.tankKind)); return; }
             moved = Mathf.Min(want, from.fuel, to.fuelCapacity - to.fuel);
-            from.fuel -= moved;
-            if (moved > 0f) to.AddFuel(kind, moved);
+            if (moved > 0f)
+            {
+                // the hose carries the blend as it is (water, a splash of the other fuel... all of it)
+                if (from.fuelMix.Empty) from.fuelMix.Set(kind);
+                moved = from.Draw(VehicleSystems.FluidSystem.Fuel, moved, hoseMix);
+                to.AddFuel(hoseMix, moved);
+            }
             Moved += moved;
             MadMax.Audio.Sfx.Loop(this, "pour", 0.5f, 0.9f, 15f);
             DrawHose(Outlet, inlet);

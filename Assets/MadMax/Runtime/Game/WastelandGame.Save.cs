@@ -142,7 +142,7 @@ namespace MadMax.Game
                 };
                 foreach (var s in v.GetComponent<VehicleChassis>().Sockets)
                     vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, state = s.Current ? s.Current.SaveState() : null, q = s.Current ? s.Current.quality + 1 : 0, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f });
-                if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; vs.additive = sys.additive; vs.tank = (int)sys.tankKind; vs.disconnected = sys.disconnected; }
+                if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; vs.additive = sys.additive; vs.tank = (int)sys.tankKind; vs.disconnected = sys.disconnected; vs.fluids = sys.FluidState(); }
                 if (v.TryGetComponent<MadMax.Story.StoryTag>(out var stag)) vs.storyTag = stag.key;
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
                 if (v.TryGetComponent<VehicleArmor>(out var arm)) vs.armor = arm.SaveState();
@@ -268,7 +268,7 @@ namespace MadMax.Game
                     var part = SpawnPart(saved.part, s.transform.position, s.transform.rotation);
                     if (part) { s.Attach(part); part.damage = saved.damage; part.LoadState(saved.state); if (saved.q > 0) part.quality = saved.q - 1; if (part.TryGetComponent<WheelStats>(out var ws1)) ws1.wear = saved.wear; }
                 }
-                if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; sys.additive = vs.additive; sys.tankKind = (ResourceType)vs.tank; sys.disconnected = vs.disconnected; }
+                if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; sys.additive = vs.additive; sys.tankKind = (ResourceType)vs.tank; sys.disconnected = vs.disconnected; sys.LoadFluidState(vs.fluids); }
                 if (!string.IsNullOrEmpty(vs.storyTag)) MadMax.Story.StoryTag.Set(go, vs.storyTag);
                 if (!string.IsNullOrEmpty(vs.cargo) && go.TryGetComponent<Container>(out var cargo)) cargo.LoadState(vs.cargo);
                 if (go.TryGetComponent<VehicleDamage>(out var dmg)) { dmg.AddFrameDamage(vs.frame, 1f); dmg.salvagePool = vs.salvage; }
