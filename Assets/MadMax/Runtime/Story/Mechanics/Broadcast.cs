@@ -100,8 +100,11 @@ namespace MadMax.Story
         public static void Tick(WastelandGame g)
         {
             if (captions.Count == 0 || !g || Time.time < next) return;
-            g.Toast(captions.Dequeue());
-            next = Time.time + LineSeconds;
+            string line = captions.Dequeue();
+            g.Toast(line);
+            // June's voice over the air (quest_cast radio_june) when the line has a clip: wait for it
+            float said = line.StartsWith("JUNE: ") ? MadMax.Npc.QuestVoice.Radio("radio_june", line.Substring(6)) : 0f;
+            next = Time.time + Mathf.Max(LineSeconds, said + 0.4f);
             if (captions.Count == 0 && doneNote != null) { Story.Note(doneNote); doneNote = null; }
         }
     }

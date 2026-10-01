@@ -68,6 +68,7 @@ namespace MadMax.Game
             Story.Story.Activate(this, "A1");
             Journal.Add("RADIO", "\"...SEVEN, EIGHT... IF YOU MADE IT, KEEP THE LIGHT ON.\"");
             Toast("THE RADIO CRACKLES: \"IF YOU MADE IT, KEEP THE LIGHT ON.\"");
+            MadMax.Npc.QuestVoice.Radio("radio_mara", "...SEVEN, EIGHT... IF YOU MADE IT, KEEP THE LIGHT ON.");
         }
 
         /// <summary>Sit a wreck spawned at an angle on the ground (lowest point at ground level) so it doesn't start inside
