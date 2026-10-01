@@ -5,7 +5,7 @@ Hierarchy (names as in the game's Rig): <species id> (root empty) / Rig (armatur
   FL FR BL BR = 0..3, birds L R, arthropods pairs front to back, left first), Tail (tailRoot), WingR / WingL (wingRoot,
   WingL mirrored), Saddle (horse, at (0, (leg + depth) * s, -0.05)), Fleece (sheep, at the torso centre);
   snakes: Seg_<i> (0, 0, -i * segLen), Head (origin), Rattle (child of the last segment).
-Every part object carries custom props part (Leg / Seg / ...) and index; the pivots come from the voxel dump
+Every part object carries custom props part (object name), rig_part (Leg / Seg / ...), index and pivot_game_m; the pivots come from the voxel dump
 (ref_index.json "animal:<id>"), the proportions from the AnimalDef numbers. Coat / belly / accent colours are the
 species' Pal ramps. Sprawled legs (lizards, arthropods) are modelled for the right side; left legs are separate
 mirrored objects (the game mirrors the right leg with scale x = -1).
@@ -82,7 +82,7 @@ def make_rig(a, root, bones):
     for part in list(root.children):
         if part == ob or part.type != "MESH":
             continue
-        bone = a.bone_of.get(part.get("part_name", part.name))
+        bone = a.bone_of.get(part.get("part", part.name))
         if not bone:
             continue
         mw = part.matrix_world.copy()
@@ -105,16 +105,14 @@ def finish(a, bones, parts_meta):
         for ob in asset.objs:
             meta = [m for m in parts_meta if m[0] == ob["part"]]
             if meta:
-                ob["part_name"] = meta[0][0]
-                ob["part"] = meta[0][2]
+                ob["rig_part"] = meta[0][2]          # Animal rig role: Body / Head / Leg / Tail / Wing / Seg / Rattle / Saddle / Fleece
                 ob["index"] = meta[0][3]
+                ob["pivot_game_m"] = list(asset.parts[ob["part"]].pivot)
         make_rig(asset, root, bones)
-        d = D(asset.gid)
-        root["ref_height"] = d["height"]
-        root["species_name"] = d["name"]
-        bpy.context.view_layer.update()
-        lo, hi = K.game_dims(root)
-        print("HEIGHT %-12s model %.3f m  game %.3f m  len %.3f m" % (asset.gid, hi.y - max(lo.y, -0.5), d["height"], hi.z - lo.z))
+        d = K.REF.get("animal:" + asset.gid)
+        if d:
+            root["ref_height"] = d["height"]
+            root["species_name"] = d["name"]
     a.post = post
     return a
 
@@ -598,6 +596,135 @@ def arthropod(sid):
     return finish(a, bones, parts)
 
 
+# ------------------------------------------------------------------------------------------ extras (not in AnimalLibrary)
+def pack_mule():
+    """Npc/PackAnimal.cs: trader's mule. Root mesh PackMule (body, saddlebags, pots, blanket roll, sack), four Leg children
+    at (+-3, 11, +-7) voxels swinging about x, Head at (0, 15, 10) nodding."""
+    s = 0.08
+    a = Asset("PackMule", "Animal", kind="animal", voxel=s, note="Npc/PackAnimal (no AnimalDef); legs all named Leg in game, indexed FL FR BL BR")
+    for key, hexes in (("mule_coat", "6b4a2e"), ("mule_dark", "3a2a1c")):
+        K.M.setdefault(key, K.kit.surface("Fur_" + key, K.hexc(hexes), dust=0.15, rough=0.92, var=0.2, bump=0.55, scale=3.0))
+    K.M.setdefault("eye", K.kit.surface("Eye", K.hexc("0d0d10"), dust=0.0, rough=0.15, var=0.0, bump=0.0))
+    K.M.setdefault("hoof", K.kit.surface("Hoof", K.hexc("24211f"), dust=0.2, rough=0.5, var=0.15, bump=0.3))
+    c = lambda v: v * s
+    b = a.p("Body", "Hide")
+    ellipsoid_loft(b, lambda q: "mule_coat", 0, c(14.2), 0, c(3.6), c(3.5), c(9.6), 2.6, 22, 16)
+    b.tube("mule_dark", [(0, c(16), c(-9.5)), (0, c(13), c(-10.6)), (0, c(10.5), c(-10.8))], [c(0.6), c(0.5), c(0.25)], 8)
+    for sx in (-1, 1):                                          # saddlebags with flaps and buckles, a hanging pot
+        b.box2("canvas", (c(sx * 4 - 0.5) if sx > 0 else c(-6.5), c(11.5), c(-4.5)), (c(6.5) if sx > 0 else c(-3.5), c(17.4), c(3.5)), bevel=0.03)
+        b.box2("olive", (c(sx * 6.4 - 0.15) if sx > 0 else c(-6.6), c(15.0), c(-4.2)), (c(6.6) if sx > 0 else c(-6.25), c(17.5), c(3.2)), bevel=0.01)
+        for z in (-2.5, 1.5):
+            b.box2("leather", (c(6.55) if sx > 0 else c(-6.75), c(13.0), c(z - 0.3)), (c(6.75) if sx > 0 else c(-6.55), c(16.5), c(z + 0.3)), bevel=0.003)
+            b.box2("brass", (c(6.7) if sx > 0 else c(-6.82), c(14.4), c(z - 0.35)), (c(6.82) if sx > 0 else c(-6.7), c(14.9), c(z + 0.35)), bevel=0.002)
+        b.lathe("steel_dark", [(0.0, 0.0), (c(1.1), 0.0), (c(1.25), c(1.6)), (c(1.15), c(1.7)), (0.0, c(1.7))], (c(sx * 6.5), c(14.8), c(5)), "y", 14)
+        b.torus("steel", c(0.5), c(0.08), (c(sx * 6.5), c(16.8), c(5)), "x", 10, 4)
+    b.superloft("cloth_red", [(c(-6.5), 0, c(19), c(3.4), c(1.4)), (c(5.5), 0, c(19), c(3.4), c(1.4))], 16, 2.0)
+    for z in (-4, 0, 4):
+        b.torus("leather", c(1.45), c(0.15), (0, c(19), c(z)), "z", 16, 4)
+    b.rock("burlap", c(3.3), (0, c(21.4), c(-0.5)), seed=21, squash=0.45, detail=1, scale=(1.3, 1, 0.9))
+    b.superloft("leather", [(c(-3), 0, c(17.4), c(3.9), c(0.35)), (c(3), 0, c(17.4), c(3.9), c(0.35))], 16, 3.0)
+    for sx in (-1, 1):
+        b.rod("leather", (c(sx * 3.7), c(17.2), 0), (c(sx * 3.4), c(11.4), c(0.3)), c(0.18), 6)
+    parts = [("Body", "Body", "Body", 0)]
+    bones = [("Body", (0, c(14), c(-9)), (0, c(14), c(9)), None)]
+    names = ["Leg_FL", "Leg_FR", "Leg_BL", "Leg_BR"]
+    for i, (x, z) in enumerate(((-3, 7), (3, 7), (-3, -7), (3, -7))):
+        rt = Vector((c(x + 0.5 * (1 if x < 0 else -1) * 0), c(11), c(z)))
+        lg = a.p(names[i], "Hide", pivot=tuple(rt))
+        R = lambda v: tuple(rt + v * s)
+        front = z > 0
+        lg.tube("mule_coat", [R(Vector((-0.5, 2.5, -0.5))), R(Vector((-0.5, 0, -0.5))), R(Vector((-0.5, -5.5, 0.0 if front else -0.8))), R(Vector((-0.5, -10.4, 0)))],
+                [c(1.5), c(1.25), c(0.75), c(0.6)], 12)
+        lg.sphere("mule_coat", c(0.85), R(Vector((-0.5, -5.5, 0.0 if front else -0.8))), (1, 1, 1), 8, 6)
+        lg.lathe("hoof", [(0.0, 0.0), (c(0.85), 0.0), (c(0.72), c(1.2)), (0.0, c(1.2))], R(Vector((-0.5, -12.5, 0))), "y", 12)
+        parts.append((names[i], names[i], "Leg", i))
+        bones.append((names[i], tuple(rt), tuple(rt - Vector((0, c(11), 0))), "Body"))
+    hp = Vector((0, c(15), c(10)))
+    h = a.p("Head", "Hide", pivot=tuple(hp))
+    H = lambda v: tuple(hp + v * s)
+    h.tube("mule_coat", [H(Vector((0, -1.0, -1.5))), H(Vector((0, 2.5, 0.8))), H(Vector((0, 5, 2.8)))], [c(1.9), c(1.4), c(1.3)], 12)
+    h.superloft("mule_coat", [(c(1.6) + hp.z, 0, c(5.6) + hp.y, c(1.9), c(1.9)), (c(4.5) + hp.z, 0, c(5.3) + hp.y, c(1.7), c(1.6)), (c(7.4) + hp.z, 0, c(4.9) + hp.y, c(1.3), c(1.3)),
+                                    (c(8.4) + hp.z, 0, c(4.8) + hp.y, c(1.0), c(1.0))], 16, 2.3)
+    h.sphere("mule_dark", c(1.1), H(Vector((0, 4.6, 8.0))), (1.05, 0.9, 0.6), 10, 6)
+    for sx in (-1, 1):
+        eye(h, H(Vector((sx * 1.85, 6.2, 5.0))), c(0.35))
+        h.add(K.kit.bm_sphere(1.0, 10, 6), "mule_coat", Matrix.Translation(H(Vector((sx * 1.6, 9.4, 2.5)))) @ K.rot(-10, 0, sx * 15) @ Matrix.Diagonal((c(0.55), c(2.2), c(0.8), 1)))
+    h.add(K.kit.bm_box(c(0.45), c(1.0), c(4.5), bevel=0.01), "mule_dark", Matrix.Translation(H(Vector((0, 4.2, 0.6)))) @ K.rot(-50, 0, 0))
+    h.torus("leather", c(1.75), c(0.14), H(Vector((0, 4.9, 6.5))), "z", 14, 4)
+    parts.append(("Head", "Head", "Head", 0))
+    bones.append(("Head", tuple(hp), tuple(hp + Vector((0, c(4), c(4)))), "Body"))
+    a.ref_height = 22 * s
+    return finish(a, bones, parts)
+
+
+def sea_fish(kind):
+    """World/SeaLife.cs: school fish SeaFish0..3 (0.05 m voxels; chrome, navy, banded olive, ochre)."""
+    s = 0.05
+    a = Asset("SeaFish%d" % kind, "Animal", kind="critter", voxel=s, note="World/SeaLife school fish, single mesh")
+    pal = [("c8ccd0", "8a9098"), ("34508a", "18244a"), ("6b7a3a", "3a4420"), ("c48c2a", "7c5214")][kind]
+    for key, hx in (("fish_top", pal[1]), ("fish_side", pal[0])):
+        K.M.setdefault(key + str(kind), K.kit.surface("Fish%d_%s" % (kind, key), K.hexc(hx), dust=0.0, rough=0.25, var=0.15, bump=0.3, metal=0.4 if kind == 0 else 0.0, scale=6.0))
+    K.M.setdefault("eye", K.kit.surface("Eye", K.hexc("0d0d10"), dust=0.0, rough=0.15, var=0.0, bump=0.0))
+    K.M.setdefault("fish_band", K.kit.surface("FishBand", K.hexc("18171c"), dust=0.0, rough=0.3, var=0.1, bump=0.2))
+    b = a.p("Body", "Hide")
+    top, side = "fish_top%d" % kind, "fish_side%d" % kind
+
+    def m(q):
+        if kind == 2 and int((q.z / s + 10) // 1) % 2 == 0 and q.y > -0.01:
+            return "fish_band"
+        return top if q.y > s * 0.9 else side
+    ellipsoid_loft(b, m, 0, s * 0.5, s * 0.4, s * 1.25, s * 1.3, s * 3.2, 2.2, 20, 16, shape=lambda t: (1 - 0.25 * max(0.0, -t), 1.0, 0.0))
+    b.quad(side, (0, s * 0.6, -s * 2.6), (0, s * 2.6, -s * 4.6), (0, s * 0.5, -s * 3.7), (0, -s * 1.6, -s * 4.6), s * 0.15)
+    b.tri_plate(top, (0, s * 1.6, s * 0.6), (0, s * 2.4, -s * 0.6), (0, s * 1.6, -s * 1.6), s * 0.12)
+    for sx in (-1, 1):
+        eye(b, (sx * s * 0.9, s * 1.0, s * 2.4), s * 0.28)
+        b.tri_plate(side, (sx * s * 1.1, s * 0.2, s * 1.2), (sx * s * 2.0, -s * 0.3, s * 0.2), (sx * s * 1.1, s * 0.1, s * 0.3), s * 0.08)
+    return finish(a, [("Body", (0, s * 0.5, -s * 3), (0, s * 0.5, s * 3), None)], [("Body", "Body", "Body", 0)])
+
+
+def jellyfish():
+    s = 0.05
+    a = Asset("Jellyfish", "Animal", kind="critter", voxel=s, note="World/SeaLife jellyfish (stings), single mesh")
+    K.M.setdefault("jelly", K.kit.glass("JellyBell", K.hexc("eab4a4")))
+    K.M.setdefault("jelly_in", K.kit.emissive("JellyGlow", K.hexc("c07a70"), 1.2))
+    K.M.setdefault("jelly_t", K.kit.surface("JellyTentacle", K.hexc("d8988a"), dust=0.0, rough=0.3, var=0.2, bump=0.1))
+    b = a.p("Body", "Hide")
+    prof = [(0.0, s * 3.4), (s * 1.6, s * 3.3), (s * 3.0, s * 2.6), (s * 4.0, s * 1.4), (s * 4.4, s * 0.2), (s * 4.1, -s * 0.3), (s * 3.6, s * 0.2), (s * 2.6, s * 1.4), (0.0, s * 1.9)]
+    b.lathe("jelly", prof, (0, 0, 0), "y", 28)
+    b.lathe("jelly_in", [(0.0, s * 1.9), (s * 1.8, s * 1.5), (s * 1.2, s * 0.6), (0.0, s * 0.4)], (0, 0, 0), "y", 16)
+    for k in range(6):
+        an = k * math.pi / 3
+        r0 = s * 2.0
+        pts = [(math.cos(an) * r0 + math.sin(t * 1.3 + k) * s * 0.4, -t * s * 1.2 + s * 0.3, math.sin(an) * r0 + math.cos(t * 1.1 + k) * s * 0.4) for t in range(6)]
+        b.tube("jelly_t", pts, [s * 0.28, s * 0.24, s * 0.2, s * 0.16, s * 0.12, s * 0.05], 6)
+    for k in range(4):
+        an = k * math.pi / 2 + 0.4
+        b.tube("jelly_in", [(math.cos(an) * s * 0.4, s * 0.4, math.sin(an) * s * 0.4), (math.cos(an) * s * 0.9, -s * 2.5, math.sin(an) * s * 0.9), (math.cos(an) * s * 0.6, -s * 4.5, math.sin(an) * s * 0.6)],
+               [s * 0.45, s * 0.35, s * 0.1], 8)
+    return finish(a, [("Body", (0, -s * 6, 0), (0, s * 3, 0), None)], [("Body", "Body", "Body", 0)])
+
+
+def bat():
+    """World/BatColony.cs: cave bats (0.05 m voxels), wings spread."""
+    s = 0.05
+    a = Asset("Bat", "Animal", kind="critter", voxel=s, note="World/BatColony, single mesh")
+    K.M.setdefault("bat_fur", K.kit.surface("BatFur", K.hexc("232127"), dust=0.0, rough=0.95, var=0.2, bump=0.5, scale=6))
+    K.M.setdefault("bat_wing", K.kit.surface("BatWing", K.hexc("302d33"), dust=0.0, rough=0.6, var=0.15, bump=0.2))
+    K.M.setdefault("eye", K.kit.surface("Eye", K.hexc("0d0d10"), dust=0.0, rough=0.15, var=0.0, bump=0.0))
+    b = a.p("Body", "Hide")
+    b.sphere("bat_fur", 1.0, (0, s * 0.6, 0), (s * 0.55, s * 0.9, s * 0.5), 12, 8)
+    b.sphere("bat_fur", 1.0, (0, s * 1.55, s * 0.1), (s * 0.45, s * 0.4, s * 0.45), 12, 8)
+    for sx in (-1, 1):
+        b.add(K.kit.bm_cyl(s * 0.2, s * 0.6, 6, 0.0), "bat_fur", Matrix.Translation((sx * s * 0.25, s * 2.05, s * 0.05)) @ K.rot(0, 0, sx * -15) @ K._axis_mtx("y"))
+        eye(b, (sx * s * 0.18, s * 1.6, s * 0.48), s * 0.07)
+        sh, el, tip = Vector((sx * s * 0.4, s * 1.1, 0)), Vector((sx * s * 1.6, s * 1.7, 0)), Vector((sx * s * 3.3, s * 2.2, 0))
+        b.tube("bat_fur", [sh, el, tip], [s * 0.1, s * 0.08, s * 0.04], 5)
+        for (f, lowr) in ((tip, Vector((sx * s * 3.0, s * 0.9, 0))), (el.lerp(tip, 0.5), Vector((sx * s * 2.2, s * 0.6, 0))), (el, Vector((sx * s * 1.2, s * 0.5, 0)))):
+            b.tri_plate("bat_wing", el if f is not el else sh, f, lowr, s * 0.04)
+        b.tri_plate("bat_wing", sh, el, Vector((sx * s * 0.5, s * 0.3, 0)), s * 0.04)
+    return finish(a, [("Body", (0, 0, 0), (0, s * 2, 0), None)], [("Body", "Body", "Body", 0)])
+
+
 def build(sid):
     d = D(sid)
     plan = d["plan"]
@@ -619,6 +746,8 @@ GROUPS = [("animals_hoofed", "Horse (saddled), antelope, deer, cow, goat, sheep 
           ("animals_bugs", "Scorpion, rad-scorpion, tarantula, cave spider, rad-roach, crab, beetle", ["scorpion", "radscorpion", "tarantula", "cavespider", "radroach", "crab", "beetle"])]
 
 TILES = [(g, lbl, [lambda ids=ids: [build(i) for i in ids]], min(4, len(ids))) for (g, lbl, ids) in GROUPS]
+TILES.append(("animals_extra", "Pack mule (trader), cave bat, sea fish x4, jellyfish",
+              [pack_mule, bat, lambda: [sea_fish(k) for k in range(4)], jellyfish], 4))
 
 if __name__ == "__main__":
     K.run_tiles(TILES, "animals", HERE, "")
