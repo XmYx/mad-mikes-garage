@@ -358,8 +358,9 @@ class GP:
 class Asset:
     """One game asset: root empty named exactly like the game id + sub-objects."""
 
-    def __init__(self, gid, category, kind="furniture", voxel=0.08, ref=None, note=""):
+    def __init__(self, gid, category, kind="furniture", voxel=0.08, ref=None, note="", yaw=0.0):
         self.gid, self.category, self.kind, self.voxel, self.note = gid, category, kind, voxel, note
+        self.yaw = yaw          # preview-only turn (degrees about game y) so the interesting side faces the camera
         self.parts = {}
         self.order = []
         self.ref = ref if ref is not None else gid
@@ -500,8 +501,8 @@ def run_tiles(tiles, group, script_dir, blend_prefix="", cols=None):
         bpy.context.view_layer.update()
         smart_uv([o for a in assets for o in a.objs])
         for a, r in zip(assets, roots):
-            if a.kind == "building":
-                r.rotation_euler.z = math.pi      # street side (game -z) toward the camera for the preview only
+            if a.yaw:
+                r.rotation_euler.z = math.radians(-a.yaw)      # preview only; reset before saving
         bpy.context.view_layer.update()
         layout(roots, tcols)
         objs = [o for r in roots for o in [r] + list(r.children_recursive)]
