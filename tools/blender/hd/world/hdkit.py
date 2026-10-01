@@ -314,6 +314,12 @@ class GP:
         secs = [[a - n, b - n, c - n, d - n], [a + n, b + n, c + n, d + n]]
         return self.add(kit.bm_loft(secs), m)
 
+    def quad(self, m, a, b, c, d, t=0.02):
+        """Plate through four corners (any quad), thickness t along its normal."""
+        a, b, c, d = Vector(a), Vector(b), Vector(c), Vector(d)
+        n = (c - a).cross(d - b).normalized() * (t / 2)
+        return self.add(kit.bm_loft([[a - n, b - n, c - n, d - n], [a + n, b + n, c + n, d + n]]), m)
+
     def tri_plate(self, m, a, b, c, t=0.02):
         a, b, c = Vector(a), Vector(b), Vector(c)
         n = (b - a).cross(c - a).normalized() * (t / 2)
