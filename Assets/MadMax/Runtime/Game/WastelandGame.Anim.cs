@@ -43,6 +43,8 @@ namespace MadMax.Game
             public WorkPose pose;
             public Transform hood;
             public GameObject groundProp;
+            public bool propSet;                     // propKey overrides the kind's prop (null = the tool in hand: a fluid container)
+            public string propKey;
         }
 
         const float WorkGap = 0.52f;                 // spot distance from the vehicle's extent (capsule radius + elbow room)
@@ -967,6 +969,7 @@ namespace MadMax.Game
         /// <summary>What goes in the hand for the job: "oil" (jug), "can" (jerry can) or a tool id; null = the tool in hand.</summary>
         string WorkPropKey(WorkJob j)
         {
+            if (j.propSet) return j.propKey;
             switch (j.kind)
             {
                 case WorkKind.Service: return "oil";

@@ -13,7 +13,7 @@ namespace MadMax.Game
     /// slice by accumulated movement (works with the locked cursor); camera look pauses meanwhile.</summary>
     public partial class WastelandGame
     {
-        public struct RadialAction { public string label; public Controls.Act? act; public System.Action run; }
+        public struct RadialAction { public string label; public Controls.Act? act; public System.Action run; public string detail; }
 
         public bool RadialOpen { get; private set; }
         public int RadialHover { get; private set; } = -1;
@@ -35,6 +35,7 @@ namespace MadMax.Game
         {
             TabTapped = false; PadSelectTapped = false;
             var pad = Gamepad.current;
+            if (UpdateFluidChoice(kb, mouse, pad)) return;                                   // a container's siphon / pour choice (WastelandGame.Fluids)
             if (Menus.IsOpen || TitleSequence.Playing || (Build && Build.RadialOpen)) { CloseRadial(); padHeld = -1f; return; }
             // gamepad: hold Select for the wheel, aim with the right stick, release to run
             if (pad != null)

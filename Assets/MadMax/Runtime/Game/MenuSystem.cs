@@ -537,7 +537,7 @@ namespace MadMax.Game
                             var id = kv.Key;
                             items.Add(new Item
                             {
-                                id = id, label = MadMax.Items.ItemCatalog.Name(id) + (game.HasMake(id) ? " (" + game.QualityName(id) + ")" : ""),
+                                id = id, label = MadMax.Items.ItemCatalog.Name(id) + (game.HasMake(id) ? " (" + game.QualityName(id) + ")" : "") + game.CanNote(id),
                                 value = () => { int slot = System.Array.IndexOf(game.Hotbar, id); return (slot >= 0 ? "[" + (slot + 1) + "] " : "") + "X" + inv.GetItem(id) + "  " + (inv.GetItem(id) * MadMax.Items.ItemCatalog.Weight(id)).ToString("0.0") + "KG"; },
                                 confirm = () => game.UseItem(id), drop = id,
                                 hint = (MadMax.RPG.MediaLibrary.IsMedia(id) ? (game.Stats.consumed.Contains(id) ? "ALREADY STUDIED - LITTLE LEFT TO LEARN" : "ENTER TO STUDY") : "ENTER USE   1-8 ASSIGN TO HOTBAR") + DropHint(id)

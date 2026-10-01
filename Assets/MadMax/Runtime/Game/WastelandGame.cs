@@ -812,7 +812,7 @@ namespace MadMax.Game
                     rod.reel = (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed);
                     if (attack) rod.Click();
                 }
-                else if (attack && cameraRig && !(Build && Build.Active) && !PlacingItem) Player.Attack(cameraRig.CrosshairView);
+                else if (attack && cameraRig && !(Build && Build.Active) && !PlacingItem && !RadialOpen && fluidClickFrame != Time.frameCount) Player.Attack(cameraRig.CrosshairView);
                 if (cameraRig)
                 {
                     Player.viewYaw = cameraRig.ViewYaw;

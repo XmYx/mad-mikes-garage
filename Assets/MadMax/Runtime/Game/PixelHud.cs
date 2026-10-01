@@ -380,6 +380,7 @@ namespace MadMax.Game
                     }
                 }
             }
+            if (game.Player.Tool is FluidCanTool) canvas.Text(x0 + n * (slot + 2) + 4, y + 8, game.HeldCanText ?? "", Text);   // litres and blend in the container
             if (game.Player.Tool is RangedTool rt)
             {
                 // rounds in the gun / in the pack, and what it is doing
@@ -809,7 +810,7 @@ namespace MadMax.Game
                 int x = cx + Mathf.RoundToInt(Mathf.Sin(a) * r * 1.25f), y = cy - Mathf.RoundToInt(Mathf.Cos(a) * r);
                 string name = acts[i].label;
                 if (name.Length > 26) name = name.Substring(0, 26);
-                string key = acts[i].act.HasValue ? "[" + Controls.Name(acts[i].act.Value) + "]" : "";
+                string key = acts[i].act.HasValue ? "[" + Controls.Name(acts[i].act.Value) + "]" : acts[i].detail ?? "";
                 int w = Mathf.Max(PixelCanvas.TextWidth(name), PixelCanvas.TextWidth(key)) + 8;
                 bool sel = i == game.RadialHover;
                 if (sel) canvas.Panel(x - w / 2, y - 7, w, key.Length > 0 ? 17 : 11); else canvas.Rect(x - w / 2, y - 7, w, key.Length > 0 ? 17 : 11, new Color32(20, 12, 8, 200));
@@ -823,7 +824,7 @@ namespace MadMax.Game
                 float a = game.RadialHover * Mathf.PI * 2f / n;
                 for (int s = 4; s < r / 2; s += 2) canvas.Rect(cx + Mathf.RoundToInt(Mathf.Sin(a) * s * 1.25f), cy - Mathf.RoundToInt(Mathf.Cos(a) * s), 1, 1, Amber);
             }
-            string hint = "MOVE MOUSE TO PICK - RELEASE TAB OR CLICK";
+            string hint = game.RadialHint ?? "MOVE MOUSE TO PICK - RELEASE TAB OR CLICK";
             canvas.Text(cx - PixelCanvas.TextWidth(hint) / 2, cy - r - 20, hint, Dim);
         }
 
