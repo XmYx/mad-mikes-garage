@@ -206,6 +206,7 @@
       "group": "Building, farming and industry",
       "readme": "Crafting is timed and happens at stations (workbench, stove, furnace, kiln, stil",
       "scenarios": [
+        "audio.station_sounds",
         "catalogue.recipes",
         "cooking.ladder",
         "crafting.fuel_refund"
@@ -229,8 +230,9 @@
       "id": "people_and_animals.shopkeepers_market_stalls_roadside_vendo",
       "group": "People and animals",
       "readme": "Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raid",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "economy.seasonal_stock"
+      ]
     },
     {
       "id": "people_and_animals.raiders_track_you_down_on_the_road_you_c",
@@ -242,9 +244,10 @@
     {
       "id": "people_and_animals.factions_with_territory_and_standing_bou",
       "group": "People and animals",
-      "readme": "Factions with territory and standing, bounty boards, supply and escort contracts",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "readme": "Factions with territory and standing, bounty boards (with the road news from rou",
+      "scenarios": [
+        "towns.road_news"
+      ]
     },
     {
       "id": "people_and_animals.companions_who_follow_you_ride_with_you_",
@@ -317,7 +320,7 @@
     {
       "id": "vehicles.real_cars_modelled_in_blender_fiat_126p_",
       "group": "Vehicles",
-      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citro\u00ebn BX, Cit",
+      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citroën BX, Cit",
       "scenarios": [
         "vehicle.drive.Fiat126p",
         "vehicle.drive.Peugeot205",
@@ -436,6 +439,7 @@
       "readme": "Power from generators, solar panels, wind turbines, water wheels and biogas, car",
       "scenarios": [
         "cooking.ladder",
+        "food.root_cellar",
         "utilities.ladder"
       ]
     },

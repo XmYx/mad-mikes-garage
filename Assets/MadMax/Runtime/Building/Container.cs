@@ -25,6 +25,8 @@ namespace MadMax.Building
         public string title = "STORAGE";
         public float capacity = 80f;          // kg
         public bool fridge;
+        /// <summary>Passive keeping without power (root cellar): the spoil rate in here, halved again in winter.</summary>
+        public float keep = 1f;
         public readonly Inventory inventory = new Inventory();
         UtilityNode node;
 
@@ -37,7 +39,7 @@ namespace MadMax.Building
         public ColdStore Cold { get { if (!coldLooked) { cold = GetComponent<ColdStore>(); coldLooked = true; } return cold; } }
         public bool Cooling => Cold ? Cold.Chilled : fridge && node && node.Powered;
         /// <summary>How fast food rots in here against the open pack (0 frozen .. 1).</summary>
-        public float SpoilFactor => Cold ? Cold.SpoilFactor : Cooling ? 0.12f : 1f;
+        public float SpoilFactor => Cold ? Cold.SpoilFactor : Cooling ? 0.12f : keep < 1f && MadMax.World.Weather.Season == 2 ? keep * 0.5f : keep;
         public float Weight => ItemCatalog.TotalWeight(inventory);
 
         void Update() { if (node && fridge && !Cold) node.demand = 150f; }

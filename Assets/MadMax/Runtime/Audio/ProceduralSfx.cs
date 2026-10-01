@@ -5,7 +5,8 @@ namespace MadMax.Audio
     /// <summary>Sound effects synthesised at first use for keys that have no recorded clip in Resources/Sfx: distinct gun
     /// reports (pistol crack, rifle crack with a long tail, machine-gun rattle, bow twang), footsteps per surface (sand,
     /// road, gravel, mud, snow, wood, metal, water) and hooves, night insects, structure creaks and collapses, the gyro's rotor
-    /// chop and the stall horn. <see cref="Sfx.Clip"/> falls back to <see cref="Make"/>.</summary>
+    /// chop and the stall horn, and the working loops of crafting stations (`station_*`: sizzle, roar, churn, bubble,
+    /// clack, grind, saw, hum) plus the anvil ring. <see cref="Sfx.Clip"/> falls back to <see cref="Make"/>.</summary>
     public static class ProceduralSfx
     {
         const int Rate = 22050;
@@ -38,6 +39,15 @@ namespace MadMax.Audio
                 case "starter": d = Starter(rnd); break;
                 case "engine_catch": d = Catch(rnd); break;
                 case "sputter": d = Sputter(rnd); break;
+                case "station_sizzle": d = Seamless(Sizzle(rnd)); break;
+                case "station_roar": d = Seamless(Roar(rnd)); break;
+                case "station_churn": d = Seamless(Churn(rnd)); break;
+                case "station_bubble": d = Seamless(Bubble(rnd)); break;
+                case "station_clack": d = Seamless(Clack(rnd)); break;
+                case "station_grind": d = Seamless(Grind(rnd)); break;
+                case "station_saw": d = Seamless(Saw(rnd)); break;
+                case "station_hum": d = Seamless(Hum(rnd)); break;
+                case "anvil": d = Ring(rnd, 0.6f, 1180f, 2930f, 0.16f); break;
                 default: return null;
             }
             var clip = AudioClip.Create("Synth_" + key, d.Length, 1, Rate, false);
@@ -302,6 +312,151 @@ namespace MadMax.Audio
             var x = new float[n];
             for (int i = 0; i < n / 2; i++) { float t = i / (float)Rate; x[i] = (Mathf.Sin(2f * Mathf.PI * 620f * t) > 0f ? 0.5f : -0.5f) * Mathf.Clamp01(t / 0.01f) * Mathf.Clamp01((0.25f - t) / 0.01f); }
             LowPass(x, 2400f);
+            return x;
+        }
+
+        // ---- crafting station loops (2 s, ends cross-faded so they loop without a click) ----
+
+        /// <summary>Cross-fades the last 0.25 s into the start and drops it, so the clip loops seamlessly.</summary>
+        static float[] Seamless(float[] x)
+        {
+            int f = Mathf.Min(x.Length / 4, (int)(0.25f * Rate)), n = x.Length - f;
+            var y = new float[n];
+            System.Array.Copy(x, y, n);
+            for (int i = 0; i < f; i++) { float w = i / (float)f; y[i] = x[i] * w + x[n + i] * (1f - w); }
+            return y;
+        }
+
+        /// <summary>Fat in a pan: dense random crackles over a hiss.</summary>
+        static float[] Sizzle(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) x[i] = Noise(r) * 0.12f;
+            for (int k = 0; k < 260; k++)
+            {
+                int s0 = r.Next(n), len = (int)((0.002f + (float)r.NextDouble() * 0.006f) * Rate);
+                float a = 0.3f + (float)r.NextDouble() * 0.7f;
+                for (int i = s0; i < Mathf.Min(n, s0 + len); i++) x[i] += Noise(r) * a * (1f - (i - s0) / (float)len);
+            }
+            HighPass(x, 2500f);
+            Normalize(x, 0.4f);
+            return x;
+        }
+
+        /// <summary>A furnace or forge fire: low turbulent rumble with a slow breathing swell.</summary>
+        static float[] Roar(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) x[i] = Noise(r);
+            LowPass(x, 260f); LowPass(x, 400f);
+            for (int i = 0; i < n; i++) { float t = i / (float)Rate; x[i] *= 0.8f + 0.2f * Mathf.Sin(2f * Mathf.PI * t / 2.25f * 2f); }
+            Normalize(x, 0.55f);
+            return x;
+        }
+
+        /// <summary>A drum mixer / wash plant: a slow tumbling slosh with grit knocks, once per half turn.</summary>
+        static float[] Churn(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) { float t = i / (float)Rate; x[i] = Noise(r) * (0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * t / 0.5f)) * 0.5f; }
+            LowPass(x, 700f);
+            for (int k = 0; k < 40; k++)
+            {
+                int s0 = r.Next(n);
+                for (int i = s0; i < Mathf.Min(n, s0 + 400); i++) { float t = (i - s0) / (float)Rate; x[i] += Mathf.Sin(2f * Mathf.PI * 180f * t) * Mathf.Exp(-t / 0.008f) * 0.4f; }
+            }
+            for (int i = 0; i < n; i++) { float t = i / (float)Rate; x[i] += Mathf.Sin(2f * Mathf.PI * 50f * t) * 0.12f; }
+            Normalize(x, 0.5f);
+            return x;
+        }
+
+        /// <summary>A still or a vat: rising bubbles that pop with an upward chirp.</summary>
+        static float[] Bubble(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int k = 0; k < 26; k++)
+            {
+                int s0 = r.Next(n), len = (int)(0.05f * Rate);
+                float f0 = 300f + (float)r.NextDouble() * 500f, a = 0.4f + (float)r.NextDouble() * 0.6f, ph = 0f;
+                for (int i = 0; i < len && s0 + i < n; i++)
+                {
+                    float t = i / (float)Rate;
+                    ph += f0 * (1f + t * 30f) / Rate;
+                    x[s0 + i] += Mathf.Sin(2f * Mathf.PI * ph) * a * Mathf.Exp(-t / 0.015f);
+                }
+            }
+            for (int i = 0; i < n; i++) x[i] += Noise(r) * 0.02f;
+            LowPass(x, 3000f);
+            Normalize(x, 0.4f);
+            return x;
+        }
+
+        /// <summary>A treadle sewing machine, loom or wheel: a regular wooden clack with a soft whir.</summary>
+        static float[] Clack(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) x[i] = Noise(r) * 0.05f;
+            LowPass(x, 1200f);
+            const float period = 0.25f;
+            for (float t0 = 0f; t0 < 2.25f; t0 += period)
+            {
+                int s0 = (int)(t0 * Rate);
+                float a = 0.7f + (float)r.NextDouble() * 0.3f;
+                for (int i = s0; i < Mathf.Min(n, s0 + 1200); i++) { float t = (i - s0) / (float)Rate; x[i] += (Mathf.Sin(2f * Mathf.PI * 950f * t) * 0.6f + Noise(r) * 0.5f) * a * Mathf.Exp(-t / 0.006f); }
+            }
+            Normalize(x, 0.45f);
+            return x;
+        }
+
+        /// <summary>A crusher, stamp mill or lathe: motor drone with rough, beating grit.</summary>
+        static float[] Grind(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n]; var g = new float[n];
+            for (int i = 0; i < n; i++) g[i] = Noise(r);
+            LowPass(g, 1800f); HighPass(g, 300f);
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float motor = Mathf.Sin(2f * Mathf.PI * 100f * t) * 0.3f + Mathf.Sin(2f * Mathf.PI * 200f * t) * 0.15f;
+                x[i] = motor + g[i] * (0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 4f * t));
+            }
+            Normalize(x, 0.5f);
+            return x;
+        }
+
+        /// <summary>A circular saw biting wood: a high whine that dips under load, with sawdust hiss.</summary>
+        static float[] Saw(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n]; var h = new float[n];
+            for (int i = 0; i < n; i++) h[i] = Noise(r);
+            HighPass(h, 3000f);
+            float ph = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate, load = Mathf.Clamp01(Mathf.Sin(Mathf.PI * t / 1f));
+                ph += (1400f - 260f * load) / Rate;
+                x[i] = (Mathf.Sin(2f * Mathf.PI * ph) * 0.4f + Mathf.Sin(4f * Mathf.PI * ph) * 0.15f) * (0.6f + 0.4f * load) + h[i] * 0.35f * load;
+            }
+            Normalize(x, 0.4f);
+            return x;
+        }
+
+        /// <summary>Powered machinery idling along: transformer hum and a fan.</summary>
+        static float[] Hum(System.Random r)
+        {
+            int n = (int)(2.25f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) x[i] = Noise(r) * 0.25f;
+            LowPass(x, 900f);
+            for (int i = 0; i < n; i++) { float t = i / (float)Rate; x[i] += Mathf.Sin(2f * Mathf.PI * 100f * t) * 0.35f + Mathf.Sin(2f * Mathf.PI * 300f * t) * 0.1f; }
+            Normalize(x, 0.4f);
             return x;
         }
     }

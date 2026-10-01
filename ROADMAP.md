@@ -786,12 +786,16 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] `VehicleAudio` survives a play-mode script reload (the tyre synth is rebuilt instead of throwing every frame).
 
 ### Suggestions (tie the experience together)
-- [ ] **Store the harvest, sell the winter**: the seasonal price swing only pays if food keeps. Give preserved foods (smoked, dried, canned, pickled) near-zero spoilage and a recipe chain from the garden and the smokehouse, and let a root cellar / cold store piece slow spoilage in containers. Turns farming + crafting + trading into one loop across the year.
-- [ ] **Seasonal stock and chores**: vendors carry seeds and saplings in spring, preserves and firewood in winter, fishing gear in summer; residents work the village fields at harvest (`NpcLore` errands: bring in the crop, cut firewood before the first snow).
+- [x] **Store the harvest, sell the winter**: the seasonal price swing only pays if food keeps. Give preserved foods (smoked, dried, canned, pickled) near-zero spoilage and a recipe chain from the garden and the smokehouse, and let a root cellar / cold store piece slow spoilage in containers. Turns farming + crafting + trading into one loop across the year.
+      *Done (2026-10-01):* preserves already keep (smoked, salted, pickled, jerky, tins: no spoilage) and the cold store chain exists; added the unpowered ROOT CELLAR piece (`root_cellar`, 160 kg, `Container.keep` 0.33, halved again in winter). Scenario `food.root_cellar`.
+- [x] **Seasonal stock** (chores split out below): vendors carry seeds and saplings in spring, preserves and firewood in winter, fishing gear in summer; residents work the village fields at harvest (`NpcLore` errands: bring in the crop, cut firewood before the first snow).
+      *Done (2026-10-01):* `Trade.SeasonalStock(kind, season)` adds lines per vendor kind: spring seeds and saplings, summer rods/bait/water, autumn the harvest, salt and timber, winter preserves, firewood and charcoal (more of a stocked line, or a new one). Scenario `economy.seasonal_stock`. Resident harvest chores remain open (see below).
 - [ ] **Hemisphere seasons** (goes with the deferred regional weather): south of `ZEquator` the seasons should run half a year out of phase, and markets with them, so a long haul across the equator is a trade run.
 - [x] **The homestead as the first home**: it should count as the player's home for the garage mend/refuel (`WastelandGame.Garage`), the bed-respawn and the raid target, and FIRST STEPS could end by sleeping there. *Done:* the homestead comes with a bed (the respawn point) and a claim flag (raids know it); its workbench looks after fleet cars parked within 14 m like a garage; FIRST STEPS gains "sleep the night in a bed"; homestead pieces are remembered (`SaveData.homestead`) so the prebuilt workbench no longer half-completes "build a workbench and a wall".
-- [ ] **Station sounds**: only workbenches have a working sound; stoves (sizzle), furnaces (roar), mixers (churn), stills (bubble) and sewing (clack) would let a base be heard working, through `ProceduralSfx`.
-- [ ] **Town notice boards as a news digest**: the bounty board could also post the last few journal/radio headlines about that town (raids beaten, skirmish wrecks, season prices), so what happens off-screen is visible where the player trades.
+- [x] **Station sounds**: only workbenches have a working sound; stoves (sizzle), furnaces (roar), mixers (churn), stills (bubble) and sewing (clack) would let a base be heard working, through `ProceduralSfx`.
+      *Done (2026-10-01):* `CraftingStation.WorkLoop(type)` → seamless 2 s `station_*` loops (sizzle, roar, churn, bubble, clack, grind, saw, hum) via `Sfx.Loop` while a job runs (18 m); the forge rings an `anvil`. Every fired/powered station type covered. Scenario `audio.station_sounds`.
+- [x] **Town notice boards as a news digest**: the bounty board could also post the last few journal/radio headlines about that town (raids beaten, skirmish wrecks, season prices), so what happens off-screen is visible where the player trades.
+      *Done (2026-10-01):* `Npc/TownNews` (day + place, saved `SaveData.townNews`): every `RadioNetwork.Flash` posts (skirmishes, base and town raid warnings carry their place), beaten town raids post too; the board page lists ROAD NEWS within 1.8 km plus region-wide news. Scenario `towns.road_news`. Also: the journal and news ledger now clear on a new game in the same session (statics outlived the scene reload).
 
 ## User fixes (2026-09-30)
 - [x] **Bulldozer, excavator, paver and roller could not move.** Their tracks / drums are body voxels, so the body box rested on the ground and no wheel ever touched down. *Done:* `VehicleDriver.FitUndercarriage`: wheels get extra ray reach down to the body's lowest voxel, the body box starts at the axles.
@@ -1173,15 +1177,15 @@ All eight blocks built in parallel, merged into main, compiled in Unity and run 
 **Items** (`items.world`, `items.feed`)
 - [x] Every item and resource can be dropped or placed in the world as its own object (tool meshes, clothing props, icon models, resource crate / sack / jerry can, kit crate), picked up with [E] and saved; the PLACE preview from the pack page (rotate, LMB, Esc/RMB); Q drops the tool in hand.
 - [x] HUD item feed of every gain and loss of the pack with labels (bought, paid, sold, made, harvested, reward, found, picked up, dropped...), merged within 1.5 s, sliding out.
-- [ ] World items online (local to each peer); build-mode costs in the feed.
+- [x] World items online (local to each peer); build-mode costs in the feed. *Done in the online wave (protocol 4); scenarios `online.items`, `items.build_feed`.*
 
 **Anim** (`anim.vehicle_work`)
 - [x] Timed work at vehicles: service, refuel walk-up, siphon, battery lead, take/mount parts, repair kit, armour welding, welder/cutter/jack: walk to the spot, pose, prop/tool, sparks and sounds, the hood lifted, effect at the end, cancel without effect; progress bar; setting WORK ANIMATION.
-- [ ] Work poses online; pose tuning from captures.
+- [x] Work poses online (`online.work_pose`). Pose tuning from captures still open.
 
 **C Roads** (`roads.ladder`)
 - [x] Gravel and cobbles by hand (road rake, tamper); rock crusher (2 kW); road paint (line painter on set asphalt/concrete, white/yellow); the tipper spreads gravel on the move, the paver lays gravel; potholes from heavy traffic, patched with the rake; signs, guard rail, curb, bollard; timber (8 m) and steel (12 m) bridges; player roads on the minimap and map.
-- [ ] Player roads in `RoadRoute` and AI driving.
+- [x] Player roads in `RoadRoute` and AI driving (`RoadRoute.FindForDriving`, `AiDriver.DriveTo`; `roads.ai_player_road`).
 
 **D Metal** (`metal.parts`, `metal.ladder`)
 - [x] Forge and anvil; steel at the forge, furnace, arc furnace; castings and a cast V8 block; machine shop (2 kW, tier 1.5): gearbox (close / wide), transfer case, HD brakes, lift / lowered / heavy suspension, long-range tank as kits at the tuning bench; parts 71 → 83 (exhausts, radiators, lamp pods, armour, ducktail, forged V8); horseshoes.
@@ -1221,4 +1225,16 @@ Built by seven parallel quest branches (per-quest hook files), merged, compiled 
 - [x] S01 A FRIDGE FULL OF FLOWERS (Orla's cold cabinet), S02, S04, S05 NOT THAT KIND OF SHOT (Amos's range, the dummy round), S07, S08 THE WEDDING AT THE WRONG END OF THE ROAD (`performance`), S10, S11, S12 THE DOG AT PLATFORM THREE (`Animal.TreatWith`), S13, S14 SOMETHING IN THE WELL (the oily well, the pumpjack uphill), S15 THE ORGAN RUNS ON DIESEL (load balancing, a procedural organ), S16-S18, S19 THE BELL BENEATH THE WATER (diving), S20-S22, S23 NO TEETH, STILL TROUBLE (`nonlethal_bout`), P1-P3 personal threads, L1-L5 THE LAST ENGINE chapters.
 - Fixed on integration: shots counted by `WastelandGame.ShotsFired` (a reload and a shot in one frame hid the round from S05); S19's shore search used `Sample.water` (the lake level past the shoreline) and fell back to dry ground; tests that found "the first story prop" picked other quests' props (scoped to their anchors); frame-throttled hooks vs fixed test waits (wait for the state instead).
 - Open: `relocation` (N5), voices and captions for the new cast, pacing on real routes (the dispatch city can be kilometres out), recurring convoy traffic after C5, B5's low-defence raid and A6's travel/depart branches without scenarios, multiplayer story ledger.
+
+## Scheduled update (2026-10-01)
+Done this pass (above, ticked): station sounds, road news on the boards, seasonal vendor stock, the root cellar; the
+acceptance runner's `-scenario` filter takes a comma list of prefixes. All four new scenarios pass in the editor (seed 7).
+
+### Suggestions (tie the experience together)
+- [ ] **Harvest chores in the villages**: residents walk out to the village crop rows at harvest and to the woodpile before the first snow (`Npc` Gather mode on `Fields`/flora crop rows), and `NpcLore` errands follow (bring in the crop, split firewood) — the seasons visible in town life, not only in prices.
+- [ ] **Road news you can act on**: a skirmish headline on a board pins the wreck site on the map (`SpawnRoadWreck` position → `TownNews` entry → `WastelandGame.Map` pin, cleared when looted), so reading the board leads to salvage.
+- [ ] **Hear the base from the road**: a powered or fired station heard from a parked car — loops through the vehicle cabin (muffled) and a HUD "WORKING" chip on claim pieces in the map, so a player away from home knows the queue is still running or has stalled for fuel/power.
+- [ ] **Preserving as a winter plan**: the WINTER market toast could name what the player has stored vs. needs (days of food in containers by spoilage-adjusted count) and suggest the smokehouse/cannery — one hint that ties seasons, spoilage and cooking stations together.
+- [ ] **Cellar in the story**: B2/B4 (supper, residents eating at 19:00) could draw from the root cellar first and complain when stores rot — residents as the reason to keep a pantry.
+- [ ] **Seasonal fishing**: species bite rates by season (`FishLibrary.BiteRate` × season), so the summer rods at the stalls mean something and winter ice fishing (hole through `Weather.Ice`) is its own activity.
 

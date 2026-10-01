@@ -258,14 +258,14 @@ namespace MadMax.Npc
                         t.WipeOffscreen();
                         if (t.designs.Count > 0) game.SpawnRoadWreck(t.designs[0], at, Quaternion.LookRotation(dir.sqrMagnitude > 0.01f ? dir : Vector3.forward) * Quaternion.Euler(0f, 35f, 0f), rnd.Next());
                         SpillCrate(at + dir.normalized * 5f, key);
-                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + r.Gang + " HIT A GUILD CONVOY" + where + ". DRIVE CAREFUL.");
+                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + r.Gang + " HIT A GUILD CONVOY" + where + ". DRIVE CAREFUL.", 45f, tp);
                     }
                     else
                     {
                         r.save.losses = Mathf.Min(3, r.save.losses + 1);
                         if (rnd.NextDouble() < 0.5) r.WipeOffscreen();
                         if (r.designs.Count > 0) game.SpawnRoadWreck(r.designs[r.designs.Count - 1], at, Quaternion.LookRotation(side), rnd.Next());
-                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: A GUILD CONVOY SHOT ITS WAY PAST THE " + r.Gang + where + ".");
+                        MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: A GUILD CONVOY SHOT ITS WAY PAST THE " + r.Gang + where + ".", 45f, tp);
                     }
                     MadMax.Game.Journal.Add("NEWS", (raidersWin ? "RAIDERS HIT A CONVOY" : "A CONVOY BEAT OFF RAIDERS") + where);
                     break;
