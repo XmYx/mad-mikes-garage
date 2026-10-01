@@ -114,12 +114,20 @@ namespace MadMax.EditorTools
             lg.RecalculateBounds();
         }
 
+        static bool catalogQueued;
+
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
             var dirs = new HashSet<string>();
             foreach (var p in imported)
             {
                 if (!IsHD(p)) continue;
+                if (p.EndsWith(".fbx") && !catalogQueued)
+                {
+                    // new or re-exported models: refresh the runtime catalog (Resources/HDGen) once the import settles
+                    catalogQueued = true;
+                    EditorApplication.delayCall += () => { catalogQueued = false; HDCatalogBuilder.Build(true); };
+                }
                 if (p.EndsWith(".hd.json") || p.EndsWith(".png")) dirs.Add(Path.GetDirectoryName(p)?.Replace('\\', '/'));
             }
             foreach (var d in dirs)
