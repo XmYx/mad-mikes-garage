@@ -21,6 +21,7 @@ namespace MadMax.Game
         public int beard;                    // 0 none, 1 stubble, 2 full
         public float height = 1f;            // 0.9..1.1
         public float build = 1f;             // 0.85..1.2
+        public int body = -1;                // HD body shape: -1 auto (male by build), 0 M, 1 M2, 2 F, 3 F2 (HDHuman.Shapes)
 
         public Appearance Clone() => (Appearance)MemberwiseClone();
     }

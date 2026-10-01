@@ -4,7 +4,8 @@ namespace MadMax.Game
 {
     /// <summary>Startup switches for quick testing. Player: command-line flags (either -flag or --flag):
     /// --no-intro (skip the boot film and title flyover, land on the menu), --no-menu (straight into the game:
-    /// no film, no title, no menu), --continue (with --no-menu: load the save instead of a fresh world), --dev (debug keys).
+    /// no film, no title, no menu), --continue (with --no-menu: load the save instead of a fresh world), --dev (debug keys), --voxel-humans,
+    /// --procedural-anim (character look / motion fallbacks).
     /// Editor: the same switches as toggles under MadMax > Dev (EditorPrefs).</summary>
     public static class LaunchOptions
     {
@@ -13,6 +14,10 @@ namespace MadMax.Game
         public static bool Continue => Has("continue");
         /// <summary>--dev: debug keys (weather cycle, drop a part, instant repair; see <see cref="Controls"/>).</summary>
         public static bool Dev => Has("dev");
+        /// <summary>--voxel-humans: the voxel HumanRig bodies even when the HD character pack is installed.</summary>
+        public static bool VoxelHumans => Has("voxel-humans");
+        /// <summary>--procedural-anim: HumanAnimator's procedural poses only (no keyframed clips).</summary>
+        public static bool ProceduralAnim => Has("procedural-anim");
 
         static string[] args;
 

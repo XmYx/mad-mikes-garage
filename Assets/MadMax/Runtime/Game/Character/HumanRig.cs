@@ -3,9 +3,11 @@ using UnityEngine;
 
 namespace MadMax.Game
 {
-    /// <summary>Voxel human: one transform per body part (pivot at the joint), a skin mesh per part, garment layers
-    /// per part, a hair cap and physics hair strands. Rebuild() applies Appearance + outfit.</summary>
-    public class HumanRig : MonoBehaviour
+    /// <summary>Human body: one transform per body part (pivot at the joint, identity rest rotation). Voxel mode: a skin
+    /// mesh per part, garment layers per part, a hair cap and physics hair strands. HD mode (HumanRig.HD.cs, when the
+    /// HD character pack is installed): skinned HD body, face, hair and garments on the same bones. Rebuild() applies
+    /// Appearance + outfit.</summary>
+    public partial class HumanRig : MonoBehaviour
     {
         public Material material;
         public Appearance appearance = new Appearance();
@@ -53,6 +55,25 @@ namespace MadMax.Game
         /// the spawn itself only uploads meshes (a body is ~20 ms of voxel work).</summary>
         public static bool Prewarm(Appearance a, List<string> outfit)
         {
+            if (HDHuman.Enabled) return PrewarmHD(a, outfit);
+            return PrewarmVoxel(a, outfit, true, true);
+        }
+
+        /// <summary>HD crowds: the catalogue meshes are loaded with it; only garments without an HD mesh (and a hair cap
+        /// the pack lacks) are voxel work.</summary>
+        static bool PrewarmHD(Appearance a, List<string> outfit)
+        {
+            var cat = HDCharacterCatalog.Instance;
+            string shape = HDHuman.ShapeFor(a, cat);
+            if (shape == null || HDHuman.Body(cat, shape, a.skinTone) == null) return PrewarmVoxel(a, outfit, true, true);
+            var voxel = new List<string>();
+            foreach (var id in outfit) if (!HDHuman.HasGarment(cat, shape, id)) voxel.Add(id);
+            bool cap = a.hair != HairStyle.Bald && HDHuman.Hair(cat, shape, a.hair, 0f, false) == null;
+            return voxel.Count == 0 && !cap || PrewarmVoxel(a, voxel, false, cap);
+        }
+
+        static bool PrewarmVoxel(Appearance a, List<string> outfit, bool body, bool hair)
+        {
             string look = KeyOf(a) + "|";
             bool ready = true;
             List<(string key, System.Func<MadMax.Voxel.VoxelMesher.MeshData> make)> missing = null;
@@ -62,7 +83,7 @@ namespace MadMax.Game
                 if (warming.TryGetValue(key, out var running)) { ready &= running.IsCompleted; return; }
                 (missing ??= new List<(string, System.Func<MadMax.Voxel.VoxelMesher.MeshData>)>()).Add((key, make));
             }
-            foreach (var b in HumanDesign.Skeleton(a)) { var part = b.part; Need(look + "body" + part, () => HumanDesign.BodyData(part, a)); }
+            if (body) foreach (var b in HumanDesign.Skeleton(a)) { var part = b.part; Need(look + "body" + part, () => HumanDesign.BodyData(part, a)); }
             foreach (var id in outfit)
             {
                 var d = ClothingLibrary.Get(id);
@@ -70,7 +91,7 @@ namespace MadMax.Game
                 foreach (var part in d.coverage.Keys) { var pp = part; Need(look + d.id + pp, () => HumanDesign.GarmentData(d, pp, a)); }
                 if (d.prop != null) Need(look + d.id + "prop", () => HumanDesign.PropData(d, a));
             }
-            Need(look + "hair", () => HumanDesign.HairCapData(a));
+            if (hair) Need(look + "hair", () => HumanDesign.HairCapData(a));
             if (missing == null) return ready;
             var list = missing;
             var job = System.Threading.Tasks.Task.Run(() =>
@@ -90,7 +111,7 @@ namespace MadMax.Game
         public void Rebuild()
         {
             foreach (var o in owned) if (o) Destroy(o);
-            owned.Clear(); headRenderers.Clear(); bodyRenderers.Clear();
+            owned.Clear(); headRenderers.Clear(); bodyRenderers.Clear(); hdParts.Clear(); hdVoxel.Clear(); blood.Clear(); HDPieces.Clear();
             var saved = new Dictionary<BodyPart, Quaternion>();
             foreach (var kv in bones) if (kv.Value) { saved[kv.Key] = kv.Value.localRotation; Destroy(kv.Value.gameObject); }
             bones.Clear();
@@ -102,8 +123,14 @@ namespace MadMax.Game
                 t.localPosition = b.offset;
                 if (saved.TryGetValue(b.part, out var r)) t.localRotation = r;
                 bones[b.part] = t;
+            }
+            IsHD = false;
+            if (HDHuman.Enabled && BuildHD()) { FinishRebuild(); return; }
+            ClearLods();
+            foreach (var b in HumanDesign.Skeleton(appearance))
+            {
                 var part = b.part;
-                AddMesh(t, Cached("body" + part, "Body_" + part, () => HumanDesign.BodyMesh(part, appearance)), b.part == BodyPart.Head);
+                AddMesh(bones[part], Cached("body" + part, "Body_" + part, () => HumanDesign.BodyMesh(part, appearance)), b.part == BodyPart.Head);
             }
             // garments, ordered by layer so outer shells win
             var defs = new List<ClothingDef>();
@@ -121,41 +148,56 @@ namespace MadMax.Game
                 if (d.prop != null) AddMesh(bones[d.propBone], Cached(d.id + "prop", d.id + "_prop", () => HumanDesign.PropMesh(dd, appearance)), d.propBone == BodyPart.Head);
             }
             AddMesh(bones[BodyPart.Head], Cached("hair", "HairCap", () => HumanDesign.HairCap(appearance)), true);
+            FinishRebuild();
+        }
 
+        void FinishRebuild()
+        {
             Eye = new GameObject("DriverEye").transform;
             Eye.SetParent(bones[BodyPart.Head], false);
             Eye.localPosition = new Vector3(0, 0.195f * appearance.height, 0.1f);
             owned.Add(Eye.gameObject);
 
             if (strands) Destroy(strands);
-            if (noStrands) return;
+            if (noStrands || IsHD) return;
             strands = gameObject.AddComponent<HairStrands>();
             strands.Init(this);
             owned.Add(strands);
         }
 
-        void AddMesh(Transform bone, Mesh mesh, bool head)
+        Renderer AddMesh(Transform bone, Mesh mesh, bool head, Material mat = null)
         {
-            if (!mesh) return;
+            if (!mesh) return null;
             var go = new GameObject(mesh.name, typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(bone, false);
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.GetComponent<MeshRenderer>();
-            r.sharedMaterial = material;
+            r.sharedMaterial = mat ? mat : material;
             (head ? headRenderers : bodyRenderers).Add(r);
             owned.Add(go);
             if (!shareMeshes) owned.Add(mesh);
+            return r;
         }
 
-        /// <summary>First person hides only the head (hair, face, headwear) so arms, body and legs stay visible.</summary>
+        /// <summary>First person hides the head (hair, face, headwear); voxel bodies keep arms, body and legs, HD bodies keep
+        /// only the arms and hands.</summary>
         public void SetHeadVisible(bool v)
         {
+            if (IsHD) { hdFirstPerson = !v; ApplyHDVisibility(); return; }
             foreach (var r in headRenderers) if (r) r.enabled = v;
             if (strands) strands.SetVisible(v);
         }
 
         public void SetVisible(bool v)
         {
+            if (IsHD)
+            {
+                hdVisible = v;
+                foreach (var r in bodyRenderers) if (r) r.enabled = v;
+                foreach (var r in headRenderers) if (r) r.enabled = v;
+                ApplyHDVisibility();
+                return;
+            }
             foreach (var r in bodyRenderers) if (r) r.enabled = v;
             SetHeadVisible(v);
         }
