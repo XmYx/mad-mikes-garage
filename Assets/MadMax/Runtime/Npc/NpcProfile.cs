@@ -111,6 +111,7 @@ namespace MadMax.Npc
         public int flags;
         public int revealed;                          // backstory layers told (0..3)
         public int jobState;                          // 0 not offered, 1 accepted, 2 done
+        public int choreStamp, choreIndex, choreState; // seasonal chore (NpcLore.Chores): half-season stamp + 1, which chore, 1 accepted / 2 done
         public int haggleDay = -1, tradeDay = -1, tollDay = -1;
         public List<string> bought = new List<string>();
         public List<int> boughtN = new List<int>();

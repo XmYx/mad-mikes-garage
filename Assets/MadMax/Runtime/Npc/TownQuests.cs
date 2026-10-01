@@ -31,6 +31,12 @@ namespace MadMax.Npc
         public static bool Friend(Settlement st) => st != null && Stage(st.index) >= Stages;
         public static bool Accepted(int town) => accepted.Contains(town);
 
+        /// <summary>The town's board remembers a raid nobody stopped.</summary>
+        public static void PostSacked(Settlement t)
+        {
+            if (t != null) TownNews.Post("THE " + Gang(t.index) + " SACKED " + Market.TownName(t) + " AT DUSK. STALLS BURNED, STORES TAKEN", new Vector3(t.pos.x, 0f, t.pos.y));
+        }
+
         static void PostBeaten(Settlement t)
         {
             if (t != null) TownNews.Post("A DRIVER STOOD WITH " + Market.TownName(t) + " AND THE " + Gang(t.index) + " WERE BEATEN OFF", new Vector3(t.pos.x, 0f, t.pos.y));
@@ -211,6 +217,7 @@ namespace MadMax.Npc
                 else if (Town(defending) != null && Vector2.Distance(Town(defending).pos, new Vector2(me.x, me.z)) > 400f)
                 {
                     foreach (var n in attackers) if (n) Object.Destroy(n.gameObject);                   // you left: they sack it off-screen
+                    PostSacked(Town(defending));
                     attackers.Clear(); defending = -1;
                     g.Toast("YOU LEFT THE TOWN TO THE RAIDERS");
                 }

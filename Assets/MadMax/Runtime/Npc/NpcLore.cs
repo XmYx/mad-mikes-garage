@@ -9,7 +9,7 @@ namespace MadMax.Npc
     /// <summary>The wasteland's people as text: names, factions, vendor trades, backstory fragments and the lines
     /// each temperament says when greeted, flattered, joked with or threatened. Pure data, picked deterministically
     /// by <see cref="NpcProfile"/>.</summary>
-    public static class NpcLore
+    public static partial class NpcLore
     {
         public static readonly string[] First =
         {

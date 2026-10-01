@@ -124,6 +124,7 @@ namespace MadMax.Building
                 case "furnace": case "arc_furnace": case "kiln": case "forge": case "refinery": volume = 0.45f; return "station_roar";
                 case "mixer": case "washplant": case "feedmill": case "composter": case "desalinator": return "station_churn";
                 case "still": case "chemlab": case "tanning": return "station_bubble";
+                case "crock": volume = 0.12f; return "station_bubble";                                // brine working under the stone
                 case "sewing": case "loom": case "spinning": volume = 0.3f; return "station_clack";
                 case "rock_crusher": case "stamp_mill": case "press": case "machine_shop": volume = 0.45f; return "station_grind";
                 case "sawmill": case "saw_bench": volume = 0.4f; return "station_saw";

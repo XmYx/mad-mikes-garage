@@ -14,7 +14,7 @@ namespace MadMax.Npc
     /// towns, fuel), trade, haggling, errands, small talk. Options marked [CHA n] only appear with enough charisma;
     /// [STR n] with enough strength. Raiders get a parley instead: pay the toll, threaten, lie, joke, recruit, insult.
     /// Checks roll against charisma, speech skill and disposition, and practise Speech.</summary>
-    public class Dialogue
+    public partial class Dialogue
     {
         public struct Choice { public string label, hint; public Action act; }
 
@@ -194,6 +194,7 @@ namespace MadMax.Npc
             if (P.Vendor && S.haggleDay != Day && Cha >= 4) Add("[CHA " + Cha + "] COME ON, A LITTLE DISCOUNT FOR A FRIEND?", Haggle, "BETTER PRICES TODAY IF IT WORKS");
             if (S.jobState == 0 && S.disposition >= -5) Add("NEED A HAND WITH ANYTHING?", OfferJob);
             else if (S.jobState == 1) Add("ABOUT THAT ERRAND...", TurnIn);
+            SeasonChoreChoice();                                                                // residents' seasonal chores (Dialogue.Seasons)
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);
