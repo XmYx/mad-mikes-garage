@@ -153,40 +153,57 @@ tris [lod0, lod1, lod2], files [{file, bytes}]
 
 ## 8. Building prefabs in Unity
 
-### Vehicles (`Editor/HD/HDVehicleBuilder.cs`, called by `MadMaxBuilder` for names in `HDVehicleBuilder.Enabled`)
-The voxel design stays the source of gameplay data (mass, drive, gears, sockets, systems, interiors); the HD model
-replaces what you see and touch:
-1. `SaveParts` (before the vehicle prefab): every right-hand / centre HD object with a `socket` prop becomes a part
-   prefab: doors and hood keep the voxel cut keys (`sedan_door`, `sedan_door_rear`, `sedan_hood`); wheels and bumpers
-   get `<vehicle>_<socket>` keys (`sedan_wheel_front`, `sedan_bumper_front`) with the stats of the design's default part
-   (`wheel_street`, `bumper_chrome`) and the HD radius / width. Wheels: pivot = inner tyre face on the axle (the socket
-   convention), mesh child `Wheel` offset outward. Left sockets mirror the right prefab (as for voxel parts). Engines,
-   radiators and tools keep their generic parts until the parts pack lands.
-2. `ApplyBody` (in `SaveVehicle`, before saving): HD `Body` mesh on `Body`; root-level HD objects without a socket go
-   under `Body` (`Glass` -> `Body/Glass`, `Lights` with `Lamp_*` children, `Trunk`, `Interior`, `Seat_*`); voxel
-   `Glass`/`Driver`/`Roof` removed; colliders = two boxes (lower body up to the glass line, glasshouse) under
-   `Colliders`; every socket moves to its HD object (wheels: inner face, `socket_inner_x_vox`), sockets without an HD
-   object (armour, roof weapon, cargo, radiator, lights, snorkel, steps ...) are mapped from the voxel body box
-   (body + glass voxels) onto the HD body box per axis; `DriverEye` = driver seat + (0, 0.9, -0.12) m; hitch, coupler,
-   passenger eye and `InteriorSpace` (floor, bounds, doors, seat, obstacles, furniture) mapped the same way;
-   `HDModel` on the root; rigidbody mass recomputed.
+### Vehicles (`Editor/HD/HDVehicleBuilder*.cs`, called by `MadMaxBuilder` for every design)
+Every design with a usable export (`Models/HD/<group>/<DesignName>/`, kind vehicle, model imported, a `Body` or `Hull`)
+builds from it; others keep the voxel model (console `[HD] <name>: ... voxel model kept`). **MadMax/HD/Force Voxel
+Vehicles** (EditorPrefs) builds every vehicle and generic part from voxels for comparison; `HDVehicleBuilder.Disabled`
+keeps single designs voxel. The voxel design stays the source of gameplay data (mass, drive, gears, systems); the HD
+model replaces what you see and touch and sets the real-world geometry:
+0. `SaveGenericParts` (after the voxel parts): every PartLibrary key with an HD part asset (`parts_all`, kind part,
+   origin = mount point) or an object in a vehicle export carrying `part=<key>` (machine tools, implements: the `Tool`
+   object at the socket, hinged children named by their `segment` prop) is saved under its key, replacing the voxel
+   prefab for every vehicle, loot pile and recipe. Parts already HD (another pass) are kept.
+1. `SaveParts` (before each vehicle prefab) makes the plan: HD objects map to design sockets by `socket` prop, by name
+   (`Wheel_Front` / `Wheel_Main_L` / `Wheel_Side` -> `wheel_*`, `Drum_front` -> the axle's wheel sockets), or by being
+   named like a part key (`engine_vtwin` -> the engine socket); an object whose socket the design lacks stays on the
+   body. Per-vehicle parts: wheels `<vehicle>_<socket>` (HD mesh + radius `radius_m` / mesh, width, design tyre
+   stats; pivot = inner tyre face on the axle, centre-line wheels at their left face; mesh child `Wheel`), crawlers one
+   invisible `wheel_track_<vehicle>` (inside the HD belts; the id keeps `VehicleDriver.Tracked`), roller drums (the
+   drum on the right wheel, `<key>_hidden` on the left), doors / hood under the voxel cut keys, bumpers
+   `<vehicle>_bumper_*` (also where the design has none: the real cars), `Trunk` / `Tailgate` as Door-category parts on
+   new sockets `trunk` / `tailgate` (pivot = lid centre).
+2. `ApplyBody` (in `SaveVehicle`): HD `Body` (or `Hull`) on `Body`; root / Body-level objects without a socket go under
+   `Body` (`Glass`, `Lights` + `Lamp_*`, `Interior`, `Seat_*`, `Roof`, `Hull`, `Legs` with a box collider for
+   `TowCoupling`, chains, spare wheels); `Track_L/R` under `Body` (animated by `CrawlerTracks`); `movable` objects
+   (Deck, UpperDeck, RampL/R: flat ramps get the design's rest angle) and spinners (Prop, Rotor) / control surfaces
+   (Wing, Rudder) as root children; voxel `Glass`/`Driver`/`Roof`/`Legs` removed. Colliders: the design's explicit
+   boxes (walk-ins, decks, bikes, boats) mapped onto the HD box, else the HD lower body (kept 12 cm above the lowest
+   tyre bottom) up to the glass line + the glasshouse. Sockets: at their part's pivot (wheels, lids), at the HD
+   object that names them, mirrored from the right twin, else mapped (voxel body box -> HD shell box per axis). Points:
+   `DriverEye` = `Seat_Driver` + (0, 0.9, -0.12) m, `PassengerEye` likewise from `Seat_Passenger`, else mapped; hitch,
+   coupler, `InteriorSpace` mapped, default furniture at the export's `Furn_<piece>_<n>` spots; boats: keel = HD hull
+   bottom, prop at the HD `Prop`; aircraft prop at the HD `Prop`. `HDModel` on the root records the model box and the
+   wheel radii (acceptance `hd.vehicles`). Each vehicle's changes go to the console and `Logs/hd_vehicles.md`.
 3. Per-part `LODGroup`s (LOD0 = the part's renderer, LOD1/LOD2 children) all sized like the whole vehicle so parts
    switch together; LOD children are skipped by dents, scrapes and armour (`HDModel.IsLod`).
-To enable another vehicle: export it, add its design name to `HDVehicleBuilder.Enabled`, run **MadMax/Build Parts +
-Vehicles** (or Build Game Scene), check sockets/colliders in the prefab. HD object names with a `socket` prop must
-match the design's socket base names (`wheel_front`, `door`, `door_rear`, `hood`, `bumper_front`, ...).
-Heavy vehicles: segments (`Tool` with `hinge`, booms) are separate objects with their pivot at the joint; an
-integrator maps them onto `PartDesign.Segment` names (`Machine`/`Crane` pose children by name).
+To add a vehicle: export it under the design's name, run **MadMax/Build Parts + Vehicles** (or Build Game Scene), read
+its `[HD]` line / `Logs/hd_vehicles.md`, check sockets / colliders in the prefab, run acceptance `hd.vehicles`.
 
 ### Runtime contract for HD vehicles
 * `Body` has the HD body mesh (UV0 = HD; `HDModel.IsHDMesh`); `Body/Glass` is the glazing; door glass is the door
-  part's `Glass` child; lamps are `Lamp_Head`/`Lamp_Tail`/`Lamp_Amber`/`Lamp_Other` under `Body` (front/back and
-  left/right from their position for `BrokenLamps` bits).
-* `DeformableMesh` dents HD meshes and re-joins normals across UV-seam copies (smooth shading kept).
+  part's `Glass` child (first person hides every `Glass` renderer of the vehicle); lamps are
+  `Lamp_Head`/`Lamp_Tail`/`Lamp_Amber`/`Lamp_Other` under `Body` or on lamp parts (front/back and left/right from their
+  position for `BrokenLamps` bits).
+* `DeformableMesh` dents HD meshes and re-joins normals across UV-seam copies (smooth shading kept); track belts
+  (`HDModel.IsBelt`) are never dented or scraped.
+* `CrawlerTracks`: with `Body/Track_L|R` it animates the belt (link pieces slide round the stadium path by the track
+  travel modulo the link pitch, normals turned on the arcs) instead of building voxel links.
 * `VehicleBreakables` treats each pair of triangles as a "quad" (same save format), smashes body and door glass,
   breaks lens triangles, and writes scrapes into UV2.x (bare metal in the shader).
 * `VehicleArmor` samples HD triangles every half voxel to find the body shell (zones, grilles from body + door glass);
-  plates render with `HDLitVoxel`.
+  plates render with `HDLitVoxel`. `VehiclePaint` decals sit on the HD flank (outermost body / door vertices).
+* `InteriorSpace`: a walk-in without a `Body/Roof` (HD houseboat, submarine) clips the body above the ceiling
+  (`_CutY`) for the cutaway. `FlightModel` tilts a `Wing` with the pilot's bar; `BoatModel` turns a `Rudder`.
 
 ### Characters (`group character`)
 FBX = rig + skinned meshes (full body: the MASK that hid skin under clothes is dropped; garments are inflated shells

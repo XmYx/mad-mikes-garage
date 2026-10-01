@@ -128,10 +128,14 @@ namespace MadMax.EditorTools
                     }
                 }
                 if (b == null) continue;
+                var ds = DesignSocket(d, b);
+                if (ds == null)                                                             // modelled, but the design has no socket: stays on the body
+                {
+                    if (!left) Debug.Log($"[HD] {d.name}: HD object {o.name} names socket '{b}' the design does not have; kept on the body");
+                    continue;
+                }
                 p.used.Add(o.name);
                 if (left) continue;                                                         // left sides mirror the right part
-                var ds = DesignSocket(d, b);
-                if (ds == null) { Debug.LogWarning($"[HD] {d.name}: HD object {o.name} names socket '{b}' the design does not have"); continue; }
                 if (drum) p.drums[ds.name] = o;
                 if (!p.sockets.ContainsKey(ds.name)) p.sockets[ds.name] = o;
             }
