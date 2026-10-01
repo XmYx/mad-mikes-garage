@@ -28,7 +28,7 @@ namespace MadMax.Game
         readonly HashSet<string> drawnFromBelt = new HashSet<string>();
         readonly List<string> bagScratch = new List<string>();
         string wearKeyHint;
-        bool bagsMigrate, groundBagLoading;
+        bool bagsMigrate, bagsLoaded, groundBagLoading;
         float strain, lastVy, handsToastT;
         bool wasTraversing;
         int strainWarned, backTagPct = -1;
@@ -124,6 +124,7 @@ namespace MadMax.Game
             if (!Player || !Player.Rig) return;
             float dt = Time.deltaTime;
             SyncWornBags();
+            if (bagsLoaded) SettleLoadedBags();
             if (bagsMigrate && wornBags.Count > 0) { bagsMigrate = false; MigrateIntoBags(); }
             TickBelt();
             TickLuggage();
@@ -550,6 +551,20 @@ namespace MadMax.Game
                     else if (f[0] == "d" && f.Length > 1) drawnFromBelt.Add(f[1]);
                 }
             bagsMigrate = !v1;
+            bagsLoaded = true;
+        }
+
+        /// <summary>First frame after a load: saved contents of bags that are not on the body (any more) go into the bag
+        /// in the pack, never into a later one.</summary>
+        void SettleLoadedBags()
+        {
+            bagsLoaded = false;
+            foreach (var kv in bagPending)
+            {
+                var plain = BagLibrary.Plain(kv.Key);
+                if (Inventory.GetItem(plain) > 0) { Inventory.TakeItem(plain); Inventory.AddItem(kv.Value); }
+            }
+            bagPending.Clear();
         }
     }
 }
