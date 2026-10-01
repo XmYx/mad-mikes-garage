@@ -512,9 +512,10 @@ namespace MadMax.Npc
                 c.Release();
                 int crewIndex = Mathf.Min(i, crew.Count - 1);
                 if (NpcRegistry.IsDead(crew[crewIndex].id) || walkers.Exists(w => w && w.Profile.id == crew[crewIndex].id)) continue;
-                var w = Walker(g, crewIndex, c.transform.position - c.transform.right * 2f, raiders);
+                bool truce = Time.time < truceUntil;                                            // paid off / talked down: a crash on the way out is no reason to fight
+                var w = Walker(g, crewIndex, c.transform.position - c.transform.right * 2f, raiders && !truce);
                 if (!raiders) w.Scare(20f);
-                else if (phase != Phase.Attack) Attack(g);
+                else if (phase != Phase.Attack && !truce) Attack(g);
             }
         }
 

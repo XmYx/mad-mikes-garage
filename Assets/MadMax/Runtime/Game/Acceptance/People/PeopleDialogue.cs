@@ -127,7 +127,7 @@ namespace MadMax.Game.Acceptance
                     break;
                 }
             }
-            c.Check(!g.Menus.Labels().Any(r => r.StartsWith("ABOUT THAT ERRAND") || r.StartsWith("NEED A HAND")), "the errand can't be handed in or taken twice");
+            c.Check(!g.Menus.Labels().Any(r => r.StartsWith("ABOUT THAT ERRAND") || r == "NEED A HAND WITH ANYTHING?"), "the errand can't be handed in or taken twice: " + PH.Rows(g));
 
             // ---- goodbye
             g.Menus.Pick("GOODBYE.");

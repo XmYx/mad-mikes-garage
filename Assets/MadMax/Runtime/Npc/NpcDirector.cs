@@ -326,7 +326,7 @@ namespace MadMax.Npc
             {
                 if (!n || !n.Alive || (n.transform.position - at).sqrMagnitude > radius * radius) continue;
                 n.Attend(at);
-                if (n.Profile.Raider) { n.convoy?.Provoked(); continue; }
+                if (n.Profile.Raider) { if (suspicious) n.convoy?.Provoked(); continue; }      // thunder is no provocation
                 if (suspicious && town != null && game.World.SettlementAt(n.transform.position.x, n.transform.position.z) == town)
                 {
                     n.State.disposition = Mathf.Max(-100, n.State.disposition - 8);

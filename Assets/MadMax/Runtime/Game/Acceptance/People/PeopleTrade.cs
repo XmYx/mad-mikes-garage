@@ -99,10 +99,11 @@ namespace MadMax.Game.Acceptance
             PH.Talk(g, vendor);
             if (g.Menus.Labels().Any(r => r.StartsWith("(POLITE)"))) g.Menus.Pick("(POLITE)");
             float before = Trade.Bargain(g, S); int d0 = S.disposition;
-            if (!c.Check(g.Menus.Pick("[CHA "), "a vendor can be haggled with: " + PH.Rows(g))) yield break;
+            var haggle = g.Menus.Labels().FirstOrDefault(r => r.StartsWith("[CHA ") && r.Contains("DISCOUNT"));
+            if (!c.Check(haggle != null && g.Menus.Pick(haggle), "a vendor can be haggled with: " + PH.Rows(g))) yield break;
             bool won = S.disposition > d0;
             c.Note((won ? "haggle won: " : "haggle lost: ") + PH.Line(g));
-            c.Check(S.haggleDay == MadMax.World.DayNight.Day && !g.Menus.Labels().Any(r => r.StartsWith("[CHA ")), "one haggle a day");
+            c.Check(S.haggleDay == MadMax.World.DayNight.Day && !g.Menus.Labels().Any(r => r.Contains("DISCOUNT")), "one haggle a day: " + PH.Rows(g));
             if (won) c.Check(Trade.Bargain(g, S) > before && Trade.BuyPrice("food_can", Trade.Bargain(g, S)) <= Trade.BuyPrice("food_can", before), "a won haggle lowers today's prices");
             else c.Check(S.disposition < d0, "a failed haggle costs goodwill");
             g.Menus.Pick("GOODBYE.");

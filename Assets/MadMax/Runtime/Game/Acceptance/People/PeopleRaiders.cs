@@ -63,7 +63,7 @@ namespace MadMax.Game.Acceptance
             if (g.Menus.IsOpen) g.Menus.Close();
             float t0 = Time.time;
             bool held = true;
-            while (Time.time - t0 < 6f) { if (first.phase == Convoy.Phase.Attack || first.phase == Convoy.Phase.Confront) held = false; yield return null; }
+            while (Time.time - t0 < 6f && held) { if (first.phase == Convoy.Phase.Attack || first.phase == Convoy.Phase.Confront) { held = false; c.Note($"{Time.time - t0:0.0} s after paying: " + State(c, first)); } yield return null; }
             c.Check(held, "the truce holds (" + first.phase + ")");
 
             // ---- a second gang: the bluff

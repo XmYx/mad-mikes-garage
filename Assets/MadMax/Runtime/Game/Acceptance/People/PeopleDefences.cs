@@ -85,7 +85,7 @@ namespace MadMax.Game.Acceptance
             spent = belts0 - (box.inventory.GetItem("ammo_mg") * AutoTurret.BeltRounds + turret.rounds);
             int dead = party.Count(n => !n || !n.Alive);
             c.Metric("raid_closest", closest, "m"); c.Metric("raid_rounds", spent, ""); c.Metric("raid_dead", dead, "");
-            c.Note($"after {Time.time - t0:0} s: {dead}/{party.Count} down, raid live {raid.Live}, claim pieces {claim.Pieces()}");
+            c.Note($"after {Time.time - t0:0} s: {dead}/{party.Count} down, raid live {raid.Live}, claim {(claim ? claim.Pieces() + " pieces" : "flag smashed")}, turret {(turret ? "standing" : "smashed")}, bell {(alarm ? "standing" : "smashed")}");
             c.Check(closest < 30f, $"the raiders walk in on the base (closest {closest:0} m)");
             c.Note(alarm.LastRung > ring ? "the bell rang again for the raid" : "the bell was still in its 25 s quiet spell");
             c.Check(spent > 0 && hurt, $"the turret meets them ({spent} rounds, {dead} down)");
