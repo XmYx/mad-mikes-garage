@@ -651,13 +651,13 @@ namespace MadMax.Game
                     MadMax.Npc.NpcDirector.Instance?.Horn(Current.transform.position, Current);
                 }
                 hornHeld = horn;
-                if (kb != null && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
+                if (kb != null && !ExternalInput && Current.TryGetComponent<Winch>(out var winch)) winch.Control(Pressed(Key.Digit4), kb.digit5Key.isPressed, kb.digit6Key.isPressed);
                 bool shiftHeld = Controls.Held(Controls.Act.Run);
                 float toolUp = (Controls.Held(Controls.Act.ToolUp) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolDown) ? 1f : 0f);
                 float toolSide = (Controls.Held(Controls.Act.ToolRight) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolLeft) ? 1f : 0f);
                 float toolQE = (Controls.Held(Controls.Act.ToolA) ? 1f : 0f) - (Controls.Held(Controls.Act.ToolB) ? 1f : 0f);
                 bool machineHere = Current.TryGetComponent<Machine>(out var machineTool) && machineTool.enabled;
-                if (kb != null && Current.TryGetComponent<Crane>(out var crane))
+                if (kb != null && !ExternalInput && Current.TryGetComponent<Crane>(out var crane))   // automation drives Control itself
                 {
                     // arrows (when no machine tool claims them): up/down hoist (Shift: boom), left/right slew, Q grab / release
                     bool arrowsFree = !machineHere && crane.CranePart;

@@ -200,6 +200,8 @@ namespace MadMax.Npc
             return false;
         }
 
+        static readonly Dictionary<string, int> stockRolled = new Dictionary<string, int>();
+
         /// <summary>Today's goods (deterministic per vendor and day) minus what the player already bought today.</summary>
         public static List<Offer> Stock(NpcProfile p, NpcSave s, float bargain)
         {
@@ -207,9 +209,12 @@ namespace MadMax.Npc
             if (p.kind == null || !sells.TryGetValue(p.kind, out var l)) return list;
             int day = MadMax.World.DayNight.Day;
             var r = new System.Random(p.seed * 31 + day * 977);
+            stockRolled.Clear();
             foreach (var (id, min, max) in l)
             {
-                int n = SeasonAdjust(id, r.Next(min, max + 1)) - s.Bought(id, day);            // fresh food scarce in winter, seed off-season (Trade.Seasons)
+                int rolled = SeasonAdjust(id, r.Next(min, max + 1));                            // fresh food scarce in winter, seed off-season (Trade.Seasons)
+                stockRolled[id] = rolled;
+                int n = rolled - s.Bought(id, day);
                 if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
             }
             // the season's goods: more of a line already stocked, or a new line
@@ -221,7 +226,8 @@ namespace MadMax.Npc
                 if (at >= 0) { var o = list[at]; o.count += extra; list[at] = o; }
                 else
                 {
-                    int n = extra - s.Bought(id, day);
+                    // the base roll may be bought out already: today's purchases come off base + extra once
+                    int n = (stockRolled.TryGetValue(id, out int rolled) ? rolled : 0) + extra - s.Bought(id, day);
                     if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
                 }
             }

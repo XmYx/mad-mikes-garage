@@ -7,7 +7,10 @@
       "readme": "Vehicles are made of parts in sockets: wheels, engines, radiators, exhausts, doo",
       "scenarios": [
         "metal.parts",
-        "vehicle.drive.*"
+        "vehicle.drive.*",
+        "mobility.parts_swap",
+        "mobility.winch",
+        "mobility.crane"
       ]
     },
     {
@@ -46,15 +49,18 @@
       "id": "driving_and_repairing.a_paint_station_for_colours_and_decals_a",
       "group": "Driving and repairing",
       "readme": "A paint station for colours and decals. A gang decal can get you past that gang'",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "mobility.armour_paint"
+      ]
     },
     {
       "id": "driving_and_repairing.towing_with_hitches_and_couplers_fuel_ta",
       "group": "Driving and repairing",
       "readme": "Towing with hitches and couplers, fuel tankers you can pump from, and car transp",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "mobility.towing",
+        "mobility.transporter"
+      ]
     },
     {
       "id": "driving_and_repairing.construction_machines_really_change_the_",
@@ -70,15 +76,18 @@
       "id": "driving_and_repairing.vehicle_weapons_roof_guns_rear_droppers_",
       "group": "Driving and repairing",
       "readme": "Vehicle weapons: roof guns, rear droppers for oil and caltrops, smoke screens.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "mobility.weapons"
+      ]
     },
     {
       "id": "driving_and_repairing.mud_ruts_snow_ice_fords_and_rain_all_cha",
       "group": "Driving and repairing",
       "readme": "Mud, ruts, snow, ice, fords and rain all change how much grip you have.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "mobility.terrain.*",
+        "vehicle.crawler_mud.*"
+      ]
     },
     {
       "id": "the_world.a_procedural_planet_about_9_6_km_around_",
@@ -377,30 +386,36 @@
       "group": "Vehicles",
       "readme": "Trailers: Tanker (2000 L), Small bowser (450 L), Cargo trailer, Box trailer, Car",
       "scenarios": [
-        "catalogue.vehicles"
-      ],
-      "gap": "catalogue only: towing and pumping not exercised"
+        "catalogue.vehicles",
+        "mobility.towing",
+        "mobility.transporter"
+      ]
     },
     {
       "id": "vehicles.two_wheels_dirt_bike_chopper_bicycle_sid",
       "group": "Vehicles",
       "readme": "Two wheels: Dirt bike, Chopper, Bicycle, Sidecar outfit",
-      "scenarios": [],
-      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+      "scenarios": [
+        "mobility.bike.*"
+      ]
     },
     {
       "id": "vehicles.aircraft_ultralight_trike_gyrocopter",
       "group": "Vehicles",
       "readme": "Aircraft: Ultralight trike, Gyrocopter",
-      "scenarios": [],
-      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+      "scenarios": [
+        "mobility.aircraft.*",
+        "mobility.aircraft_ground.*"
+      ]
     },
     {
       "id": "vehicles.boats_raft_skiff_trawler_houseboat_iron_",
       "group": "Vehicles",
       "readme": "Boats: Raft, Skiff, Trawler, Houseboat, Iron Eel submarine",
-      "scenarios": [],
-      "gap": "own control model: mobility suite not written (drive scenarios report BLOCKED)"
+      "scenarios": [
+        "mobility.boat.*",
+        "mobility.submarine"
+      ]
     },
     {
       "id": "driving_and_repairing.servicing_oil_changes_air_filters_spark_",

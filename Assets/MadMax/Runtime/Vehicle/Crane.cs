@@ -47,6 +47,10 @@ namespace MadMax.Vehicles
             }
         }
         Vector3 Hook => load ? load.worldCenterOfMass + Vector3.up * 0.8f : Tip + Vector3.down * rope;
+        /// <summary>Where the hook hangs (world) and what it holds (automation, HUD).</summary>
+        public Vector3 HookPoint => Hook;
+        public Rigidbody Load => load;
+        public float Rope => rope;
 
         /// <param name="slewDir">-1, 0 or +1</param>
         public void Control(bool press7, bool hold8, bool hold9, float slewDir, bool shift = false)

@@ -25,7 +25,7 @@ namespace MadMax.Game.Acceptance
             var names = new List<string>();
             if (g != null && g.vehiclePrefabs != null) foreach (var p in g.vehiclePrefabs) if (p) names.Add(p.name);
             else if (g == null) names.AddRange(MadMax.Designs.VehicleDesigns.ModelCarNames);
-            foreach (var n in names) yield return new VehicleDrive(n);
+            foreach (var n in names) if (!MobilityScenarios.OwnSuite(n)) yield return new VehicleDrive(n);   // bikes, aircraft: mobility.*
             yield return new MachineSoilRoundTrip();
             yield return new HillHold("Sedan", 12f, 17f);
             yield return new CarsSeparate();
@@ -54,6 +54,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in OnlineScenarios.All()) yield return s;
             foreach (var s in SeasonsScenarios.All()) yield return s;
             foreach (var s in PeopleScenarios.All()) yield return s;
+            foreach (var s in MobilityScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);
@@ -176,7 +177,7 @@ namespace MadMax.Game.Acceptance
     // ================================================================== Q3 vehicles
 
     /// <summary>Spawned fleet vehicle on a level pad: enter, start, drive forward, brake to a stop, reverse, exit.
-    /// Aircraft, boats and bikes use their own control models (mobility suite: blocked until written).</summary>
+    /// Bikes and aircraft get their own mobility.* scenarios instead (own control models).</summary>
     class VehicleDrive : Scenario
     {
         readonly string name;
