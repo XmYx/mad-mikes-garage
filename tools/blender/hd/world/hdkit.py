@@ -283,10 +283,18 @@ class GP:
     def torus(self, m, R, r, c, axis="y", segs=24, rsegs=8):
         return self.add(kit.bm_torus(R, r, segs, rsegs), m, self.T(c) @ _axis_mtx(axis))
 
-    def rock(self, m, r, c, seed=0, squash=0.7, detail=2, scale=(1, 1, 1), yaw=0.0):
+    def rock(self, m, r, c, seed=0, squash=0.7, detail=2, scale=(1, 1, 1), yaw=0.0, floor=None):
+        """Lumpy rock / blob; `floor` (game y) flattens everything below it (rocks sitting on the ground)."""
         bm = kit.bm_rock(r, seed, 1.0, detail)
-        # bm_rock squashes Blender z; build unsquashed then scale in game space
-        return self.add(bm, m, self.T(c, (0, yaw, 0)) @ _axis_mtx("y") @ Matrix.Diagonal((scale[0], scale[2], scale[1] * squash, 1)))
+        mt = self.T(c, (0, yaw, 0)) @ _axis_mtx("y") @ Matrix.Diagonal((scale[0], scale[2], scale[1] * squash, 1))
+        if floor is None:
+            return self.add(bm, m, mt)
+        for v in bm.verts:
+            w = mt @ v.co
+            if w.y < floor:
+                w.y = floor
+            v.co = w
+        return self.add(bm, m)
 
     def prism(self, m, pts2d, y0, y1, plane="xz"):
         """Extrude a polygon given in the xz plane (game) from y0 to y1 (plane 'xy': polygon in xy, extruded along z)."""
