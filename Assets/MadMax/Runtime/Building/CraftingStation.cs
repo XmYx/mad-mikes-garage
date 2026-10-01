@@ -25,7 +25,8 @@ namespace MadMax.Building
         public float tier;
         public const int MaxQueue = 8;
 
-        public class Job { public string recipe; public float progress, speed = 1f; public ResourceType paidFuel; }
+        /// <summary>A queued job; <see cref="costMult"/> is the crafter's cost multiplier when the inputs were paid (the refund on cancel).</summary>
+        public class Job { public string recipe; public float progress, speed = 1f, costMult = 1f; public ResourceType paidFuel; }
         public readonly List<Job> queue = new List<Job>();
         /// <summary>Finished items waiting for the crafter.</summary>
         public readonly Inventory tray = new Inventory();
@@ -72,7 +73,7 @@ namespace MadMax.Building
             }
         }
 
-        public void Enqueue(Recipe r, float speed, ResourceType paidFuel = ResourceType.None) { queue.Add(new Job { recipe = r.id, speed = speed, paidFuel = paidFuel == ResourceType.None ? r.fuel : paidFuel }); Dirty(); }
+        public void Enqueue(Recipe r, float speed, ResourceType paidFuel = ResourceType.None, float costMult = 1f) { queue.Add(new Job { recipe = r.id, speed = speed, paidFuel = paidFuel == ResourceType.None ? r.fuel : paidFuel, costMult = costMult }); Dirty(); }
 
         void Update()
         {
@@ -144,11 +145,11 @@ namespace MadMax.Building
 
         void Dirty() => GetComponent<Placeable>()?.Dirty();
 
-        // state: "recipe:progress:speed:paidFuel;...|tray inventory" (older jobs omit paidFuel)
+        // state: "recipe:progress:speed:paidFuel:costMult;...|tray inventory" (older jobs omit paidFuel / costMult)
         public string SaveState()
         {
             var sb = new StringBuilder();
-            foreach (var j in queue) sb.Append(j.recipe).Append(':').Append(j.progress.ToString("0.###", CultureInfo.InvariantCulture)).Append(':').Append(j.speed.ToString("0.##", CultureInfo.InvariantCulture)).Append(':').Append((int)j.paidFuel).Append(';');
+            foreach (var j in queue) sb.Append(j.recipe).Append(':').Append(j.progress.ToString("0.###", CultureInfo.InvariantCulture)).Append(':').Append(j.speed.ToString("0.##", CultureInfo.InvariantCulture)).Append(':').Append((int)j.paidFuel).Append(':').Append(j.costMult.ToString("0.###", CultureInfo.InvariantCulture)).Append(';');
             sb.Append('\u001d').Append(InventoryCodec.Encode(tray));
             return sb.ToString();
         }
@@ -166,7 +167,9 @@ namespace MadMax.Building
                 float.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var sp);
                 var fuel = RecipeLibrary.Get(p[0]).fuel;
                 if (p.Length > 3 && int.TryParse(p[3], out int paid) && paid >= 0 && paid < ResourceInfo.Count) fuel = (ResourceType)paid;
-                queue.Add(new Job { recipe = p[0], progress = prog, speed = sp > 0f ? sp : 1f, paidFuel = fuel });
+                float mult = 1f;
+                if (p.Length > 4 && float.TryParse(p[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var m) && m > 0f) mult = m;
+                queue.Add(new Job { recipe = p[0], progress = prog, speed = sp > 0f ? sp : 1f, paidFuel = fuel, costMult = mult });
             }
             if (halves.Length > 1) InventoryCodec.Decode(tray, halves[1]);
         }

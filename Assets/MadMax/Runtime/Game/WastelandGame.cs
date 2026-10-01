@@ -419,7 +419,7 @@ namespace MadMax.Game
             foreach (var (i, n) in r.items) TakeFrom(src, i, n);
             if (r.fuel != ResourceType.None) PayFrom(src, paidFuel, r.fuelAmount);
             if (!station) { Produce(r, null); return; }
-            station.Enqueue(r, CraftSpeed(r), paidFuel);
+            station.Enqueue(r, CraftSpeed(r), paidFuel, RecipeLibrary.CostMult);
             MadMax.Audio.Sfx.Play2D("click", 0.5f);
             Toast("QUEUED " + r.name + " (" + Mathf.CeilToInt(RecipeLibrary.Seconds(r) / CraftSpeed(r)) + " S)");
         }
@@ -703,10 +703,11 @@ namespace MadMax.Game
             UpdateHealth(Time.deltaTime);
             UpdateClothing(Time.deltaTime);
             UnityEngine.Profiling.Profiler.EndSample();
-            if (Controls.Down(Controls.Act.Inventory)) Menus.Open(MenuSystem.Page.Inventory);
-            if (Controls.Down(Controls.Act.Skills)) Menus.Open(MenuSystem.Page.Skills);
-            if (Controls.Down(Controls.Act.Health)) Menus.Open(MenuSystem.Page.Health);
-            if (Controls.Down(Controls.Act.Map) || (PadSelectTapped && !Current)) Menus.Open(MenuSystem.Page.Map);
+            bool justClosed = Menus.ClosedFrame == Time.frameCount;                               // the key that closed a page this frame doesn't reopen it
+            if (!justClosed && Controls.Down(Controls.Act.Inventory)) Menus.Open(MenuSystem.Page.Inventory);
+            if (!justClosed && Controls.Down(Controls.Act.Skills)) Menus.Open(MenuSystem.Page.Skills);
+            if (!justClosed && Controls.Down(Controls.Act.Health)) Menus.Open(MenuSystem.Page.Health);
+            if (!justClosed && (Controls.Down(Controls.Act.Map) || (PadSelectTapped && !Current))) Menus.Open(MenuSystem.Page.Map);
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Interaction");
             UpdateInteraction(kb, pad);
             UnityEngine.Profiling.Profiler.EndSample();

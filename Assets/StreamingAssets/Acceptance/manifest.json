@@ -84,44 +84,51 @@
       "id": "the_world.a_procedural_planet_about_9_6_km_around_",
       "group": "The world",
       "readme": "A procedural planet about 9.6 km around. It wraps east to west through an open o",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "world.planet"
+      ]
     },
     {
       "id": "the_world.deserts_forests_meadows_tropical_lakes_s",
       "group": "The world",
       "readme": "Deserts, forests, meadows, tropical lakes, swamps and radioactive zones. Rivers,",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "world.planet"
+      ]
     },
     {
       "id": "the_world.villages_towns_and_ruined_cities_joined_",
       "group": "The world",
       "readme": "Villages, towns and ruined cities joined by highways and dirt tracks. You can wa",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "world.planet"
+      ],
+      "gap": "partial: settlements and road links checked from the generator; town buildings visited only for overgrowth"
     },
     {
       "id": "the_world.bunkers_rock_tunnels_with_caves_airfield",
       "group": "The world",
       "readme": "Bunkers, rock tunnels with caves, airfields with hangars, scrapyards, a refinery",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "world.sites"
+      ]
     },
     {
       "id": "the_world.day_and_night_seasons_rain_snow_storms_l",
       "group": "The world",
       "readme": "Day and night with the sun and moon crossing the sky, seasons, rain, snow, storm",
       "scenarios": [
-        "visuals.sun_moon"
+        "visuals.sun_moon",
+        "survival.weather_decay"
       ]
     },
     {
       "id": "the_world.buildings_slowly_overgrow_and_crumble_gr",
       "group": "The world",
       "readme": "Buildings slowly overgrow and crumble. Grass gets flattened where you drive and ",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.weather_decay"
+      ]
     },
     {
       "id": "surviving.you_create_a_character_with_attributes_a",
@@ -134,22 +141,26 @@
       "id": "surviving.hunger_thirst_hygiene_food_spoilage_sick",
       "group": "Surviving",
       "readme": "Hunger, thirst, hygiene, food spoilage, sickness, radiation.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.vitals",
+        "survival.save_midactivity"
+      ]
     },
     {
       "id": "surviving.body_temperature_depends_on_clothing_lay",
       "group": "Surviving",
       "readme": "Body temperature depends on clothing layers, shelter, heaters and getting wet.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.vitals"
+      ]
     },
     {
       "id": "surviving.clothing_and_body_armour_wear_out_get_ho",
       "group": "Surviving",
       "readme": "Clothing and body armour wear out, get holes and can be mended.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.injuries"
+      ]
     },
     {
       "id": "surviving.melee_tools_guns_with_magazines_and_jams",
@@ -163,8 +174,9 @@
       "id": "surviving.parkour_vaulting_climbing_sliding_and_ro",
       "group": "Surviving",
       "readme": "Parkour: vaulting, climbing, sliding and rolling.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.parkour"
+      ]
     },
     {
       "id": "surviving.diving_gear_with_tank_air_for_working_un",
@@ -178,8 +190,10 @@
       "id": "building_farming_and_industry.furniture_that_does_something_beds_seats",
       "group": "Building, farming and industry",
       "readme": "Furniture that does something: beds, seats, dining tables, wardrobes, bookshelve",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "survival.base",
+        "survival.loop"
+      ]
     },
     {
       "id": "building_farming_and_industry.gardens_with_crops_fruit_trees_fertilise",
@@ -187,7 +201,8 @@
       "readme": "Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenh",
       "scenarios": [
         "farming.ladder",
-        "story.side_quests"
+        "story.side_quests",
+        "survival.garden_fish_livestock"
       ]
     },
     {
@@ -209,7 +224,9 @@
         "audio.station_sounds",
         "catalogue.recipes",
         "cooking.ladder",
-        "crafting.fuel_refund"
+        "crafting.fuel_refund",
+        "survival.conservation",
+        "survival.save_midactivity"
       ]
     },
     {
@@ -283,7 +300,9 @@
       "group": "Other",
       "readme": "Three save slots plus an autosave. A map and journal with waypoints and road rou",
       "scenarios": [
-        "save.roundtrip"
+        "save.roundtrip",
+        "survival.save_midactivity",
+        "survival.loop"
       ]
     },
     {
@@ -304,8 +323,10 @@
       "id": "other.rebindable_controls_gamepad_support_colo",
       "group": "Other",
       "readme": "Rebindable controls, gamepad support, colour-blind palette, HUD scaling and sepa",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "ui.pages"
+      ],
+      "gap": "partial: keyboard rebinding and menu navigation covered; gamepad, colour-blind HUD, HUD size not yet"
     },
     {
       "id": "vehicles.wasteland_cars_interceptor_scavenger_tra",
@@ -412,7 +433,8 @@
       "readme": "Injuries are tracked per body part (cuts, fractures, burns, bleeding, infection,",
       "scenarios": [
         "medmine.clinic",
-        "medmine.ladder"
+        "medmine.ladder",
+        "survival.injuries"
       ]
     },
     {
@@ -420,7 +442,8 @@
       "group": "Building, farming and industry",
       "readme": "Walls, floors, roofs, doors, stairs and ladders in wood, planks, brick, fired br",
       "scenarios": [
-        "defence.ladder"
+        "defence.ladder",
+        "survival.base"
       ]
     },
     {
