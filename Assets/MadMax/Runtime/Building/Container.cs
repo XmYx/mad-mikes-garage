@@ -13,11 +13,17 @@ namespace MadMax.Building
     {
         public string Prompt(MadMax.Game.WastelandGame g)
         {
+            if (!CanOpen(g)) return null;
             var door = GetComponent<Door>();
             if (door && door.locked && !g.OwnsPiece(GetComponent<Placeable>())) return title + " (LOCKED)";
             return "[E] OPEN " + title + (fridge ? (Cold ? " (" + Cold.Label + ")" : Cooling ? " (COLD)" : " (NO POWER)") : "");
         }
-        public void Use(MadMax.Game.WastelandGame g, bool secondary) { if (!secondary) g.Menus.OpenContainer(this); }
+        public void Use(MadMax.Game.WastelandGame g, bool secondary) { if (!secondary && CanOpen(g)) g.Menus.OpenContainer(this); }
+
+        /// <summary>Optional reach rule (vehicle compartments: where you stand, from a seat, not while someone else drives).</summary>
+        public System.Func<MadMax.Game.WastelandGame, bool> access;
+        /// <summary>May the local player open it from where they are now (no rule = yes).</summary>
+        public bool CanOpen(MadMax.Game.WastelandGame g) => access == null || access(g);
 
         public static readonly List<Container> All = new List<Container>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
