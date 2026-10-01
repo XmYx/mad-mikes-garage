@@ -9,7 +9,7 @@ namespace MadMax.Game
     public static partial class ClothingLibrary
     {
         static List<ClothingDef> all;
-        public static IReadOnlyList<ClothingDef> All => all ??= Thermal(LeatherGoods(Build()));   // + depth stage E (ClothingLibrary.Husbandry)
+        public static IReadOnlyList<ClothingDef> All => all ??= Thermal(Bags(LeatherGoods(Build())));   // + depth stage E (ClothingLibrary.Husbandry), bags (ClothingLibrary.Bags)
 
         /// <summary>Cold protection (warmth, °C) and heat relief (cooling; negative traps heat) per garment. They stack.</summary>
         static List<ClothingDef> Thermal(List<ClothingDef> l)
@@ -34,6 +34,7 @@ namespace MadMax.Game
         public static ClothingDef Get(string id)
         {
             if (id != null && id.StartsWith("cloth_")) id = id.Substring(6);
+            if (id != null && id.IndexOf(BagLibrary.Sep) > 0) id = id.Substring(0, id.IndexOf(BagLibrary.Sep));   // a bag with contents
             foreach (var d in All) if (d.id == id) return d;
             return null;
         }

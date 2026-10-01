@@ -74,7 +74,7 @@ namespace MadMax.Game
             if (IsResKey(key, out _) || Inventory.GetItem(key) > 0 || !Player) return;
             if (Player.Tool && Player.Tool.id == key) Player.Equip(null);
             var cd = ClothingLibrary.Get(key);
-            if (cd != null && Player.Rig.outfit.Remove(cd.id)) Player.RebuildBody();
+            if (cd != null && Inventory.GetItem(ClothingLibrary.ItemId(cd)) <= 0 && Player.Rig.outfit.Remove(cd.id)) Player.RebuildBody();   // a full bag leaving keeps the worn one on
             if (LearningId == key) StopLearning(null);
         }
 
@@ -83,6 +83,7 @@ namespace MadMax.Game
         /// driving). It joins a loose stack of the same thing lying within a metre. Null when the pack has none.</summary>
         public WorldItem DropFromPack(string key, int n)
         {
+            key = BagLeaving(key, ref n);                                                           // the worn bag goes down with its contents
             n = Mathf.Min(n, PackCount(key));
             if (n <= 0 || !Player) return null;
             float q = WorldMakeOf(key);
@@ -378,6 +379,7 @@ namespace MadMax.Game
         /// rides along. Null when the pack has none.</summary>
         public WorldItem PlaceItemAt(string key, int n, Vector3 point, Vector3 normal, float yaw, Collider surface)
         {
+            key = BagLeaving(key, ref n);
             n = Mathf.Min(n, PackCount(key));
             if (n <= 0) return null;
             float q = WorldMakeOf(key);

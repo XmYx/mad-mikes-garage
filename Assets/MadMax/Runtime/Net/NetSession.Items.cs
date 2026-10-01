@@ -71,7 +71,7 @@ namespace MadMax.Net
             var existing = FindItem(id);
             if (existing)
             {
-                if (existing.count != count) { existing.count = count; existing.Refresh(); }
+                if (existing.count != count || existing.key != key) { existing.count = count; existing.key = key; existing.Refresh(); }   // a bag's contents ride in its key
                 return existing;
             }
             var car = VehicleIn(g, vid);

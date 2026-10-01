@@ -119,6 +119,7 @@ namespace MadMax.World
 
         /// <summary>Add or replace a table (vehicle compartments define theirs at runtime).</summary>
         public static void Define(string table, params (string id, int min, int max, float w)[] entries) => tables[table] = entries;
+        static LootTables() => MadMax.Game.BagLibrary.AddLoot(tables);                            // bags and luggage
 
         /// <summary>Every id any table can drop (acceptance: blueprint and media sources).</summary>
         public static IEnumerable<string> AllIds() { foreach (var t in tables.Values) foreach (var e in t) yield return e.id; }

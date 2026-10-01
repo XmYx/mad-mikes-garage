@@ -116,8 +116,8 @@ namespace MadMax.Game
         public float ArmHurtR => Worst(BodyZone.ArmR, BodyZone.HandR);
         public float HeadDaze => Worst(BodyZone.Head);
         /// <summary>No running on a badly hurt leg, no jumping on a broken one.</summary>
-        public bool CanRunInjured => Mathf.Max(LimpL, LimpR) < 0.5f;
-        public bool CanJumpInjured => Mathf.Max(LimpL, LimpR) < 0.35f;
+        public bool CanRunInjured => Mathf.Max(LimpL, LimpR) < 0.5f && BackHurt < 0.3f;   // + a strained back (WastelandGame.Bags)
+        public bool CanJumpInjured => Mathf.Max(LimpL, LimpR) < 0.35f && BackHurt < 0.15f;
         /// <summary>Two-handed tools and weapons need two working arms.</summary>
         public bool ArmBroken => Mathf.Max(ArmHurtL, ArmHurtR) >= 0.85f;
         /// <summary>Aim spread multiplier: shaky arms, a dazed head.</summary>
@@ -136,7 +136,7 @@ namespace MadMax.Game
                     m *= i.type == Wound.Fracture ? (i.splinted ? 0.7f : 0.45f) : 1f - 0.15f * i.severity;
                 }
                 if (Stats.bodyTemp < 35f) m *= 0.75f;
-                return m;
+                return m * BagSpeed;                                                                // a bad back, luggage in hand
             }
         }
 
@@ -156,6 +156,7 @@ namespace MadMax.Game
         public void Treat(Injury inj)
         {
             if (inj == null) return;
+            if (inj.type == Wound.Strain) { TreatBack(inj); return; }
             if (inj.type == Wound.Fracture && !inj.splinted)
             {
                 if (Inventory.TakeItem("med_splint")) { inj.splinted = true; Toast("SPLINT APPLIED"); Stats.Practice(Skill.Survival, 4f); }

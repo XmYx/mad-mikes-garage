@@ -559,6 +559,7 @@ namespace MadMax.Game
         /// <summary>Put a garment on (replacing what is worn in its slot) or take it off.</summary>
         public void ToggleWear(string key)
         {
+            if (BagLibrary.IsFilled(key)) { WearBag(key); return; }                                 // a full bag from the pack (WastelandGame.Bags)
             var cd = ClothingLibrary.Get(key);
             if (cd == null || !Player || Inventory.GetItem(ClothingLibrary.ItemId(cd)) <= 0) return;
             var rig = Player.Rig;

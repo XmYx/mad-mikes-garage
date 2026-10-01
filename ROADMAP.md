@@ -72,6 +72,17 @@ lantern, pipe shotgun, molotov.
 
 - [x] **Condition**: garments tear from hits, crashes and fire; mend with cloth (sewing kit / sewing table)
 - [x] **Backpacks** (back slot): school bag +8 kg, hiking pack +18 kg, frame pack +28 kg carry capacity
+- [x] **Bags with their own storage** (2026-10-01): backpack, tourist frame pack, military MOLLE pack, handcrafted
+      stick pack (wears out), school bag, hiking pack, leather satchel; belts (work, gun, tool belt: tools drawn from
+      the hotbar; fanny bag); one-shoulder bags (shoulder bag, sling bag, canvas satchel); hand luggage (duffel,
+      suitcase: both hands, slower, [Q] sets it down); back brace. A worn bag is a `Container` (`worn`,
+      `WastelandGame.WornStorage`); off the body its contents ride in its item key (`cloth_<bag>~<contents>`), so a
+      dropped backpack keeps them ([T] looks inside), saves and replicates as an item. `Game/Bags/BagLibrary`,
+      `WastelandGame.Bags`, scenarios `bags.*`
+- [x] **Back strain** (2026-10-01): load over 70 % of the carry capacity (Athletics, a brace raise it; hip belts and
+      frames carry part of a bag's weight, one-sided and hand loads pull) strains the back, faster running, swimming,
+      jumping and climbing; HUD BACK % warning, then a STRAINED BACK (torso: no running or jumping, slower, less
+      stamina) mended by rest, sleep, painkillers, a brace
 - [x] **Wetness**: rain soaks clothes (warmth drops), fires and shelter dry them; ponchos / dusters keep you dry
 - [x] New garments: leather duster, poncho, hazmat suit (radiation), gas mask (smoke, dust, radiation), wool
       sweater, work overalls, cowboy hat, bomber jacket, shemagh, fingerless gloves, combat boots, welding mask,

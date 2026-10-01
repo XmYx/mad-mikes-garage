@@ -142,7 +142,7 @@ namespace MadMax.Building
             var at = transform.position;
             foreach (var inj in s.injuries)
             {
-                bool open = inj.type != Wound.Bruise && inj.type != Wound.Fracture;
+                bool open = inj.Open;
                 if (open && (!inj.bandaged || inj.BandageDirty) && (inj.Bleeding || inj.BandageDirty) && MedSupply.TakeFromCabinet(at, "med_bandage"))
                 { inj.bandaged = true; inj.bandageAge = 0f; Say(g, "THE CLINIC DRESSES YOUR " + Injury.ZoneNames[(int)inj.zone]); }
                 if (open && !inj.disinfected && MedSupply.TakeFromCabinet(at, "med_disinfectant"))

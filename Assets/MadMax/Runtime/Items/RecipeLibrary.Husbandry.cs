@@ -56,11 +56,11 @@ namespace MadMax.Items
             // ---- leather: bark tanning, then the leather bench
             yield return HusbandryTimed(Res("leather_bark", "LEATHER X2 (BARK TAN)", Sup, "tanning", Le, 2, "HIDES SOAKED IN BARK: NO LIME, SLOWER", (ResourceType.Hide, 2), (W, 3)), 90f);
             yield return Itm("l_boots", "LEATHER BOOTS", Clo, "leather", "cloth_leather_boots", 1, "TOUGH AND WARM, SOFTEN FALLS", null, (Le, 3), (Th, 1));
-            yield return Itm("l_work_belt", "WORK BELT", Clo, "leather", "cloth_work_belt", 1, "POUCHES: +5 KG CARRY", null, (Le, 2), (Fe, 1));
-            yield return Itm("l_gun_belt", "GUN BELT AND HOLSTER", Clo, "leather", "cloth_gun_belt", 1, "CARTRIDGE LOOPS AND A HOLSTER: +3 KG", null, (Le, 3), (Fe, 1));
+            yield return Itm("l_work_belt", "WORK BELT", Clo, "leather", "cloth_work_belt", 1, "POUCHES: HOLDS 6 KG AT THE HIPS", null, (Le, 2), (Fe, 1));
+            yield return Itm("l_gun_belt", "GUN BELT AND HOLSTER", Clo, "leather", "cloth_gun_belt", 1, "CARTRIDGE LOOPS AND A HOLSTER: GUNS DRAWN FROM THE HIP", null, (Le, 3), (Fe, 1));
             yield return Itm("l_cuirass", "LEATHER CUIRASS", Clo, "leather", "cloth_leather_cuirass", 1, "BOILED LEATHER: BLADES AND BITES; 3 KG, QUIET", null, (Le, 6), (Th, 2));
             yield return Itm("l_chaps", "RIDING CHAPS", Clo, "leather", "cloth_leather_chaps", 1, "LEGS AGAINST THORNS, TEETH AND FALLS", null, (Le, 4), (Th, 1));
-            yield return Itm("l_satchel", "LEATHER SATCHEL", Clo, "leather", "cloth_leather_satchel", 1, "A BAG ON THE BACK: +14 KG", null, (Le, 3), (Th, 1));
+            yield return Itm("l_satchel", "LEATHER SATCHEL", Clo, "leather", "cloth_leather_satchel", 1, "A BAG ON THE BACK: HOLDS 16 KG", null, (Le, 3), (Th, 1));
             yield return HusbandryTimed(Itm("l_saddlebags", "LEATHER SADDLEBAGS", RecipeCategory.Tools, "leather", "misc_saddlebags", 1, "FIT TO A SADDLED HORSE ([E]): ITS BAGS HOLD 90 KG", null, (Le, 4), (Th, 2), (Fe, 1)), 30f);
             yield return HusbandryTimed(Itm("l_saddle", "SADDLE (LEATHER BENCH)", RecipeCategory.Tools, "leather", "use_saddle", 1, "RIDE A TAMED HORSE ([E] ON IT)", null, (Le, 3), (Th, 2), (Fe, 1)), 30f);
 

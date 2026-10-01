@@ -48,9 +48,9 @@ namespace MadMax.Items
             yield return Sew("combat_boots", "COMBAT BOOTS", "VERY TOUGH", null, (Rb, 3), (C, 2), (Fe, 1));
             yield return Sew("welding_mask", "WELDING MASK", "WELD WITHOUT THE ARC FLASH", null, (S, 3), (G, 1));
             yield return Sew("skull_mask", "SKULL MASK", "RAIDERS MISTAKE YOU FOR KIN", new[] { ("trophy_skull", 1) }, (C, 1));
-            yield return Sew("schoolbag", "SCHOOL BAG", "+8 KG CARRY", null, (C, 4));
-            yield return Sew("hikingpack", "HIKING PACK", "+18 KG CARRY", null, (C, 8), (Rb, 1));
-            yield return Sew("framepack", "FRAME PACK", "+28 KG CARRY", null, (C, 8), (ResourceType.Aluminium, 2));
+            yield return Sew("schoolbag", "SCHOOL BAG", "HOLDS 10 KG ON YOUR BACK", null, (C, 4));
+            yield return Sew("hikingpack", "HIKING PACK", "HOLDS 26 KG, HIP STRAP", null, (C, 8), (Rb, 1));
+            yield return Sew("framepack", "TOURIST FRAME PACK", "HOLDS 40 KG, THE FRAME TAKES THE WEIGHT", null, (C, 8), (ResourceType.Aluminium, 2));
             // ---- 4. vehicle attachments: ammunition for mounted weapons
             var mg = Itm("ammo_mg", "MG BELT X2", RecipeCategory.Weapons, "gunsmith", "ammo_mg", 2, "20 ROUNDS EACH FOR A ROOF MG", null, (Cu, 1), (S, 1), (ResourceType.Gunpowder, 1));
             mg.knowledge = "read_book_gunsmith";

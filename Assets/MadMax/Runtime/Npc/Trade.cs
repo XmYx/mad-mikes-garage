@@ -69,6 +69,7 @@ namespace MadMax.Npc
             if (id == "misc_engine_block") return 70f;
             if (id == "use_horseshoes") return 14f;
             if (id.StartsWith("kit_")) return id.StartsWith("kit_gearbox") || id == "kit_transfer_case" ? 60f : id.StartsWith("kit_brakes") || id == "kit_lift" || id == "kit_long_range_tank" ? 40f : 28f;
+            if (id.StartsWith("cloth_") && MadMax.Game.BagLibrary.Value(id) > 0f) return MadMax.Game.BagLibrary.Value(id);   // bags (Trade.Bags)
             if (id.StartsWith("cloth_")) { var cd = MadMax.Game.ClothingLibrary.Get(id); return cd?.armor != null ? 14f + cd.weight * 5f + cd.armor[1] * 40f : 10f; }
             if (id.StartsWith("throw_")) return 12f;
             if (id.StartsWith("farm_")) return 5f;
@@ -269,6 +270,7 @@ namespace MadMax.Npc
         {
             int have = id.StartsWith("res:") ? g.Inventory.Get((ResourceType)int.Parse(id.Substring(4))) : g.Inventory.GetItem(id);
             n = Mathf.Min(n, have);
+            if (MadMax.Game.BagLibrary.IsFilled(id)) { g.Toast("EMPTY THE BAG FIRST"); return false; }   // its contents are not for sale
             int price = SellPrice(id, bargain);
             if (n <= 0 || price <= 0) return false;
             using var feed = Inventory.Source("SALE", "SOLD");

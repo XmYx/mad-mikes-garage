@@ -33,12 +33,12 @@ namespace MadMax.Game
         /// <summary>Drop gone items from the hotbar and slot in newly owned ones.</summary>
         void SyncHotbar()
         {
-            for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) <= 0) Hotbar[i] = null;
+            for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) + BeltCount(Hotbar[i]) <= 0) Hotbar[i] = null;   // tools on a belt stay slotted
             var order = new List<string>(ToolLibrary.AllIds);
             foreach (var kv in Inventory.Items) if (kv.Value > 0 && !order.Contains(kv.Key)) order.Add(kv.Key);
             foreach (var id in order)
             {
-                if (Inventory.GetItem(id) <= 0 || !HotbarItem(id) || System.Array.IndexOf(Hotbar, id) >= 0) continue;
+                if (Inventory.GetItem(id) + BeltCount(id) <= 0 || !HotbarItem(id) || System.Array.IndexOf(Hotbar, id) >= 0) continue;
                 var cat = ItemCatalog.Category(id);
                 if ((cat == ItemCategory.Media && !autoSlotMedia) || cat == ItemCategory.Food || cat == ItemCategory.Seed) continue;   // food and seeds only when assigned
                 int free = System.Array.IndexOf(Hotbar, null);
@@ -88,7 +88,7 @@ namespace MadMax.Game
         /// <summary>Equip a tool, read a book, play a tape, or place a kit.</summary>
         public void UseItem(string id)
         {
-            if (Inventory.GetItem(id) <= 0) return;
+            if (Inventory.GetItem(id) <= 0 && !DrawFromBelt(id)) return;                          // a tool belt: straight into the hand
             switch (ItemCatalog.Category(id))
             {
                 case ItemCategory.Tool:
@@ -212,9 +212,11 @@ namespace MadMax.Game
             Register(v, fleet);
         }
 
-        public float CarriedWeight => ItemCatalog.TotalWeight(Inventory);
+        /// <summary>Everything carried, kg: the pack and what is in the worn bags.</summary>
+        public float CarriedWeight => ItemCatalog.TotalWeight(Inventory) + WornBagsWeight;
 
-        void UpdateEncumbrance() => Player.Encumbered = CarriedWeight > Stats.CarryCapacity;
+        /// <summary>Overloaded above the carry capacity, counted as the back feels it (<see cref="EffectiveLoad"/>).</summary>
+        void UpdateEncumbrance() => Player.Encumbered = EffectiveLoad > Stats.CarryCapacity;
 
         // ---------------------------------------------------------------- media
         void StartMedia(string id)

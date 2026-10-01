@@ -167,6 +167,7 @@ namespace MadMax.Game
         {
             var yield = SalvageYield(id);
             using var feed = Inventory.Source("SALVAGED");
+            if (BagLibrary.IsFilled(id)) { Toast("EMPTY THE BAG FIRST"); return false; }
             if (yield.Count == 0 || !Inventory.TakeItem(id)) return false;
             var sb = new StringBuilder("SALVAGED " + ItemCatalog.Name(id) + ":");
             foreach (var (t, n) in yield) { Inventory.Add(t, n); sb.Append(" +").Append(n).Append(' ').Append(ResourceInfo.Name(t)); }

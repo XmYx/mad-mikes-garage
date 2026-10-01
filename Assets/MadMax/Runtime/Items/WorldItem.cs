@@ -74,7 +74,7 @@ namespace MadMax.Items
             string name = IsResource ? ResourceInfo.Name(Resource) : ItemCatalog.Name(key);
             string make = quality >= 0f && !IsResource ? " (" + WastelandGame.QualityNames[Mathf.Clamp(Mathf.RoundToInt(quality), 0, 2)] + ")" : "";
             Label = IsResource ? count + (ResourceInfo.IsFluid(Resource) ? "L " : " ") + name : (count > 1 ? count + " " : "") + name + make;
-            prompt = "[E] PICK UP " + Label;
+            prompt = "[E] PICK UP " + Label + (!IsResource && MadMax.Game.BagLibrary.IsBag(key) ? "  [" + Controls.Name(Controls.Act.Second) + "] LOOK INSIDE" : "");   // a bag on the ground can be looted
             if (Body) Body.mass = Mathf.Clamp(Weight, 0.2f, 8f);                                     // light: a car never notices it
             gameObject.name = "Item " + Label;
         }
@@ -96,6 +96,7 @@ namespace MadMax.Items
         public void Use(WastelandGame g, bool secondary)
         {
             if (!secondary) g.PickUpItem(this);
+            else if (!IsResource && MadMax.Game.BagLibrary.IsBag(key)) g.OpenGroundBag(this);
         }
     }
 }
