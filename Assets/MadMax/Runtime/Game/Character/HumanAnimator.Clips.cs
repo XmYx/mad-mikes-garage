@@ -166,7 +166,7 @@ namespace MadMax.Game
             phase += s.speed / stride * Mathf.PI * 2f * dt;
             if (Mathf.Sign(Mathf.Sin(prev)) != Mathf.Sign(Mathf.Sin(phase)) && s.grounded && move > 0.2f) Footstep?.Invoke(Mathf.Sin(phase) > 0f);
             if (phase > 1000f) phase -= Mathf.PI * 200f;
-            float u = phase / (Mathf.PI * 2f) - 0.25f;        // the clips start at the left heel strike (left thigh forward)
+            float u = phase / (Mathf.PI * 2f);                 // the clips start at the left heel strike: the footstep events fire there
 
             crouchW = Mathf.MoveTowards(crouchW, s.crouching ? 1f : 0f, dt * 5f);
             float a = Mathf.Clamp01(s.speed / 1.0f), b = Mathf.InverseLerp(2.0f, 3.6f, s.speed), c = Mathf.InverseLerp(4.6f, 5.6f, s.speed);
