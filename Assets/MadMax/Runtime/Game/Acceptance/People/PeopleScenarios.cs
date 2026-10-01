@@ -138,6 +138,32 @@ namespace MadMax.Game.Acceptance
             return best;
         }
 
+        public sealed class Found { public MadMax.Npc.Npc npc; public Settlement st; }
+
+        /// <summary>Visit the settlements nearest the start (up to <paramref name="towns"/>) until one has a person matching
+        /// <paramref name="ok"/>; waits up to 15 s in each and notes who was there when nobody matched.</summary>
+        public static IEnumerator FindIn(ScenarioContext c, System.Func<MadMax.Npc.Npc, bool> ok, bool noCity, int towns, Found into, System.Func<MadMax.Npc.Npc, int> prefer = null)
+        {
+            var g = c.Game;
+            g.World.Yard(out var origin, out _, out _);
+            foreach (var st in g.World.settlements.Where(s => !noCity || s.kind != Biome.City).OrderBy(s => Vector2.Distance(s.pos, new Vector2(origin.x, origin.z))).Take(towns))
+            {
+                yield return ToTown(c, st);
+                var centre = Centre(st);
+                float reach = st.radius + 40f;
+                yield return Until(() => Nearest(centre, reach, ok) != null, 15f);
+                var all = MadMax.Npc.Npc.All.Where(n => n && n.Alive && !n.proxy && Flat(n.transform.position, centre) < reach && ok(n)).ToList();
+                if (all.Count > 0)
+                {
+                    into.st = st;
+                    into.npc = prefer == null ? Nearest(centre, reach, ok) : all.OrderByDescending(prefer).ThenBy(n => Flat(n.transform.position, centre)).First();
+                    yield break;
+                }
+                c.Note(Market.TownName(st) + " (" + st.kind + ", r " + st.radius.ToString("0") + " m): nobody fits; there: " + string.Join("; ", MadMax.Npc.Npc.All.Where(n => n && n.Alive && Flat(n.transform.position, centre) < reach + 40f)
+                    .Select(n => n.Profile.Name + " " + n.Profile.role + (n.Profile.kind != null ? "/" + n.Profile.kind : "") + (n.Profile.Cast ? " cast" : "") + (n.Available ? "" : " unavailable") + (n.Closed ? " closed" : "") + (n.Hostile ? " hostile" : "") + " " + Flat(n.transform.position, centre).ToString("0") + " m")));
+            }
+        }
+
         /// <summary>Step up to a person: <paramref name="dist"/> m in front of them, facing them.</summary>
         public static IEnumerator Face(ScenarioContext c, MadMax.Npc.Npc n, float dist)
         {
