@@ -50,6 +50,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in UtilitiesScenarios.All()) yield return s;
             foreach (var s in MedMineScenarios.All()) yield return s;
             foreach (var s in DefenceScenarios.All()) yield return s;
+            foreach (var s in PeopleScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);

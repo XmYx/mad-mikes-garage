@@ -156,6 +156,7 @@
       "group": "Surviving",
       "readme": "Melee tools, guns with magazines and jams, thrown molotovs and smoke, fishing ro",
       "scenarios": [
+        "people.combat",
         "story.s05"
       ]
     },
@@ -222,50 +223,60 @@
       "id": "people_and_animals.every_npc_has_a_name_a_job_a_temperament",
       "group": "People and animals",
       "readme": "Every NPC has a name, a job, a temperament and a history that you learn over sev",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "people.dialogue"
+      ]
     },
     {
       "id": "people_and_animals.shopkeepers_market_stalls_roadside_vendo",
       "group": "People and animals",
       "readme": "Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raid",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "people.trade"
+      ]
     },
     {
       "id": "people_and_animals.raiders_track_you_down_on_the_road_you_c",
       "group": "People and animals",
       "readme": "Raiders track you down on the road. You can talk your way out, pay, bluff, recru",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "people.combat",
+        "people.raiders"
+      ]
     },
     {
       "id": "people_and_animals.factions_with_territory_and_standing_bou",
       "group": "People and animals",
       "readme": "Factions with territory and standing, bounty boards, supply and escort contracts",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "people.contracts",
+        "people.factions"
+      ]
     },
     {
       "id": "people_and_animals.companions_who_follow_you_ride_with_you_",
       "group": "People and animals",
       "readme": "Companions who follow you, ride with you, drive and fight.",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "people.companion"
+      ]
     },
     {
       "id": "people_and_animals.herds_predators_birds_snakes_scorpions_a",
       "group": "People and animals",
       "readme": "Herds, predators, birds, snakes, scorpions and insects. Livestock can be kept, f",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "animals.herds_taming"
+      ],
+      "gap": "partial: herds, predators, taming and riding; birds, snakes, arthropods, insects, sea life and breeding not exercised"
     },
     {
       "id": "radio.eleven_stations_run_around_the_clock_ten",
       "group": "Radio",
       "readme": "Eleven stations run around the clock: ten music stations with about 250 original",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "radio.stations"
+      ]
     },
     {
       "id": "other.multiplayer_through_a_listen_server_a_de",
@@ -286,8 +297,11 @@
       "id": "other.a_daily_race_board_road_race_bike_trial_",
       "group": "Other",
       "readme": "A daily race board (road race, bike trial, air race, arena) and a long quest cal",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "racing.board",
+        "story.last_engine"
+      ],
+      "gap": "partial: road race sign-up and rival start; bike trial, air race and arena not run"
     },
     {
       "id": "other.views_isometric_tilt_shift_top_down_thir",
@@ -316,7 +330,7 @@
     {
       "id": "vehicles.real_cars_modelled_in_blender_fiat_126p_",
       "group": "Vehicles",
-      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citro\u00ebn BX, Cit",
+      "readme": "Real cars (modelled in Blender): Fiat 126p, Fiat 500, Renault 5, Citroën BX, Cit",
       "scenarios": [
         "vehicle.drive.Fiat126p",
         "vehicle.drive.Peugeot205",

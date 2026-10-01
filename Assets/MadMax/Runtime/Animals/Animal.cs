@@ -321,6 +321,10 @@ namespace MadMax.Animals
             if (inCar) f *= 1.4f + Mathf.Abs(g.Current.ForwardSpeed) * 0.05f;
             else if (g.Player.Crouching) f *= 0.55f;
             if (Def.tameable) f *= 1f - trust * 0.9f;
+            // half won over by a calm approach: it lets a crouched or still person come within arm's reach for the treat
+            // (at 50 % trust the flight distance above still kept the player ~6 m out, beyond the 2.2 m reach to feed it)
+            if (Def.tameable && trust >= 0.5f && !inCar && !(g.Player.run && g.Player.Velocity.magnitude > 3f)
+                && (g.Player.Crouching || g.Player.Velocity.magnitude < 0.4f)) f = Mathf.Min(f, 1.2f);
             return f;
         }
 

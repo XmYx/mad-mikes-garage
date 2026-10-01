@@ -42,6 +42,11 @@ namespace MadMax.Npc
             game = g; Instance = this;
             if (!GetComponent<BaseRaid>()) gameObject.AddComponent<BaseRaid>();
             NpcRegistry.Load(null, 0);                                       // a fresh world; a loaded game restores after this
+            // statics outlive a scene reload: a NEW GAME after playing must not inherit jobs, companions, standing or prices
+            var clean = new SaveData();
+            Contracts.Load(clean); Companions.Load(clean); TownQuests.Load(clean); Factions.Load(null); Market.Load(null);
+            BaseRaid.NextDay = -1f; BaseRaid.Report = null;
+            MadMax.Game.Racing.Load(null);
             var world = g.World;
             var r = new System.Random(world.seed * 101 + 5);
             // travelling traders and raider hordes on the roads

@@ -101,7 +101,7 @@ namespace MadMax.Npc
 
         public static void Accept(WastelandGame g, Contract c, Vector3 board)
         {
-            taken.Add(c.id);
+            if (!taken.Add(c.id) || Active.Contains(c)) return;                                  // a job is taken once (a second press, a stale board row)
             if (c.Delivery)
             {
                 c.deadline = DayNight.Day + c.days;
@@ -161,7 +161,7 @@ namespace MadMax.Npc
         /// <summary>Pay a finished job.</summary>
         public static void Pay(WastelandGame g, Contract c)
         {
-            if (!c.completed) return;
+            if (!c.completed || !Active.Contains(c)) return;                                    // paid once: a claimed job leaves the list
             if (c.id.StartsWith("Q")) { g.Toast("TELL THE TOWN BOSS IT'S DONE"); return; }        // a town boss's job (TownQuests)
             int pay = c.reward;
             if ((c.Delivery || c.Escort) && g.Current && MadMax.Vehicles.VehiclePaint.DecalOf(g.Current) == Factions.Decal[(int)Faction.FuelGuild]) pay += pay / 10;   // Guild colours

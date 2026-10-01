@@ -1036,7 +1036,14 @@ namespace MadMax.Npc
             if (secondary)
             {
                 if (companion) { EnsurePack(); g.Menus.OpenContainer(pack); return; }
-                if (Profile.Vendor && !Hostile) { if (Closed) g.Toast("CLOSED - COME BACK AFTER SUNRISE"); else g.Menus.OpenTalk(this, true); }
+                if (Profile.Vendor && !Hostile)
+                {
+                    // the same refusals as the talk page's "SHOW ME WHAT YOU'VE GOT" ([T] used to skip them)
+                    if (Closed) g.Toast("CLOSED - COME BACK AFTER SUNRISE");
+                    else if (State.disposition <= -40) g.Toast(Profile.Name + ": I DON'T SELL TO YOUR KIND.");
+                    else if (Factions.Hostile(Factions.Of(this))) g.Toast("THE " + Factions.Names[(int)Factions.Of(this)] + " DON'T TRADE WITH YOU");
+                    else g.Menus.OpenTalk(this, true);
+                }
                 return;
             }
             g.Menus.OpenTalk(this, false);
