@@ -424,6 +424,9 @@ namespace MadMax.Game
         static string Short(string s) => s.Length > 22 ? s.Substring(0, 22) : s;
         static string Litres(float l) => l.ToString(l < 10f ? "0.#" : "0", CultureInfo.InvariantCulture) + " L";
 
+        /// <summary>Close the container's choice without running anything.</summary>
+        public void CancelFluidChoice() { if (fluidChoice) CloseFluidChoice(); }
+
         void CloseFluidChoice()
         {
             fluidChoice = false; RadialHint = null;
