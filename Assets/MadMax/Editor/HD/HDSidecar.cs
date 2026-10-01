@@ -11,7 +11,9 @@ namespace MadMax.EditorTools
     [Serializable]
     public class HDSidecar
     {
-        public int format;
+        public int format, exporter;
+        public string gameId;
+        public float gameScale = 1f;
         public string asset, group, kind, source, units, axes, rootName, fbx, lodSuffix, splitSuffix;
         public bool mirroredOnExport, readable, bakeAxisConversion;
         public HDProp[] rootProps;
@@ -96,7 +98,7 @@ namespace MadMax.EditorTools
     {
         public string name, baseMap, maskMap, normalMap, emissionMap;
         public int size;
-        public float emissionScale = 1f;
+        public float emissionScale = 1f, swayTip;
         public float[] paintRef;
         public bool hasAlpha;
         public string[] materials;
@@ -116,7 +118,7 @@ namespace MadMax.EditorTools
     [Serializable]
     public class HDObject
     {
-        public string name, parent, type, role, mesh, atlas;
+        public string name, parent, parentBone, type, role, mesh, atlas;
         public float[] position, rotation, scale, rootPosition, rootMatrix, boundsMin, boundsMax;
         public HDProp[] props;
         public int tris, verts;

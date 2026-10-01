@@ -1,138 +1,218 @@
 #!/usr/bin/env python3
-"""Batch runner for export_hd.py: one Blender process per job, then a size report.
+"""Batch runner for export_hd.py: every HD source .blend -> Models/HD/<group>/<Asset>/, parallel Blender processes,
+resumable, with a size report and the asset index the game builders read.
 
-    python3 tools/blender/hd/export/run_export.py [--src DIR] [--out DIR] [--jobs N] [--list] [name ...]
+    python3 tools/blender/hd/export/run_export.py [--out DIR] [--jobs N] [--list] [--report] [--force] [filter ...]
 
---src   folder holding the built .blend files (tools/blender/hd/<group>/...; gitignored, made by the group build
-        scripts). Default: $HD_BLEND_ROOT, else this checkout's tools/blender/hd.
---out   Unity folder for the results (default <repo>/Assets/MadMax/Models/HD); assets land in <out>/<group>/<Asset>/.
-name    job names from JOBS (default: the slice set). "all" = every job.
-Writes tools/blender/hd/export/hd_report.json; Blender logs go to <repo>/Logs/hd_export/.
-(bytes per file, triangles per LOD); prints a table.
+Sources (each a tools/blender/hd folder holding the gitignored .blend files; defaults are the wave-6 worktrees,
+override with HD_SRC_VEHICLES / HD_SRC_PARTS / HD_SRC_WORLD / HD_SRC_CHARACTER):
+    vehicles   cars/blend/*.blend (cars), heavy/*.blend (heavy), misc/{bike,boat,air}_*.blend (misc vehicles)
+    parts      parts_all/blend + items/blend, jobs from parts_all/export_jobs.json (parts, items)
+    world      world/*.blend (world: buildings, props, sites, vegetation), furniture/*.blend, animals/*.blend
+    character  character/blend/wardrobe_<M|M2|F|F2>.blend (build_wardrobe.py) -> Character_<KEY>
+--out      Unity folder (default <this checkout>/Assets/MadMax/Models/HD).
+filter     job names or prefixes (e.g. "cars/Sedan", "world/", "items/food_"); default: all jobs.
+--force    re-export even when up to date (default: skip assets whose sidecar is newer than the source and from the
+           current export_hd.EXPORTER_VERSION; jobs whose state file is newer than the source).
+Writes <out>/hd_index.json (every exported asset), tools/blender/hd/export/hd_report.json, appends to the log file
+($HD_EXPORT_LOG, default <MadMaxUnity>/hd_export.log), per-job Blender output in <MadMaxUnity>/hd_export_logs/.
 """
+import glob
 import json
 import os
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HD = os.path.dirname(HERE)
 REPO = os.path.abspath(os.path.join(HD, "..", "..", ".."))
+BASE = "/home/magix/PycharmProjects/MadMaxUnity"
 BLENDER = os.environ.get("BLENDER", "/usr/bin/blender")
-
-# name: (group, blend relative to --src, extra args)
-JOBS = {
-    "Sedan": ("cars", "cars/blend/Sedan.blend", []),
-    "Pickup": ("cars", "cars/blend/Pickup.blend", []),
-    "Fiat126p": ("cars", "cars/blend/Fiat126p.blend", []),
-    "DumpTruck": ("heavy", "heavy/DumpTruck.blend", []),
-    "Tractor_implements": ("heavy", "heavy/Tractor_implements.blend", []),   # seeder / harvester / sprayer / plough parts (HDVehicleBuilder.SaveGenericParts)
-    "BrickHouse": ("misc", "misc/prop_brickhouse.blend", ["--root", "BrickHouse", "--kind", "prop"]),
-    "CharacterMale": ("character", "character/hd_characters.blend", ["--collection", "base_male", "--name", "CharacterMale"]),
-    "CharacterMale_Starter": ("character", "character/hd_characters.blend", ["--collection", "outfit_starter", "--name", "CharacterMale_Starter"]),
+EXPORTER = os.path.join(HERE, "export_hd.py")
+SRC = {
+    "vehicles": os.environ.get("HD_SRC_VEHICLES", BASE + "/wt/hd/tools/blender/hd"),
+    "parts": os.environ.get("HD_SRC_PARTS", BASE + "/wt/hdparts/tools/blender/hd"),
+    "world": os.environ.get("HD_SRC_WORLD", BASE + "/wt/hdworld/tools/blender/hd"),
+    "character": os.environ.get("HD_SRC_CHARACTER", HD),
 }
-SLICE = ["Sedan", "Pickup", "Fiat126p", "DumpTruck", "BrickHouse", "CharacterMale", "CharacterMale_Starter"]
+LOG = os.environ.get("HD_EXPORT_LOG", BASE + "/hd_export.log")
+LOGDIR = BASE + "/hd_export_logs"
+STATE = BASE + "/hd_export_state"
+CAP = {"furniture": 512, "items": 512, "parts": 512, "vegetation": 256}
 
 
-def add_roster(src):
-    """Every built .blend becomes a job (cars/heavy by file name, misc files export each top-level object)."""
-    for group, sub in (("cars", "cars/blend"), ("heavy", "heavy"), ("misc", "misc")):
-        d = os.path.join(src, sub)
-        if not os.path.isdir(d):
-            continue
-        for f in sorted(os.listdir(d)):
-            if not f.endswith(".blend") or f.startswith("_"):
-                continue
-            name = f[:-6]
-            if name in JOBS or name.endswith(("_exploded", "_wear", "_implements")):
-                continue
-            extra = []
-            if group == "misc":
-                kind = "part" if name.startswith("parts_") else "vehicle" if name.split("_")[0] in ("bike", "boat", "air") else "prop"
-                extra = ["--kind", kind] + (["--size", "512"] if kind == "part" else ["--size", "2048"] if kind == "vehicle" else [])
-            JOBS[name] = (group, os.path.join(sub, f), extra)
+def log(msg):
+    line = time.strftime("%Y-%m-%d %H:%M:%S ") + msg
+    print(line, flush=True)
+    with open(LOG, "a") as f:
+        f.write(line + "\n")
 
 
-def run(name, src, out):
-    group, rel, extra = JOBS[name]
-    blend = os.path.join(src, rel)
+def jobs():
+    """name -> (group, blend path, extra args)."""
+    J = {}
+    v = SRC["vehicles"]
+    for f in sorted(glob.glob(v + "/cars/blend/*.blend")):
+        n = os.path.basename(f)[:-6]
+        if not n.endswith(("_exploded", "_wear")):
+            J["cars/" + n] = ("cars", f, [])
+    for f in sorted(glob.glob(v + "/heavy/*.blend")):
+        J["heavy/" + os.path.basename(f)[:-6]] = ("heavy", f, [])
+    # misc: only the vehicles; its preview props / furniture / parts are superseded by world/, furniture/, parts_all/
+    for f in sorted(glob.glob(v + "/misc/*.blend")):
+        n = os.path.basename(f)[:-6]
+        if n.split("_")[0] in ("bike", "boat", "air"):
+            J["misc/" + n] = ("misc", f, ["--kind", "vehicle", "--size", "2048"])
+    p = SRC["parts"]
+    ej = os.path.join(p, "parts_all", "export_jobs.json")
+    if not os.path.exists(ej):
+        ej = os.path.join(HD, "parts_all", "export_jobs.json")
+    for e in json.load(open(ej)) if os.path.exists(ej) else []:
+        group = "items" if e["blend"].startswith("items/") else "parts"
+        a = list(e["args"])
+        if "--kind" in a:
+            a[a.index("--kind") + 1] = "item" if group == "items" else "part"
+        J[group + "/" + e["name"]] = (group, os.path.join(p, e["blend"]), a + ["--max-size", str(CAP[group])])
+    w = SRC["world"]
+    for f in sorted(glob.glob(w + "/world/*.blend")):
+        n = os.path.basename(f)[:-6]
+        J["world/" + n] = ("world", f, ["--max-size", str(CAP["vegetation"])] if n.startswith("vegetation") else [])
+    for f in sorted(glob.glob(w + "/furniture/*.blend")):
+        J["furniture/" + os.path.basename(f)[:-6]] = ("furniture", f, ["--max-size", str(CAP["furniture"])])
+    for f in sorted(glob.glob(w + "/animals/*.blend")):
+        J["animals/" + os.path.basename(f)[:-6]] = ("animals", f, [])
+    for f in sorted(glob.glob(SRC["character"] + "/character/blend/wardrobe_*.blend")):
+        k = os.path.basename(f)[len("wardrobe_"):-6]
+        J["character/Character_" + k] = ("character", f, ["--collection", "wardrobe_" + k, "--name", "Character_" + k])
+    return J
+
+
+def state_file(name):
+    return os.path.join(STATE, name.replace("/", "__") + ".ok")
+
+
+def up_to_date(name, blend):
+    sf = state_file(name)
+    if not os.path.exists(sf):
+        return False
+    with open(sf) as f:
+        if f.readline().strip() != "v%d" % exporter_version():
+            return False                          # exporter changes that need a re-export bump EXPORTER_VERSION
+    return os.path.getmtime(sf) > os.path.getmtime(blend)
+
+
+def exporter_version():
+    import re
+    m = re.search(r"^EXPORTER_VERSION = (\d+)", open(EXPORTER).read(), re.M)
+    return int(m.group(1)) if m else 0
+
+
+def run(name, job, out, force):
+    group, blend, extra = job
     if not os.path.exists(blend):
-        return name, False, "missing " + blend, 0.0
+        return name, "missing", 0.0, "missing " + blend
+    if not force and up_to_date(name, blend):
+        return name, "skip", 0.0, ""
     t0 = time.time()
-    cmd = [BLENDER, "-b", blend, "--python-exit-code", "1", "-P", os.path.join(HERE, "export_hd.py"), "--",
-           "--group", group, "--out", os.path.join(out, group)] + extra
+    cmd = [BLENDER, "-b", blend, "--python-exit-code", "1", "-P", EXPORTER, "--", "--group", group,
+           "--out", os.path.join(out, group)] + extra + ([] if force else ["--skip-fresh"])
     p = subprocess.run(cmd, capture_output=True, text=True)
-    logf = os.path.join(REPO, "Logs", "hd_export", name + ".log")
-    os.makedirs(os.path.dirname(logf), exist_ok=True)
-    with open(logf, "w") as f:
+    os.makedirs(LOGDIR, exist_ok=True)
+    with open(os.path.join(LOGDIR, name.replace("/", "__") + ".log"), "w") as f:
         f.write(p.stdout + "\n" + p.stderr)
-    ok = p.returncode == 0
-    tail = [ln for ln in p.stdout.splitlines() if ln.startswith("[hd-export]")][-1:] if ok else (p.stdout + p.stderr).splitlines()[-15:]
-    return name, ok, "\n".join(tail), time.time() - t0
+    lines = [ln for ln in p.stdout.splitlines() if ln.startswith("[hd-export]")]
+    done = [ln for ln in lines if " objects, tris " in ln or ": up to date" in ln]
+    if p.returncode == 0:
+        os.makedirs(STATE, exist_ok=True)
+        with open(state_file(name), "w") as f:
+            f.write("v%d\n" % exporter_version() + "\n".join(done))
+        return name, "ok", time.time() - t0, "%d assets" % len(done)
+    tail = "\n".join([ln for ln in lines if "FAILED" in ln or "failed" in ln][-5:] + (p.stdout + p.stderr).splitlines()[-12:])
+    return name, "fail", time.time() - t0, tail
 
 
-def report(out):
+def index(out):
+    """hd_index.json: every exported asset for the game builders."""
     rows = []
-    for group in sorted(os.listdir(out)):
-        gdir = os.path.join(out, group)
-        if not os.path.isdir(gdir) or group.startswith("_"):
-            continue
-        for asset in sorted(os.listdir(gdir)):
-            sc = os.path.join(gdir, asset, asset + ".hd.json")
-            if not os.path.exists(sc):
-                continue
+    for sc in sorted(glob.glob(os.path.join(out, "*", "*", "*.hd.json"))):
+        try:
             s = json.load(open(sc))
-            files = s.get("files", [])
-            fbx = sum(f["bytes"] for f in files if f["file"].endswith(".fbx"))
-            tex = sum(f["bytes"] for f in files if f["file"].endswith(".png"))
-            rows.append({"group": group, "asset": asset, "fbx": fbx, "png": tex, "tris": s.get("tris"),
-                         "atlases": {a["name"]: a["size"] for a in s["atlases"]}})
-    json.dump(rows, open(os.path.join(HERE, "hd_report.json"), "w"), indent=1)
-    print("%-10s %-24s %9s %9s  %s" % ("group", "asset", "fbx KB", "png KB", "tris lod0/1/2"))
+        except ValueError:
+            continue
+        if s.get("exporter", 0) < 2:
+            continue                                  # stale export of an older exporter / retired asset
+        d = os.path.dirname(sc)
+        rel = os.path.relpath(d, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(out))))).replace(os.sep, "/")
+        files = s.get("files", [])
+        rows.append({"group": os.path.basename(os.path.dirname(d)), "id": s.get("gameId") or s["asset"], "asset": s["asset"],
+                     "kind": s.get("kind", ""), "path": rel, "sidecar": rel + "/" + os.path.basename(sc),
+                     "fbx": rel + "/" + s.get("fbx", s["asset"] + ".fbx"), "gameScale": s.get("gameScale", 1.0),
+                     "rigged": bool(s.get("bones")), "tris": s.get("tris", [0, 0, 0]),
+                     "bytes": sum(f["bytes"] for f in files)})
+    json.dump({"format": 1, "generated": time.strftime("%Y-%m-%d %H:%M:%S"), "root": "Assets/MadMax/Models/HD",
+               "assets": rows}, open(os.path.join(out, "hd_index.json"), "w"), indent=1)
+    return rows
+
+
+def report(rows):
+    by = {}
     for r in rows:
-        t = r["tris"] or [0, 0, 0]
-        print("%-10s %-24s %9.0f %9.0f  %s/%s/%s" % (r["group"], r["asset"], r["fbx"] / 1024, r["png"] / 1024, t[0], t[1], t[2]))
-    print("total %.1f MB" % (sum(r["fbx"] + r["png"] for r in rows) / 1e6))
+        g = by.setdefault(r["group"], [0, 0, 0])
+        g[0] += 1
+        g[1] += r["bytes"]
+        g[2] += r["tris"][0] if r["tris"] else 0
+    json.dump(rows, open(os.path.join(HERE, "hd_report.json"), "w"), indent=1)
+    log("%-10s %6s %10s %12s" % ("group", "assets", "MB", "tris lod0"))
+    for g, (n, b, t) in sorted(by.items()):
+        log("%-10s %6d %10.1f %12d" % (g, n, b / 1e6, t))
+    log("total %d assets, %.1f MB" % (len(rows), sum(r["bytes"] for r in rows) / 1e6))
 
 
 def main():
     a = sys.argv[1:]
-    src = os.environ.get("HD_BLEND_ROOT", HD)
     out = os.path.join(REPO, "Assets", "MadMax", "Models", "HD")
-    jobs = 2
-    names = []
+    n_jobs, force, filt = 6, False, []
     i = 0
     while i < len(a):
-        if a[i] == "--src":
-            src = a[i + 1]; i += 1
-        elif a[i] == "--out":
-            out = a[i + 1]; i += 1
+        if a[i] == "--out":
+            out = os.path.abspath(a[i + 1]); i += 1
         elif a[i] == "--jobs":
-            jobs = int(a[i + 1]); i += 1
+            n_jobs = int(a[i + 1]); i += 1
+        elif a[i] == "--force":
+            force = True
         elif a[i] == "--list":
-            add_roster(src)
-            print("\n".join(sorted(JOBS)))
+            for k, v in jobs().items():
+                print(k, v[1], " ".join(v[2]))
             return
         elif a[i] == "--report":
-            report(out)
+            report(index(out))
             return
         else:
-            names.append(a[i])
+            filt.append(a[i])
         i += 1
-    if names == ["all"]:
-        add_roster(src)
-        names = sorted(JOBS)
-    elif not names:
-        names = SLICE
-    else:
-        add_roster(src)
+    J = jobs()
+    names = [n for n in J if not filt or any(n == f or n.startswith(f) for f in filt)]
+    names.sort(key=lambda n: -os.path.getsize(J[n][1]) if os.path.exists(J[n][1]) else 0)   # big files first
     os.makedirs(out, exist_ok=True)
-    with ThreadPoolExecutor(max_workers=jobs) as ex:
-        for name, ok, msg, dt in ex.map(lambda n: run(n, src, out), names):
-            print("%s %-24s %6.1fs  %s" % ("OK " if ok else "ERR", name, dt, msg), flush=True)
-    report(out)
+    t0 = time.time()
+    log("export start: %d jobs, %d parallel -> %s" % (len(names), n_jobs, out))
+    stats = {"ok": 0, "skip": 0, "fail": 0, "missing": 0}
+    failed = []
+    with ThreadPoolExecutor(max_workers=n_jobs) as ex:
+        futs = [ex.submit(run, n, J[n], out, force) for n in names]
+        for k, f in enumerate(as_completed(futs), 1):
+            name, st, dt, msg = f.result()
+            stats[st] += 1
+            if st != "skip":
+                log("[%d/%d] %-4s %-48s %6.1fs %s" % (k, len(names), st.upper(), name, dt, msg if st != "fail" else ""))
+            if st in ("fail", "missing"):
+                failed.append(name)
+                log("  " + msg.replace("\n", "\n  "))
+    rows = index(out)
+    report(rows)
+    log("export done in %.1f min: %s; failed: %s" % ((time.time() - t0) / 60, stats, failed or "none"))
 
 
 if __name__ == "__main__":

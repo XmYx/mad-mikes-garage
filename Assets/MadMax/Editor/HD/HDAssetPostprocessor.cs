@@ -22,7 +22,7 @@ namespace MadMax.EditorTools
             if (!IsHD(assetPath) || !(assetImporter is ModelImporter mi)) return;
             var side = HDSidecar.Load(HDSidecar.PathFor(assetPath));
             context.DependsOnSourceAsset(HDSidecar.PathFor(assetPath));
-            bool character = side != null && side.kind == "character";
+            bool character = side != null && side.bones != null && side.bones.Length > 0;     // characters, animals: rigs
             mi.globalScale = 1f;
             mi.useFileScale = true;
             mi.bakeAxisConversion = side != null && side.bakeAxisConversion;

@@ -21,6 +21,7 @@ Writes DIR/<Asset>/<Asset>.fbx, <Atlas>_Base.png, <Atlas>_Mask.png, [<Atlas>_Nor
 import json
 import math
 import os
+import re
 import sys
 import time
 
@@ -38,7 +39,15 @@ GROUPS = {
     "heavy": dict(mirror=True, atlas="asset", size=2048, ao=0.8, kind="vehicle"),
     "misc": dict(mirror=True, atlas="asset", size=1024, ao=0.6, kind="prop"),
     "character": dict(mirror=False, atlas="object", size=1024, ao=0.06, kind="character"),
+    # wave 6 content (parts_all/, items/, world/, furniture/, animals/): all use the cars mapping, no mirror
+    "parts": dict(mirror=False, atlas="asset", size=512, ao=0.25, kind="part"),
+    "items": dict(mirror=False, atlas="asset", size=256, ao=0.08, kind="item"),
+    # hdkit (world / furniture / animals) smart-projects every mesh on its own: always one shared re-unwrap
+    "world": dict(mirror=False, atlas="asset", size=1024, ao=0.8, kind="prop", unwrap=True),
+    "furniture": dict(mirror=False, atlas="asset", size=512, ao=0.4, kind="prop", unwrap=True),
+    "animals": dict(mirror=False, atlas="asset", size=1024, ao=0.15, kind="animal", unwrap=True),
 }
+SWAY_TIP = 0.12                 # HDLit _SwayTip for meshes with a Sway attribute (Col.a = 1 - Sway)
 
 LOD_RATIOS = (0.5, 0.2)
 LOD_MIN_TRIS = 800              # smaller meshes keep one level
@@ -58,7 +67,7 @@ def log(*a):
 def args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     o = {"group": "cars", "out": None, "root": None, "collection": None, "name": None, "size": None, "ao_samples": 48,
-         "kind": None, "lod": True, "cpu": False}
+         "kind": None, "lod": True, "cpu": False, "max_size": None, "skip_fresh": False}
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -66,11 +75,13 @@ def args():
             o["lod"] = False
         elif a == "--cpu":
             o["cpu"] = True
+        elif a == "--skip-fresh":
+            o["skip_fresh"] = True
         elif a.startswith("--"):
             o[a[2:].replace("-", "_")] = argv[i + 1]
             i += 1
         i += 1
-    for k in ("size", "ao_samples"):
+    for k in ("size", "ao_samples", "max_size"):
         if o[k] is not None:
             o[k] = int(o[k])
     return o
@@ -90,12 +101,18 @@ def pick_assets(o):
         return [(o["name"] or col.name, root, objs)]
     if o["root"]:
         r = bpy.data.objects[o["root"]]
-        return [(o["name"] or r.name, r, tree(r))]
+        return [(o["name"] or asset_name(r), r, tree(r))]
     out = []
     for r in bpy.context.scene.objects:
-        if r.parent is None and r.name not in STAGE and r.type in {"EMPTY", "MESH", "ARMATURE"}:
-            out.append((r.name, r, tree(r)))
+        if r.parent is None and r.name not in STAGE and r.type in {"EMPTY", "MESH", "ARMATURE"} and not r.name.startswith(("RefOutline", "_")):
+            out.append((asset_name(r), r, tree(r)))
     return out
+
+
+def asset_name(r):
+    """The game id when the source names it (world / furniture / animals / parts / items roots), else the root name."""
+    gid = r.get("game_id") if hasattr(r, "get") else None
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", str(gid) if gid else r.name)
 
 
 def isolate(objs):
@@ -103,6 +120,11 @@ def isolate(objs):
     for ob in list(bpy.data.objects):
         if ob not in keep:
             bpy.data.objects.remove(ob, do_unlink=True)
+    # multi-asset files number duplicate names (Body.003): give the asset its clean names back
+    for ob in objs:
+        base = re.sub(r"\.\d{3}$", "", ob.name)
+        if base != ob.name and base not in bpy.data.objects:
+            ob.name = base
     for ob in objs:
         ob.hide_render = False
         ob.hide_viewport = False
@@ -139,11 +161,43 @@ def apply_modifiers(meshes, drop=()):
                 ob.modifiers.remove(m)
 
 
+def uv_overlap(objs, res=128):
+    """Share of the covered atlas cells used by more than one mesh (each mesh unwrapped on its own 0..1 square)."""
+    if len(objs) < 2:
+        return 0.0
+    count = np.zeros((res, res), np.int16)
+    seen = set()
+    for ob in objs:
+        me = ob.data
+        if me.name in seen or not me.uv_layers:
+            continue
+        seen.add(me.name)
+        uv = np.empty(len(me.loops) * 2, np.float32)
+        me.uv_layers[0].data.foreach_get("uv", uv)
+        uv = uv.reshape(-1, 2)
+        me.calc_loop_triangles()
+        tri = np.empty(len(me.loop_triangles) * 3, np.int32)
+        me.loop_triangles.foreach_get("loops", tri)
+        t = uv[tri.reshape(-1, 3)]
+        w = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1 / 3, 1 / 3, 1 / 3], [.5, .5, 0], [0, .5, .5], [.5, 0, .5]], np.float32)
+        pts = np.einsum("kj,tjc->tkc", w, t).reshape(-1, 2)
+        cells = np.unique((np.clip(pts, 0, 0.9999) * res).astype(np.int32), axis=0)
+        count[cells[:, 1], cells[:, 0]] += 1
+    used = (count > 0).sum()
+    return float((count > 1).sum()) / max(1, used)
+
+
 def ensure_uvs(groups, force=False):
     """Atlas groups without UVs get one smart-projected layout shared by all their meshes. `force` re-unwraps (the
-    character file packs every mesh of the file into one shared layout, useless for per-mesh atlases)."""
+    character file packs every mesh of the file into one shared layout, useless for per-mesh atlases); so do groups
+    whose meshes were unwrapped one by one (their islands would overlap in the shared atlas)."""
     for name, objs, size in groups:
-        if not force and all(ob.data.uv_layers for ob in objs):
+        if not force and all(ob.data.uv_layers for ob in objs) and uv_overlap(objs) > 0.15:
+            log("uv islands of", name, "overlap: re-unwrapping as one atlas")
+            force_this = True
+        else:
+            force_this = force
+        if not force_this and all(ob.data.uv_layers for ob in objs):
             for ob in objs:
                 ob.data.uv_layers.active_index = 0
             continue
@@ -440,12 +494,26 @@ def vertex_colours(ob, base_lin):
     np.add.at(acc, vi, c)
     np.add.at(cnt, vi, 1)
     col = to_srgb(acc / np.maximum(cnt, 1)[:, None])
+    alpha = np.ones((len(col), 1), np.float32)
+    sw = me.attributes.get("Sway")
+    swayed = False
+    if sw is not None and sw.domain == "POINT":
+        if sw.data_type == "FLOAT":
+            s = np.empty(len(me.vertices), np.float32)
+            sw.data.foreach_get("value", s)
+        else:                                             # colour attribute: red channel
+            c4 = np.empty(len(me.vertices) * 4, np.float32)
+            sw.data.foreach_get("color", c4)
+            s = c4[0::4].copy()
+        alpha[:, 0] = 1.0 - np.clip(s, 0, 1)             # voxel convention: 1 = rooted, 0 = free tip
+        swayed = bool((s > 0.01).any())
     for a in list(me.color_attributes):
         me.color_attributes.remove(a)
     attr = me.color_attributes.new("Col", "BYTE_COLOR", "POINT")
-    attr.data.foreach_set("color_srgb", np.hstack([col, np.ones((len(col), 1))]).astype(np.float32).ravel())
+    attr.data.foreach_set("color_srgb", np.hstack([col, alpha]).astype(np.float32).ravel())
     me.color_attributes.active_color = attr
     me.color_attributes.render_color_index = 0
+    return swayed
 
 
 def strip_attributes(me):
@@ -561,6 +629,7 @@ def make_lods(ob, skinned):
                 c.parent = None
                 bpy.data.objects.remove(c, do_unlink=True)
             lod.parent = ob
+            lod.parent_type = "OBJECT"
             lod.matrix_parent_inverse = Matrix()
             lod.matrix_basis = Matrix()
         out.append(lod)
@@ -668,7 +737,7 @@ def sidecar_object(ob, root, atlas_of, classes):
         parent = ""                                    # the asset root itself is the prefab root
     rm = C4 @ ob.matrix_world @ C4.inverted()          # root (= vehicle / prefab) space, the root sits at the origin
     rl = rm.to_translation()
-    d = {"name": ob.name, "parent": parent, "type": ob.type, "role": role_of(ob.name),
+    d = {"name": ob.name, "parent": parent, "parentBone": ob.parent_bone if ob.parent_type == "BONE" else "", "type": ob.type, "role": role_of(ob.name),
          "position": round_list(loc), "rotation": round_list((rot.x, rot.y, rot.z, rot.w), 6), "scale": round_list(sca),
          "rootPosition": round_list(rl), "rootMatrix": flat16(rm), "props": props_of(ob),
          "mesh": "", "tris": 0, "verts": 0, "boundsMin": [0, 0, 0], "boundsMax": [0, 0, 0], "materials": [], "classes": [],
@@ -726,6 +795,11 @@ def write_fbx(path, bake_space=True):
 
 # ================================================================================================= main
 def atlas_size(o, cfg, ob):
+    n = _atlas_size(o, cfg, ob)
+    return min(n, o["max_size"]) if o.get("max_size") else n
+
+
+def _atlas_size(o, cfg, ob):
     if o["size"]:
         return o["size"]
     if cfg["atlas"] == "object":                       # character: body 1024, garments 512-1024, small bits less
@@ -737,8 +811,43 @@ def atlas_size(o, cfg, ob):
         if "brows" in n or "beard" in n:
             return 256
         area = sum(p.area for p in ob.data.polygons)
-        return 1024 if area > 0.35 else 512 if area > 0.06 else 256
+        return 512 if area > 0.06 else 256              # garments / hair: 512 keeps a full wardrobe ~30 MB per body
     return cfg["size"]
+
+
+ROOT_KINDS = {"building": "prop", "prop": "prop", "animal": "animal", "part": "part", "item": "item", "vehicle": "vehicle"}
+EXPORTER_VERSION = 2
+
+
+def game_scale(name, kind):
+    """World items are shown smaller than their real size (WorldItemModels.For): the FBX keeps real size, the game
+    scale is recorded here. Tools 0.7, clothing 0.45, media / seeds / ammo 0.3, other items 0.35, the rest 1."""
+    if kind != "item":
+        return 1.0
+    n = name.lower()
+    if n.startswith("tool_"):
+        return 0.7
+    if n.startswith("cloth_"):
+        return 0.45
+    if n.startswith(("book_", "vhs_", "bp_", "seed_", "ammo_", "bait_")):
+        return 0.3
+    if n.startswith(("world_res", "world_kit", "kit_", "animal_")):
+        return 1.0
+    return 0.35
+
+
+def fresh(out_dir, name, src):
+    """The asset's sidecar is newer than its source file and comes from this exporter version."""
+    sc = os.path.join(out_dir, name + ".hd.json")
+    if not os.path.exists(sc):
+        return False
+    t = os.path.getmtime(sc)
+    if t < os.path.getmtime(src):                      # exporter changes that need a re-export bump EXPORTER_VERSION
+        return False
+    try:
+        return json.load(open(sc)).get("exporter", 0) >= EXPORTER_VERSION
+    except (OSError, ValueError):
+        return False
 
 
 def export_asset(name, root, objs, o, cfg):
@@ -750,7 +859,14 @@ def export_asset(name, root, objs, o, cfg):
     apply_modifiers(meshes, drop={"MASK"} if o["group"] == "character" else ())
     for ob in meshes:
         ob.data.name = ob.name if ob.data.users == 1 else ob.data.name
-    # ---- atlas groups
+    # ---- atlas groups (meshes without faces are dropped: nothing to bake or draw)
+    for ob in [ob for ob in meshes if not ob.data.polygons]:
+        log("dropping empty mesh", ob.name)
+        for c in list(ob.children):
+            c.parent = ob.parent
+        meshes.remove(ob)
+        objs.remove(ob)
+        bpy.data.objects.remove(ob, do_unlink=True)
     if cfg["atlas"] == "object":
         groups = [(ob.name, [ob], atlas_size(o, cfg, ob)) for ob in meshes]
     else:
@@ -759,15 +875,19 @@ def export_asset(name, root, objs, o, cfg):
         for ob in meshes:
             if ob.data.users > 1:
                 ob.data = ob.data.copy()             # each mesh gets its own layout
-    ensure_uvs(groups, force=cfg["atlas"] == "object")
+    ensure_uvs(groups, force=cfg["atlas"] == "object" or (cfg.get("unwrap", False) and len(meshes) > 1))
     # ---- material classes, the body paint (vehicles)
     classes = {}
     for ob in meshes:
         for m in ob.data.materials:
             if m:
                 classes[m.name] = classify(m)
-    kind = o["kind"] or cfg["kind"]
+    kind = o["kind"] or ROOT_KINDS.get(str(root.get("kind", "")) if root is not None else "", None) or cfg["kind"]
     paint_mats = set()
+    if kind == "character":                            # skin and hair are tinted in game (Appearance)
+        paint_mats = {m for m in classes if m.startswith(("skin", "hair"))}
+        for m in paint_mats:
+            classes[m] = "paint"
     if kind == "vehicle":
         area = {}
         for ob in meshes:
@@ -789,10 +909,12 @@ def export_asset(name, root, objs, o, cfg):
     for an, gobjs, size in groups:
         info, base_lin = bake_atlas(an, gobjs, size, out_dir, o, paint_mats)
         atlases[an] = info
+        sway = False
         for ob in gobjs:
             atlas_of[ob.name] = an
-            vertex_colours(ob, base_lin)
+            sway |= vertex_colours(ob, base_lin)
             strip_attributes(ob.data)
+        info["swayTip"] = SWAY_TIP if sway else 0.0
     # ---- split glass / lamps into children, LODs
     for ob in list(meshes):
         for c in split_roles(ob, classes):
@@ -821,7 +943,7 @@ def export_asset(name, root, objs, o, cfg):
     # ---- sidecar (JsonUtility-friendly: lists, no dictionaries, no nulls)
     arm = next((ob for ob in objs if ob.type == "ARMATURE"), None)
     side = {
-        "format": 1, "asset": name, "group": o["group"], "kind": kind, "source": os.path.basename(bpy.data.filepath),
+        "format": 2, "asset": name, "group": o["group"], "kind": kind, "source": os.path.basename(bpy.data.filepath),
         "units": "m", "axes": "unity (+X right, +Y up, +Z forward); position/rotation/scale parent-local, rootPosition/rootMatrix in prefab space",
         "mirroredOnExport": cfg["mirror"], "bakeAxisConversion": arm is not None, "readable": kind in ("vehicle", "character", "part"),
         "rootName": root.name if root is not None else "", "rootProps": props_of(root) if root is not None else [],
@@ -831,6 +953,8 @@ def export_asset(name, root, objs, o, cfg):
         "objects": [sidecar_object(ob, root, atlas_of, classes) for ob in objs if not (ob == root and root.type == "EMPTY")],
         "bones": armature_info(arm) if arm is not None else [],
         "lodRatios": list(LOD_RATIOS) if o["lod"] else [], "lodSuffix": SUFFIX_LOD, "splitSuffix": SUFFIX_SPLIT,
+        "gameId": str(root.get("game_id", name)) if root is not None else name,
+        "gameScale": game_scale(name, kind), "exporter": EXPORTER_VERSION,
     }
     lo = np.array([1e9] * 3)
     hi = -lo
@@ -845,8 +969,8 @@ def export_asset(name, root, objs, o, cfg):
                         hi = np.maximum(hi, p[:3])
     side["boundsMin"], side["boundsMax"] = round_list(lo), round_list(hi)
     # ---- FBX: one level under the root (nested children come out wrong with the applied space transform); the sidecar
-    # keeps the logical parents
-    if root is not None:
+    # keeps the logical parents. Rigs keep their hierarchy (bone-parented parts, written without the applied transform).
+    if root is not None and arm is None:
         for ob in objs:
             if ob is root or ob.parent is None or ob.parent is root:
                 continue
@@ -857,6 +981,13 @@ def export_asset(name, root, objs, o, cfg):
         bpy.context.view_layer.update()
     fbx = os.path.join(out_dir, name + ".fbx")
     select([ob for ob in objs], objs[0])
+    for ob in objs:                                    # the FBX writer packs 3-vectors as doubles: int arrays fail
+        for k in list(ob.keys()):
+            v = ob[k]
+            if hasattr(v, "to_list") and not isinstance(v, str):
+                lv = v.to_list()
+                if lv and all(isinstance(x, (int, float)) for x in lv):
+                    ob[k] = [float(x) for x in lv]
     write_fbx(fbx, bake_space=arm is None)
     side["fbx"] = name + ".fbx"
     side["files"] = [{"file": f, "bytes": os.path.getsize(os.path.join(out_dir, f))} for f in sorted(os.listdir(out_dir))
@@ -880,14 +1011,28 @@ def main():
         raise SystemExit("no assets found")
     names = [a[0] for a in assets]
     log("assets:", names)
+    opened = True
+    failed = []
     for i, name in enumerate(names):
-        if i > 0:                                    # each asset from a fresh copy of the file
+        if o["skip_fresh"] and fresh(os.path.join(o["out"], name), name, src):
+            log("%s: up to date" % name)
+            continue
+        if not opened:                               # each asset from a fresh copy of the file
             bpy.ops.wm.open_mainfile(filepath=src)
+        opened = False
         found = [a for a in pick_assets(o) if a[0] == name]
         if not found:
             continue
         _, root, objs = found[0]
-        export_asset(name, root, list(objs), o, cfg)
+        try:
+            export_asset(name, root, list(objs), o, cfg)
+        except Exception:                            # noqa: BLE001 - the other assets of the file still go
+            import traceback
+            log("FAILED %s\n%s" % (name, traceback.format_exc()))
+            failed.append(name)
+    if failed:
+        log("failed assets:", failed)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

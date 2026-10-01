@@ -1,0 +1,4932 @@
+{
+ "format": 1,
+ "asset": "Pickup",
+ "group": "cars",
+ "kind": "vehicle",
+ "source": "Pickup.blend",
+ "units": "m",
+ "axes": "unity (+X right, +Y up, +Z forward); position/rotation/scale parent-local, rootPosition/rootMatrix in prefab space",
+ "mirroredOnExport": false,
+ "bakeAxisConversion": false,
+ "readable": true,
+ "rootName": "Pickup",
+ "rootProps": [
+  {
+   "k": "game_ground_y_m",
+   "s": "0.04",
+   "n": 0.04,
+   "v": []
+  }
+ ],
+ "rootBlenderMatrix": [
+  1.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  1.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  1.0,
+  -0.04,
+  0.0,
+  0.0,
+  0.0,
+  1.0
+ ],
+ "atlases": [
+  {
+   "name": "Pickup",
+   "size": 2048,
+   "baseMap": "Pickup_Base.png",
+   "maskMap": "Pickup_Mask.png",
+   "normalMap": "",
+   "emissionMap": "Pickup_Emission.png",
+   "emissionScale": 1.0,
+   "paintRef": [
+    0.023153366521000862,
+    0.039546236395835876,
+    0.03189603239297867
+   ],
+   "hasAlpha": true,
+   "materials": [
+    "underbody",
+    "Pickup_paint",
+    "interior_trim",
+    "carpet",
+    "chrome",
+    "grille_dark",
+    "plastic",
+    "wood",
+    "void",
+    "plate",
+    "plate_ink",
+    "steel",
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "cage_black",
+    "jerry_olive",
+    "jerry_red",
+    "jerry_sand",
+    "glass",
+    "Pickup_seam",
+    "seal",
+    "engine_block",
+    "engine_paint",
+    "paint",
+    "dash",
+    "lamp_head",
+    "lamp_amber",
+    "lamp_tail",
+    "leather"
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "Pickup_paint",
+   "cls": "paint"
+  },
+  {
+   "name": "Pickup_seam",
+   "cls": "opaque"
+  },
+  {
+   "name": "cage_black",
+   "cls": "opaque"
+  },
+  {
+   "name": "carpet",
+   "cls": "opaque"
+  },
+  {
+   "name": "chrome",
+   "cls": "opaque"
+  },
+  {
+   "name": "dash",
+   "cls": "opaque"
+  },
+  {
+   "name": "engine_block",
+   "cls": "opaque"
+  },
+  {
+   "name": "engine_paint",
+   "cls": "opaque"
+  },
+  {
+   "name": "glass",
+   "cls": "glass"
+  },
+  {
+   "name": "grille_dark",
+   "cls": "opaque"
+  },
+  {
+   "name": "interior_trim",
+   "cls": "opaque"
+  },
+  {
+   "name": "jerry_olive",
+   "cls": "opaque"
+  },
+  {
+   "name": "jerry_red",
+   "cls": "opaque"
+  },
+  {
+   "name": "jerry_sand",
+   "cls": "opaque"
+  },
+  {
+   "name": "lamp_amber",
+   "cls": "lamp_amber"
+  },
+  {
+   "name": "lamp_head",
+   "cls": "lamp_head"
+  },
+  {
+   "name": "lamp_tail",
+   "cls": "lamp_tail"
+  },
+  {
+   "name": "leather",
+   "cls": "opaque"
+  },
+  {
+   "name": "paint",
+   "cls": "opaque"
+  },
+  {
+   "name": "plastic",
+   "cls": "opaque"
+  },
+  {
+   "name": "plate",
+   "cls": "opaque"
+  },
+  {
+   "name": "plate_ink",
+   "cls": "opaque"
+  },
+  {
+   "name": "rim_steel",
+   "cls": "opaque"
+  },
+  {
+   "name": "rubber",
+   "cls": "opaque"
+  },
+  {
+   "name": "seal",
+   "cls": "opaque"
+  },
+  {
+   "name": "steel",
+   "cls": "opaque"
+  },
+  {
+   "name": "steel_dark",
+   "cls": "opaque"
+  },
+  {
+   "name": "tyre_side",
+   "cls": "opaque"
+  },
+  {
+   "name": "underbody",
+   "cls": "opaque"
+  },
+  {
+   "name": "void",
+   "cls": "opaque"
+  },
+  {
+   "name": "wood",
+   "cls": "opaque"
+  }
+ ],
+ "paintMaterials": [
+  "Pickup_paint"
+ ],
+ "objects": [
+  {
+   "name": "Body",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body",
+   "tris": 18524,
+   "verts": 9597,
+   "boundsMin": [
+    -0.99995,
+    0.46013,
+    -2.79756
+   ],
+   "boundsMax": [
+    0.99879,
+    1.84,
+    2.246
+   ],
+   "materials": [
+    "underbody",
+    "Pickup_paint",
+    "interior_trim",
+    "carpet",
+    "chrome",
+    "grille_dark",
+    "plastic",
+    "wood",
+    "void",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_F",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.62,
+    2.306
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    2.306
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    2.306,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "bumper_chrome",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      28.825000762939453
+     ]
+    }
+   ],
+   "mesh": "Bumper_F",
+   "tris": 948,
+   "verts": 500,
+   "boundsMin": [
+    -0.98625,
+    -0.08,
+    -0.176
+   ],
+   "boundsMax": [
+    0.98625,
+    0.144,
+    0.076
+   ],
+   "materials": [
+    "chrome",
+    "plastic",
+    "steel",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_R",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.62,
+    -2.864
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    -2.864
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    -2.864,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "rear_spare_carrier",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      -35.79999923706055
+     ]
+    }
+   ],
+   "mesh": "Bumper_R",
+   "tris": 3452,
+   "verts": 1850,
+   "boundsMin": [
+    -0.952,
+    -0.088,
+    -0.3424
+   ],
+   "boundsMax": [
+    0.952,
+    0.7275,
+    0.056
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void",
+    "steel"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Cargo",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.836,
+    -2.034
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.836,
+    -2.034
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.836,
+    0.0,
+    0.0,
+    1.0,
+    -2.034,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "cargo",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "cargo_jerry_rack",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.449999809265137,
+      -25.424999237060547
+     ]
+    }
+   ],
+   "mesh": "Cargo",
+   "tris": 2040,
+   "verts": 1108,
+   "boundsMin": [
+    -0.824,
+    -0.08,
+    -0.38465
+   ],
+   "boundsMax": [
+    0.824,
+    0.43533,
+    0.38465
+   ],
+   "materials": [
+    "cage_black",
+    "jerry_olive",
+    "steel_dark",
+    "jerry_red",
+    "jerry_sand"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_L",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.95,
+    0.56,
+    0.626
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_L",
+   "tris": 3248,
+   "verts": 1692,
+   "boundsMin": [
+    -0.16114,
+    0.00291,
+    -0.86989
+   ],
+   "boundsMax": [
+    0.13107,
+    1.21593,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_R",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.95,
+    0.56,
+    0.626
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_R",
+   "tris": 3248,
+   "verts": 1692,
+   "boundsMin": [
+    -0.13107,
+    0.00291,
+    -0.87012
+   ],
+   "boundsMax": [
+    0.16114,
+    1.216,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Engine",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.66,
+    1.346
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.66,
+    1.346
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.66,
+    0.0,
+    0.0,
+    1.0,
+    1.346,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "engine",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "engine_i6",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      8.25,
+      16.825000762939453
+     ]
+    }
+   ],
+   "mesh": "Engine",
+   "tris": 376,
+   "verts": 198,
+   "boundsMin": [
+    -0.136,
+    0.0,
+    -0.3
+   ],
+   "boundsMax": [
+    0.21198,
+    0.504,
+    0.3
+   ],
+   "materials": [
+    "engine_block",
+    "engine_paint",
+    "chrome",
+    "paint"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Glass",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Glass",
+   "tris": 628,
+   "verts": 344,
+   "boundsMin": [
+    -0.79088,
+    1.27807,
+    -0.3216
+   ],
+   "boundsMax": [
+    0.79088,
+    1.77913,
+    0.626
+   ],
+   "materials": [
+    "glass",
+    "seal"
+   ],
+   "classes": [
+    "glass",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Hood",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    1.17021,
+    0.546
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    1.17021,
+    0.546
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    1.17021,
+    0.0,
+    0.0,
+    1.0,
+    0.546,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      14.627631187438965,
+      6.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Hood",
+   "tris": 4296,
+   "verts": 2150,
+   "boundsMin": [
+    -0.92075,
+    -0.05848,
+    0.0871
+   ],
+   "boundsMax": [
+    0.92076,
+    0.07979,
+    1.50403
+   ],
+   "materials": [
+    "Pickup_paint",
+    "Pickup_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Interior",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior",
+   "tris": 804,
+   "verts": 424,
+   "boundsMin": [
+    -0.68,
+    0.67811,
+    0.032
+   ],
+   "boundsMax": [
+    0.68,
+    1.42731,
+    0.6
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Lights",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Lights",
+   "tris": 608,
+   "verts": 338,
+   "boundsMin": [
+    -0.98236,
+    0.798,
+    -2.77518
+   ],
+   "boundsMax": [
+    0.98689,
+    1.12587,
+    2.25565
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Seat_Driver",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.4,
+    0.64,
+    -0.48
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.4,
+    0.64,
+    -0.48
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.4,
+    0.0,
+    1.0,
+    0.0,
+    0.64,
+    0.0,
+    0.0,
+    1.0,
+    -0.48,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -5.0,
+      8.0,
+      -6.0
+     ]
+    }
+   ],
+   "mesh": "Seat_Driver",
+   "tris": 484,
+   "verts": 248,
+   "boundsMin": [
+    -0.2,
+    -0.024,
+    -0.31834
+   ],
+   "boundsMax": [
+    0.2,
+    0.7043,
+    0.2
+   ],
+   "materials": [
+    "leather"
+   ],
+   "classes": [
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Seat_Passenger",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.4,
+    0.64,
+    -0.48
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.4,
+    0.64,
+    -0.48
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.4,
+    0.0,
+    1.0,
+    0.0,
+    0.64,
+    0.0,
+    0.0,
+    1.0,
+    -0.48,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      5.0,
+      8.0,
+      -6.0
+     ]
+    }
+   ],
+   "mesh": "Seat_Passenger",
+   "tris": 484,
+   "verts": 248,
+   "boundsMin": [
+    -0.2,
+    -0.024,
+    -0.31834
+   ],
+   "boundsMax": [
+    0.2,
+    0.7043,
+    0.2
+   ],
+   "materials": [
+    "leather"
+   ],
+   "classes": [
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Tailgate",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Tailgate",
+   "tris": 652,
+   "verts": 328,
+   "boundsMin": [
+    -0.99647,
+    0.5148,
+    -2.77672
+   ],
+   "boundsMax": [
+    0.99606,
+    1.25947,
+    -2.71772
+   ],
+   "materials": [
+    "Pickup_paint",
+    "Pickup_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.82,
+    0.41,
+    1.446
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL",
+   "tris": 4252,
+   "verts": 2270,
+   "boundsMin": [
+    -0.1264,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.1264,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.82,
+    0.41,
+    1.446
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR",
+   "tris": 4252,
+   "verts": 2270,
+   "boundsMin": [
+    -0.1264,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.1264,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.82,
+    0.41,
+    -1.526
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL",
+   "tris": 4252,
+   "verts": 2270,
+   "boundsMin": [
+    -0.1264,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.1264,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.82,
+    0.41,
+    -1.526
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR",
+   "tris": 4252,
+   "verts": 2270,
+   "boundsMin": [
+    -0.1264,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.1264,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__Glass",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "glass",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Door_L__Glass",
+   "tris": 428,
+   "verts": 278,
+   "boundsMin": [
+    -0.15114,
+    0.72135,
+    -0.81332
+   ],
+   "boundsMax": [
+    0.06399,
+    1.19535,
+    -0.1
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__Glass",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "glass",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Door_R__Glass",
+   "tris": 428,
+   "verts": 278,
+   "boundsMin": [
+    -0.06372,
+    0.72135,
+    -0.81339
+   ],
+   "boundsMax": [
+    0.15114,
+    1.19542,
+    -0.1
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Head",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_head",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Head",
+   "tris": 144,
+   "verts": 98,
+   "boundsMin": [
+    -0.78176,
+    0.94221,
+    2.16039
+   ],
+   "boundsMax": [
+    0.78174,
+    1.10056,
+    2.20481
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Amber",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_amber",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Amber",
+   "tris": 88,
+   "verts": 48,
+   "boundsMin": [
+    -0.77,
+    0.80998,
+    2.24902
+   ],
+   "boundsMax": [
+    0.77,
+    0.86998,
+    2.26524
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Tail",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_tail",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Tail",
+   "tris": 88,
+   "verts": 48,
+   "boundsMin": [
+    -0.97217,
+    0.88822,
+    -2.78414
+   ],
+   "boundsMax": [
+    0.97641,
+    1.09171,
+    -2.75943
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Body__L1",
+   "parent": "Body",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body__L1",
+   "tris": 9262,
+   "verts": 4837,
+   "boundsMin": [
+    -0.99995,
+    0.46013,
+    -2.79756
+   ],
+   "boundsMax": [
+    0.99879,
+    1.84,
+    2.246
+   ],
+   "materials": [
+    "underbody",
+    "Pickup_paint",
+    "interior_trim",
+    "carpet",
+    "chrome",
+    "grille_dark",
+    "plastic",
+    "wood",
+    "void",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Body__L2",
+   "parent": "Body",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body__L2",
+   "tris": 3704,
+   "verts": 2002,
+   "boundsMin": [
+    -0.99998,
+    0.46013,
+    -2.79756
+   ],
+   "boundsMax": [
+    0.99876,
+    1.84013,
+    2.24609
+   ],
+   "materials": [
+    "underbody",
+    "Pickup_paint",
+    "interior_trim",
+    "carpet",
+    "chrome",
+    "grille_dark",
+    "plastic",
+    "wood",
+    "void",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_F__L1",
+   "parent": "Bumper_F",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    2.306
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    2.306,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "bumper_chrome",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      28.825000762939453
+     ]
+    }
+   ],
+   "mesh": "Bumper_F__L1",
+   "tris": 474,
+   "verts": 263,
+   "boundsMin": [
+    -0.98625,
+    -0.08143,
+    -0.176
+   ],
+   "boundsMax": [
+    0.98625,
+    0.14477,
+    0.07677
+   ],
+   "materials": [
+    "chrome",
+    "plastic",
+    "steel",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_F__L2",
+   "parent": "Bumper_F",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    2.306
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    2.306,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "bumper_chrome",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      28.825000762939453
+     ]
+    }
+   ],
+   "mesh": "Bumper_F__L2",
+   "tris": 188,
+   "verts": 120,
+   "boundsMin": [
+    -0.9854,
+    -0.0831,
+    -0.17267
+   ],
+   "boundsMax": [
+    0.9854,
+    0.1471,
+    0.0744
+   ],
+   "materials": [
+    "chrome",
+    "plastic",
+    "steel",
+    "plate",
+    "plate_ink"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_R__L1",
+   "parent": "Bumper_R",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    -2.864
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    -2.864,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "rear_spare_carrier",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      -35.79999923706055
+     ]
+    }
+   ],
+   "mesh": "Bumper_R__L1",
+   "tris": 1726,
+   "verts": 987,
+   "boundsMin": [
+    -0.952,
+    -0.088,
+    -0.34247
+   ],
+   "boundsMax": [
+    0.952,
+    0.7275,
+    0.056
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void",
+    "steel"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_R__L2",
+   "parent": "Bumper_R",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.62,
+    -2.864
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.62,
+    0.0,
+    0.0,
+    1.0,
+    -2.864,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "rear_spare_carrier",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      7.75,
+      -35.79999923706055
+     ]
+    }
+   ],
+   "mesh": "Bumper_R__L2",
+   "tris": 689,
+   "verts": 416,
+   "boundsMin": [
+    -0.94585,
+    -0.08006,
+    -0.34239
+   ],
+   "boundsMax": [
+    0.94585,
+    0.7275,
+    0.04933
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void",
+    "steel"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Cargo__L1",
+   "parent": "Cargo",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.836,
+    -2.034
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.836,
+    0.0,
+    0.0,
+    1.0,
+    -2.034,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "cargo",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "cargo_jerry_rack",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.449999809265137,
+      -25.424999237060547
+     ]
+    }
+   ],
+   "mesh": "Cargo__L1",
+   "tris": 1020,
+   "verts": 598,
+   "boundsMin": [
+    -0.824,
+    -0.08,
+    -0.38465
+   ],
+   "boundsMax": [
+    0.824,
+    0.43533,
+    0.38465
+   ],
+   "materials": [
+    "cage_black",
+    "jerry_olive",
+    "steel_dark",
+    "jerry_red",
+    "jerry_sand"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Cargo__L2",
+   "parent": "Cargo",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.836,
+    -2.034
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.836,
+    0.0,
+    0.0,
+    1.0,
+    -2.034,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "cargo",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "cargo_jerry_rack",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.449999809265137,
+      -25.424999237060547
+     ]
+    }
+   ],
+   "mesh": "Cargo__L2",
+   "tris": 408,
+   "verts": 292,
+   "boundsMin": [
+    -0.82583,
+    -0.07074,
+    -0.38745
+   ],
+   "boundsMax": [
+    0.82291,
+    0.43523,
+    0.38966
+   ],
+   "materials": [
+    "cage_black",
+    "jerry_olive",
+    "steel_dark",
+    "jerry_red",
+    "jerry_sand"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__L1",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_L__L1",
+   "tris": 1623,
+   "verts": 852,
+   "boundsMin": [
+    -0.16114,
+    0.00291,
+    -0.86989
+   ],
+   "boundsMax": [
+    0.13107,
+    1.21593,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__L2",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_L__L2",
+   "tris": 649,
+   "verts": 351,
+   "boundsMin": [
+    -0.16191,
+    0.00387,
+    -0.8696
+   ],
+   "boundsMax": [
+    0.13107,
+    1.21762,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__L1",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_R__L1",
+   "tris": 1624,
+   "verts": 860,
+   "boundsMin": [
+    -0.13107,
+    0.00291,
+    -0.87012
+   ],
+   "boundsMax": [
+    0.16114,
+    1.216,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__L2",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.95,
+    0.56,
+    0.626
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.95,
+    0.0,
+    1.0,
+    0.0,
+    0.56,
+    0.0,
+    0.0,
+    1.0,
+    0.626,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      11.875,
+      7.0,
+      7.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Door_R__L2",
+   "tris": 649,
+   "verts": 353,
+   "boundsMin": [
+    -0.13107,
+    0.00359,
+    -0.87012
+   ],
+   "boundsMax": [
+    0.16191,
+    1.21597,
+    0.00979
+   ],
+   "materials": [
+    "Pickup_paint",
+    "chrome",
+    "glass",
+    "Pickup_seam",
+    "seal"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "glass",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Hood__L1",
+   "parent": "Hood",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    1.17021,
+    0.546
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    1.17021,
+    0.0,
+    0.0,
+    1.0,
+    0.546,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      14.627631187438965,
+      6.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Hood__L1",
+   "tris": 2148,
+   "verts": 1076,
+   "boundsMin": [
+    -0.92075,
+    -0.05848,
+    0.0871
+   ],
+   "boundsMax": [
+    0.92076,
+    0.07979,
+    1.50403
+   ],
+   "materials": [
+    "Pickup_paint",
+    "Pickup_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Hood__L2",
+   "parent": "Hood",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    1.17021,
+    0.546
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    1.17021,
+    0.0,
+    0.0,
+    1.0,
+    0.546,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      14.627631187438965,
+      6.824999809265137
+     ]
+    }
+   ],
+   "mesh": "Hood__L2",
+   "tris": 858,
+   "verts": 431,
+   "boundsMin": [
+    -0.92075,
+    -0.05848,
+    0.0871
+   ],
+   "boundsMax": [
+    0.92076,
+    0.0798,
+    1.50403
+   ],
+   "materials": [
+    "Pickup_paint",
+    "Pickup_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Interior__L1",
+   "parent": "Interior",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior__L1",
+   "tris": 402,
+   "verts": 223,
+   "boundsMin": [
+    -0.68,
+    0.67777,
+    0.03218
+   ],
+   "boundsMax": [
+    0.68,
+    1.42694,
+    0.6
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Interior__L2",
+   "parent": "Interior",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior__L2",
+   "tris": 160,
+   "verts": 102,
+   "boundsMin": [
+    -0.67422,
+    0.68,
+    0.03116
+   ],
+   "boundsMax": [
+    0.67422,
+    1.4219,
+    0.58983
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL__L1",
+   "parent": "Wheel_FL",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL__L1",
+   "tris": 2126,
+   "verts": 1188,
+   "boundsMin": [
+    -0.12642,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.12642,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL__L2",
+   "parent": "Wheel_FL",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL__L2",
+   "tris": 850,
+   "verts": 485,
+   "boundsMin": [
+    -0.12645,
+    -0.37042,
+    -0.37035
+   ],
+   "boundsMax": [
+    0.12643,
+    0.37038,
+    0.37035
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR__L1",
+   "parent": "Wheel_FR",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR__L1",
+   "tris": 2126,
+   "verts": 1195,
+   "boundsMin": [
+    -0.12643,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.12642,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR__L2",
+   "parent": "Wheel_FR",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    1.446
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    1.446,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      18.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR__L2",
+   "tris": 850,
+   "verts": 483,
+   "boundsMin": [
+    -0.12643,
+    -0.37075,
+    -0.37075
+   ],
+   "boundsMax": [
+    0.12647,
+    0.37075,
+    0.37075
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL__L1",
+   "parent": "Wheel_RL",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL__L1",
+   "tris": 2126,
+   "verts": 1188,
+   "boundsMin": [
+    -0.12642,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.12643,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL__L2",
+   "parent": "Wheel_RL",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-9.25",
+     "n": -9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL__L2",
+   "tris": 849,
+   "verts": 484,
+   "boundsMin": [
+    -0.12642,
+    -0.37042,
+    -0.37035
+   ],
+   "boundsMax": [
+    0.12642,
+    0.37038,
+    0.37035
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR__L1",
+   "parent": "Wheel_RR",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR__L1",
+   "tris": 2126,
+   "verts": 1196,
+   "boundsMin": [
+    -0.12642,
+    -0.37,
+    -0.37
+   ],
+   "boundsMax": [
+    0.12642,
+    0.37,
+    0.37
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR__L2",
+   "parent": "Wheel_RR",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.82,
+    0.41,
+    -1.526
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.82,
+    0.0,
+    1.0,
+    0.0,
+    0.41,
+    0.0,
+    0.0,
+    1.0,
+    -1.526,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Pickup_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.37",
+     "n": 0.37,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "9.25",
+     "n": 9.25,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      10.25,
+      5.125,
+      -19.075000762939453
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR__L2",
+   "tris": 850,
+   "verts": 484,
+   "boundsMin": [
+    -0.12643,
+    -0.37075,
+    -0.37075
+   ],
+   "boundsMax": [
+    0.12647,
+    0.37075,
+    0.37075
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "steel_dark",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Pickup",
+   "skinned": false
+  }
+ ],
+ "bones": [],
+ "lodRatios": [
+  0.5,
+  0.2
+ ],
+ "lodSuffix": "__L",
+ "splitSuffix": "__",
+ "boundsMin": [
+  -1.11114,
+  0.04,
+  -3.2064
+ ],
+ "boundsMax": [
+  1.11114,
+  1.84,
+  2.382
+ ],
+ "fbx": "Pickup.fbx",
+ "files": [
+  {
+   "file": "Pickup.fbx",
+   "bytes": 3667388
+  },
+  {
+   "file": "Pickup_Base.png",
+   "bytes": 2078425
+  },
+  {
+   "file": "Pickup_Emission.png",
+   "bytes": 87715
+  },
+  {
+   "file": "Pickup_Mask.png",
+   "bytes": 2989369
+  }
+ ],
+ "tris": [
+  57976,
+  26783,
+  10704
+ ]
+}
