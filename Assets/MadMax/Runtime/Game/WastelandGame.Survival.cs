@@ -427,7 +427,7 @@ namespace MadMax.Game
             MonoBehaviour pick = null;
             foreach (var p in Placeable.All) Consider(p, ref pick, ref best, eye);
             foreach (var l in LootSpots) Consider(l, ref pick, ref best, eye);
-            foreach (var c in Container.All) if (c && !c.GetComponent<Placeable>()) Consider(c, ref pick, ref best, eye);   // truck beds, hoppers
+            foreach (var c in Container.All) if (c && !c.GetComponent<Placeable>() && (c.access == null || ((c.transform.position - eye).sqrMagnitude < 16f && c.CanOpen(this)))) Consider(c, ref pick, ref best, eye);   // truck beds, hoppers
             foreach (var t in TrailerDeck.All)
             {
                 if (!t) continue;

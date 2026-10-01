@@ -54,6 +54,7 @@ namespace MadMax.Vehicles
             if (!GetComponent<VehicleGrime>() && transform.Find("Body")) gameObject.AddComponent<VehicleGrime>();
             if (!TryGetComponent(out breakables) && transform.Find("Body")) breakables = gameObject.AddComponent<VehicleBreakables>();
             PassengerSeat.For(driver);
+            VehicleStorage.For(driver);                                                  // trunk, glovebox, back seat...
         }
 
         void OnCollisionEnter(Collision c) => Handle(c);

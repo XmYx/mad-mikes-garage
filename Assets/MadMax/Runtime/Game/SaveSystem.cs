@@ -29,6 +29,7 @@ namespace MadMax.Game
         public string paint;               // VehiclePaint colour,decal
         public string service;             // VehicleSystems maintenance (oil life, air filter, plugs, hours)
         public string wear;                // VehicleBreakables: broken glass and lamps, scraped paint
+        public string storage;             // VehicleStorage compartments (trunk, glovebox, back seat...)
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
     }
 

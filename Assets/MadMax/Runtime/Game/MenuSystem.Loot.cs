@@ -92,6 +92,7 @@ namespace MadMax.Game
 
         public bool LockedForMe(Container c)
         {
+            if (!c.CanOpen(game)) return true;                                                  // a vehicle compartment out of reach
             var door = c.GetComponent<Door>();
             return door && door.locked && !game.OwnsPiece(c.GetComponent<Placeable>());
         }

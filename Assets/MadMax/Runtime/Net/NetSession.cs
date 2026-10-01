@@ -21,7 +21,8 @@ namespace MadMax.Net
         VehicleMeta, Weather, Appearance, Salvage, Denied,
         PlaceState, Searched, VehicleSpawn, FireIgnite, Throw, Terraform,
         ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks,
-        ItemSpawn, ItemMove, ItemTake, ItemGone, ItemGrant, WorkPose                      // protocol 4 (NetSession.Items)
+        ItemSpawn, ItemMove, ItemTake, ItemGone, ItemGrant, WorkPose,                     // protocol 4 (NetSession.Items)
+        VehicleStore                                                                       // vehicle compartments (NetSession.Storage)
     }
 
     /// <summary>
@@ -639,6 +640,7 @@ namespace MadMax.Net
                 case Msg.Strike when IsClient: ReadStrike(r); break;
                 case Msg.WorldState when IsClient: ReadWorldState(r); break;
                 case Msg.VehicleLooks: ReadVehicleLooks(r, peer); break;
+                case Msg.VehicleStore: ReadVehicleStore(r, peer); break;
                 case Msg.ItemSpawn:
                 case Msg.ItemMove:
                 case Msg.ItemTake:

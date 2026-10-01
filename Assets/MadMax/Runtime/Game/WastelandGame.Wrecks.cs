@@ -235,6 +235,8 @@ namespace MadMax.Game
                 }
                 dmg.AddFrameDamage((float)rnd.NextDouble() * 0.6f, rnd.NextDouble() < 0.5 ? -1f : 1f);
             }
+            int stash = rnd.Next();
+            if (v.TryGetComponent<VehicleStorage>(out var storage)) storage.FillWreck(stash);         // a searchable trunk and glovebox
         }
 
         /// <summary>Wake bodies near the player (terrain colliders exist there), freeze distant ones.</summary>
