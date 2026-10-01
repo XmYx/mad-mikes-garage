@@ -47,10 +47,12 @@ namespace MadMax.Game.Acceptance
             // ---- a pest job: taken once
             var pest = offers.FirstOrDefault(o => o.kind == 2);
             if (!c.Check(pest != null, "a pest job on the board")) yield break;
+            var stale = pest;
             g.Menus.Pick(pest.title);
+            pest = Contracts.Active.FirstOrDefault(k => k.id == stale.id) ?? stale;                // the board's row is its own copy of the offer
             c.Check(Contracts.Active.Count(k => k.id == pest.id) == 1 && Journal.Entries.Last().kind == "JOB", "taken: " + pest.title);
             c.Check(!Contracts.Offers(st).Any(o => o.id == pest.id), "no longer on offer today");
-            Contracts.Accept(g, pest, board.transform.position);                                   // a stale row pressed again
+            Contracts.Accept(g, stale, board.transform.position);                                  // a stale row pressed again
             c.Check(Contracts.Active.Count(k => k.id == pest.id) == 1, "a second press takes nothing");
 
             // ---- the kills
@@ -85,8 +87,10 @@ namespace MadMax.Game.Acceptance
             {
                 var res = (ResourceType)int.Parse(sup.target.Substring(4));
                 var side = (Faction)sup.faction;
+                var supOffer = sup;
                 g.Menus.Pick(sup.title);
-                c.Check(Contracts.Active.Contains(sup), "supply job taken: " + sup.title);
+                sup = Contracts.Active.FirstOrDefault(k => k.id == supOffer.id);
+                if (!c.Check(sup != null, "supply job taken: " + supOffer.title)) yield break;
                 g.Menus.Pick(sup.title);
                 c.Check(!sup.completed && Contracts.Active.Contains(sup), "handing in with nothing to give does nothing");
                 PH.Grant(c, g, sup.target, sup.need);
@@ -101,7 +105,10 @@ namespace MadMax.Game.Acceptance
             // ---- a haul that runs out of time
             var haul = offers.FirstOrDefault(o => o.kind == 3);
             if (!c.Check(haul != null, "a haul on the board")) yield break;
+            var haulOffer = haul;
             g.Menus.Pick(haul.title);
+            haul = Contracts.Active.FirstOrDefault(k => k.id == haulOffer.id);
+            if (!c.Check(haul != null, "haul taken: " + haulOffer.title)) yield break;
             yield return new WaitForSeconds(0.5f);
             int crates = Object.FindObjectsByType<VehiclePart>(FindObjectsSortMode.None).Count(p => p && p.partId == "cargo_crate" && PH.Flat(p.transform.position, board.transform.position) < 5f);
             c.Check(Contracts.Active.Contains(haul) && haul.deadline == DayNight.Day + haul.days && crates == haul.need, $"haul taken: {crates}/{haul.need} crates by the board, due day {haul.deadline + 1}");

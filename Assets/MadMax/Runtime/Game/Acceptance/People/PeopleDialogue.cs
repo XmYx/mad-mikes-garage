@@ -40,14 +40,15 @@ namespace MadMax.Game.Acceptance
                 var p = n.Profile;
                 bool ok = !string.IsNullOrEmpty(p.Name) && !string.IsNullOrEmpty(p.Title) && System.Enum.IsDefined(typeof(Temper), p.temper)
                           && !string.IsNullOrEmpty(p.Backstory(0)) && !string.IsNullOrEmpty(p.Backstory(1)) && !string.IsNullOrEmpty(p.Backstory(2))
-                          && NpcProfile.Make(p.id, p.role, p.seed, p.kind).Name == p.Name;
+                          && (p.Cast || NpcProfile.Make(p.id, p.role, p.seed, p.kind).Name == p.Name);   // story cast keep their authored names
                 if (ok) whole++; else c.Note("incomplete person: " + p.id + " '" + p.Name + "' " + p.Title);
             }
             c.Check(whole == people.Count, $"every one has a name, a job, a temperament and a three-layer history, the same on every meeting ({whole}/{people.Count})");
             c.Note("met: " + string.Join(", ", people.Take(8).Select(n => n.Profile.Name + " (" + n.Profile.Title + ", " + n.Profile.temper + ")")));
 
             // ---- a first meeting
-            var who = PH.Nearest(centre, reach, n => n.Profile.role == NpcRole.Resident && n.Available && !n.Hostile && !n.State.Has(NpcSave.Met));
+            c.Metric("story_cast_in_town", people.Count(n => n.Profile.Cast), "");
+            var who = PH.Nearest(centre, reach, n => n.Profile.role == NpcRole.Resident && !n.Profile.Cast && n.Available && !n.Hostile && !n.State.Has(NpcSave.Met));
             if (!c.Check(who, "a resident we have not met yet")) yield break;
             var P = who.Profile; var S = who.State;
             yield return PH.Face(c, who, 1.6f);
@@ -80,18 +81,23 @@ namespace MadMax.Game.Acceptance
             c.Check(S.revealed == 2 && PH.Line(g) == P.Backstory(1), $"layer two at disposition {S.disposition}: what drives them");
 
             // ---- rumours
-            int journal = Journal.Entries.Count;
             g.Menus.Pick("WHAT'S HAPPENING AROUND HERE?");
             string rumour = PH.Line(g);
             c.Check(rumour.Length > 10 && rumour != "WHY WOULD I TELL YOU ANYTHING?", "a rumour: " + rumour);
-            c.Check(Journal.Entries.Count == journal + 1 && Journal.Entries[Journal.Entries.Count - 1].kind == "RUMOUR", "the rumour goes into the journal");
+            c.Check(Journal.Entries.Count > 0 && Journal.Entries[0].kind == "RUMOUR" && Journal.Entries[0].text.EndsWith(rumour), "the rumour goes into the journal (newest first): " + (Journal.Entries.Count > 0 ? Journal.Entries[0].kind + " " + Journal.Entries[0].text : "empty"));
 
             // ---- an errand: taken, handed in once, paid once
             var job = NpcLore.Jobs[P.job];
             if (!c.Check(g.Menus.Pick("NEED A HAND WITH ANYTHING?"), "they have an errand: " + PH.Rows(g))) yield break;
             c.Check(PH.Line(g) == job.ask, "the errand: " + job.ask);
             g.Menus.Pick("I'LL DO IT.");
-            c.Check(S.jobState == 1 && Journal.Entries.Last().kind == "ERRAND", "errand accepted and written down");
+            c.Check(S.jobState == 1 && Journal.Entries.Count > 0 && Journal.Entries[0].kind == "ERRAND", "errand accepted and written down");
+            int had = PH.Have(g, job.item);
+            if (had > 0)
+            {
+                if (job.item.StartsWith("res:")) g.Inventory.TrySpend((MadMax.Items.ResourceType)int.Parse(job.item.Substring(4)), had); else g.Inventory.TakeItem(job.item, had);
+                c.Fixture("emptied the pack of " + had + " " + Trade.Name(job.item) + " (to ask before having it)");
+            }
             g.Menus.Pick("ABOUT THAT ERRAND...");
             c.Check(S.jobState == 1 && PH.Line(g).StartsWith("COME BACK WHEN YOU HAVE"), "not done yet: " + PH.Line(g));
             int want = job.n - PH.Have(g, job.item);
@@ -139,7 +145,7 @@ namespace MadMax.Game.Acceptance
             g.Menus.Pick("(LEAVE)");
 
             // ---- a threat is remembered
-            var other = PH.Nearest(centre, reach, n => n != who && n.Profile.role == NpcRole.Resident && n.Available && !n.Hostile && !n.State.Has(NpcSave.Met));
+            var other = PH.Nearest(centre, reach, n => n != who && n.Profile.role == NpcRole.Resident && !n.Profile.Cast && n.Available && !n.Hostile && !n.State.Has(NpcSave.Met));
             if (!other) { c.Note("no second stranger to threaten"); yield break; }
             yield return PH.Face(c, other, 1.6f);
             PH.Talk(g, other);

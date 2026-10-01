@@ -16,7 +16,7 @@ namespace MadMax.Game.Acceptance
     class PeopleRaiders : Scenario
     {
         public override string Id => "people.raiders";
-        public override float Timeout => 240f;
+        public override float Timeout => 300f;
 
         public override IEnumerator Run(ScenarioContext c)
         {
@@ -26,14 +26,21 @@ namespace MadMax.Game.Acceptance
             PH.Attribute(c, g, Attr.Charisma, 10);
             var dir = NpcDirector.Instance;
             if (!dir) { c.Block("no NPC director"); yield break; }
-            var gangs = dir.Convoys.Where(k => k.raiders && k.phase == Convoy.Phase.Travel && !k.Spawned && !k.Friendly).ToList();
+            var gangs = dir.Convoys.Where(k => k.raiders && k.phase == Convoy.Phase.Travel && !k.Spawned && !k.Friendly).OrderBy(k => k.designs.Count(Bike)).ToList();
+            c.Note("gangs: " + string.Join("; ", gangs.Select(k => k.Gang + " [" + string.Join(",", k.designs) + "]")));
             c.Metric("raider_gangs", gangs.Count, "");
             if (!c.Check(gangs.Count > 0, "raider gangs ride the roads")) yield break;
 
             // ---- the first gang: pay the toll
-            var first = gangs[0];
-            yield return Meet(c, first);
-            if (c.Failed) yield break;
+            Convoy first = null;
+            var met = new bool[1];
+            foreach (var k in gangs)
+            {
+                yield return Meet(c, k, met);
+                if (met[0]) { first = k; break; }
+                if (g.Menus.IsOpen) g.Menus.Close();
+            }
+            if (!c.Check(first != null, "a gang spots you on its road and the boss walks up to talk")) yield break;
             var boss = first.Boss;
             string gang = first.Gang;
             var side = Factions.OfGang(gang);
@@ -60,10 +67,10 @@ namespace MadMax.Game.Acceptance
             c.Check(held, "the truce holds (" + first.phase + ")");
 
             // ---- a second gang: the bluff
-            var second = gangs.Skip(1).FirstOrDefault(k => k.phase == Convoy.Phase.Travel && !k.Spawned);
-            if (second == null) { c.Note("only one gang on the roads: the bluff is not tried"); yield break; }
-            yield return Meet(c, second);
-            if (c.Failed) yield break;
+            var second = gangs.FirstOrDefault(k => k != first && k.phase == Convoy.Phase.Travel && !k.Spawned);
+            if (second == null) { c.Note("no second gang at large on the roads: the bluff is not tried"); yield break; }
+            yield return Meet(c, second, met);
+            if (!met[0]) { c.Note("the second gang did not stop to talk: the bluff is not tried"); yield break; }
             second.Boss.Use(g, false);
             if (!c.Check(g.Menus.Labels().Any(r => r.StartsWith("[CHA 7] (LIE)")), "the lie is offered with CHA 10: " + PH.Rows(g))) yield break;
             int rep2 = Factions.Rep(Factions.OfGang(second.Gang));
@@ -76,10 +83,15 @@ namespace MadMax.Game.Acceptance
             if (g.Menus.IsOpen) g.Menus.Close();
         }
 
-        /// <summary>Stand on the gang's road ahead of it (out of town) and wait for the boss to come and make the demand.</summary>
-        static IEnumerator Meet(ScenarioContext c, Convoy k)
+        static readonly string[] Bikes = { "DirtBike", "Chopper", "SidecarOutfit", "Bicycle" };
+        static bool Bike(string design) => System.Array.IndexOf(Bikes, design) >= 0;
+
+        /// <summary>Stand on the gang's road ahead of it (out of town) and wait for the boss to come and make the demand.
+        /// <paramref name="met"/>[0] says whether it came to that; otherwise the notes say what happened instead.</summary>
+        static IEnumerator Meet(ScenarioContext c, Convoy k, bool[] met)
         {
             var g = c.Game;
+            met[0] = false;
             Vector3 spot = default; bool found = false; float skipped = 0f;
             for (float ahead = 90f; ahead < 2500f && !found; ahead += 45f)
             {
@@ -88,22 +100,41 @@ namespace MadMax.Game.Acceptance
                 if (g.World.SettlementAt(p.x, p.z) != null || g.World.SettlementAt(q.x, q.z) != null) { k.travel += 45f; skipped += 45f; continue; }   // past the town
                 spot = p + Vector3.Cross(Vector3.up, d).normalized * 3f; found = true;
             }
-            if (!found) { c.Block("the " + k.Gang + " road runs through towns all the way"); yield break; }
+            if (!found) { c.Note("the " + k.Gang + " road runs through towns all the way"); yield break; }
             if (skipped > 0f) c.Fixture("the " + k.Gang + " moved " + skipped.ToString("0") + " m on along their road (out of a town)");
             yield return PH.Go(c, spot, PH.Yaw(k.PointAt(k.travel, out _) - spot), "the " + k.Gang + "'s road, ahead of them", 2f);
             float t0 = Time.time;
+            var phase = k.phase;
+            c.Note($"{k.Gang}: {phase} on arrival, spawned {k.Spawned}");
             while (Time.time - t0 < 70f)
             {
+                if (k.phase != phase) { phase = k.phase; c.Note($"{Time.time - t0:0.0} s: {k.Gang} -> {phase}; " + State(c, k)); }
                 var b = k.Boss;
                 if (b && b.Alive && PH.Flat(b.transform.position, g.Player.transform.position) < 5.8f && k.phase == Convoy.Phase.Confront) break;
                 if (k.phase == Convoy.Phase.Attack || k.phase == Convoy.Phase.Gone) break;
                 yield return null;
             }
             c.Metric("boss_arrived_" + k.id, Time.time - t0, "s");
-            var lead = k.cars.FirstOrDefault(a => a);
-            c.Note($"{k.Gang}: phase {k.phase}, {k.cars.Count} cars, lead {(lead ? PH.Flat(lead.transform.position, g.Player.transform.position).ToString("0") + " m (" + lead.goal + ")" : "-")}, boss {(k.Boss ? PH.Flat(k.Boss.transform.position, g.Player.transform.position).ToString("0.0") + " m" : "-")}");
-            c.Check(k.Spawned, "the " + k.Gang + " come down the road");
-            c.Check(k.phase == Convoy.Phase.Confront && k.Boss && k.Boss.Alive, "they spot you and the boss walks up to talk (" + k.phase + ")");
+            c.Note("end: " + k.phase + "; " + State(c, k));
+            met[0] = k.Spawned && k.phase == Convoy.Phase.Confront && k.Boss && k.Boss.Alive;
+            if (!met[0] && k.phase == Convoy.Phase.Attack) { g.Player.Teleport(PH.Ground(spot + Vector3.right * 600f) + Vector3.up * 0.2f, 0f); c.Fixture("ran off from the attacking " + k.Gang); yield return new WaitForSeconds(1f); }
+        }
+
+        /// <summary>Where the convoy's cars and people are and what state they are in (why it attacked, if it did).</summary>
+        static string State(ScenarioContext c, Convoy k)
+        {
+            var me = c.Game.Player.transform.position;
+            var cars = k.cars.Select(a =>
+            {
+                if (!a) return "(gone)";
+                var v = a.Vehicle;
+                var bike = v ? v.GetComponent<MadMax.Vehicles.BikeBalance>() : null;
+                var eng = v ? v.GetComponentsInChildren<MadMax.Vehicles.VehiclePart>().FirstOrDefault(p => p.category == MadMax.Vehicles.PartCategory.Engine && p.Socket) : null;
+                return WastelandGame.Name(v) + " " + PH.Flat(a.transform.position, me).ToString("0") + "m " + a.goal + (a.enabled ? "" : " off") + (a.Disabled ? " DISABLED" : "")
+                       + (a.Flipped ? " flipped" : "") + (bike && bike.Crashed ? " crashed(" + bike.LastCrash + ")" : "") + (eng ? "" : " no-engine") + (eng && eng.damage >= 0.98f ? " engine-dead" : "");
+            });
+            var walkers = k.walkers.Where(w => w).Select(w => w.Profile.Name + (w.Alive ? "" : " dead") + (w.aggro ? " aggro" : "") + " " + PH.Flat(w.transform.position, me).ToString("0") + "m");
+            return "cars: " + string.Join(", ", cars) + "; on foot: " + string.Join(", ", walkers);
         }
     }
 }

@@ -76,7 +76,7 @@ namespace MadMax.Game.Acceptance
             // ---- compare
             var bench2 = SurvivalKit.Near("workbench", benchPos, 0.2f);
             var st2 = bench2 ? bench2.GetComponentInChildren<CraftingStation>() : null;
-            c.Check(st2 && st2.queue.Count == 1 && st2.queue[0].recipe == r.id && Mathf.Abs(st2.queue[0].progress - 0.4f) < 0.05f, $"the workbench job is back at 40 % ({(st2 && st2.queue.Count > 0 ? st2.queue[0].progress : -1f):0.00})");
+            c.Check(st2 && st2.queue.Count == 1 && st2.queue[0].recipe == r.id && st2.queue[0].progress >= 0.395f && st2.queue[0].progress < 0.4f + 1.5f / Mathf.Max(0.5f, RecipeLibrary.Seconds(r)) * 3f, $"the workbench job is back at 40 % and works on from there ({(st2 && st2.queue.Count > 0 ? st2.queue[0].progress : -1f):0.00})");
             c.Check(st2 && st2.queue.Count == 1 && Mathf.Abs(st2.queue[0].costMult - mult) < 0.001f, "with the price it was paid at");
             var bed2 = SurvivalKit.Near("garden_plot", bedPos, 0.2f);
             var plot2 = bed2 ? bed2.GetComponent<GardenPlot>() : null;

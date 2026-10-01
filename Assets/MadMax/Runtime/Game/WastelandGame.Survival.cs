@@ -443,7 +443,7 @@ namespace MadMax.Game
             foreach (var m in PartFunctions.Interactables) Consider(m, ref pick, ref best, eye);          // water tanks, generators, roof steps
             foreach (var n in MadMax.Npc.Npc.All) if (n.Available) Consider(n, ref pick, ref best, eye);
             if (!pick) return LakeInteraction(E, T);
-            Focused = pick as IInteractable;
+            Focused = pick as IInteractable ?? pick.GetComponent<IInteractable>();     // built pieces: the Placeable itself is not the interactable
             // several functions on one piece (a stove cooks and heats): [E] goes to the first that offers it, [T] likewise
             string all = null; IInteractable eUser = null, tUser = null;
             foreach (var it in pick.GetComponents<IInteractable>())
