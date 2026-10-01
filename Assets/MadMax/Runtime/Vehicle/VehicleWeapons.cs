@@ -26,8 +26,9 @@ namespace MadMax.Vehicles
         public void Control(in WeaponInput input)
         {
             Aim = input.aim;
+            bool resumed = Time.time - lastControl > 0.5f;                                    // back at the wheel: parts may have changed meanwhile
             lastControl = Time.time;
-            if ((refreshT -= input.dt) <= 0f)
+            if ((refreshT -= input.dt) <= 0f || resumed)
             {
                 refreshT = 1f;
                 weapons.Clear();

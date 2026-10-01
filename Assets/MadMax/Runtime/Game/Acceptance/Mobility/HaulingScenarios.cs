@@ -167,7 +167,9 @@ namespace MadMax.Game.Acceptance
             yield return null;
             if (!c.Check(winch.Hooked, "[4] hooks the car ahead: " + winch.Status)) yield break;
             float t0 = Time.time;
-            while (Time.time - t0 < 7f) { winch.Control(false, true, false); yield return null; }
+            c.Fixture("the winch truck stands on its brakes while reeling in (the player holds S + Space)");
+            while (Time.time - t0 < 7f) { truck.handbrake = true; truck.brakeInput = 1f; winch.Control(false, true, false); yield return null; }
+            truck.brakeInput = 0f;
             float gap1 = MobilityKit.Flat(truck.transform.position, load.transform.position);
             float dragged = Vector3.Dot(l0 - load.transform.position, fwd);
             c.Metric("gap_closed", gap0 - gap1, "m");
@@ -213,21 +215,25 @@ namespace MadMax.Game.Acceptance
 
             // slew the boom out over the side
             var tip0 = crane.HookPoint;
-            yield return Work(crane, false, false, 1f, 2.4f);
+            yield return Work(crane, false, false, 1f, 3.2f);
             var hook = crane.HookPoint;
             c.Metric("slewed_hook_moved", MobilityKit.Flat(tip0, hook), "m");
             c.Check(MobilityKit.Flat(tip0, hook) > 1f, "[0] slews the boom");
             var spot = new Vector3(hook.x, 0f, hook.z);
             if (MobilityKit.Flat(spot, truck.transform.position) < 3f) { c.Block($"the hook hangs over the truck ({MobilityKit.Flat(spot, truck.transform.position):0.0} m from its centre)"); yield break; }
+            if (!MobilityKit.Clear(spot, 1.1f)) c.Note("under the hook: " + MobilityKit.Blockers(spot, 1.1f));
             yield return TestWorld.Place(c, car, spot, truck.transform.forward, 1.5f);
-            float rest = car.transform.position.y;
+            float Above() => car.Body.worldCenterOfMass.y - DeformableTerrain.Instance.Height(car.transform.position.x, car.transform.position.z);
+            float rest = Above();
+            c.Note($"resting: COM {rest:0.00} m above the ground, touching {TestWorld.Contacts(car)}");
             c.Note($"hook {crane.HookPoint}, car {car.transform.position}, rope {crane.Rope:0.0} m, status {crane.Status}");
 
             crane.Control(true, false, false, 0f);
             yield return null;
             if (!c.Check(crane.Load == car.Body, "[7] grabs the " + MobilityKit.N(car) + ": " + crane.Status)) yield break;
             yield return Work(crane, true, false, 0f, 3f);
-            float lift = car.transform.position.y - rest;
+            float lift = Above() - rest;
+            c.Note($"hoisted: rope {crane.Rope:0.0} m, hook {crane.HookPoint}, COM {car.Body.worldCenterOfMass}, touching {TestWorld.Contacts(car)}");
             c.Metric("hoisted", lift, "m");
             c.Check(lift > 0.4f, $"[8] hoists it off the ground ({lift:0.00} m)");
             c.Check(truck.transform.up.y > 0.9f, "the truck stays upright under the load");

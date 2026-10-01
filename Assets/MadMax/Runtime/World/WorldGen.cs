@@ -250,7 +250,7 @@ namespace MadMax.World
             float h = BaseHeight(x, z);
             float wet = BaseWetness(x, z);
             s.water = float.NaN;
-            float ford = 0f;
+            float ford = 0f, fordLevel = float.NaN;
             var settle = SettlementAt(x, z);
             // jittered lookup dithers biome borders instead of drawing straight seams
             float jx = (P(x, z, 0.12f, 1) - 0.5f) * 10f + (Hash01(x, z) - 0.5f) * 3f;
@@ -281,7 +281,7 @@ namespace MadMax.World
                 }
                 SeaAt(x, z, h, ref s, ref wet);
                 if (s.biome == Biome.Tropical) wet = Mathf.Clamp01(wet + 0.15f);
-                if (rivers.Count > 0) ford = ShapeRiver(x, z, ref h, ref s, ref wet);
+                if (rivers.Count > 0) ford = ShapeRiver(x, z, ref h, ref s, ref wet, out fordLevel);
                 var site = SiteAt(x, z);
                 if (site != null) h = ShapeSite(site, x, z, h, ref s, ref wet);
             }
@@ -309,7 +309,8 @@ namespace MadMax.World
                 }
                 if (wSum > 0f) h = Mathf.Lerp(h, hSum / wSum, blend);
                 // dirt tracks ford rivers (the road dips into the water); highways keep their graded causeway
-                if (ford > 0f && !s.paved && !float.IsNaN(s.water)) h = Mathf.Lerp(h, Mathf.Min(h, s.water - 0.35f), ford * blend);
+                // (the river level, not the water band: that ends 1.5 m up the bank and left a wall where the dip stopped)
+                if (ford > 0f && !s.paved && !float.IsNaN(fordLevel)) h = Mathf.Lerp(h, Mathf.Min(h, fordLevel - 0.35f), ford * blend);
                 s.road = roadMax;
                 wet *= 1f - s.road * 0.85f;
             }
