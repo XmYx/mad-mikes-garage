@@ -84,7 +84,7 @@ def extra_mats(M):
     M["label_blue"] = S("LabelBlue", Pp("navy", 3), dust=0.25, rough=0.7, var=0.12, bump=0.05)
     M["label_yellow"] = S("LabelYellow", Pp("ochre", 3), dust=0.25, rough=0.7, var=0.12, bump=0.05)
     M["label_cream"] = S("LabelCream", Pp("cream", 2), dust=0.25, rough=0.8, var=0.12, bump=0.05)
-    M["burlap"] = T("Burlap", "canvas", Pp("sand", 2), Pp("sand", 3), dust=0.3, rough=0.95, bump=0.4)
+    M["burlap"] = T("Burlap", "canvas", Pp("cream", 0), Pp("cream", 1), dust=0.3, rough=0.95, bump=0.4)
     M["foam"] = S("Foam", H("e8c848"), dust=0.2, rough=0.95, var=0.1, bump=0.6)
     M["bone"] = S("Bone", Pp("cream", 2), dust=0.35, rough=0.7, var=0.15, bump=0.3)
     M["fur"] = T("Fur", "leaf", Pp("wood", 2), Pp("wood", 3), Pp("sand", 3), dust=0.2, rough=0.95, bump=0.8)
@@ -92,6 +92,8 @@ def extra_mats(M):
     M["glass_brown"] = kit.glass("GlassBrown", tint=H("4a2a14"))
     M["glass_clear"] = kit.glass("GlassClear", tint=Pp("paleblue", 2))
     M["water"] = kit.glass("WaterLiquid", tint=H("4a6a7a"))
+    M["glass_jar"] = kit.glass("GlassJar", tint=Pp("paleblue", 3))
+    M["glass_jar"].node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value = 0.3
     M["flame"] = kit.emissive("Flame", H("ffa030"), 5.0)
     M["arc"] = kit.emissive("ArcBlue", H("9ad8ff"), 6.0)
     M["gold"] = S("Gold", Pp("ochre", 4), dust=0.1, metal=1.0, rough=0.25, var=0.08)
@@ -227,6 +229,8 @@ def _fit(ob, box, axes=(0, 1, 2), tol=0.05, abs_tol=0.02):
         ge, he = ghi[a] - glo[a], hi[a] - lo[a]
         if ge < 1e-4 or he < 1e-4:
             continue
+        if ge < 0.13 and he < ge:                       # a one-voxel-thin game feature: keep the real thickness
+            continue
         d = max(abs(lo[a] - glo[a]), abs(hi[a] - ghi[a]))
         dev = max(dev, d / max(ge, 0.05))
         if d > max(abs_tol, tol * ge):
@@ -283,6 +287,11 @@ def finalise(a, top):
             box = game_box(aid, sname)
             if box and owner.type == "MESH":
                 fits[sname or "body"] = _fit(owner, box, a["fit_axes"])
+        for owner, _ in pieces:                         # hinge pivots exactly where the game prefab has them
+            sname = owner.get("segment")
+            gp = GAME.get(aid, {}).get("segments", {}).get(sname, {}).get("pivot") if sname else None
+            if gp is not None:
+                owner.location = G(*gp)
     if "segment" not in top:
         top.name = aid + "_body"
         top.data.name = aid + "_body"
