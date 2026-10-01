@@ -88,6 +88,7 @@ namespace MadMax.EditorTools
         public static void BuildGameScene()
         {
             BuildAssetsInternal(out var vehicles);
+            HDCharacterCatalogBuilder.Build(false);                                         // HD humans (no-op without the pack)
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var terrainMat = Material("PixelTerrain", 0);
             terrainMat.SetFloat("_OutlinePx", 0);

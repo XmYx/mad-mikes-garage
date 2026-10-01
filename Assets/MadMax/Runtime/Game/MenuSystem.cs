@@ -493,6 +493,8 @@ namespace MadMax.Game
                     var st = draftStats; var a = draftLook;
                     items.Add(new Item { label = "NAME", text = () => st.name, setText = v => st.name = v });
                     void L(string label, System.Func<string> v, System.Action<int> change) => items.Add(new Item { label = label, value = v, adjust = change, confirm = () => change(1) });
+                    L("BODY", () => new[] { "RUGGED", "LEAN", "SOFT", "SHARP" }[a.body < 0 ? (a.build >= 0.975f ? 0 : 1) : a.body % 4],
+                      d => a.body = ((a.body < 0 ? (a.build >= 0.975f ? 0 : 1) : a.body) + d + 4) % 4);
                     L("SKIN", () => (a.skinTone + 1).ToString(), d => a.skinTone = (a.skinTone + d + 4) % 4);
                     L("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + 6) % 6));
                     L("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);

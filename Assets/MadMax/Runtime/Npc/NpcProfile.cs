@@ -55,6 +55,7 @@ namespace MadMax.Npc
                 height = new[] { 0.94f, 1f, 1.06f }[r.Next(3)], build = new[] { 0.9f, 1f, 1.1f }[r.Next(3)]
             };
             if (NpcLore.Feminine(p.first) && !p.Raider) p.look.beard = 0;                          // matches the voice
+            p.look.body = MadMax.Game.HDHuman.BodyFor(NpcLore.Feminine(p.first) && !p.Raider, p.look.build);   // HD body shape
             string Pick(params string[] o) => o[r.Next(o.Length)];
             p.outfit.Add(Pick("boots", "boots", null));
             if (p.Raider)

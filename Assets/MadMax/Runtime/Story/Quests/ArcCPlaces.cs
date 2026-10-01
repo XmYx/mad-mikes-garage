@@ -271,6 +271,7 @@ namespace MadMax.Story
             p.fullName = mv.name; p.title = mv.title; p.temper = mv.temper; p.female = mv.female;
             p.first = mv.name.Split(' ')[0];
             if (mv.female) p.look.beard = 0;
+            p.look.body = MadMax.Game.HDHuman.BodyFor(mv.female, p.look.build);                          // HD body shape
             p.outfit.Clear(); p.outfit.AddRange(mv.outfit);
             p.tool = mv.tool;
             made[twin] = p;
