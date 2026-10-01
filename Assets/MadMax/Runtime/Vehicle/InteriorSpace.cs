@@ -119,6 +119,130 @@ namespace MadMax.Vehicles
             return p;
         }
 
+        /// <summary>Can a person of <paramref name="radius"/> stand here (inside the walkable area, clear of every
+        /// obstacle and floor-standing piece)?</summary>
+        public bool Free(Vector3 local, float radius)
+        {
+            if (obstaclesDirty) RefreshObstacles();
+            if (local.x < min.x - 1e-3f || local.x > max.x + 1e-3f || local.z < min.y - 1e-3f || local.z > max.y + 1e-3f) return false;
+            float r2 = radius * radius - 1e-5f;
+            if (obstacles != null) foreach (var b in obstacles) if (Dist2(local, b) < r2) return false;
+            foreach (var b in dynamicObstacles) if (Dist2(local, b) < r2) return false;
+            return true;
+        }
+
+        static float Dist2(Vector3 p, Bounds b)
+        {
+            float dx = p.x - Mathf.Clamp(p.x, b.min.x, b.max.x), dz = p.z - Mathf.Clamp(p.z, b.min.z, b.max.z);
+            return dx * dx + dz * dz;
+        }
+
+        const float Step = 0.05f;
+        int gw, gh; float sx, sz;
+        bool[] open; int[] queue;
+
+        void Grid(float radius)
+        {
+            gw = Mathf.Max(2, Mathf.CeilToInt((max.x - min.x) / Step) + 1); gh = Mathf.Max(2, Mathf.CeilToInt((max.y - min.y) / Step) + 1);
+            sx = (max.x - min.x) / (gw - 1); sz = (max.y - min.y) / (gh - 1);                     // samples include both bounds
+            if (open == null || open.Length < gw * gh) { open = new bool[gw * gh]; queue = new int[gw * gh]; }
+            for (int j = 0; j < gh; j++) for (int i = 0; i < gw; i++) open[j * gw + i] = Free(new Vector3(min.x + i * sx, floorY, min.y + j * sz), radius);
+        }
+
+        int Cell(Vector3 local) => Mathf.Clamp(Mathf.RoundToInt((local.z - min.y) / sz), 0, gh - 1) * gw + Mathf.Clamp(Mathf.RoundToInt((local.x - min.x) / sx), 0, gw - 1);
+        Vector3 At(int c) => new Vector3(min.x + (c % gw) * sx, floorY, min.y + (c / gw) * sz);
+
+        /// <summary>Flood the free floor from <paramref name="from"/>; returns the cells reached (in <c>queue</c>).</summary>
+        int Flood(Vector3 from, float radius, bool[] seen)
+        {
+            int start = Cell(from);
+            if (!open[start])                                                                   // standing a touch inside something: the nearest open cell
+            {
+                float best = float.MaxValue; int bi = -1;
+                for (int c = 0; c < gw * gh; c++) if (open[c]) { float d = (At(c) - from).sqrMagnitude; if (d < best) { best = d; bi = c; } }
+                if (bi < 0 || best > 0.5f * 0.5f) return 0;
+                start = bi;
+            }
+            System.Array.Clear(seen, 0, gw * gh);
+            int head = 0, tail = 0;
+            queue[tail++] = start; seen[start] = true;
+            while (head < tail)
+            {
+                int c = queue[head++], ci = c % gw, cj = c / gw;
+                for (int k = 0; k < 4; k++)
+                {
+                    int ni = ci + (k == 0 ? 1 : k == 1 ? -1 : 0), nj = cj + (k == 2 ? 1 : k == 3 ? -1 : 0);
+                    if (ni < 0 || nj < 0 || ni >= gw || nj >= gh) continue;
+                    int n = nj * gw + ni;
+                    if (seen[n] || !open[n]) continue;
+                    seen[n] = true; queue[tail++] = n;
+                }
+            }
+            return tail;
+        }
+
+        bool[] seenBuf;
+
+        /// <summary>The door (index) a person of <paramref name="radius"/> standing at <paramref name="from"/> can walk to
+        /// past the obstacles and furniture, or -1.</summary>
+        public int ReachableDoor(Vector3 from, float radius)
+        {
+            if (doors == null || doors.Length == 0) return -1;
+            Grid(radius);
+            if (seenBuf == null || seenBuf.Length < gw * gh) seenBuf = new bool[gw * gh];
+            if (Flood(from, radius, seenBuf) == 0) return -1;
+            int best = -1; float bd = float.MaxValue;
+            for (int i = 0; i < doors.Length; i++)
+            {
+                var d = doors[i].inside;
+                // the door counts when an open reached cell lies within reach of it (its exit prompt shows at 1.4 m)
+                for (int c = 0; c < gw * gh; c++)
+                {
+                    if (!seenBuf[c]) continue;
+                    float dd = Vector2.Distance(new Vector2(At(c).x, At(c).z), new Vector2(d.x, d.z));
+                    if (dd < 1.2f && dd < bd) { bd = dd; best = i; }
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Where someone getting up from the driver seat stands: <see cref="stand"/> when it is clear and a
+        /// door can be reached from it, else the nearest clear spot that reaches a door (furniture can never box the
+        /// driver in). False: nothing inside reaches a door, leave the vehicle outright.</summary>
+        public bool FindExitSpot(float radius, out Vector3 spot)
+        {
+            spot = stand;
+            if (Free(stand, radius) && ReachableDoor(stand, radius) >= 0) return true;
+            // the open floor around any door, nearest the seat
+            if (doors == null || doors.Length == 0) return false;
+            Grid(radius);
+            if (seenBuf == null || seenBuf.Length < gw * gh) seenBuf = new bool[gw * gh];
+            float best = float.MaxValue; bool found = false;
+            for (int i = 0; i < doors.Length; i++)
+            {
+                if (Flood(doors[i].inside, radius, seenBuf) == 0) continue;
+                for (int c = 0; c < gw * gh; c++)
+                {
+                    if (!seenBuf[c]) continue;
+                    var p = At(c);
+                    float d = (p - stand).sqrMagnitude;
+                    if (d < best) { best = d; spot = p; found = true; }
+                }
+            }
+            return found;
+        }
+
+        float trappedAt = -9f; bool trapped;
+
+        /// <summary>No door can be reached from here (re-checked at most twice a second, or when the furniture changes).</summary>
+        public bool Trapped(Vector3 local, float radius)
+        {
+            if (Time.time - trappedAt < 0.5f && !obstaclesDirty) return trapped;
+            trappedAt = Time.time;
+            trapped = doors != null && doors.Length > 0 && ReachableDoor(local, radius) < 0;
+            return trapped;
+        }
+
         public int NearestDoorInside(Vector3 local, float maxDist)
         {
             int best = -1; float bd = maxDist;

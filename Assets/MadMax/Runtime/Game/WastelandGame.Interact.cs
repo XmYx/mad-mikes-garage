@@ -66,7 +66,9 @@ namespace MadMax.Game
             car.handbrake = true;
             Player.Unseat();
             var interior = car.GetComponent<InteriorSpace>();
-            if (interior) Player.EnterInterior(interior, interior.stand);                 // stand up inside
+            if (interior && interior.FindExitSpot(InteriorRadius, out var spot)) Player.EnterInterior(interior, spot);   // stand up inside, where a door can be reached
+            else if (interior && (interior.airtight || car.GetComponent<MadMax.Vehicles.BoatModel>())) Player.EnterInterior(interior, interior.stand);   // afloat / sealed: never out into the sea
+            else if (interior) Player.Teleport(InteriorExitOutside(car, interior), car.transform.eulerAngles.y + 90f);   // boxed in: straight out of a door
             else Player.Teleport(ExitPoint(car), car.transform.eulerAngles.y + 90f);
             terrain.focus = Player.transform;
             if (cameraRig) cameraRig.SetTarget(Player.transform);
@@ -119,6 +121,22 @@ namespace MadMax.Game
             if (collar) w = collar.InsideWorld;                                                   // docked: down through the collar into the base
             Player.ExitInterior(w);
             if (cameraRig) cameraRig.SetTarget(Player.transform);
+        }
+
+        /// <summary>The walk-in player's radius (<see cref="PlayerCharacter"/> resolves interior moves with it).</summary>
+        const float InteriorRadius = 0.26f;
+
+        /// <summary>Outside a walk-in vehicle: the first door whose outside spot is clear, else beside the cab.</summary>
+        Vector3 InteriorExitOutside(VehicleDriver car, InteriorSpace space)
+        {
+            if (space.doors != null)
+                foreach (var d in space.doors)
+                {
+                    var w = car.transform.TransformPoint(d.outside);
+                    w.y = terrain.Height(w.x, w.z) + 0.05f;
+                    if (!Physics.CheckCapsule(w + Vector3.up * 0.5f, w + Vector3.up * 1.6f, 0.3f, ~0, QueryTriggerInteraction.Ignore)) return w;
+                }
+            return ExitPoint(car);
         }
 
         Vector3 ExitPoint(VehicleDriver car)
@@ -240,7 +258,9 @@ namespace MadMax.Game
                 var seat = new Vector2(space.seat.x, space.seat.z);
                 int door = space.NearestDoorInside(local, 1.4f);
                 var drv = space.GetComponent<VehicleDriver>();
-                if (Vector2.Distance(new Vector2(local.x, local.z), seat) < 1.6f && drv && drv.driveable)
+                float seatD = Vector2.Distance(new Vector2(local.x, local.z), seat);
+                float doorD = door >= 0 ? Vector2.Distance(new Vector2(local.x, local.z), new Vector2(space.doors[door].inside.x, space.doors[door].inside.z)) : float.MaxValue;
+                if (seatD < 1.6f && drv && drv.driveable && seatD <= doorD)                       // a door beside the seat (the bus) wins when nearer
                 {
                     enterText = "[F] DRIVE";
                     if (F && !Boarding) EnterAnimated(drv);
@@ -249,6 +269,12 @@ namespace MadMax.Game
                 {
                     enterText = "[F] EXIT " + Name(drv);
                     if (F) LeaveInterior(door);
+                }
+                else if (space.Trapped(local, InteriorRadius))
+                {
+                    // furniture walled off every door: squeeze out through the nearest one
+                    enterText = "[F] SQUEEZE OUT";
+                    if (F) LeaveInterior(space.NearestDoorInside(local, float.MaxValue));
                 }
             }
             else
