@@ -6,7 +6,8 @@ using UnityEngine;
 namespace MadMax.Net
 {
     /// <summary>Another player's body: HumanRig + HumanAnimator driven by interpolated network state.
-    /// Handles walking (world space), walking inside a vehicle interior (vehicle-local) and sitting in a seat.</summary>
+    /// Handles walking (world space), walking inside a vehicle interior (vehicle-local) and sitting in a seat, and the
+    /// pose + prop of timed vehicle work (<see cref="SetWork"/>, from <c>Msg.WorkPose</c>).</summary>
     public class RemoteAvatar : MonoBehaviour
     {
         public struct State
@@ -29,6 +30,16 @@ namespace MadMax.Net
         HandTool toolVisual;
         byte toolIndex = 255;
         Material material;
+        bool working;
+        byte workPose;
+        float workStart;
+        GameObject workProp;
+
+        /// <summary>Doing timed vehicle work (pose index of <c>WastelandGame.WorkPoseAt</c>).</summary>
+        public bool Working => working;
+        public byte WorkPoseIndex => workPose;
+        /// <summary>The jug / can / wrench / welder in the hand while working (null = the tool in hand).</summary>
+        public GameObject WorkProp => workProp;
 
         public static RemoteAvatar Create(ushort id, string name, Appearance look, List<string> outfit, Material mat)
         {
@@ -53,9 +64,36 @@ namespace MadMax.Net
             Rig.outfit.Clear();
             if (outfit != null) Rig.outfit.AddRange(outfit);
             if (toolVisual) toolVisual.transform.SetParent(transform, false);
+            if (workProp) workProp.transform.SetParent(transform, false);
             Rig.Rebuild();
             anim = new HumanAnimator(Rig);
             if (toolVisual) AttachTool();
+            if (workProp) AttachProp();
+        }
+
+        /// <summary>Timed vehicle work started (pose, prop key: "oil", "can" or a tool id; empty = the tool in hand) or ended.</summary>
+        public void SetWork(bool on, byte pose, string prop)
+        {
+            working = on; workPose = pose; workStart = Time.time;
+            if (workProp) Destroy(workProp);
+            workProp = null;
+            var mesh = on && !string.IsNullOrEmpty(prop) ? WastelandGame.WorkPropMesh(prop) : null;
+            if (mesh)
+            {
+                workProp = new GameObject("Prop", typeof(MeshFilter), typeof(MeshRenderer));
+                workProp.GetComponent<MeshFilter>().sharedMesh = mesh;
+                workProp.GetComponent<MeshRenderer>().sharedMaterial = material;
+                AttachProp();
+            }
+            if (toolVisual) toolVisual.gameObject.SetActive(!workProp);
+        }
+
+        void AttachProp()
+        {
+            workProp.transform.SetParent(Rig.RightHand, false);
+            workProp.transform.localPosition = new Vector3(0f, -0.1f, 0.02f);                    // as PlayerCharacter.HoldProp
+            workProp.transform.localRotation = Quaternion.identity;
+            workProp.transform.localScale = Vector3.one * 0.7f;
         }
 
         public void Push(State s)
@@ -97,13 +135,15 @@ namespace MadMax.Net
                 toolIndex = s.tool;
                 if (toolVisual) Destroy(toolVisual.gameObject);
                 toolVisual = s.tool < ToolLibrary.AllIds.Count ? ToolLibrary.Create(ToolLibrary.AllIds[s.tool], material) : null;
-                if (toolVisual) AttachTool();
+                if (toolVisual) { AttachTool(); toolVisual.gameObject.SetActive(!workProp); }
             }
+            ToolPose? pose = working ? WastelandGame.WorkPoseAt(workPose, Time.time - workStart)
+                           : toolVisual ? (s.swing > 0f ? toolVisual.Pose(s.swing) : toolVisual.IdlePose) : (ToolPose?)null;
             anim.Tick(Time.deltaTime, new HumanAnimator.State
             {
                 speed = Mathf.Lerp(a.speed, b.speed, f), grounded = s.grounded, verticalSpeed = s.vertical, lookPitch = s.lookPitch,
                 sitting = s.seated, steer = veh && s.seated ? veh.steerInput : 0f, carrying = s.carrying,
-                tool = toolVisual ? (s.swing > 0f ? toolVisual.Pose(s.swing) : toolVisual.IdlePose) : null,
+                tool = pose,
                 twoHanded = toolVisual && toolVisual.TwoHanded
             });
         }

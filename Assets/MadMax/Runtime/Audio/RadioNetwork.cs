@@ -53,9 +53,10 @@ namespace MadMax.Audio
 
         /// <summary>Break into the talk station with <paramref name="text"/> for <paramref name="seconds"/>. Anyone with a
         /// radio on hears the news beep; it goes in the journal when the player is listening to WasteTalk.</summary>
-        public static void Flash(string text, float seconds = 45f)
+        public static void Flash(string text, float seconds = 45f, Vector3? at = null)
         {
             FlashText = text; flashUntil = Time.time + seconds;
+            MadMax.Npc.TownNews.Post(text, at);
             var rx = Heard();
             if (!rx) return;
             Sfx.Play2D("beep", 0.25f, 1.6f);

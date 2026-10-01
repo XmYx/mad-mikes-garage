@@ -471,8 +471,10 @@ namespace MadMax.Game
             j.working = true; j.t = 0f; j.fxT = 0f; j.beats = 0;
             Player.AutoWalk = Vector3.zero;
             Face(j, 1f);
-            var mesh = WorkProp(j);
+            string propKey = WorkPropKey(j);
+            var mesh = WorkPropMesh(propKey);
             if (mesh) { Player.HoldProp(mesh, propMaterial); j.prop = true; }
+            MadMax.Net.NetSession.Instance?.SendWorkPose(true, (byte)j.pose, mesh ? propKey : null);   // remote peers see the pose
             var cat = j.part ? j.part.category : (PartCategory?)null;
             if (j.kind == WorkKind.Service || j.kind == WorkKind.Battery || ((j.kind == WorkKind.Take || j.kind == WorkKind.Mount || j.kind == WorkKind.Repair) && (cat == PartCategory.Engine || cat == PartCategory.Radiator)))
             {
@@ -537,7 +539,7 @@ namespace MadMax.Game
             if (Player)
             {
                 Player.AutoWalk = null;
-                if (j.working) Player.PoseOverride = null;
+                if (j.working) { Player.PoseOverride = null; MadMax.Net.NetSession.Instance?.SendWorkPose(false, 0, null); }
                 if (j.prop) Player.DropProp();
                 if (j.parked)
                 {
@@ -962,22 +964,29 @@ namespace MadMax.Game
 
         // ------------------------------------------------------------------ props
 
-        Mesh WorkProp(WorkJob j)
+        /// <summary>What goes in the hand for the job: "oil" (jug), "can" (jerry can) or a tool id; null = the tool in hand.</summary>
+        string WorkPropKey(WorkJob j)
         {
             switch (j.kind)
             {
-                case WorkKind.Service: return OilJug();
-                case WorkKind.Siphon: return JerryCan();
+                case WorkKind.Service: return "oil";
+                case WorkKind.Siphon: return "can";
                 case WorkKind.Battery:
                 case WorkKind.Repair:
                 case WorkKind.Take:
                 case WorkKind.Mount:
-                    return Holding(ItemIds.Wrench) ? null : ToolLibrary.MeshFor(ItemIds.Wrench);
+                    return Holding(ItemIds.Wrench) ? null : ItemIds.Wrench;
                 case WorkKind.Armour:
-                    return Player.Tool is WelderTool ? null : ToolLibrary.MeshFor("tool_welder");
+                    return Player.Tool is WelderTool ? null : "tool_welder";
             }
             return null;                                                                             // welder, cutter, jack: the tool in hand
         }
+
+        /// <summary>The prop mesh for a <see cref="WorkPropKey"/> (also for remote players' avatars).</summary>
+        public static Mesh WorkPropMesh(string key) => string.IsNullOrEmpty(key) ? null : key == "oil" ? OilJug() : key == "can" ? JerryCan() : ToolLibrary.MeshFor(key);
+
+        /// <summary>The working pose by index (<see cref="WorkPose"/>) at <paramref name="t"/> seconds, for remote avatars.</summary>
+        public static ToolPose WorkPoseAt(byte pose, float t) => PoseAt((WorkPose)Mathf.Min(pose, (byte)WorkPose.Siphon), t);
 
         static Mesh OilJug()
         {

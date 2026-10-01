@@ -55,7 +55,7 @@ namespace MadMax.Npc
             {
                 warnedFor = NextDay;
                 var g0 = GangFor(claim);
-                if (g0 != null && !g0.SparesBases) MadMax.Audio.RadioNetwork.Flash("THE " + g0.Gang + " ARE RIDING ON A HOMESTEAD " + Near(claim.transform.position) + ". BAR YOUR DOORS, FOLKS");
+                if (g0 != null && !g0.SparesBases) MadMax.Audio.RadioNetwork.Flash("THE " + g0.Gang + " ARE RIDING ON A HOMESTEAD " + Near(claim.transform.position) + ". BAR YOUR DOORS, FOLKS", 45f, claim.transform.position);
             }
             if (DayNight.TotalDays < NextDay) return;
             // raiders prefer to come at dusk or night when the player is around (unless long overdue)

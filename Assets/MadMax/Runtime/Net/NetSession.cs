@@ -20,7 +20,8 @@ namespace MadMax.Net
         Carve, Impact, PartDetached, PartMounted, PartCarried, PartDropped, LooseSpawn, Placed, PlaceBroken, Couple,
         VehicleMeta, Weather, Appearance, Salvage, Denied,
         PlaceState, Searched, VehicleSpawn, FireIgnite, Throw, Terraform,
-        ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks
+        ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks,
+        ItemSpawn, ItemMove, ItemTake, ItemGone, ItemGrant, WorkPose                      // protocol 4 (NetSession.Items)
     }
 
     /// <summary>
@@ -35,7 +36,7 @@ namespace MadMax.Net
     public partial class NetSession : MonoBehaviour
     {
         public static NetSession Instance { get; private set; }
-        public const int ProtocolVersion = 3;
+        public const int ProtocolVersion = 4;
         public const ushort DefaultPort = 7777;
         public const ushort HostPlayerId = 1;
 
@@ -173,6 +174,7 @@ namespace MadMax.Net
             }
             if (IsServer)
                 foreach (var p in peers) if (p.ready && !p.avatar) p.avatar = SpawnAvatar(p.id, p.name, p.look, p.outfit);
+            AttachItems();
         }
 
         public uint NewEntityId() => ((uint)(LocalId + 1) << 24) | (nextEntity++ & 0xFFFFFF);
@@ -262,6 +264,7 @@ namespace MadMax.Net
             if (IsClient && (ownerTimer += Time.deltaTime) >= 1f / ownerRate) { ownerTimer = 0f; SendOwnerState(); }
             if ((metaTimer += Time.deltaTime) >= 1f) { metaTimer = 0f; SendMetaForDriven(); SendLooks(); }
             if (IsServer && (worldStateTimer += Time.deltaTime) >= 10f) { worldStateTimer = 0f; SendWorldState(); }
+            TickItems();
             Flush();
         }
 
@@ -499,6 +502,7 @@ namespace MadMax.Net
                 }
                 case Msg.Ready when IsServer:
                     peer.ready = true;
+                    ItemsPeerReady();
                     if (game) peer.avatar = SpawnAvatar(peer.id, peer.name, peer.look, peer.outfit);
                     // introduce everyone to the newcomer, and the newcomer to everyone
                     if (Mode == NetMode.Host && game.Player)
@@ -635,6 +639,14 @@ namespace MadMax.Net
                 case Msg.Strike when IsClient: ReadStrike(r); break;
                 case Msg.WorldState when IsClient: ReadWorldState(r); break;
                 case Msg.VehicleLooks: ReadVehicleLooks(r, peer); break;
+                case Msg.ItemSpawn:
+                case Msg.ItemMove:
+                case Msg.ItemTake:
+                case Msg.ItemGone:
+                case Msg.ItemGrant:
+                case Msg.WorkPose:
+                    HandleItems(type, r, peer);
+                    break;
                 default:
                     ApplyEvent(type, r, peer);
                     break;

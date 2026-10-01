@@ -8,7 +8,9 @@ namespace MadMax.Npc
     /// <summary>Drives a vehicle through the same inputs as the player (throttle, brake, steer, handbrake):
     /// follow a road polyline (ping-pong), chase a target with lead and ramming, follow a leader in formation,
     /// circle a target, or park. Sphere-casts ahead to steer around obstacles, backs out when stuck, reports
-    /// flipped / disabled so the crew can bail out. Hands over when the player takes the wheel.</summary>
+    /// flipped / disabled so the crew can bail out. Hands over when the player takes the wheel. <see cref="DriveTo"/> plans a
+    /// one-way route over generated and player-built roads (<see cref="RoadRoute.FindForDriving"/>); on the player's
+    /// paving the driver looks less far ahead and keeps a road pace so it stays on the narrow lane.</summary>
     [DefaultExecutionOrder(-20)]
     public class AiDriver : MonoBehaviour
     {
@@ -22,6 +24,18 @@ namespace MadMax.Npc
         public float cruise = 12f, chaseSpeed = 28f, circleRadius = 20f;
         public bool avoidTarget;                             // chase without ramming
         public float flankSide = 1f;                         // Flank: ride alongside the target on this side (+1 right)
+        public bool oneWay;                                  // Path: stop at the last point instead of turning back
+        public float playerRoadSpeed = 13f, gravelRoadSpeed = 10f;   // m/s on the player's hard / gravel roads
+
+        /// <summary>A one-way route (<see cref="DriveTo"/>) reached its end; the driver parked.</summary>
+        public bool Arrived { get; private set; }
+        /// <summary>The last planned route runs along the player's roads.</summary>
+        public bool RouteUsesPlayerRoad { get; private set; }
+        /// <summary>On the player's paving right now (last physics step).</summary>
+        public bool OnPlayerRoad { get; private set; }
+        Vector3 routeDest;
+        float nextPlan;
+        bool lastPlanOk;
 
         VehicleDriver v;
         float stuckT, reverseT, flipT, circleSide = 1f;
@@ -65,11 +79,42 @@ namespace MadMax.Npc
         /// <summary>Start on the path at the point nearest to the vehicle.</summary>
         public void SetPath(List<Vector3> pts, int direction)
         {
-            path = pts; dir = direction >= 0 ? 1 : -1; goal = Goal.Path;
+            path = pts; dir = direction >= 0 ? 1 : -1; goal = Goal.Path; oneWay = false; Arrived = false;
             float best = float.MaxValue;
             var p = transform.position;
             for (int i = 0; i < pts.Count; i++) { float d = (pts[i] - p).sqrMagnitude; if (d < best) { best = d; index = i; } }
             index = Mathf.Clamp(index + dir * 2, 0, pts.Count - 1);
+        }
+
+        /// <summary>Plan a route to <paramref name="dest"/> along the roads (generated and the player's, open ground only
+        /// where no road serves) and drive it one way, parking at the end. False when the straight line was all there is
+        /// (it is driven anyway).</summary>
+        public bool DriveTo(Vector3 dest)
+        {
+            var world = MadMax.Game.WastelandGame.Instance ? MadMax.Game.WastelandGame.Instance.World : null;
+            var pts = new List<Vector3>();
+            bool ok = RoadRoute.FindForDriving(world, transform.position, dest, pts, out bool viaPlayer);
+            var t = DeformableTerrain.Instance;
+            for (int i = 0; i < pts.Count; i++) { var p = pts[i]; if (t) p.y = t.HeightNoLoad(p.x, p.z); pts[i] = p; }
+            path = pts; dir = 1; index = Mathf.Min(1, pts.Count - 1); goal = Goal.Path; oneWay = true; Arrived = false;
+            routeDest = dest; RouteUsesPlayerRoad = viaPlayer; lastPlanOk = ok;
+            nextPlan = Time.time + 3f;
+            return ok;
+        }
+
+        /// <summary>Keep a one-way road route to <paramref name="dest"/> (re-planned at most every 3 s, when the
+        /// destination moved 15 m or more). With <paramref name="playerRoadOnly"/> only a route over the player's roads
+        /// counts. True while such a route is being driven.</summary>
+        public bool RouteToward(Vector3 dest, bool playerRoadOnly)
+        {
+            bool fits = goal == Goal.Path && oneWay && !Arrived && lastPlanOk && (!playerRoadOnly || RouteUsesPlayerRoad);
+            if (fits && Flat(dest - routeDest).magnitude < 15f) return true;
+            if (Time.time < nextPlan) return fits;
+            var keepGoal = goal; var keepPath = path; int keepIndex = index, keepDir = dir; bool keepOneWay = oneWay;
+            if (DriveTo(dest) && (!playerRoadOnly || RouteUsesPlayerRoad)) return true;
+            goal = keepGoal; path = keepPath; index = keepIndex; dir = keepDir; oneWay = keepOneWay;   // not worth it: carry on as before
+            lastPlanOk = false;
+            return false;
         }
 
         void FixedUpdate()
@@ -89,15 +134,29 @@ namespace MadMax.Npc
                 case Goal.Path:
                 {
                     if (path == null || path.Count < 2) break;
-                    float look = 7f + Mathf.Abs(speed) * 0.7f;
+                    // on the player's paving (4 m cells, often one lane wide): a shorter look-ahead and a road pace
+                    var tr = DeformableTerrain.Instance;
+                    bool gravel = false;
+                    OnPlayerRoad = tr && tr.PlayerRoadAt(pos.x, pos.z, out gravel);
+                    float look = OnPlayerRoad ? 4.5f + Mathf.Abs(speed) * 0.45f : 7f + Mathf.Abs(speed) * 0.7f;
                     for (int guard = 0; guard < 8 && Flat(path[index] - pos).magnitude < look; guard++)
                     {
                         int next = index + dir;
-                        if (next < 0 || next >= path.Count) { dir = -dir; next = index + dir; }
+                        if (next < 0 || next >= path.Count)
+                        {
+                            if (oneWay) break;
+                            dir = -dir; next = index + dir;
+                        }
                         index = next;
                     }
                     aim = path[index];
-                    desired = cruise;
+                    desired = OnPlayerRoad ? Mathf.Min(cruise, gravel ? gravelRoadSpeed : playerRoadSpeed) : cruise;
+                    if (oneWay && index == path.Count - 1)
+                    {
+                        float left = Flat(aim - pos).magnitude;
+                        desired = Mathf.Min(desired, left * 0.5f);                                  // ease up to the end
+                        if (left < 3.5f) { Arrived = true; goal = Goal.Park; }
+                    }
                     break;
                 }
                 case Goal.Chase:

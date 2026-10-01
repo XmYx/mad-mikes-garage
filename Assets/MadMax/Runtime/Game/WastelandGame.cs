@@ -205,6 +205,7 @@ namespace MadMax.Game
                 SpawnWrecks(p);
                 UnityEngine.Profiling.Profiler.EndSample();
                 BlocksNewGame();
+                Journal.Load(null); MadMax.Npc.TownNews.Load(null);     // statics outlive the scene reload
                 if (Rules.story) StoryNewGame();
                 else
                 {

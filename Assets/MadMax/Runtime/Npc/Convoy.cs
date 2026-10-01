@@ -338,10 +338,11 @@ namespace MadMax.Npc
                 int li = NearestIndex(lead.transform.position, out float loff);
                 if (off < 25f && loff < 12f && Mathf.Abs(cum[pi] - cum[li]) > 30f)
                 {
-                    if (lead.goal != AiDriver.Goal.Path) lead.SetPath(route, pi > li ? 1 : -1);
+                    if (lead.goal != AiDriver.Goal.Path || lead.path != route) lead.SetPath(route, pi > li ? 1 : -1);
                     lead.dir = pi > li ? 1 : -1;
                     lead.cruise = 14f;
                 }
+                else if (dist > 45f && lead.RouteToward(target.position, true)) lead.cruise = 12f;   // the player's own road leads there
                 else if (lead.goal == AiDriver.Goal.Path) { lead.goal = AiDriver.Goal.Chase; lead.avoidTarget = true; lead.chaseSpeed = 12f; }
             }
             if (dist < 17f) lead.goal = AiDriver.Goal.Park;

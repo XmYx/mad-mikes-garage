@@ -235,9 +235,12 @@ namespace MadMax.Game
             if (!Valid || !aimParent) return null;
             var def = Current;
             if (def.plan >= 0) return PlacePlan(def);
-            if (def.kit != null) game.Inventory.TakeItem(def.kit);
-            else foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
-            if (def.needsItem != null) game.Inventory.TakeItem(def.needsItem);
+            using (Inventory.Source(null, "BUILT"))                                                  // item feed labels
+            {
+                if (def.kit != null) game.Inventory.TakeItem(def.kit);
+                else foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
+                if (def.needsItem != null) game.Inventory.TakeItem(def.needsItem);
+            }
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 6f);
             var placed = FurnitureLibrary.Spawn(def.id, aimParent, aimPos, aimRot, material);
             if (placed) { placed.owner = game.Stats.name; _ = placed.Id; placed.Dirty(); MadMax.Audio.Sfx.Play("hammer", placed.transform.position, 0.7f); }
@@ -318,7 +321,7 @@ namespace MadMax.Game
             if (mouse != null && mouse.rightButton.wasPressedThisFrame) { linkStart = null; return; }
             if (click && ok)
             {
-                game.Inventory.TrySpend(res, cost);
+                using (Inventory.Source(null, "LAID")) game.Inventory.TrySpend(res, cost);
                 linkStart.Link(node, def.link);
                 game.Stats.Practice(MadMax.RPG.Skill.Construction, 2f);
                 game.Toast(what + " CONNECTED");
@@ -335,6 +338,7 @@ namespace MadMax.Game
             if (p.TryGetComponent<UtilityNode>(out var un)) un.Unlink();
             if (def != null)
             {
+                using var feed = Inventory.Source("DISMANTLED");
                 if (def.kit != null) game.Inventory.AddItem(def.kit);
                 else foreach (var (t, n) in def.cost) game.Inventory.Add(t, n);
                 if (def.needsItem != null) game.Inventory.AddItem(def.needsItem);
@@ -401,16 +405,19 @@ namespace MadMax.Game
         }
 
         /// <summary>Rebuild a piece as its better version in place (pays the new cost, gets half the old back).</summary>
-        void Upgrade(Placeable p)
+        public void Upgrade(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
             var up = def != null && def.upgrade != null ? FurnitureLibrary.Get(def.upgrade) : null;
             if (up == null) { game.Toast("NOTHING TO UPGRADE IT TO"); return; }
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
             if (!Affordable(up)) { game.Toast("UPGRADE NEEDS " + CostText(up)); return; }
-            foreach (var (t, c) in up.cost) game.Inventory.TrySpend(t, Cost(c));
-            if (up.kit != null) game.Inventory.TakeItem(up.kit);                                   // kit pieces (prefab panels) use up their kit
-            foreach (var (t, n) in def.cost) if (n / 2 > 0) game.Inventory.Add(t, n / 2);
+            using (Inventory.Source("SALVAGED", "UPGRADED"))
+            {
+                foreach (var (t, c) in up.cost) game.Inventory.TrySpend(t, Cost(c));
+                if (up.kit != null) game.Inventory.TakeItem(up.kit);                               // kit pieces (prefab panels) use up their kit
+                foreach (var (t, n) in def.cost) if (n / 2 > 0) game.Inventory.Add(t, n / 2);
+            }
             var parent = p.transform.parent; var lp = p.transform.localPosition; var lr = p.transform.localRotation;
             string owner = p.owner; byte dye = p.dye;
             var box = p.GetComponent<Container>();                                                  // stores move over (MG nest belts → the turret)
@@ -434,7 +441,7 @@ namespace MadMax.Game
             var need = new List<(ResourceType, int)>();
             foreach (var (t, n) in def.cost) need.Add((t, Mathf.Max(1, Mathf.CeilToInt(n * missing * 0.5f))));
             foreach (var (t, n) in need) if (game.Inventory.Get(t) < n) { game.Toast("REPAIR NEEDS " + n + " " + ResourceInfo.Name(t)); return; }
-            foreach (var (t, n) in need) game.Inventory.TrySpend(t, n);
+            using (Inventory.Source(null, "REPAIRED")) foreach (var (t, n) in need) game.Inventory.TrySpend(t, n);
             p.hits = def.hits; p.Dirty();
             MadMax.Story.Story.Note("repaired:" + p.id);
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 2f);
@@ -467,7 +474,7 @@ namespace MadMax.Game
         {
             var plan = StructurePlans.Get(def.plan);
             if (plan == null) return null;
-            foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
+            using (Inventory.Source(null, "BUILT")) foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
             var o = ghost.transform;
             Placeable first = null;
             foreach (var e in plan.pieces)

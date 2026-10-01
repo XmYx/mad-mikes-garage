@@ -134,8 +134,49 @@ namespace MadMax.Npc
             { "build", new[] { ("res:2", 20, 80), ("res:3", 20, 80), ("res:26", 5, 30), ("res:27", 5, 20), ("res:10", 10, 40), ("res:11", 10, 40), ("kit_chest", 0, 2), ("kit_wall_scrap", 0, 3) } },
         };
 
+        /// <summary>Extra goods by season (0 summer, 1 autumn, 2 winter, 3 spring) and vendor kind: seeds and saplings in
+        /// spring, fishing gear and water in summer, the harvest and preserving salt in autumn, preserves, firewood and
+        /// charcoal in winter.</summary>
+        static readonly Dictionary<string, (string id, int min, int max)[]>[] seasonal =
+        {
+            new Dictionary<string, (string, int, int)[]>
+            {
+                { "food", new[] { ("tool_fishing_rod", 0, 1), ("bait_worms", 2, 8), ("drink_water", 4, 10), ("seed_sunflower", 0, 3) } },
+                { "pack", new[] { ("tool_fishing_rod", 0, 1), ("bait_worms", 1, 5), ("drink_water", 2, 6) } },
+            },
+            new Dictionary<string, (string, int, int)[]>
+            {
+                { "food", new[] { ("food_potato", 4, 12), ("food_corn", 4, 12), ("food_pumpkin", 0, 4), ("res:" + (int)ResourceType.Salt, 2, 10), ("seed_wheat", 0, 3) } },
+                { "build", new[] { ("res:2", 20, 60) } },
+            },
+            new Dictionary<string, (string, int, int)[]>
+            {
+                { "food", new[] { ("food_jerky", 2, 6), ("food_pickles", 1, 5), ("food_meat_salted", 1, 4), ("food_can", 2, 6) } },
+                { "pack", new[] { ("food_jerky", 1, 4), ("res:2", 10, 30) } },
+                { "fuel", new[] { ("res:2", 20, 60), ("res:" + (int)ResourceType.Charcoal, 5, 20) } },
+                { "build", new[] { ("res:2", 30, 90) } },
+            },
+            new Dictionary<string, (string, int, int)[]>
+            {
+                { "food", new[] { ("seed_carrot", 1, 4), ("seed_cabbage", 1, 4), ("seed_beet", 0, 3), ("seed_wheat", 1, 4), ("seed_herbs", 0, 3), ("sapling_apple", 0, 2), ("sapling_pine", 0, 2) } },
+                { "pack", new[] { ("seed_potato", 1, 4), ("seed_corn", 1, 4), ("sapling_apple", 0, 1) } },
+                { "build", new[] { ("sapling_pine", 0, 3) } },
+            },
+        };
+
         /// <summary>Every id any vendor kind can stock (acceptance: blueprint and media sources).</summary>
-        public static IEnumerable<string> AllStockIds() { foreach (var t in sells.Values) foreach (var e in t) yield return e.id; }
+        public static IEnumerable<string> AllStockIds()
+        {
+            foreach (var t in sells.Values) foreach (var e in t) yield return e.id;
+            foreach (var season in seasonal) foreach (var t in season.Values) foreach (var e in t) yield return e.id;
+        }
+
+        /// <summary>The season's extra lines for a vendor kind (empty when none).</summary>
+        public static (string id, int min, int max)[] SeasonalStock(string kind, int season)
+        {
+            if (kind == null || season < 0 || season >= seasonal.Length || !seasonal[season].TryGetValue(kind, out var l)) return System.Array.Empty<(string, int, int)>();
+            return l;
+        }
 
         /// <summary>What a vendor buys, by item prefix or res:N.</summary>
         static readonly Dictionary<string, string[]> buys = new Dictionary<string, string[]>
@@ -169,6 +210,19 @@ namespace MadMax.Npc
             {
                 int n = r.Next(min, max + 1) - s.Bought(id, day);
                 if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
+            }
+            // the season's goods: more of a line already stocked, or a new line
+            foreach (var (id, min, max) in SeasonalStock(p.kind, MadMax.World.Weather.Season))
+            {
+                int extra = r.Next(min, max + 1);
+                if (extra <= 0) continue;
+                int at = list.FindIndex(o => o.id == id);
+                if (at >= 0) { var o = list[at]; o.count += extra; list[at] = o; }
+                else
+                {
+                    int n = extra - s.Bought(id, day);
+                    if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
+                }
             }
             return list;
         }

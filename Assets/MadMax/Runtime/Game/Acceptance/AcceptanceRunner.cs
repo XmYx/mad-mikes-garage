@@ -118,7 +118,7 @@ namespace MadMax.Game.Acceptance
             runStart = Time.realtimeSinceStartup;
             var all = new List<Scenario>();
             foreach (var s in AcceptanceScenarios.All())
-                if (Array.IndexOf(s.Suites, suite) >= 0 && (filter == null || s.Id.StartsWith(filter))) all.Add(s);
+                if (Array.IndexOf(s.Suites, suite) >= 0 && (filter == null || Array.Exists(filter.Split(','), f => s.Id.StartsWith(f.Trim())))) all.Add(s);
             Debug.Log($"[acceptance] {all.Count} scenarios");
 
             // data-only checks first: they need no world

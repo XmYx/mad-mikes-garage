@@ -85,7 +85,7 @@ namespace MadMax.Game
         public string factions;
         public List<MadMax.Animals.AnimalSave> animals = new List<MadMax.Animals.AnimalSave>();
         public List<string> foundAircraft = new List<string>(), scouted = new List<string>();
-        public List<string> discovered = new List<string>(), journal = new List<string>();
+        public List<string> discovered = new List<string>(), journal = new List<string>(), townNews = new List<string>();
         public bool hasWaypoint; public Vector3 waypoint;
         public List<WastelandGame.StashSave> stashes = new List<WastelandGame.StashSave>();
         public List<MovedSave> moved = new List<MovedSave>();            // crates and other loose props pushed around
