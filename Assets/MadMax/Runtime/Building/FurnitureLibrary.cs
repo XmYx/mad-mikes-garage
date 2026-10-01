@@ -521,6 +521,7 @@ namespace MadMax.Building
             p.id = id;
             p.hits = def.hits;
             def.setup?.Invoke(go);
+            DressHD(go, id, MadMax.World.HDProp.FlagsOf(mat));                                     // the HD model over the voxel mesh
             // pieces standing on the ground keep the grass out from under them
             var t = MadMax.World.DeformableTerrain.Instance;
             if (!dynamicParent && t && t.World != null)

@@ -6,12 +6,12 @@ namespace MadMax.Game
 {
     /// <summary>Every HD character mesh the game can wear (tools/blender/hd/PIPELINE.md, group <c>character</c>), re-bound to
     /// the <see cref="HumanRig"/> bones: built in the editor by <c>MadMax/HD/Build Character Catalog</c> into
-    /// <c>Models/HD/Resources/HDCharacters.asset</c> (beside the gitignored HD pack, so a checkout without the pack simply
-    /// has no catalogue and keeps the voxel humans). Pieces are per body shape (M rugged, M2 lean, F soft, F2 sharp);
+    /// <c>Resources/HDGen/Characters.asset</c> (gitignored like the HD pack, so a checkout without the pack simply has no
+    /// catalogue and keeps the voxel humans). Pieces are per body shape (M rugged, M2 lean, F soft, F2 sharp);
     /// covers say which body triangles a garment hides.</summary>
     public class HDCharacterCatalog : ScriptableObject
     {
-        public const int Version = 1;
+        public const int Version = 2;
 
         [Serializable]
         public class Piece
@@ -24,9 +24,10 @@ namespace MadMax.Game
             public string garment;        // game ClothingLibrary id (garments)
             public string variant;        // HD variant of the garment ("worn" for tshirt_worn, "up" for goggles_up)
             public string hair;           // HairStyle name (hair pieces)
-            public float cut;             // hat cut height of a hair variant (0 = full hair)
+            public float cut;             // hat cut of a hair variant (its height when exported, 1 = "_cut" without one; 0 = full hair)
             public int tint;              // 0 none, 1 skin, 2 hair
             public int toneRef = -1;      // the skin tone / hair colour index baked into the texture
+            public bool paint;            // tintable through the paint mask (_PaintColor over _PaintRef), else _Tint
             public Material material;
             public Mesh[] lods;           // LOD0..2, bindposes for the HumanRig rest pose (identity rotations)
             public string[] bones;        // bone names per mesh bone index ("Root" = the HumanRig transform)
@@ -73,7 +74,7 @@ namespace MadMax.Game
                 if (loaded) return loaded;
                 if (tried) return null;
                 tried = true;
-                loaded = Resources.Load<HDCharacterCatalog>("HDCharacters");
+                loaded = Resources.Load<HDCharacterCatalog>("HDGen/Characters");
                 if (loaded && (loaded.version != Version || loaded.pieces.Count == 0)) { Debug.LogWarning("[HD] character catalogue out of date: run MadMax/HD/Build Character Catalog"); loaded = null; }
                 return loaded;
             }

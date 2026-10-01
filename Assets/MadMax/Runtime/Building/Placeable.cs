@@ -43,6 +43,7 @@ namespace MadMax.Building
             dye = (byte)Mathf.Clamp(d, 0, 6);
             var def = FurnitureLibrary.Get(id);
             if (def != null && TryGetComponent<MeshFilter>(out var mf)) mf.sharedMesh = Dyes.MeshFor(def, dye);
+            if (TryGetComponent<MadMax.Rendering.HDVisual>(out var hd)) hd.SetTint(dye == 0 ? null : FurnitureLibrary.DyeTint(dye));   // HD look: tinted
         }
 
         /// <summary>Functional state of the piece's components (+ its paint, as a leading "\u001f n \u001f" block).</summary>

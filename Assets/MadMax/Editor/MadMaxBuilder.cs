@@ -87,6 +87,7 @@ namespace MadMax.EditorTools
         [MenuItem("MadMax/Build Game Scene")]
         public static void BuildGameScene()
         {
+            HDCatalogBuilder.Build(true);                                                   // HD world / furniture / items / animals (Resources/HDGen)
             BuildAssetsInternal(out var vehicles);
             HDCharacterCatalogBuilder.Build(false);                                         // HD humans (no-op without the pack)
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -202,6 +203,7 @@ namespace MadMax.EditorTools
             var parts = new Dictionary<string, GameObject>();
             var partDesigns = new Dictionary<string, PartDesign>();
             foreach (var p in PartLibrary.All()) { parts[p.key] = SavePart(p, mat); partDesigns[p.key] = p; }
+            HDVehicleBuilder.SaveGenericParts(parts, partDesigns, PartDir);              // HD models of the generic parts (parts pack, machine tools)
 
             vehicles = new Dictionary<string, GameObject>();
             foreach (var d in new[] { VehicleDesigns.Interceptor(), VehicleDesigns.Scavenger(), VehicleDesigns.Trabant(), VehicleDesigns.Hauler(), VehicleDesigns.Tanker(), VehicleDesigns.TankerSmall(), VehicleDesigns.CargoTrailer(),

@@ -31,6 +31,14 @@ Shader "MadMax/HDLit"
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
         _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
         _DirtTop ("Mud Line (world Y)", Float) = -100000
+        [NoScaleOffset] _CarveMask ("Carve Mask (3D, R: 1 kept, 0 carved)", 3D) = "" {}
+        _CarveOn ("Carved (destructible props)", Range(0,1)) = 0
+        _CarveInset ("Carve Sample Inset (m)", Float) = 0.04
+        _CarveRow0 ("Carve World->Grid Row 0", Vector) = (1,0,0,0)
+        _CarveRow1 ("Carve World->Grid Row 1", Vector) = (0,1,0,0)
+        _CarveRow2 ("Carve World->Grid Row 2", Vector) = (0,0,1,0)
+        _CarveMin ("Carve Grid Min (voxels)", Vector) = (0,0,0,0)
+        _CarveSize ("Carve Grid Size (voxels)", Vector) = (1,1,1,0)
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
     }
     SubShader
@@ -63,11 +71,16 @@ Shader "MadMax/HDLit"
             half _Dirt;
             float _DirtTop;
             half _Cull;
+            float4 _CarveRow0, _CarveRow1, _CarveRow2;   // world -> voxel grid coordinates (voxel centres on integers)
+            float4 _CarveMin, _CarveSize;
+            half _CarveOn;
+            float _CarveInset;
         CBUFFER_END
         TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
         TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
         TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
         TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
+        TEXTURE3D(_CarveMask); SAMPLER(sampler_CarveMask);
 
         // ---- MadMax globals (shared with PixelVoxel; 0 = default look)
         float _MadMaxOutlineDelta;
@@ -144,6 +157,16 @@ Shader "MadMax/HDLit"
             if (_WorldCut > 0.5 && _MadMaxCut.z > 0.0 && distance(ws.xz, _MadMaxCut.xy) < _MadMaxCut.z) c = min(c, _MadMaxCut.w - ws.y);
             return c;
         }
+        // destructible props (HDCarve): the HD surface goes where its voxel cell (half a voxel inside the surface) was carved
+        void CarveClip(float3 ws, float3 nws)
+        {
+            if (_CarveOn < 0.5) return;
+            float4 p = float4(ws - nws * _CarveInset, 1.0);
+            float3 g = float3(dot(_CarveRow0, p), dot(_CarveRow1, p), dot(_CarveRow2, p));
+            float3 uvw = (g - _CarveMin.xyz + 0.5) / max(_CarveSize.xyz, 1.0);
+            if (any(uvw < 0.0) || any(uvw > 1.0)) return;
+            clip(SAMPLE_TEXTURE3D_LOD(_CarveMask, sampler_CarveMask, uvw, 0).r - 0.5);
+        }
         half Bayer4(float2 px)
         {
             uint2 p = (uint2)px & 3u;
@@ -199,14 +222,15 @@ Shader "MadMax/HDLit"
             {
                 float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1;
                 half4 tangentWS : TEXCOORD2; float2 uv : TEXCOORD3; half4 color : COLOR; half fog : TEXCOORD4;
-                float3 positionOS : TEXCOORD5; half wear : TEXCOORD6;
+                float3 positionOS : TEXCOORD5; half wear : TEXCOORD6; float3 carveWS : TEXCOORD7;
             };
 
             Varyings vert (Attributes i)
             {
                 Varyings o;
                 o.positionOS = i.positionOS.xyz;
-                o.positionWS = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
+                o.carveWS = TransformObjectToWorld(i.positionOS.xyz);
+                o.positionWS = WindSway(o.carveWS, i.positionOS.xyz, i.color.a);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS = TransformObjectToWorldNormal(i.normalOS);
                 float s = i.tangentOS.w * GetOddNegativeScale();
@@ -235,6 +259,7 @@ Shader "MadMax/HDLit"
             half4 frag (Varyings i) : SV_Target
             {
                 clip(CutMask(i.positionWS));
+                CarveClip(i.carveWS, normalize(i.normalWS));
                 half4 baseTex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
                 ClipOpacity(baseTex.a, i.positionCS.xy);
                 half4 mask = lerp(half4(0.0h, 1.0h, 0.0h, _Smoothness), SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, i.uv), _MaskStrength);
@@ -380,12 +405,14 @@ Shader "MadMax/HDLit"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             float3 _LightDirection;
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv : TEXCOORD0; };
-            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float3 carveWS : TEXCOORD1; float3 carveN : TEXCOORD2; };
             Varyings vert (Attributes i)
             {
                 Varyings o;
-                float3 ws = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
+                o.carveWS = TransformObjectToWorld(i.positionOS.xyz);
+                float3 ws = WindSway(o.carveWS, i.positionOS.xyz, i.color.a);
                 float3 n = TransformObjectToWorldNormal(i.normalOS);
+                o.carveN = n;
                 float4 cs = TransformWorldToHClip(ApplyShadowBias(ws, n, _LightDirection));
                 #if UNITY_REVERSED_Z
                 cs.z = min(cs.z, UNITY_NEAR_CLIP_VALUE);
@@ -399,6 +426,7 @@ Shader "MadMax/HDLit"
             half4 frag (Varyings i) : SV_Target
             {
                 clip(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a - 0.5h);      // glass casts no shadow
+                CarveClip(i.carveWS, normalize(i.carveN));
                 return 0;
             }
             ENDHLSL
@@ -412,12 +440,13 @@ Shader "MadMax/HDLit"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            struct A { float4 p : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; };
-            struct V { float4 positionCS : SV_POSITION; float3 ws : TEXCOORD0; float2 uv : TEXCOORD1; };
-            V vert (A i) { V o; o.ws = WindSway(TransformObjectToWorld(i.p.xyz), i.p.xyz, i.color.a); o.positionCS = TransformWorldToHClip(o.ws); o.uv = TRANSFORM_TEX(i.uv, _BaseMap); return o; }
+            struct A { float4 p : POSITION; float3 n : NORMAL; half4 color : COLOR; float2 uv : TEXCOORD0; };
+            struct V { float4 positionCS : SV_POSITION; float3 ws : TEXCOORD0; float2 uv : TEXCOORD1; float3 carveWS : TEXCOORD2; float3 carveN : TEXCOORD3; };
+            V vert (A i) { V o; o.carveWS = TransformObjectToWorld(i.p.xyz); o.carveN = TransformObjectToWorldNormal(i.n); o.ws = WindSway(o.carveWS, i.p.xyz, i.color.a); o.positionCS = TransformWorldToHClip(o.ws); o.uv = TRANSFORM_TEX(i.uv, _BaseMap); return o; }
             half frag (V i) : SV_Target
             {
                 clip(CutMask(i.ws));
+                CarveClip(i.carveWS, normalize(i.carveN));
                 ClipOpacity(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a, i.positionCS.xy);
                 return 0;
             }
@@ -433,11 +462,12 @@ Shader "MadMax/HDLit"
             #pragma vertex vert
             #pragma fragment frag
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv : TEXCOORD0; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 ws : TEXCOORD1; float2 uv : TEXCOORD2; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 ws : TEXCOORD1; float2 uv : TEXCOORD2; float3 carveWS : TEXCOORD3; };
             Varyings vert (Attributes i)
             {
                 Varyings o;
-                o.ws = WindSway(TransformObjectToWorld(i.positionOS.xyz), i.positionOS.xyz, i.color.a);
+                o.carveWS = TransformObjectToWorld(i.positionOS.xyz);
+                o.ws = WindSway(o.carveWS, i.positionOS.xyz, i.color.a);
                 o.positionCS = TransformWorldToHClip(o.ws);
                 o.normalWS = TransformObjectToWorldNormal(i.normalOS);
                 o.uv = TRANSFORM_TEX(i.uv, _BaseMap);
@@ -446,6 +476,7 @@ Shader "MadMax/HDLit"
             half4 frag (Varyings i) : SV_Target
             {
                 clip(CutMask(i.ws));
+                CarveClip(i.carveWS, normalize(i.normalWS));
                 ClipOpacity(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a, i.positionCS.xy);
                 return half4(normalize(i.normalWS), 0);
             }

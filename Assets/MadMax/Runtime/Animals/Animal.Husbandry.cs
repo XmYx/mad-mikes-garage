@@ -268,6 +268,7 @@ namespace MadMax.Animals
             }
             var mr = rig.GetComponentInChildren<MeshRenderer>();
             fleece = Part(rig, "Fleece", mesh, new Vector3(0f, (Def.leg + Def.depth * 0.5f) * VoxelMesher.DefaultSize * Def.scale, 0f), mr ? mr.sharedMaterial : null);
+            HDAnimal.DressPart(rig, fleece, Def.id, "Fleece");
             UpdateFleece();
         }
 

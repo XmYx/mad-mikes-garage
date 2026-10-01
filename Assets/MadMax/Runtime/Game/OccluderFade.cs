@@ -92,10 +92,11 @@ namespace MadMax.Game
                 r.GetPropertyBlock(mpb);
                 mpb.SetFloat(CutId, cutY);
                 r.SetPropertyBlock(mpb);
+                MadMax.Rendering.HDVisual.CopyBlock(r, mpb);                       // HD model over the voxels
             }
             restore.Clear();
             foreach (var r in cut) if (!now.Contains(r)) restore.Add(r);
-            foreach (var r in restore) { cut.Remove(r); if (r) { r.GetPropertyBlock(mpb); mpb.SetFloat(CutId, 100000f); r.SetPropertyBlock(mpb); } }
+            foreach (var r in restore) { cut.Remove(r); if (r) { r.GetPropertyBlock(mpb); mpb.SetFloat(CutId, 100000f); r.SetPropertyBlock(mpb); MadMax.Rendering.HDVisual.CopyBlock(r, null); } }
         }
 
         void Consider(Collider c, Vector3 head)

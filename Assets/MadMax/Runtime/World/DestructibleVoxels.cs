@@ -42,6 +42,12 @@ namespace MadMax.World
         /// <summary>Current voxels (the shared template until the first hit). Read-only for other systems.</summary>
         public VoxelGrid Grid => grid;
         public string TemplateId => templateId;
+        /// <summary>The shared pristine grid this instance was spawned from.</summary>
+        public VoxelGrid Template { get; private set; }
+        /// <summary>The grid is a private copy (carved, or restored from the destruction state).</summary>
+        public bool Owned => owned;
+        /// <summary>When set, every removed voxel is appended here (HD visuals clip their mesh to the carved cells).</summary>
+        [System.NonSerialized] public List<Vector3Int> takenLog;
         public string StateKey => stateKey;
         /// <summary>Raised after voxels were carved away (overlays such as <see cref="Overgrowth"/> refresh).</summary>
         public event System.Action Carved;
@@ -95,6 +101,7 @@ namespace MadMax.World
             d.initialCount = template.Count;
             d.groundY = template.MinY();
             d.grid = saved ?? template;
+            d.Template = template;
             d.owned = saved != null;
             d.spawnedAt = position;
             if (dynamicBody)
@@ -109,6 +116,7 @@ namespace MadMax.World
             if (!d.owned) d.SetMesh(sharedMesh);
             else if (d.grid.Count < AsyncVoxels || !sharedMesh) d.SetMesh(d.ownMesh = VoxelMesher.Build(d.grid, name, size));
             else { d.SetMesh(sharedMesh); d.Remesh(); }          // a damaged building streaming back in: the template until its mesh is ready
+            HDProp.Attach(d, templateId, mat);                     // the HD model over the voxels (sites dress themselves)
             if (key != null)
             {
                 byKey[key] = d;
@@ -295,6 +303,7 @@ namespace MadMax.World
             if (!grid.voxels.TryGetValue(p, out var v)) return;
             grid.voxels.Remove(p);
             removedVox.Add(v);
+            takenLog?.Add(p);
             debris.Add(new DebrisSystem.Chunk { position = transform.TransformPoint((Vector3)p * voxelSize), color = v.color });
         }
 

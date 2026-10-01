@@ -152,6 +152,7 @@ namespace MadMax.World
             go.GetComponent<MeshFilter>().sharedMesh = weedMesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = weedMat;
             go.AddComponent<SphereCollider>().radius = 0.33f;
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.World, "Tumbleweed", HDProp.FlagsOf(weedMat));
             var rb = go.AddComponent<Rigidbody>();
             rb.mass = 1.5f; rb.linearDamping = 0.15f; rb.angularDamping = 0.2f;
             go.AddComponent<Tumbleweed>();

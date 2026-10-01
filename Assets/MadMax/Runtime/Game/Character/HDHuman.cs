@@ -22,10 +22,10 @@ namespace MadMax.Game
             { "cowboy", 0.236f }, { "sunhat", 0.232f }, { "beanie", 0.226f }, { "helmet", 0.216f }, { "moto_helmet", 0.216f },
         };
 
-        /// <summary>HD voxel humans are off (player flag --voxel-humans, MadMax > Dev > Voxel Humans, or a test).</summary>
+        /// <summary>HD humans are off (player flags --voxel-humans / --no-hd, MadMax > Dev > Voxel Humans / Voxel Visuals, or a test).</summary>
         public static bool ForceVoxel;
 
-        public static bool Enabled => !ForceVoxel && !LaunchOptions.VoxelHumans && HDCharacterCatalog.Instance != null;
+        public static bool Enabled => !ForceVoxel && !LaunchOptions.VoxelHumans && MadMax.Rendering.HDAssets.Enabled && HDCharacterCatalog.Instance != null;
 
         static readonly Dictionary<string, Mesh> variants = new Dictionary<string, Mesh>();
         static readonly Dictionary<string, Material> tinted = new Dictionary<string, Material>();
@@ -94,16 +94,18 @@ namespace MadMax.Game
             return plain;
         }
 
+        /// <summary>The body for a shape: one baked in the wanted skin tone, else a tintable one, else any.</summary>
         public static HDCharacterCatalog.Piece Body(HDCharacterCatalog cat, string shape, int tone)
         {
-            HDCharacterCatalog.Piece any = null;
+            HDCharacterCatalog.Piece any = null, paint = null;
             foreach (var p in cat.pieces)
             {
                 if (p.kind != "body" || p.shape != shape) continue;
                 if (p.toneRef == tone) return p;
+                if (p.paint) paint ??= p;
                 any ??= p;
             }
-            return any;
+            return paint ?? any;
         }
 
         public static HDCharacterCatalog.Piece Hair(HDCharacterCatalog cat, string shape, HairStyle style, float cut, bool hideIfUncut)
@@ -160,12 +162,19 @@ namespace MadMax.Game
             var m = p.material;
             if (!m) return null;
             int tone = p.tint == 1 ? a.skinTone : p.tint == 2 ? a.hairColor : -1;
-            var tint = TintFor(p.tint, tone, p.toneRef);
-            if (tint == Color.white) return m;
+            if (p.tint == 0 || tone < 0 || tone == p.toneRef) return m;
             string key = m.GetEntityId() + ":" + tone;
             if (tinted.TryGetValue(key, out var t) && t) return t;
             t = new Material(m) { name = m.name + "_t" + tone };
-            t.SetColor("_Tint", tint);
+            if (p.paint && t.HasProperty(HDModel.PaintRefId))
+            {
+                // the exporter's tint mask: albedo x colour / factory colour where the mask says skin / hair
+                Color32 c = p.tint == 1 ? HumanDesign.SkinTones[Mathf.Clamp(tone, 0, HumanDesign.SkinTones.Length - 1)][0]
+                                        : HumanDesign.HairColors[Mathf.Clamp(tone, 0, HumanDesign.HairColors.Length - 1)];
+                var col = (Color)c; col.a = 1f;
+                t.SetColor(HDModel.PaintColorId, col);
+            }
+            else t.SetColor("_Tint", TintFor(p.tint, tone, p.toneRef));
             tinted[key] = t;
             return t;
         }

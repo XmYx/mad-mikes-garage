@@ -41,6 +41,7 @@ namespace MadMax.Building
                 go.transform.localPosition = new Vector3(0f, 0.2f, 0.32f - row * 0.32f) - rot * mesh.bounds.center;
                 go.GetComponent<MeshFilter>().sharedMesh = mesh;
                 go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.Tool, kv.Key);
                 shown.Add(go);
                 row++;
             }

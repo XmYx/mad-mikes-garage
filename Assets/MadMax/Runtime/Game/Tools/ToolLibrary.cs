@@ -272,6 +272,7 @@ namespace MadMax.Game
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             var tip = new GameObject("Tip").transform;
             tip.SetParent(go.transform, false);
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.Tool, id, 0, true);   // HD model at the grip (same axes as the voxel tool)
             HandTool tool;
             EnsureBlocks();
             if (Extra.TryGetValue(id, out var block)) tool = block.make(go, tip);

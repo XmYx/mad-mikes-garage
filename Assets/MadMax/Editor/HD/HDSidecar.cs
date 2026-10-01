@@ -131,8 +131,26 @@ namespace MadMax.EditorTools
 
         public float PropFloat(string key, float fallback)
         {
-            if (props != null) foreach (var p in props) if (p.k == key) return p.n;
+            if (props != null)
+                foreach (var p in props)
+                {
+                    if (p.k != key) continue;
+                    if (p.n != 0f) return p.n;
+                    return float.TryParse(p.s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f) ? f : p.n;   // floats written as text
+                }
             return fallback;
+        }
+
+        /// <summary>Rotation relative to the prefab root (from <see cref="RootMatrix"/>; a mirror on X stays in the scale).</summary>
+        public Quaternion RootRotation
+        {
+            get
+            {
+                var m = RootMatrix;
+                Vector3 f = m.GetColumn(2), u = m.GetColumn(1);
+                if (f.sqrMagnitude < 1e-8f || u.sqrMagnitude < 1e-8f) return Quaternion.identity;
+                return Quaternion.LookRotation(f, u);
+            }
         }
 
         public bool Has(string key)

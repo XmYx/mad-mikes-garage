@@ -135,7 +135,7 @@ namespace MadMax.Game
         static void Show(Target t, bool on)
         {
             t.hidden = !on;
-            foreach (var r in t.renderers) if (r) r.forceRenderingOff = !on;
+            foreach (var r in t.renderers) if (r) r.forceRenderingOff = !on || MadMax.Rendering.HDVisual.IsHost(r);   // voxel meshes under an HD model stay dark
         }
     }
 }

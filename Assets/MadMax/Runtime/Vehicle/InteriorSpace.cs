@@ -64,11 +64,32 @@ namespace MadMax.Vehicles
                 cutawayRenderers = r.ToArray(); cutawayColliders = c.ToArray();
             }
             foreach (var r in cutawayRenderers) if (r) r.enabled = !on;
+            if (cutawayRenderers.Length == 0) CutShell(on);                                     // HD hull with no separate roof: clip it
             foreach (var c in cutawayColliders) if (c) c.enabled = !on;
             // anything mounted on the roof
             foreach (var s in GetComponentsInChildren<MountSocket>())
                 if (s.transform.localPosition.y > ceilingY - 0.05f && s.Current)
                     foreach (var r in s.Current.GetComponentsInChildren<Renderer>()) r.enabled = !on;
+        }
+
+        MaterialPropertyBlock cutBlock;
+        static readonly int CutYId = Shader.PropertyToID("_CutY");
+
+        /// <summary>A walk-in HD hull without a separate roof mesh (houseboat, submarine): clip the body above the ceiling
+        /// (shader _CutY, world height) while the cutaway is on.</summary>
+        void CutShell(bool on)
+        {
+            var body = transform.Find("Body");
+            if (!body) return;
+            cutBlock ??= new MaterialPropertyBlock();
+            float y = on ? transform.TransformPoint(new Vector3(0f, ceilingY - 0.05f, 0f)).y : 100000f;
+            foreach (var r in body.GetComponentsInChildren<Renderer>())
+            {
+                if (r is ParticleSystemRenderer || !r.sharedMaterial || !r.sharedMaterial.HasProperty(CutYId)) continue;
+                r.GetPropertyBlock(cutBlock);
+                cutBlock.SetFloat(CutYId, y);
+                r.SetPropertyBlock(cutBlock);
+            }
         }
 
         void RefreshObstacles()

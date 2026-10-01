@@ -13,11 +13,11 @@ namespace MadMax.EditorTools
     /// removes the FBX bone axes), sorted by body shape (from the rig's joints), kind (body, eyes, brows, hair + hat cuts,
     /// beard, underwear, garment by ClothingLibrary id, variants from the material), with LODs, the skin / hair tint they
     /// were baked with, and per body + garment the body triangles the garment covers (ray along the skin normal hits the
-    /// garment, eroded two rings so no gap opens at hems). Output: Models/HD/Resources/HDCharacters.asset (meshes as
-    /// sub-assets; gitignored with the pack).</summary>
+    /// garment, eroded two rings so no gap opens at hems). Output: Resources/HDGen/Characters.asset (meshes as
+    /// sub-assets; gitignored like the rest of the HD catalog).</summary>
     public static class HDCharacterCatalogBuilder
     {
-        public const string OutPath = HDSidecar.Root + "/Resources/HDCharacters.asset";
+        public const string OutPath = "Assets/MadMax/Resources/HDGen/Characters.asset";
         static readonly string[] Bones = { "Root", "Pelvis", "Chest", "Head", "UpperArmL", "UpperArmR", "ForearmL", "ForearmR", "HandL", "HandR",
                                             "ThighL", "ThighR", "ShinL", "ShinR", "FootL", "FootR" };
         /// <summary>HD garment ids (garments.py GARMENTS) beside ClothingLibrary's; aliases map HD-only names to game ids.</summary>
@@ -55,17 +55,24 @@ namespace MadMax.EditorTools
             int assets = 0;
             try
             {
-                var jsons = Directory.GetFiles(dir, "*.hd.json", SearchOption.AllDirectories);
-                System.Array.Sort(jsons, System.StringComparer.Ordinal);
-                for (int ai = 0; ai < jsons.Length; ai++)
+                // full wardrobes (a body shape with every garment, hair and beard) first; older single-outfit exports
+                // only add shapes no wardrobe has
+                var sides = new List<HDSidecar>();
+                foreach (var j in Directory.GetFiles(dir, "*.hd.json", SearchOption.AllDirectories))
                 {
-                    var side = HDSidecar.Load(jsons[ai].Replace('\\', '/'));
-                    if (side == null || side.kind != "character") continue;
-                    EditorUtility.DisplayProgressBar("HD characters", side.asset, ai / (float)jsons.Length * 0.4f);
+                    var sd = HDSidecar.Load(j.Replace('\\', '/'));
+                    if (sd != null && sd.kind == "character" && sd.objects != null) sides.Add(sd);
+                }
+                sides.Sort((a, b) => b.objects.Length != a.objects.Length ? b.objects.Length.CompareTo(a.objects.Length) : string.CompareOrdinal(a.asset, b.asset));
+                var complete = new HashSet<string>();
+                for (int ai = 0; ai < sides.Count; ai++)
+                {
+                    var side = sides[ai];
+                    EditorUtility.DisplayProgressBar("HD characters", side.asset, ai / (float)sides.Count * 0.4f);
                     var model = AssetDatabase.LoadAssetAtPath<GameObject>(side.ModelPath);
                     if (!model) { Debug.LogWarning("[HD] character model not imported: " + side.ModelPath); continue; }
                     assets++;
-                    Collect(side, model, known, srcs, order, dedupe, shapes);
+                    Collect(side, model, known, srcs, order, dedupe, shapes, complete);
                 }
                 if (srcs.Count == 0) { if (verbose) Debug.LogWarning("[HD] no character meshes found under " + dir); return false; }
 
@@ -149,14 +156,20 @@ namespace MadMax.EditorTools
         }
 
         static void Collect(HDSidecar side, GameObject model, HashSet<string> known, Dictionary<string, Src> srcs, List<string> order,
-                            HashSet<string> dedupe, HashSet<string> shapes)
+                            HashSet<string> dedupe, HashSet<string> shapes, HashSet<string> complete)
         {
             var root = model.transform;
             var bones = new Dictionary<string, Transform>();
             foreach (var t in model.GetComponentsInChildren<Transform>(true)) if (System.Array.IndexOf(Bones, t.name) >= 0 && !bones.ContainsKey(t.name)) bones[t.name] = t;
             string shape = Shape(bones, root, out bool female);
             if (shape == null) { Debug.LogWarning("[HD] " + side.asset + ": no HumanRig bones"); return; }
+            if (complete.Contains(shape)) { Debug.Log("[HD] " + side.asset + ": shape " + shape + " already has a full wardrobe, skipped"); return; }
+            int meshes = 0;
+            foreach (var o in side.objects) if (o.role == "mesh" && o.type == "MESH") meshes++;
+            if (meshes >= 60) complete.Add(shape);
             shapes.Add(shape);
+            // skin / hair colour the tintable textures were baked in (root props), matched to the game's palettes
+            int skinRef = PaletteIndex(RootProp(side, "skin_tone_hex"), true), hairRef = PaletteIndex(RootProp(side, "hair_colour_hex"), false);
             string prefix = side.rootName != null && side.rootName.EndsWith("_Rig") ? side.rootName.Substring(0, side.rootName.Length - 4) + "_" : "";
             var heads = new Dictionary<string, Vector3>();
             foreach (var kv in bones) heads[kv.Key] = kv.Key == "Root" ? Vector3.zero : (Vector3)RootSpace(kv.Value, root).GetColumn(3);
@@ -191,9 +204,11 @@ namespace MadMax.EditorTools
                     if (lod > 0) continue;                           // a LOD without its LOD0
                     var o = side.Get(r.name);
                     int tint = 0, toneRef = -1;
+                    bool paint = false;
                     if (o != null && o.materials != null)
                         foreach (var m in o.materials)
                         {
+                            if (m == "skin_tint" || m == "hair_tint") { tint = m == "skin_tint" ? 1 : 2; toneRef = tint == 1 ? skinRef : hairRef; paint = true; break; }
                             var mm = Regex.Match(m ?? "", @"^(skin|hair)(\d+)$");
                             if (mm.Success) { tint = mm.Groups[1].Value == "skin" ? 1 : 2; toneRef = int.Parse(mm.Groups[2].Value); break; }
                         }
@@ -203,7 +218,7 @@ namespace MadMax.EditorTools
                         piece = new HDCharacterCatalog.Piece
                         {
                             key = key, shape = shape, female = female, kind = info.kind, piece = pc, garment = info.garment, variant = info.variant,
-                            hair = info.hair, cut = info.cut, tint = tint, toneRef = toneRef, material = r.sharedMaterial,
+                            hair = info.hair, cut = info.cut, tint = tint, toneRef = toneRef, paint = paint, material = r.sharedMaterial,
                         }
                     };
                     srcs[key] = s;
@@ -250,9 +265,14 @@ namespace MadMax.EditorTools
             if (pc.StartsWith("Eye")) return new Info { kind = "eyes" };
             if (pc.StartsWith("beard")) return new Info { kind = "beard" };
             if (pc == "under" || pc == "top") return new Info { kind = "under", garment = "underwear" };
-            var hm = Regex.Match(pc, @"^hair_([A-Za-z]+)(?:_cut([0-9.]+))?$");
+            var hm = Regex.Match(pc, @"^hair_([A-Za-z]+)(_cut([0-9.]*))?$");
             if (hm.Success)
-                return new Info { kind = "hair", hair = hm.Groups[1].Value, cut = hm.Groups[2].Success ? float.Parse(hm.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) : 0f };
+            {
+                float cut = 0f;
+                if (hm.Groups[1 + 1].Success)
+                    cut = hm.Groups[3].Value.Length > 0 && float.TryParse(hm.Groups[3].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var cv) ? cv : 1f;
+                return new Info { kind = "hair", hair = hm.Groups[1].Value, cut = cut };
+            }
             // garment: the longest known id the piece name starts with (jacket_zip -> jacket, vest_scrap_a -> vest_scrap)
             string id = null;
             foreach (var a in Alias.Keys) if (pc == a || pc.StartsWith(a + "_")) { id = a; break; }
@@ -265,6 +285,27 @@ namespace MadMax.EditorTools
             if (Alias.TryGetValue(id, out var al)) { variant = al.variant; id = al.id; }
             if (id == "underwear") return new Info { kind = "under", garment = id };
             return new Info { kind = "garment", garment = id, variant = variant };
+        }
+
+        static string RootProp(HDSidecar side, string key)
+        {
+            if (side.rootProps != null) foreach (var p in side.rootProps) if (p.k == key) return p.s;
+            return null;
+        }
+
+        /// <summary>Index of a hex colour in HumanDesign.SkinTones (base shade) or HairColors (nearest), -1 if none.</summary>
+        static int PaletteIndex(string hex, bool skin)
+        {
+            if (string.IsNullOrEmpty(hex) || !ColorUtility.TryParseHtmlString("#" + hex, out var c)) return -1;
+            int best = -1; float bd = 0.02f;
+            int n = skin ? HumanDesign.SkinTones.Length : HumanDesign.HairColors.Length;
+            for (int i = 0; i < n; i++)
+            {
+                Color p = skin ? HumanDesign.SkinTones[i][0] : HumanDesign.HairColors[i];
+                float d = Mathf.Abs(p.r - c.r) + Mathf.Abs(p.g - c.g) + Mathf.Abs(p.b - c.b);
+                if (d < bd) { bd = d; best = i; }
+            }
+            return best;
         }
 
         static int GeomHash(Mesh m)

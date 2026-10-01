@@ -11,6 +11,9 @@ namespace MadMax.Rendering
     {
         [Tooltip("Asset name in Models/HD (sidecar <asset>.hd.json).")] public string asset;
         [Tooltip("Asset group folder (cars, heavy, misc, character).")] public string group;
+        [Tooltip("Vehicles: the HD model's box in prefab space (every LOD0 object), from the sidecar.")] public Bounds bounds;
+        [Tooltip("Vehicles: wheel sockets with an HD wheel and their sidecar radii (m).")] public string[] wheelSockets;
+        public float[] wheelRadii;
 
         public static readonly int PaintColorId = Shader.PropertyToID("_PaintColor");
         public static readonly int PaintRefId = Shader.PropertyToID("_PaintRef");
@@ -31,6 +34,9 @@ namespace MadMax.Rendering
         public static bool IsLod(Transform t) => t && (t.name == "LOD1" || t.name == "LOD2");
 
         public static bool IsLamp(Transform t) => t && t.name.StartsWith("Lamp_");
+
+        /// <summary>HD crawler track belts (Body/Track_L, Track_R): animated by CrawlerTracks, never dented or scraped.</summary>
+        public static bool IsBelt(Transform t) => t && t.name.StartsWith("Track_");
 
         static Material voxel;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { voxel = null; }

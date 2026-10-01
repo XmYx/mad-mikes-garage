@@ -64,7 +64,8 @@ namespace MadMax.Game
         Transform target;
         OccluderFade fade;
         Transform eye;
-        Renderer glass;
+        readonly System.Collections.Generic.List<Renderer> glass = new System.Collections.Generic.List<Renderer>();   // own glazing (body + door windows), hidden in first person
+        float glassScan;
         VehicleDriver vehicle;
         PlayerCharacter player;
         InteriorSpace cutawayInterior;
@@ -87,7 +88,7 @@ namespace MadMax.Game
 
         public void SetTarget(Transform t)
         {
-            if (glass) glass.enabled = true;
+            ShowGlass(true);
             if (vehicle) vehicle.SetDriverVisible(true);
             var gp = WastelandGame.Instance ? WastelandGame.Instance.Player : null;
             if (gp) gp.SetFirstPerson(false);
@@ -97,8 +98,7 @@ namespace MadMax.Game
             vehicle = t ? t.GetComponent<VehicleDriver>() : null;
             player = t ? t.GetComponent<PlayerCharacter>() : null;
             eye = player ? player.Eye : t ? t.Find("DriverEye") : null;
-            var g = t ? t.Find("Body/Glass") : null;
-            glass = g ? g.GetComponent<Renderer>() : null;
+            CollectGlass(vehicle ? t : null);
             if (player) { orbitYaw = ViewYaw; lookYaw = ViewYaw; lookPitch = 0; }
             else { orbitYaw = 0; lookYaw = 0; lookPitch = 0; }
             targetScale = 1f;
@@ -111,6 +111,16 @@ namespace MadMax.Game
             velocity = Vector3.zero;
             snapNext = true;
             Apply(0f);
+        }
+
+        void ShowGlass(bool show) { foreach (var r in glass) if (r && r.enabled != show) r.enabled = show; }
+
+        /// <summary>Every "Glass" renderer of the vehicle: the body's glazing and the windows in its (HD) doors.</summary>
+        void CollectGlass(Transform t)
+        {
+            glass.Clear();
+            if (!t) return;
+            foreach (var r in t.GetComponentsInChildren<Renderer>(true)) if (r.name == "Glass") glass.Add(r);
         }
 
         float shake;
@@ -272,7 +282,8 @@ namespace MadMax.Game
             }
             pixel.postMaterial = mode == ViewMode.TiltShift ? tiltShiftMaterial : null;
             bool fps = mode == ViewMode.FirstPerson;
-            if (glass) glass.enabled = !fps;
+            if (fps && Time.unscaledTime > glassScan) { glassScan = Time.unscaledTime + 1f; ShowGlass(true); CollectGlass(vehicle ? target : null); }   // doors come and go
+            ShowGlass(!fps);
             if (vehicle) vehicle.SetDriverVisible(!fps);
             var seated = WastelandGame.Instance ? WastelandGame.Instance.Player : null;
             if (player) player.SetFirstPerson(fps);

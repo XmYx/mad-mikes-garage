@@ -121,6 +121,7 @@ namespace MadMax.Building
             var pl = FitLamp(go, id, false);
             pl.external = true;
             if (lampSpecs[id].headSize == Vector3.zero) go.AddComponent<LampHead>().lamp = pl;    // a house fixture: any hit smashes it
+            DressHD(go, id, MadMax.World.HDProp.FlagsOf(mat));
             return pl;
         }
 
@@ -136,7 +137,9 @@ namespace MadMax.Building
             var box = go.AddComponent<BoxCollider>();
             box.center = def.mesh.bounds.center + new Vector3(0f, 0.04f, 0f); box.size = def.mesh.bounds.size + new Vector3(0.04f, 0.08f, 0.04f);
             LightSwitch.FitLever(go, mat);
-            return go.AddComponent<LightSwitch>();
+            var sw = go.AddComponent<LightSwitch>();
+            DressHD(go, "light_switch", MadMax.World.HDProp.FlagsOf(mat));
+            return sw;
         }
 
         // ------------------------------------------------------------------ grids (wall pieces: XZ plane, +Y out, +Z up)
