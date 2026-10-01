@@ -236,6 +236,7 @@ namespace MadMax.Game.Acceptance
                 sb.Append(", \"metrics\": {");
                 for (int m = 0; m < r.metrics.Count; m++) sb.Append(m > 0 ? ", " : " ").Append(Q(r.metrics[m].name)).Append(": ").Append(r.metrics[m].value.ToString("0.###", inv));
                 sb.Append(" }, \"evidence\": [").Append(string.Join(", ", r.evidence.ConvertAll(Q))).Append("]");
+                sb.Append(", \"step_times\": [").Append(string.Join(", ", r.times.ConvertAll(t => t.ToString("0.00", inv)))).Append("]");
                 sb.Append(", \"log\": [").Append(string.Join(", ", r.log.ConvertAll(Q))).Append("] }").Append(i < results.Count - 1 ? ",\n" : "\n");
             }
             sb.Append("  ]\n}\n");

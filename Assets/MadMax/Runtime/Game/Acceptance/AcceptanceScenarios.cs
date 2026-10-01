@@ -20,6 +20,7 @@ namespace MadMax.Game.Acceptance
             yield return new RecipeCatalogue();
             yield return new VehicleCatalogue();
             yield return new ManifestContract();
+            foreach (var h in HarnessScenarios.All()) yield return h;                  // suite "harness" only
             var g = WastelandGame.Instance;
             var names = new List<string>();
             if (g != null && g.vehiclePrefabs != null) foreach (var p in g.vehiclePrefabs) if (p) names.Add(p.name);

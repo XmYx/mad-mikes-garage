@@ -32,6 +32,8 @@ namespace MadMax.Game.Acceptance
         public string reason;
         public float startedAt, seconds;
         public readonly List<string> log = new List<string>();
+        /// <summary>Seconds since the scenario started, one per <see cref="log"/> line (step timings).</summary>
+        public readonly List<float> times = new List<float>();
         public readonly List<string> fixtures = new List<string>();
         public readonly List<(string name, float value, string unit)> metrics = new List<(string, float, string)>();
         public readonly List<string> evidence = new List<string>();
@@ -42,7 +44,7 @@ namespace MadMax.Game.Acceptance
         /// <summary>Assert: the first false check fails the scenario (later checks still log).</summary>
         public bool Check(bool ok, string what)
         {
-            log.Add((ok ? "ok   " : "FAIL ") + what);
+            Log((ok ? "ok   " : "FAIL ") + what);
             if (!ok && outcome == Outcome.Pass) { outcome = Outcome.Fail; reason = what; }
             return ok;
         }
@@ -50,15 +52,29 @@ namespace MadMax.Game.Acceptance
         /// <summary>A prerequisite is missing: the scenario cannot say pass or fail.</summary>
         public void Block(string why)
         {
-            log.Add("BLOCKED " + why);
+            Log("BLOCKED " + why);
             if (outcome == Outcome.Pass) { outcome = Outcome.Blocked; reason = why; }
         }
 
         public bool Failed => outcome != Outcome.Pass;
-        public void Note(string what) => log.Add("     " + what);
+        public void Note(string what) => Log("     " + what);
         /// <summary>Disclose a test shortcut (granted items, teleports, clock changes) in the report.</summary>
-        public void Fixture(string what) { fixtures.Add(what); log.Add("fix  " + what); }
-        public void Metric(string name, float value, string unit) { metrics.Add((name, value, unit)); log.Add("     " + name + " = " + value.ToString("0.###", CultureInfo.InvariantCulture) + " " + unit); }
+        public void Fixture(string what) { fixtures.Add(what); Log("fix  " + what); }
+        public void Metric(string name, float value, string unit) { metrics.Add((name, value, unit)); Log("     " + name + " = " + value.ToString("0.###", CultureInfo.InvariantCulture) + " " + unit); }
+
+        /// <summary>A measured number against its target (roadmap 26 Q0 budgets): recorded as a metric, fails past
+        /// <paramref name="limit"/> (or below it when <paramref name="atLeast"/>).</summary>
+        public bool Budget(string name, float value, float limit, string unit, bool atLeast = false)
+        {
+            Metric(name, value, unit);
+            var inv = CultureInfo.InvariantCulture;
+            return Check(atLeast ? value >= limit : value <= limit,
+                $"{name} {value.ToString("0.###", inv)} {unit} within budget ({(atLeast ? ">=" : "<=")} {limit.ToString("0.###", inv)})");
+        }
+
+        // wall clock (thread-safe: log callbacks may arrive off the main thread)
+        readonly long born = System.DateTime.UtcNow.Ticks;
+        void Log(string line) { log.Add(line); times.Add((float)((System.DateTime.UtcNow.Ticks - born) / 1e7)); }
 
         /// <summary>Save a screenshot as evidence. It is written at the end of the frame: yield a frame before changing
         /// what it should show.</summary>
