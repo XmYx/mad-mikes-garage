@@ -90,7 +90,7 @@ namespace MadMax.Game
                 g.Toast(Pinned ? "LOOT PANELS PINNED (" + Controls.Name(Controls.Act.Loot) + " TO UNPIN)" : "LOOT PANELS UNPINNED");
             }
             if (!can) { Visible = false; CancelDrag(); return; }
-            if (!Visible && Time.unscaledTime >= refreshAt) Refresh();                            // while shown, Draw refreshes (rows keep their rects)
+            if (!Visible && (Pinned || autoShown) && Time.unscaledTime >= refreshAt) Refresh();                            // while shown, Draw refreshes (rows keep their rects)
             // auto show: a storage / spot / ground item is hovered; stays while something is in reach
             var trig = g.ContextHover;
             if (trig && trig != dismissedFor && !autoShown) { autoShown = true; shownBy = trig; loot.closed = you.closed = false; Refresh(); }
