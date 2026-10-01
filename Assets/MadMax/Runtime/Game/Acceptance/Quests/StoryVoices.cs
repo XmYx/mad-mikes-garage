@@ -45,8 +45,11 @@ namespace MadMax.Game.Acceptance
             c.Check(QuestVoice.Has("radio_mara", "...SEVEN, EIGHT... IF YOU MADE IT, KEEP THE LIGHT ON."), "the opening radio loop is voiced");
 
             // ---- a story topic on the Talk page plays on the speaker and stops with the page
-            yield return H.Walk(c, "nell", 3f);
-            yield return H.Until(() => g.CastBody("nell") != null, 6f);
+            // A1 in order: the satchel, then Nell's stop (her topic is offered once the stop is reached)
+            yield return H.Walk(c, "satchel", 1.5f);
+            yield return H.Until(() => MadMax.Story.Story.StepDone("A1", "things"), 4f);
+            yield return H.Walk(c, "nell", 4f);
+            yield return H.Until(() => g.CastBody("nell") != null && MadMax.Story.Story.StepDone("A1", "stop"), 6f);
             var nell = g.CastBody("nell");
             if (!c.Check(nell, "Nell Mercer is at her stop")) yield break;
             var a1 = StoryLibrary.Get("A1");
@@ -58,7 +61,8 @@ namespace MadMax.Game.Acceptance
             yield return null;
             if (!c.Check(g.Menus.Pick("I CRAWLED OUT"), "the Talk page offers Nell's story topic")) yield break;
             c.Check(g.Menus.TalkLine == reply, "the reply is shown as the caption");
-            yield return H.Until(() => NpcVoice.Instance && NpcVoice.Instance.StorySpeaker == nell, 5f);
+            float t0 = Time.unscaledTime;                                      // the Talk page pauses game time
+            while (!(NpcVoice.Instance && NpcVoice.Instance.StorySpeaker == nell) && Time.unscaledTime - t0 < 5f) yield return null;
             var v = NpcVoice.Instance;
             if (!c.Check(v && v.StorySpeaker == nell, "Nell speaks her reply")) { g.Menus.Close(); yield break; }
             c.Check(v.StoryClip == expect, "the clip is her line: " + v.StoryClip);
