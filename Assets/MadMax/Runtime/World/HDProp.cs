@@ -28,7 +28,9 @@ namespace MadMax.World
             var a = HDAssets.Get(HDDomain.World, templateId);
             if (!a) return null;
             var vis = HDVisual.Dress(d.gameObject, a, FlagsOf(voxelMat));
-            if (vis) HDCarve.Attach(d, vis);
+            if (!vis) return null;
+            HDCarve.Attach(d, vis);
+            if (vis.HasLamps) vis.LampState = () => DayNight.Darkness > 0.35f;                 // lit windows and signs after dusk
             return vis;
         }
     }

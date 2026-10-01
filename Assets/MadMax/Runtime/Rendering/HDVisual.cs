@@ -48,6 +48,8 @@ namespace MadMax.Rendering
         static void ResetStatics() { hosts.Clear(); litMats.Clear(); }
 
         public IReadOnlyList<Renderer> Renderers => renderers;
+        /// <summary>The model has emissive lamp children (windows, bulbs) that <see cref="LampState"/> can light.</summary>
+        public bool HasLamps => lamps.Count > 0;
         public bool Shown => shown;
 
         /// <summary>A voxel renderer replaced by an HD model: it stays enabled (bounds, batching) but never draws.</summary>
@@ -144,7 +146,7 @@ namespace MadMax.Rendering
                 var r = renderers[i];
                 baseMats[i] = r.sharedMaterials;
                 if ((flags & HDAssets.NoShadow) != 0) r.shadowCastingMode = ShadowCastingMode.Off;
-                if (r.name.StartsWith("Lamp_")) lamps.Add(r);
+                if (r.name.StartsWith("Lamp_") || r.name.Contains("__Lamp_")) lamps.Add(r);
             }
             RefreshMaterials();
             Hide(host);
