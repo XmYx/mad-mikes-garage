@@ -1113,6 +1113,9 @@ namespace MadMax.Npc
         public void Chat(Vector3 at, float seconds) { chatAt = at; chatUntil = Time.time + seconds; }
         /// <summary>Where the voice comes from.</summary>
         public Transform Head => rig ? rig.Head : null;
+        /// <summary>The body (bones, HD or voxel look) and its animator (tests, tools).</summary>
+        public HumanRig Rig => rig;
+        public HumanAnimator Animator => anim;
 
         public void Heal() => health = maxHealth;
 

@@ -32,6 +32,7 @@ namespace MadMax.Game
         Vector3 seatSpot;
         InteriorSpace seatInterior;
         public HumanRig Rig { get; private set; }
+        public HumanAnimator Animator => anim;
         public Transform Eye => Rig ? Rig.Eye : transform;
         public bool Swinging => swingT >= 0f;
         /// <summary>0 = idle, else normalised swing time (network animation).</summary>

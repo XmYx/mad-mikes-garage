@@ -63,6 +63,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in VehicleFixScenarios.All()) yield return s;
             foreach (var s in VehicleStorageScenarios.All()) yield return s;
             foreach (var s in FluidsScenarios.All()) yield return s;
+            foreach (var s in HDCharacterScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);
