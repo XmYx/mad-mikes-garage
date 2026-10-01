@@ -41,9 +41,11 @@ namespace MadMax.Vehicles
 
         void Start()
         {
+            CabinPower.Fit(this);                                                               // house battery (lights block)
             if (!furnish || furnishings == null) return;
             foreach (var f in furnishings)
                 FurnitureLibrary.Spawn(f.id, transform, f.position, Quaternion.Euler(f.euler), furnitureMaterial);
+            CabinPower.Furnish(this);                                                           // cabin lights + switch
         }
 
         public Vector3 SeatWorld => transform.TransformPoint(seat);

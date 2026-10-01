@@ -182,6 +182,7 @@ namespace MadMax.Building
             defs.AddRange(MedMinePieces());
             defs.AddRange(DefencePieces());
             defs.AddRange(SeasonsPieces());
+            defs.AddRange(LightsPieces());
             Upgrades();
         }
 

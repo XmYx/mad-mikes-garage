@@ -37,10 +37,14 @@ namespace MadMax.Game
         partial void DefenceSave(SaveData d);
         partial void DefenceLoad(SaveData d);
         partial void DefenceNewGame();
+        partial void LightsUpdate();
+        partial void LightsSave(SaveData d);
+        partial void LightsLoad(SaveData d);
+        partial void LightsNewGame();
 
-        void BlocksUpdate() { ItemsUpdate(); AnimUpdate(); RoadsUpdate(); MetalUpdate(); HusbandryUpdate(); UtilitiesUpdate(); MedMineUpdate(); DefenceUpdate(); }
-        void BlocksSave(SaveData d) { ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); }
-        void BlocksLoad(SaveData d) { ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); }
-        void BlocksNewGame() { ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); }
+        void BlocksUpdate() { ItemsUpdate(); AnimUpdate(); RoadsUpdate(); MetalUpdate(); HusbandryUpdate(); UtilitiesUpdate(); MedMineUpdate(); DefenceUpdate(); LightsUpdate(); }
+        void BlocksSave(SaveData d) { ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); LightsSave(d); }
+        void BlocksLoad(SaveData d) { ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); LightsLoad(d); }
+        void BlocksNewGame() { ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); LightsNewGame(); }
     }
 }

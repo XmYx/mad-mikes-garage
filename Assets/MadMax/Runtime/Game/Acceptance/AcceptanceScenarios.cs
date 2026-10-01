@@ -53,6 +53,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in DefenceScenarios.All()) yield return s;
             foreach (var s in OnlineScenarios.All()) yield return s;
             foreach (var s in SeasonsScenarios.All()) yield return s;
+            foreach (var s in LightsScenarios.All()) yield return s;
             foreach (var s in PeopleScenarios.All()) yield return s;
             foreach (var s in MobilityScenarios.All()) yield return s;
             foreach (var s in SurvivalScenarios.All()) yield return s;
