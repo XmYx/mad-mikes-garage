@@ -29,6 +29,7 @@ namespace MadMax.Game
         public string paint;               // VehiclePaint colour,decal
         public string service;             // VehicleSystems maintenance (oil life, air filter, plugs, hours)
         public string wear;                // VehicleBreakables: broken glass and lamps, scraped paint
+        public string fluids;              // VehicleSystems blends: fuel tank, sump, coolant (null = pure, from tank)
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
     }
 
@@ -107,6 +108,7 @@ namespace MadMax.Game
         public List<string> blockDefence = new List<string>();                // placed-piece ids set up by the campaign (Nell's stop, the garage)
         public List<string> blockLights = new List<string>();                 // lights block: smashed / knocked-over street lamps
         public List<string> blockContext = new List<string>();               // loot left in searched spots, last respawn choice
+        public List<string> blockFluids = new List<string>();                // fluids block: hand containers' contents ("id\u001flitres\u001fmix")
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

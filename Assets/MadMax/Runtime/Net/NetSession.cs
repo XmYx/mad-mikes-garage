@@ -792,6 +792,7 @@ namespace MadMax.Net
                 w.Float(dmg ? dmg.FrameDamage : 0f); w.Bool(v.FourWheelDrive); w.Bool(v.diffLocked);
                 w.Byte((byte)sockets.Length);
                 foreach (var s in sockets) w.Byte((byte)Mathf.RoundToInt(Mathf.Clamp01(s.Current ? s.Current.damage : 0f) * 255f));
+                w.String(sys ? sys.FluidState() : "");                                               // blends (fluids block)
             });
         }
 
@@ -1028,10 +1029,11 @@ namespace MadMax.Net
                         ushort id = r.UShort(); float fuel = r.Float(), oil = r.Float(), coolant = r.Float(), frame = r.Float(); bool awd = r.Bool(), locked = r.Bool();
                         int n = r.Byte(); var dmgs = new float[n];
                         for (int i = 0; i < n; i++) dmgs[i] = r.Byte() / 255f;
+                        string blends = r.Remaining >= 2 ? r.String() : null; bool hasBlends = !string.IsNullOrEmpty(blends);
                         var v = Vehicle(id);
                         if (v && !Simulates(v) || v && from != null)
                         {
-                            if (v.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = fuel; sys.oil = oil; sys.coolant = coolant; }
+                            if (v.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = fuel; sys.oil = oil; sys.coolant = coolant; if (hasBlends) sys.LoadFluidState(blends); }
                             if (v.TryGetComponent<VehicleDamage>(out var dmg) && Mathf.Abs(dmg.FrameDamage - frame) > 0.01f) dmg.AddFrameDamage(frame - dmg.FrameDamage, 1f);
                             if (v.FourWheelDrive != awd) v.ToggleFourWheelDrive();
                             v.diffLocked = locked;
@@ -1066,6 +1068,7 @@ namespace MadMax.Net
                 w.Float(dmg ? dmg.FrameDamage : 0f); w.Bool(v.FourWheelDrive); w.Bool(v.diffLocked);
                 w.Byte((byte)sockets.Length);
                 foreach (var s in sockets) w.Byte((byte)Mathf.RoundToInt(Mathf.Clamp01(s.Current ? s.Current.damage : 0f) * 255f));
+                w.String(sys ? sys.FluidState() : "");                                               // blends (fluids block)
             }, except: except);
         }
 
