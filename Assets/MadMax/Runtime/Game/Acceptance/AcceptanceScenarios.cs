@@ -55,6 +55,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in SeasonsScenarios.All()) yield return s;
             foreach (var s in PeopleScenarios.All()) yield return s;
             foreach (var s in MobilityScenarios.All()) yield return s;
+            foreach (var s in SurvivalScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);

@@ -16,6 +16,14 @@ namespace MadMax.Game
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
+        /// <summary>The highlighted entry's label (menu focus, for automation and checks).</summary>
+        /// <summary>Frame a page was last closed (the key that closed it must not reopen it the same frame).</summary>
+        public int ClosedFrame { get; private set; } = -1;
+        public string SelectedLabel => cursor >= 0 && cursor < items.Count ? items[cursor].label : null;
+        /// <summary>Index of the highlighted entry.</summary>
+        public int Cursor => cursor;
+        /// <summary>The page's entry labels in order (automation).</summary>
+        public List<string> Labels() { var l = new List<string>(items.Count); foreach (var i in items) l.Add(i.label); return l; }
         /// <summary>Menus that stop the world (time scale 0).</summary>
         public bool Pauses => !TitleSequence.Playing && (MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online) && (Current == Page.Main || Current == Page.Pause || Current == Page.Character || Current == Page.Map || Current == Page.Journal || Current == Page.Slots
             || ((Current == Page.Settings || Current == Page.Controls) && settingsFrom != Page.None));
@@ -268,6 +276,7 @@ namespace MadMax.Game
             if ((Current == Page.Talk || Current == Page.Trade) && talkNpc && talkNpc.Alive && !talkNpc.Hostile) MadMax.Npc.NpcVoice.Say(talkNpc, "goodbye", true);
             if (TitleSequence.Playing && TitleSequence.Instance && !IntroRecorder.Recording) TitleSequence.Instance.Finish();
             if (Current == Page.Settings) GameSettings.Current.Save();
+            if (Current != Page.None) ClosedFrame = Time.frameCount;
             Current = Page.None;
             Time.timeScale = 1f;
         }

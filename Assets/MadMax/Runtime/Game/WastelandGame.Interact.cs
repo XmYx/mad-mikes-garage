@@ -197,7 +197,7 @@ namespace MadMax.Game
         void UpdateInteraction(Keyboard kb, Gamepad pad)
         {
             bool F = Controls.Down(Controls.Act.Enter) || (pad != null && pad.buttonEast.wasPressedThisFrame);
-            bool E = Controls.Down(Controls.Act.Use) || (pad != null && pad.rightShoulder.wasPressedThisFrame);
+            bool E = (Controls.Down(Controls.Act.Use) || (pad != null && pad.rightShoulder.wasPressedThisFrame)) && Menus.ClosedFrame != Time.frameCount;   // E that closed the crafting page doesn't reopen it
             bool Q = Controls.Down(Controls.Act.Drop) || (pad != null && pad.leftShoulder.wasPressedThisFrame);
             bool J = Controls.Down(Controls.Act.Hitch) || (pad != null && pad.dpad.right.wasPressedThisFrame);
             Prompt = null;

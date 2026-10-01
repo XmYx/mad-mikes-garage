@@ -329,18 +329,19 @@ namespace MadMax.Game
             }
         }
 
-        /// <summary>Take a built piece apart: full refund (kit back, or raw materials).</summary>
+        /// <summary>Take a built piece apart: full refund of what building it costs (kit back, or the raw materials at
+        /// the builder's skill price, so building and dismantling never makes material out of nothing).</summary>
         void Dismantle(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
-            if (p.TryGetComponent<Container>(out var box) && (box.inventory.ResourceArray.Length > 0 && box.Weight > 0.01f)) { game.Toast("EMPTY IT FIRST"); return; }
+            if (p.TryGetComponent<Container>(out var box) && !Empty(box.inventory)) { game.Toast("EMPTY IT FIRST"); return; }   // coins weigh next to nothing
             if (p.TryGetComponent<UtilityNode>(out var un)) un.Unlink();
             if (def != null)
             {
                 using var feed = Inventory.Source("DISMANTLED");
                 if (def.kit != null) game.Inventory.AddItem(def.kit);
-                else foreach (var (t, n) in def.cost) game.Inventory.Add(t, n);
+                else foreach (var (t, n) in def.cost) game.Inventory.Add(t, Cost(n));
                 if (def.needsItem != null) game.Inventory.AddItem(def.needsItem);
             }
             if (MadMax.World.DebrisSystem.Instance)
@@ -350,6 +351,13 @@ namespace MadMax.Game
             game.Toast("DISMANTLED " + (def != null ? def.name : p.id));
             StructureSupport.Removed(p, p.transform.position, p.transform.parent);
             Destroy(p.gameObject);
+        }
+
+        static bool Empty(Inventory inv)
+        {
+            foreach (var n in inv.ResourceArray) if (n > 0) return false;
+            foreach (var kv in inv.Items) if (kv.Value > 0) return false;
+            return true;
         }
 
         // ------------------------------------------------------------------ foundations, plans, upgrades, repairs

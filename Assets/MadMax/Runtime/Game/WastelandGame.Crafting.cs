@@ -124,11 +124,13 @@ namespace MadMax.Game
         /// <summary>Cancel the last queued job at a station: its inputs come back.</summary>
         public void CancelLastJob(CraftingStation st)
         {
-            var paidFuel = st && st.queue.Count > 0 ? st.queue[st.queue.Count - 1].paidFuel : ResourceType.None;
+            var last = st && st.queue.Count > 0 ? st.queue[st.queue.Count - 1] : null;
+            var paidFuel = last != null ? last.paidFuel : ResourceType.None;
+            float paidMult = last != null ? last.costMult : RecipeLibrary.CostMult;              // what was paid, not today's skill price
             var r = st ? st.CancelLast() : null;
             if (r == null) { Toast("NOTHING QUEUED"); return; }
             using var feed = Inventory.Source("REFUNDED");
-            foreach (var (t, n) in r.resources) if (t != ResourceType.None) Inventory.Add(t, RecipeLibrary.Amount(n));
+            foreach (var (t, n) in r.resources) if (t != ResourceType.None) Inventory.Add(t, CharacterStats.Cost(n, paidMult));
             foreach (var (i, n) in r.items) Inventory.AddItem(i, n);
             if (paidFuel != ResourceType.None) Inventory.Add(paidFuel, r.fuelAmount);
             Toast("CANCELLED " + r.name);
