@@ -136,7 +136,7 @@ namespace MadMax.Vehicles
 
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Driver" || mf.name == "Dashboard" || mf.GetComponent<MadMax.Building.Placeable>()) continue;
+                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
                 var part = mf.GetComponentInParent<VehiclePart>();
                 if (part && part.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
@@ -201,7 +201,7 @@ namespace MadMax.Vehicles
             if (power < 0.02f) { Impact?.Invoke(power, point); return; }
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Driver" || mf.name == "Dashboard") continue;
+                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform)) continue;
                 var p = mf.GetComponentInParent<VehiclePart>();
                 if (p && p.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
@@ -234,7 +234,7 @@ namespace MadMax.Vehicles
         {
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Driver" || mf.name == "Dashboard" || mf.GetComponent<MadMax.Building.Placeable>()) continue;
+                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
                 var p = mf.GetComponentInParent<VehiclePart>();
                 if (p && p.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();

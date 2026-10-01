@@ -635,6 +635,18 @@ def mesh_bounds_game(ob):
     return round_list(g.min(0)), round_list(g.max(0))
 
 
+def trs(m):
+    """Decompose with a mirror kept on X (like Unity's localScale.x = -1 for left-hand parts) instead of the
+    all-negative scale + 180 degree turn mathutils gives for reflections."""
+    loc = m.to_translation()
+    m3 = m.to_3x3()
+    sx, sy, sz = m3.col[0].length, m3.col[1].length, m3.col[2].length
+    if m3.determinant() < 0:
+        sx = -sx
+    r = Matrix((m3.col[0] / sx, m3.col[1] / sy, m3.col[2] / sz)).transposed()
+    return loc, r.to_quaternion(), Vector((sx, sy, sz))
+
+
 def flat16(m):
     """Row-major 4x4 -> 16 floats (Unity Matrix4x4 m00 m01 m02 m03 m10 ...)."""
     return [round(float(m[r][c]), 6) for r in range(4) for c in range(4)]
@@ -650,7 +662,7 @@ def role_of(name):
 
 def sidecar_object(ob, root, atlas_of, classes):
     m = game_matrix(ob.matrix_local if ob.parent else Matrix())
-    loc, rot, sca = m.decompose()
+    loc, rot, sca = trs(m)
     parent = ob.parent.name if ob.parent and ob != root else ""
     if root is not None and ob.parent == root and root.type == "EMPTY":
         parent = ""                                    # the asset root itself is the prefab root

@@ -17,6 +17,10 @@ namespace MadMax.Vehicles
         public void SetBroken(int bits) { broken = bits; beamShown = -1f; }
         Light[] heads, tails;
         VehicleDriver driver;
+        // HD models: lamp lenses glow through the material's emission (MadMax/HDLit _LampOn), per lamp kind
+        Renderer[] lampHeads, lampTails, lampAmbers;
+        MaterialPropertyBlock lampBlock;
+        float shownHead = -1f, shownTail = -1f;
         // light beams: cones you see in rain, fog and dust (one mesh per vehicle, alpha by visibility)
         Transform[] beams;
         Mesh beamMesh;
@@ -43,6 +47,33 @@ namespace MadMax.Vehicles
             heads[0].transform.localPosition = new Vector3(0f, y, b.max.z + 0.05f);
             heads[0].spotAngle = 75f;
             BuildBeams(body, y, hx, b.max.z);
+            FindLamps(body);
+        }
+
+        void FindLamps(Transform body)
+        {
+            var h = new System.Collections.Generic.List<Renderer>(); var t = new System.Collections.Generic.List<Renderer>(); var a = new System.Collections.Generic.List<Renderer>();
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!MadMax.Rendering.HDModel.IsLamp(r.transform)) continue;
+                (r.name == "Lamp_Tail" ? t : r.name == "Lamp_Amber" ? a : h).Add(r);
+            }
+            if (h.Count + t.Count + a.Count == 0) return;
+            lampHeads = h.ToArray(); lampTails = t.ToArray(); lampAmbers = a.ToArray();
+            lampBlock = new MaterialPropertyBlock();
+            SetLamps(lampAmbers, 0f);
+        }
+
+        void SetLamps(Renderer[] rs, float v)
+        {
+            if (rs == null) return;
+            foreach (var r in rs)
+            {
+                if (!r) continue;
+                r.GetPropertyBlock(lampBlock);
+                lampBlock.SetFloat(MadMax.Rendering.HDModel.LampOnId, v);
+                r.SetPropertyBlock(lampBlock);
+            }
         }
 
         void BuildBeams(Transform body, float y, float hx, float front)
@@ -120,6 +151,12 @@ namespace MadMax.Vehicles
                 var t = tails[i];
                 t.enabled = (broken & (i == 0 ? 4 : 8)) == 0 && (on || brake > 0f && driver.Occupied) && LightBudget.Allowed(t, true);
                 t.intensity = brake > 0f ? 0.6f : 0.25f;
+            }
+            if (lampBlock != null)
+            {
+                float head = on && heads2 > 0 ? 1f : 0f, tail = brake > 0f && driver.Occupied ? 1.6f : on ? 0.7f : 0f;
+                if (head != shownHead) { shownHead = head; SetLamps(lampHeads, head); }       // broken lenses are gone from the mesh
+                if (tail != shownTail) { shownTail = tail; SetLamps(lampTails, tail); }
             }
         }
     }

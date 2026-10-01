@@ -112,7 +112,7 @@ namespace MadMax.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.86f, 0.5f, 0.28f);
             var pixel = camGo.AddComponent<PixelArtCamera>();
-            pixel.pixelHeight = 320;
+            pixel.pixelHeight = 270;                         // GameSettings default (the HD sheets' pixel density)
             var rig = camGo.AddComponent<CameraRig>();
             rig.pixel = pixel;
             rig.tiltShiftMaterial = tilt;
@@ -218,6 +218,7 @@ namespace MadMax.EditorTools
             {
                 d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels (cut doors / hood too)
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
+                HDVehicleBuilder.SaveParts(d, parts, k => partDesigns.TryGetValue(k, out var pd) ? pd : null, PartDir);   // HD model: panels, wheels, bumpers
                 vehicles[d.name] = SaveVehicle(d, parts, mat);
             }
             lastParts = parts;
@@ -440,6 +441,7 @@ namespace MadMax.EditorTools
                 space.airtight = d.airtight;
                 if (d.medical) root.AddComponent<MedicalBay>();
             }
+            HDVehicleBuilder.ApplyBody(root, d, parts);                                  // HD model (HDVehicleBuilder.Enabled): body, sockets, colliders
             var result = PrefabUtility.SaveAsPrefabAsset(root, $"{VehicleDir}/{d.name}.prefab");
             Object.DestroyImmediate(root);
             return result;
