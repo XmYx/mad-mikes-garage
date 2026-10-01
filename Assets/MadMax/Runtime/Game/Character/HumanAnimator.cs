@@ -5,8 +5,9 @@ namespace MadMax.Game
 {
     /// <summary>Procedural body animation: stride-locked gait with knee/ankle/elbow bends, pelvis bob and sway,
     /// counter-rotating torso, run lean, breathing idle, jump/fall, sitting (hands on the wheel), carrying,
-    /// tool swings (one or two handed) and aiming. Pure pose math on HumanRig bones.</summary>
-    public class HumanAnimator
+    /// tool swings (one or two handed) and aiming. Pure pose math on HumanRig bones. With keyframed clips installed
+    /// (HumanAnimator.Clips.cs) the same state drives blended clips instead, with the procedural parts layered on top.</summary>
+    public partial class HumanAnimator
     {
         public struct State
         {
@@ -17,6 +18,12 @@ namespace MadMax.Game
             public bool pedaling; public float pedal;   // a bicycle: the legs turn the cranks (phase, radians)
             public float limpL, limpR, armHurtL, armHurtR;   // 0..1 injuries: a limping leg swings less, a hurt arm is held in
             public ToolPose? tool;           // pose of an action in progress / held stance (null = none)
+            public bool crouching;           // crouched stance (sneaking, sliding)
+            public bool lying;               // lying on the back (sleeping)
+            public bool talking;             // in a conversation: hand gestures while standing
+            public string action;            // keyframed action clip (HumanClips) playing over the body; null = none
+            public float actionT;            // its progress 0..1 (< 0 = loop on its own clock)
+            public float actionHit;          // the tool's strike moment 0..1 the clip's hit is lined up with (0 = none)
         }
 
         readonly HumanRig rig;
@@ -31,7 +38,7 @@ namespace MadMax.Game
 
         public void Rebound() => pelvisBase = rig.Bone(BodyPart.Pelvis).localPosition.y;
 
-        public void Tick(float dt, State s)
+        void TickProcedural(float dt, State s)
         {
             time += dt;
             float k = 1f - Mathf.Exp(-16f * dt);

@@ -331,11 +331,18 @@ namespace MadMax.Npc
                 swing += dt / (tool ? tool.swingDuration : 0.5f);
                 if (swing >= 1f) swing = -1f;
             }
+            // in a conversation they gesture; they look at the player who talks to them or stands close by
+            var gm = WastelandGame.Instance;
+            bool talking = gm && gm.Menus && gm.Menus.TalkingTo == this;
+            bool near = gm && gm.Player && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Follow)
+                        && (gm.Player.transform.position - transform.position).sqrMagnitude < 3.5f * 3.5f;
+            anim.LookAt = talking || near ? gm.Player.Eye.position : (Vector3?)null;
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = moved, grounded = seated || cc.isGrounded, verticalSpeed = seated ? 0f : vy, sitting = seated, lounging = seated,
                 tool = mode == Mode.Surrender ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null,
-                twoHanded = tool && tool.TwoHanded
+                twoHanded = tool && tool.TwoHanded, talking = talking,
+                action = swing >= 0f ? PlayerCharacter.SwingClip(tool) : null, actionT = swing, actionHit = tool ? tool.strikeAt : 0f
             });
         }
 
@@ -920,6 +927,7 @@ namespace MadMax.Npc
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
             if (mode == Mode.Dead) return;
+            if (power > 0.25f && rig) rig.Bleed(point, Mathf.Clamp(power, 0.6f, 1.6f));                  // a splat where it struck
             if (proxy)                                                                         // the host decides; blood here at once
             {
                 BloodStains.Splash(point, Mathf.Clamp01(power * 0.5f));

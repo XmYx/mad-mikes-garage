@@ -50,6 +50,7 @@ namespace MadMax.Game
                 }
                 Player.HoldProp(canMesh, propMaterial);
                 Player.PoseOverride = new HandPoses().Pour;
+                Player.ActionClip = "pour";
             }
             Toast(pump ? "REFUELLING FROM THE PUMP" : "POURING...");
         }
@@ -60,6 +61,7 @@ namespace MadMax.Game
             var v = refuelTarget.GetComponent<VehicleDriver>();
             refuelTarget = null; refuelPump = null;
             Player.PoseOverride = null;
+            Player.ActionClip = null;
             Player.DropProp();
             if (hose) hose.enabled = false;
             if (msg != null) Toast(msg);

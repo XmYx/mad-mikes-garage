@@ -97,7 +97,7 @@ namespace MadMax.Game
 
         void Poison(string why) { Stats.sick = Mathf.Max(Stats.sick, 120f); Toast(why + "!"); }
 
-        public void Wash(float amount, string msg) { Stats.hygiene = Mathf.Min(100f, Stats.hygiene + amount); Toast(msg); }
+        public void Wash(float amount, string msg) { Stats.hygiene = Mathf.Min(100f, Stats.hygiene + amount); if (Player && Player.Rig) Player.Rig.ClearBlood(); Toast(msg); }
 
         public void SetSpawn(Vector3 p) { spawnPoint = p; Toast("SPAWN POINT SET"); }
 

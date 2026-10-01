@@ -160,7 +160,8 @@ namespace MadMax.Game
             face.y = 0f;
             transform.SetPositionAndRotation(p, face.sqrMagnitude > 0.01f ? Quaternion.LookRotation(face) : transform.rotation);
             Velocity = Vector3.zero;
-            anim.Tick(dt, new HumanAnimator.State { grounded = false, lookPitch = lookPitch, tool = pose });
+            anim.Tick(dt, new HumanAnimator.State { grounded = false, lookPitch = lookPitch, tool = pose,
+                action = moveKind == 1 ? "mantle" : moveKind == 0 ? "vault" : null, actionT = t });
             if (moveT < 1f) return;
             moveT = -1f;
             cc.enabled = true; vy = -1f;

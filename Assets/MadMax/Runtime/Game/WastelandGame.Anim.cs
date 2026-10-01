@@ -501,6 +501,7 @@ namespace MadMax.Game
             j.t += dt;
             Face(j, dt);
             Player.PoseOverride = PoseAt(j.pose, j.t);
+            Player.ActionClip = j.pose == WorkPose.LeanIn || j.pose == WorkPose.Reach ? "wrench" : j.pose == WorkPose.Pour ? "pour" : j.pose == WorkPose.Kneel ? "weld" : null;
             if (j.parked) Park(j);
             if (j.hood)
             {
@@ -541,7 +542,7 @@ namespace MadMax.Game
             if (Player)
             {
                 Player.AutoWalk = null;
-                if (j.working) { Player.PoseOverride = null; MadMax.Net.NetSession.Instance?.SendWorkPose(false, 0, null); }
+                if (j.working) { Player.PoseOverride = null; Player.ActionClip = null; MadMax.Net.NetSession.Instance?.SendWorkPose(false, 0, null); }
                 if (j.prop) Player.DropProp();
                 if (j.parked)
                 {

@@ -30,7 +30,24 @@ namespace MadMax.Game
                 var inj = Stats.injuries[Stats.injuries.Count - 1];
                 Toast(Injury.WoundNames[(int)inj.type] + ": " + Injury.ZoneNames[(int)inj.zone] + (inj.Bleeding ? " (BLEEDING)" : "") + "  [O] HEALTH");
                 if (cause != "BURNED") MadMax.World.BloodStains.Splash(Player.transform.position, amount / 40f);
+                if (cause != "BURNED" && inj.Bleeding && Player.Rig) Player.Rig.Bleed(WoundPoint(inj.zone), Mathf.Clamp(amount / 30f, 0.6f, 1.6f));
             }
+        }
+
+        /// <summary>A point on the player's body in a wound zone (for the blood splat).</summary>
+        Vector3 WoundPoint(BodyZone z)
+        {
+            var part = z switch
+            {
+                BodyZone.Head => BodyPart.Head, BodyZone.ArmL => BodyPart.UpperArmL, BodyZone.ArmR => BodyPart.UpperArmR,
+                BodyZone.HandL => BodyPart.HandL, BodyZone.HandR => BodyPart.HandR, BodyZone.LegL => BodyPart.ThighL, BodyZone.LegR => BodyPart.ThighR,
+                BodyZone.FootL => BodyPart.ShinL, BodyZone.FootR => BodyPart.ShinR, _ => BodyPart.Chest
+            };
+            var b = Player.Rig.Bone(part);
+            bool up = part == BodyPart.Head || part == BodyPart.Chest;
+            var along = b.rotation * (up ? Vector3.up : Vector3.down) * (float)(0.05 + injuryRnd.NextDouble() * 0.2);
+            var side = Quaternion.AngleAxis((float)injuryRnd.NextDouble() * 360f, b.rotation * Vector3.up) * (b.rotation * Vector3.forward);
+            return b.position + along + side * 0.4f;
         }
 
         /// <summary>Clothing totals (warmth, cooling) of the current outfit.</summary>

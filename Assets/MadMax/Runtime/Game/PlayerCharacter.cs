@@ -92,6 +92,9 @@ namespace MadMax.Game
 
         /// <summary>Scripted upper-body pose (refuelling, washing...) overriding the tool pose while set.</summary>
         [System.NonSerialized] public ToolPose? PoseOverride;
+        /// <summary>Keyframed clip played with <see cref="PoseOverride"/> (HumanClips: "pour", "wrench", "weld"...); the
+        /// procedural pose stays the fallback.</summary>
+        [System.NonSerialized] public string ActionClip;
         /// <summary>Scripted walk (timed work at a vehicle): world-space heading, length = share of the walking speed,
         /// used instead of the move input while set; zero holds the player still. Tool swings wait.</summary>
         [System.NonSerialized] public Vector3? AutoWalk;
@@ -454,7 +457,10 @@ namespace MadMax.Game
             float turn = Mathf.DeltaAngle(lastYaw, yaw) / dt;
             lastYaw = yaw;
             ToolPose? toolPose = PoseOverride ?? (Tool ? Tool.IdlePose : null);
-            if (Crouching || Sliding) toolPose = CrouchPose(toolPose);
+            bool crouchClip = Crouching && !Sliding && HumanClips.Enabled;                   // the crouch clips bend the legs
+            if ((Crouching || Sliding) && !crouchClip) toolPose = CrouchPose(toolPose);
+            string action = PoseOverride.HasValue ? ActionClip : null;
+            float actionT = -1f, actionHit = 0f;
             if (swingT >= 0f && Tool && PoseOverride == null)
             {
                 var st = WastelandGame.Instance ? WastelandGame.Instance.Stats : null;
@@ -464,13 +470,34 @@ namespace MadMax.Game
                 toolPose = Tool.Pose(Mathf.Min(t, 1f));
                 if (!struck && t >= Tool.strikeAt) { struck = true; Tool.Strike(this); }
                 if (t >= 1f) swingT = -1f;
+                action = SwingClip(Tool); actionT = Mathf.Min(t, 1f); actionHit = Tool.strikeAt;
             }
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = hs, grounded = grounded, verticalSpeed = vertical, turnRate = turn, lookPitch = lookPitch,
                 carrying = Carried, tool = Carried ? null : toolPose, twoHanded = Tool && Tool.TwoHanded,
+                crouching = crouchClip, action = Carried ? null : action, actionT = actionT, actionHit = actionHit,
                 limpL = gm ? gm.LimpL : 0f, limpR = gm ? gm.LimpR : 0f, armHurtL = gm ? gm.ArmHurtL : 0f, armHurtR = gm ? gm.ArmHurtR : 0f
             });
+        }
+
+        /// <summary>The keyframed clip for a tool's swing (null = its procedural pose): shovels dig, hammers hammer,
+        /// one-handed melee by style, guns recoil.</summary>
+        public static string SwingClip(HandTool t)
+        {
+            if (!t || t.id == null) return null;
+            if (t.id.Contains("shovel") || t.id.Contains("spade")) return "dig";
+            if (t.TwoHanded) return null;                                                     // two hands on the handle: the tool's own pose
+            if (t.id.Contains("hammer") && !t.id.Contains("sledge")) return "hammer";
+            switch (t.style)
+            {
+                case ToolStyle.Overhead: return "swing_overhead";
+                case ToolStyle.Slash: return "swing_slash";
+                case ToolStyle.Thrust: return "thrust";
+                case ToolStyle.Gun: return "fire";
+                case ToolStyle.Twist: return "wrench";
+                default: return null;
+            }
         }
 
         /// <summary>The footstep for what is underfoot: a deck or floor piece, a vehicle, water, snow, mud, road, sand, gravel.</summary>
