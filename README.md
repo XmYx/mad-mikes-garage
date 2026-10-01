@@ -52,18 +52,18 @@ follows `storyline.md`.
 - Walls, floors, roofs, doors, stairs and ladders in wood, planks, brick, fired brick and concrete panels. Foundations and drivable decks, garages, defences (spikes, wire, sandbags, landmines, tripwires, a motorised gate, a watchtower, MG nests and turrets), and saved blueprints of whole structures.
 - Anything you carry can be put down in the world, on the ground or on a table, and picked up again. Everything you gain or hand over shows up in a small feed on the screen.
 - Furniture that does something: beds, seats, dining tables, wardrobes, bookshelves, mirrors, TVs, radios, stoves and a latrine.
-- Power from generators, solar panels, wind turbines, water wheels and biogas, carried by cables, with switches, timers, light sensors and breakers that shed less important loads first (overload a generator and it stalls). Water from wells, pumps, rain collectors, tanks and pipes, feeding sprinklers and drip lines; it can be silty, oily, salty or foul, so there are filters, a test kit, a solar still and a desalinator. Fridges only keep food cold while they have power.
+- Power from generators, solar panels, wind turbines, water wheels and biogas, carried by cables, with switches, timers, light sensors and breakers that shed less important loads first (overload a generator and it stalls). Water from wells, pumps, rain collectors, tanks and pipes, feeding sprinklers and drip lines; it can be silty, oily, salty or foul, so there are filters, a test kit, a solar still and a desalinator. Fridges only keep food cold while they have power; an earth-banked root cellar keeps the harvest without any.
 - Gardens with crops, fruit trees, fertiliser, weeds, crows and scarecrows. Greenhouses and seasons matter. Fields tilled with a hoe or a tractor's plough, then sown, sprayed and harvested with its implements; irrigation timers.
 - Cooking from a campfire to a stove, oven, kitchen range and cannery, and brewing. Sheep, shearing, spinning and weaving, beehives, hay and feed, a stable, leather goods, snares and a butchering table. Hurt animals can be treated.
 - A production chain: dig soil, wash it for ore, then smelt metals, fire glass and lime, burn charcoal and mix concrete and asphalt. Crude oil comes from pumpjacks and is refined into petrol, diesel and oil. A forge and anvil, steel, a machine shop; a rock crusher, a stamp mill, gold panning and sluices; a saw bench and sawmill, brick moulds.
-- Crafting is timed and happens at stations (workbench, stove, furnace, kiln, still, garage, slipway and others). The results come in crude, sturdy or fine quality.
+- Crafting is timed and happens at stations (workbench, stove, furnace, kiln, still, garage, slipway and others), and you can hear them work: the sizzle of a stove, a furnace's roar, the anvil, the clack of a loom. The results come in crude, sturdy or fine quality.
 - Sea bases: domes, tunnels, a shore entrance and a docking collar for the submarine.
 
 ### People and animals
 - Every NPC has a name, a job, a temperament and a history that you learn over several conversations. Many of them speak, in ten Southern voices with over a thousand lines and short two-person chats.
-- Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raider gangs. Trade uses scrap as money, and prices vary by town, by season and by how much you have sold there. You can haggle.
+- Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raider gangs. Trade uses scrap as money, and prices vary by town, by season and by how much you have sold there; vendors stock seeds in spring, fishing gear in summer, the harvest in autumn and preserves and firewood in winter. You can haggle.
 - Raiders track you down on the road. You can talk your way out, pay, bluff, recruit them or fight.
-- Factions with territory and standing, bounty boards, supply and escort contracts, and quests for each town.
+- Factions with territory and standing, bounty boards (with the road news from round the town), supply and escort contracts, and quests for each town.
 - Companions who follow you, ride with you, drive and fight.
 - Herds, predators, birds, snakes, scorpions and insects. Livestock can be kept, fed, bred and ridden, and fish and crabs live in the sea.
 

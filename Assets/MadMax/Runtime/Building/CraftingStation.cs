@@ -82,6 +82,8 @@ namespace MadMax.Building
             var r = RecipeLibrary.Get(job.recipe);
             if (r == null) { queue.RemoveAt(0); return; }
             job.progress += Time.deltaTime * job.speed / RecipeLibrary.Seconds(r);
+            var loop = WorkLoop(type, out float loopVol);
+            if (loop != null) MadMax.Audio.Sfx.Loop(this, loop, loopVol, 1f, 18f);
             // a little life while it works: sparks at benches, smoke at fires
             if ((fxT -= Time.deltaTime) <= 0f)
             {
@@ -91,12 +93,14 @@ namespace MadMax.Building
                 if (listener && (listener.position - transform.position).sqrMagnitude < 28f * 28f)
                 {
                     bool cooking = type == "stove" || type == "oven" || type == "still" || type == "smokehouse" || type == "campfire" || type == "range" || type == "cannery";
-                    bool hot = type == "furnace" || type == "arc_furnace" || type == "kiln";
+                    bool hot = type == "furnace" || type == "arc_furnace" || type == "kiln" || type == "forge";
                     if (cooking || hot)
                     {
                         Color steam = cooking ? MadMax.Voxel.Pal.Steam : MadMax.Voxel.Pal.WorkshopDust; steam.a = 0.28f;
                         MadMax.World.Fx.Smoke(OutputPoint + Vector3.up * 0.15f, Vector3.up * 0.45f + MadMax.World.Fx.Wind * 0.08f, 0.18f, steam, 1.6f);
                     }
+                    if (type == "forge" && Random.value < 0.6f)
+                        MadMax.Audio.Sfx.Play("anvil", OutputPoint, 0.3f, Random.Range(0.92f, 1.08f), 16f, 0.4f);
                     else if (type == "garage" || type == "workbench" || type == "gunsmith")
                     {
                         MadMax.World.Fx.Sparks(OutputPoint, Vector3.up, 2, MadMax.Voxel.Pal.Accent);
@@ -108,6 +112,24 @@ namespace MadMax.Building
             queue.RemoveAt(0);
             MadMax.Game.WastelandGame.Instance?.FinishJob(r, this);
             Dirty();
+        }
+
+        /// <summary>The working sound of a station type while a job runs (ProceduralSfx `station_*`), or null.</summary>
+        public static string WorkLoop(string type, out float volume)
+        {
+            volume = 0.35f;
+            switch (type)
+            {
+                case "stove": case "oven": case "range": case "smokehouse": case "campfire": case "cannery": return "station_sizzle";
+                case "furnace": case "arc_furnace": case "kiln": case "forge": case "refinery": volume = 0.45f; return "station_roar";
+                case "mixer": case "washplant": case "feedmill": case "composter": case "desalinator": return "station_churn";
+                case "still": case "chemlab": case "tanning": return "station_bubble";
+                case "sewing": case "loom": case "spinning": volume = 0.3f; return "station_clack";
+                case "rock_crusher": case "stamp_mill": case "press": case "machine_shop": volume = 0.45f; return "station_grind";
+                case "sawmill": case "saw_bench": volume = 0.4f; return "station_saw";
+                case "hangar": case "slipway": return "station_hum";
+                default: return null;
+            }
         }
 
         /// <summary>Cancel the last queued job; its inputs come back to the crafter.</summary>

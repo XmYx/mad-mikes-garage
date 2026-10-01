@@ -50,6 +50,8 @@ namespace MadMax.Game.Acceptance
             foreach (var s in UtilitiesScenarios.All()) yield return s;
             foreach (var s in MedMineScenarios.All()) yield return s;
             foreach (var s in DefenceScenarios.All()) yield return s;
+            foreach (var s in OnlineScenarios.All()) yield return s;
+            foreach (var s in SeasonsScenarios.All()) yield return s;
             foreach (var s in MobilityScenarios.All()) yield return s;
         }
 
@@ -173,7 +175,7 @@ namespace MadMax.Game.Acceptance
     // ================================================================== Q3 vehicles
 
     /// <summary>Spawned fleet vehicle on a level pad: enter, start, drive forward, brake to a stop, reverse, exit.
-    /// Aircraft, boats and bikes use their own control models (mobility suite: blocked until written).</summary>
+    /// Bikes and aircraft get their own mobility.* scenarios instead (own control models).</summary>
     class VehicleDrive : Scenario
     {
         readonly string name;

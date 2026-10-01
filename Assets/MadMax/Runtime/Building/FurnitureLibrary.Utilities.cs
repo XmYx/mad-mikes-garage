@@ -65,6 +65,12 @@ namespace MadMax.Building
                 Box(go, "ICE BOX", 40f, true);
                 go.AddComponent<ColdStore>().kind = ColdStore.Kind.IceBox;
             }, (W, 6), (S, 2), (C, 2));
+            // an earth-banked root cellar: no power, a third of the rot (a sixth in winter) for the harvest
+            yield return D("root_cellar", "ROOT CELLAR", Fu, UtCellarGrid(), 8, false, go =>
+            {
+                Box(go, "ROOT CELLAR", 160f, false);
+                go.GetComponent<Container>().keep = 0.33f;
+            }, (W, 10), (ResourceType.Stone, 14));
         }
 
         /// <summary>Add a function to an existing definition's setup (runs after its own).</summary>
@@ -257,6 +263,30 @@ namespace MadMax.Building
         }
 
         /// <summary>A plank ice box with zinc-lined lid, iron corners and a drain tap.</summary>
+        static VoxelGrid UtCellarGrid()
+        {
+            var g = new VoxelGrid().Mat(Stone);
+            // earth bank, stepped in towards the sod top
+            for (int y = 0; y <= 7; y++)
+            {
+                int hx = 11 - y, hz = 9 - y;
+                if (hz < 2) break;
+                g.Box(-hx, y, -hz - 2, hx, y, hz - 2, Pal.Ramp(Pal.Sand, y < 2 ? 0 : 1, 4190 + y));
+            }
+            g.Box(-5, 7, -5, 5, 7, 1, Pal.Ramp(Pal.Moss, 2, 4198));                                          // sod
+            // stone face with the doorway, a slanted pair of plank doors
+            g.Box(-7, 0, 7, 7, 6, 8, Pal.Ramp(Pal.Fur, 2, 4199));
+            g.ClearBox(-4, 0, 7, 4, 4, 8);
+            g.Mat(Wood);
+            for (int y = 0; y <= 4; y++)
+                g.Box(-4, y, 7 + (4 - y) / 2, 4, y, 7 + (4 - y) / 2, Pal.Stripe(Pal.Ramp(Pal.Wood, 2, 4200), Pal.Ramp(Pal.Wood, 1, 4201), 1, 2));
+            g.Box(0, 0, 7, 0, 4, 9, Pal.Ramp(Pal.Wood, 0, 4202));                                                          // door split
+            g.Mat(Scrap);
+            g.Set(-1, 2, 9, Pal.Solid(Pal.Chrome[1])); g.Set(1, 2, 9, Pal.Solid(Pal.Chrome[1]));                           // ring pulls
+            g.Box(-3, 7, -3, -3, 9, -3, Pal.Ramp(Pal.Metal, 1, 4203));                                                     // vent pipe
+            return g;
+        }
+
         static VoxelGrid UtIceBoxGrid()
         {
             var g = new VoxelGrid().Mat(Wood);

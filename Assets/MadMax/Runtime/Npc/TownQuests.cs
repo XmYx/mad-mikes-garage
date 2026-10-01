@@ -31,6 +31,11 @@ namespace MadMax.Npc
         public static bool Friend(Settlement st) => st != null && Stage(st.index) >= Stages;
         public static bool Accepted(int town) => accepted.Contains(town);
 
+        static void PostBeaten(Settlement t)
+        {
+            if (t != null) TownNews.Post("A DRIVER STOOD WITH " + Market.TownName(t) + " AND THE " + Gang(t.index) + " WERE BEATEN OFF", new Vector3(t.pos.x, 0f, t.pos.y));
+        }
+
         static Settlement Town(int i) { var w = World; return w != null && i >= 0 && i < w.settlements.Count ? w.settlements[i] : null; }
 
         static System.Random Rng(int town, int salt) => new System.Random(Market.Seed(town, 900 + salt, World != null ? World.seed : 0));
@@ -191,6 +196,7 @@ namespace MadMax.Npc
                     g.Inventory.Add(ResourceType.Scrap, 60);
                     Factions.Shift(Factions.OfSettlement(Town(defending)), 8);
                     g.Toast(Market.TownName(Town(defending)) + " CHEERS YOU - THE RAIDERS ARE BEATEN (+60 SCRAP)");
+                    PostBeaten(Town(defending));
                     MadMax.Audio.Sfx.Play("crowd_cheer", me, 0.6f);
                     defending = -1; attackers.Clear(); eventRaid = false;
                 }
@@ -198,6 +204,7 @@ namespace MadMax.Npc
                 {
                     won.Add(defending);
                     g.Toast("THE RAID IS BROKEN - " + Market.TownName(Town(defending)) + " IS SAFE. SEE THE BOSS");
+                    PostBeaten(Town(defending));
                     MadMax.Audio.Sfx.Play("crowd_cheer", me, 0.6f);
                     defending = -1; attackers.Clear();
                 }
@@ -248,7 +255,7 @@ namespace MadMax.Npc
                 var here = w.SettlementAt(me.x, me.z);
                 if (here != null && eventDay != DayNight.Day && Rng(here.index, 50 + DayNight.Day).NextDouble() <= 0.3) target = here;
             }
-            if (target != null) MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + Gang(target.index) + " MEAN TO HIT " + Market.TownName(target) + " AT DUSK");
+            if (target != null) MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + Gang(target.index) + " MEAN TO HIT " + Market.TownName(target) + " AT DUSK", 45f, new Vector3(target.pos.x, 0f, target.pos.y));
         }
 
         static void Raid(WastelandGame g, Settlement st)

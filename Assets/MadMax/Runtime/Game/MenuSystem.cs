@@ -730,6 +730,17 @@ namespace MadMax.Game
                             hint = c.Delivery ? "E: TAKE THE HAUL (CRATES APPEAR BY THE BOARD; RAIDERS SMELL CARGO)" : "E: TAKE THE JOB",
                         });
                     }
+                    // the road news pinned up here: what happened nearby and region-wide, newest first
+                    var news = MadMax.Npc.TownNews.Near(b.transform.position, 5);
+                    if (news.Count > 0)
+                    {
+                        items.Add(new Item { label = "- ROAD NEWS -", enabled = () => false });
+                        foreach (var e in news)
+                        {
+                            string full = "DAY " + e.day + ": " + e.text;
+                            items.Add(new Item { label = FitCraft(full, 360), hint = e.text });
+                        }
+                    }
                     break;
                 }
                 case Page.Paint:

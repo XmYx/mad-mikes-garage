@@ -215,6 +215,7 @@
       "group": "Building, farming and industry",
       "readme": "Crafting is timed and happens at stations (workbench, stove, furnace, kiln, stil",
       "scenarios": [
+        "audio.station_sounds",
         "catalogue.recipes",
         "cooking.ladder",
         "crafting.fuel_refund"
@@ -238,8 +239,9 @@
       "id": "people_and_animals.shopkeepers_market_stalls_roadside_vendo",
       "group": "People and animals",
       "readme": "Shopkeepers, market stalls, roadside vendors, wanderers, trader convoys and raid",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "economy.seasonal_stock"
+      ]
     },
     {
       "id": "people_and_animals.raiders_track_you_down_on_the_road_you_c",
@@ -251,9 +253,10 @@
     {
       "id": "people_and_animals.factions_with_territory_and_standing_bou",
       "group": "People and animals",
-      "readme": "Factions with territory and standing, bounty boards, supply and escort contracts",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "readme": "Factions with territory and standing, bounty boards (with the road news from rou",
+      "scenarios": [
+        "towns.road_news"
+      ]
     },
     {
       "id": "people_and_animals.companions_who_follow_you_ride_with_you_",
@@ -280,8 +283,9 @@
       "id": "other.multiplayer_through_a_listen_server_a_de",
       "group": "Other",
       "readme": "Multiplayer through a listen server, a dedicated server or as a client (Unity Tr",
-      "scenarios": [],
-      "gap": "no acceptance scenario yet (roadmap 26 Q2-Q7)"
+      "scenarios": [
+        "online.*"
+      ]
     },
     {
       "id": "other.three_save_slots_plus_an_autosave_a_map_",
@@ -413,6 +417,7 @@
       "group": "Driving and repairing",
       "readme": "Roads by hand too: rake gravel, tamp cobbles, paint lines, patch potholes, and p",
       "scenarios": [
+        "roads.ai_player_road",
         "roads.ladder"
       ]
     },
@@ -438,6 +443,7 @@
       "group": "Building, farming and industry",
       "readme": "Anything you carry can be put down in the world, on the ground or on a table, an",
       "scenarios": [
+        "items.build_feed",
         "items.feed",
         "items.world"
       ]
@@ -448,6 +454,7 @@
       "readme": "Power from generators, solar panels, wind turbines, water wheels and biogas, car",
       "scenarios": [
         "cooking.ladder",
+        "food.root_cellar",
         "utilities.ladder"
       ]
     },

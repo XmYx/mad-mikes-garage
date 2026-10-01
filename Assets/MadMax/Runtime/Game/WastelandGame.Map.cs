@@ -107,6 +107,7 @@ namespace MadMax.Game
             d.discovered = new List<string>(Discovered);
             d.hasWaypoint = HasWaypoint; d.waypoint = Waypoint;
             d.journal = Journal.Save();
+            d.townNews = MadMax.Npc.TownNews.Save();
             d.starter = StarterStep;
             SaveHomestead(d);
             d.lastEngine = LastEngine.Save();
@@ -121,6 +122,7 @@ namespace MadMax.Game
             Discovered.Clear();
             if (d.discovered != null) foreach (var k in d.discovered) Discovered.Add(k);
             Journal.Load(d.journal);
+            MadMax.Npc.TownNews.Load(d.townNews);
             StarterStep = d.starter;
             LoadHomestead(d);
             LastEngine.Load(d.lastEngine);

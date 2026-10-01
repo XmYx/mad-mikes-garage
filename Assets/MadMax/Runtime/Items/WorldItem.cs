@@ -8,8 +8,9 @@ namespace MadMax.Items
     /// <summary>An inventory item or a resource stack out in the world as its own object: dropped (pack page, the tool in
     /// hand), placed (pack page PLACE: a preview on any flat surface) or restored from a save. [E] takes the whole stack.
     /// A light rigidbody that settles and sleeps (frozen far from the player like loose parts, never enough mass to shove
-    /// a vehicle), or part of a vehicle's compound when placed on one. Saved in <c>SaveData.blockItems</c>; local to each
-    /// peer online (not replicated).</summary>
+    /// a vehicle), or part of a vehicle's compound when placed on one. Saved in <c>SaveData.blockItems</c>. Online the
+    /// host owns its existence: spawns, stack counts and settled poses replicate by <see cref="netId"/>, a client's [E]
+    /// asks the host, which hands the stack to one picker only (<c>Net/NetSession.Items</c>).</summary>
     public class WorldItem : MonoBehaviour, IInteractable
     {
         public static readonly List<WorldItem> All = new List<WorldItem>();
@@ -23,6 +24,8 @@ namespace MadMax.Items
         public float quality = -1f;
         /// <summary>Put down with care (PLACE): it stays where it was set until something knocks it.</summary>
         public bool placed;
+        /// <summary>Id shared by all peers online (0 = not announced yet).</summary>
+        [System.NonSerialized] public uint netId;
 
         public Rigidbody Body { get; private set; }
         public BoxCollider Box { get; private set; }
