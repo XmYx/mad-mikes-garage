@@ -471,3 +471,25 @@ namespace MadMax.EditorTools
         }
     }
 }
+
+namespace MadMax.EditorTools
+{
+    /// <summary>Re-exported HD characters rebuild the character catalogue once the import settles.</summary>
+    public class HDCharacterCatalogRefresh : UnityEditor.AssetPostprocessor
+    {
+        static bool queued;
+
+        static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+        {
+            if (queued) return;
+            foreach (var p in imported)
+            {
+                var n = p.Replace('\\', '/');
+                if (!n.StartsWith(HDSidecar.Root + "/character/") || !n.EndsWith(".fbx") || n.Contains("/anims/")) continue;
+                queued = true;
+                UnityEditor.EditorApplication.delayCall += () => { queued = false; HDCharacterCatalogBuilder.Build(false); };
+                return;
+            }
+        }
+    }
+}

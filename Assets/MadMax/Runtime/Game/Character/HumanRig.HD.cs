@@ -55,6 +55,7 @@ namespace MadMax.Game
             void Add(HDCharacterCatalog.Piece p, bool head, System.Func<int, Mesh> meshAt)
             {
                 var mat = HDHuman.MaterialFor(p, appearance);
+                if (!mat) mat = voxMat;
                 for (int l = 0; l < levels; l++)
                 {
                     var m = meshAt(l);
