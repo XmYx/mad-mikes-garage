@@ -1,0 +1,137 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using MadMax.Voxel;
+using UnityEngine;
+
+namespace MadMax
+{
+    public static class DumpShim
+    {
+        static readonly int[] perm = MakePerm();
+        static int[] MakePerm() { var p = new int[512]; var r = new System.Random(0); var b = Enumerable.Range(0, 256).OrderBy(_ => r.Next()).ToArray(); for (int i = 0; i < 512; i++) p[i] = b[i & 255]; return p; }
+        static float Fade(float t) => t * t * t * (t * (t * 6 - 15) + 10);
+        static float Grad(int h, float x, float y) { switch (h & 3) { case 0: return x + y; case 1: return -x + y; case 2: return x - y; default: return -x - y; } }
+        public static float Perlin(float x, float y)
+        {
+            int xi = (int)Math.Floor(x) & 255, yi = (int)Math.Floor(y) & 255;
+            float xf = x - (float)Math.Floor(x), yf = y - (float)Math.Floor(y);
+            float u = Fade(xf), v = Fade(yf);
+            int aa = perm[perm[xi] + yi], ab = perm[perm[xi] + yi + 1], ba = perm[perm[xi + 1] + yi], bb = perm[perm[xi + 1] + yi + 1];
+            float x1 = Lerp(Grad(aa, xf, yf), Grad(ba, xf - 1, yf), u), x2 = Lerp(Grad(ab, xf, yf - 1), Grad(bb, xf - 1, yf - 1), u);
+            return Math.Max(0f, Math.Min(1f, (Lerp(x1, x2, v) + 1f) * 0.5f));
+        }
+        static float Lerp(float a, float b, float t) => a + (b - a) * t;
+    }
+
+    public static class Dumper
+    {
+        static string outDir;
+        static readonly StringBuilder index = new StringBuilder();
+        static readonly HashSet<string> written = new HashSet<string>();
+
+        static string MatName(byte m) { try { return ((MadMax.Items.ResourceType)m).ToString(); } catch { return m.ToString(); } }
+
+        public static void Write(string group, string id, VoxelGrid g, float size, string extra = "")
+        {
+            if (g == null || g.voxels.Count == 0) { index.AppendLine($"{group}\t{id}\tEMPTY\t\t\t\t{extra}"); return; }
+            string key = group + "/" + id;
+            if (written.Contains(key)) return; written.Add(key);
+            int x0 = int.MaxValue, y0 = int.MaxValue, z0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue, z1 = int.MinValue;
+            var mats = new Dictionary<string, int>(); var labs = new Dictionary<int, int>();
+            var lname = g.labels.ToDictionary(kv => kv.Value, kv => kv.Key);
+            var sb = new StringBuilder();
+            foreach (var kv in g.voxels)
+            {
+                var p = kv.Key; var v = kv.Value;
+                x0 = Math.Min(x0, p.x); y0 = Math.Min(y0, p.y); z0 = Math.Min(z0, p.z); x1 = Math.Max(x1, p.x); y1 = Math.Max(y1, p.y); z1 = Math.Max(z1, p.z);
+                string mn = MatName(v.mat); mats[mn] = mats.TryGetValue(mn, out var c) ? c + 1 : 1;
+                labs[v.label] = labs.TryGetValue(v.label, out var d) ? d + 1 : 1;
+                sb.Append(p.x).Append(' ').Append(p.y).Append(' ').Append(p.z).Append(' ').Append(v.color.r.ToString("x2")).Append(v.color.g.ToString("x2")).Append(v.color.b.ToString("x2")).Append(' ').Append(v.mat).Append(' ').Append(v.label).Append('\n');
+            }
+            Directory.CreateDirectory(Path.Combine(outDir, group));
+            var safe = id.Replace('/', '_').Replace(':', '_').Replace(' ', '_');
+            var head = $"# {id} size {size} labels {string.Join(",", g.labels.Select(kv => kv.Key + "=" + kv.Value))}\n";
+            File.WriteAllText(Path.Combine(outDir, group, safe + ".vox.txt"), head + sb);
+            string ms = string.Join(",", mats.OrderByDescending(k => k.Value).Select(k => k.Key + ":" + k.Value));
+            string ls = string.Join(",", labs.OrderByDescending(k => k.Value).Select(k => (lname.TryGetValue(k.Key, out var n) ? n : k.Key.ToString()) + ":" + k.Value));
+            float s = size;
+            index.AppendLine($"{group}\t{id}\t{g.voxels.Count}\t{size}\t[{x0},{y0},{z0}]..[{x1},{y1},{z1}]\t{(x1 - x0 + 1) * s:0.00}x{(y1 - y0 + 1) * s:0.00}x{(z1 - z0 + 1) * s:0.00}\t{ms}\t{ls}\t{extra}");
+        }
+
+        static void Try(string what, Action a) { try { a(); } catch (Exception e) { index.AppendLine($"#ERR {what}: {(e.InnerException ?? e).GetType().Name}: {(e.InnerException ?? e).Message.Split('\n')[0]}"); } }
+
+        static void Drain(string group, string prefix = "")
+        {
+            foreach (var (n, g, s) in VoxelMesher.Captured) Write(group, prefix + n, g, s);
+            VoxelMesher.Captured.Clear();
+        }
+
+        public static void Main(string[] args)
+        {
+            outDir = args[0];
+            Directory.CreateDirectory(outDir);
+            // furniture
+            Try("furniture", () =>
+            {
+                foreach (var d in MadMax.Building.FurnitureLibrary.All)
+                    Write("furniture", d.id, d.grid, d.voxel, $"cat={d.category};name={d.name};kit={d.kit};snap={d.snapTo};found={d.foundation};deck={d.deck};link={d.link};upg={d.upgrade}");
+            });
+            Drain("furniture_meshes");
+            // world templates
+            Try("biome", () => MadMax.World.BiomeProps.TemplateGrid("x"));
+            Drain("world");
+            Try("proplib", () => MadMax.World.PropLibrary.TemplateGrid("x"));
+            Drain("world");
+            foreach (var k in new[] { "fuel", "parts", "food", "salvage", "scrap", "build" }) Try("stall " + k, () => MadMax.Npc.NpcDirector.StallTemplate("Stall_" + k));
+            Drain("world");
+            // every other parameterless static Mesh / VoxelGrid factory in the world / npc / building namespaces
+            var asm = typeof(VoxelGrid).Assembly;
+            foreach (var t in asm.GetTypes())
+            {
+                if (t.Namespace == null || !(t.Namespace.StartsWith("MadMax.World") || t.Namespace.StartsWith("MadMax.Npc") || t.Namespace.StartsWith("MadMax.Building") || t.Namespace.StartsWith("MadMax.Items"))) continue;
+                foreach (var m in t.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    if (m.ContainsGenericParameters) continue;
+                    if (m.ReturnType != typeof(Mesh) && m.ReturnType != typeof(VoxelGrid)) continue;
+                    var ps = m.GetParameters();
+                    object[] a;
+                    if (ps.Length == 0) a = new object[0];
+                    else if (ps.All(p => p.ParameterType == typeof(int) || p.ParameterType == typeof(float) || p.ParameterType == typeof(bool))) a = ps.Select(p => p.ParameterType == typeof(int) ? (object)0 : p.ParameterType == typeof(float) ? (object)0f : (object)false).ToArray();
+                    else continue;
+                    string nm = t.Name + "." + m.Name;
+                    VoxelGrid ret = null;
+                    Try(nm, () => { ret = m.Invoke(null, a) as VoxelGrid; });
+                    if (ret != null) Write("factories", nm + (ps.Length > 0 ? "(" + string.Join(",", a) + ")" : ""), ret, VoxelMesher.DefaultSize);
+                    Drain("captured", t.Name + ".");
+                }
+            }
+            // animals
+            Try("animals", () =>
+            {
+                var sbA = new StringBuilder();
+                foreach (var d in MadMax.Animals.AnimalLibrary.All)
+                {
+                    MadMax.Animals.AnimalMeshes am = null;
+                    Try("animal " + d.id, () => am = MadMax.Animals.AnimalModels.For(d));
+                    foreach (var (n, g, s) in VoxelMesher.Captured) Write("animals/" + d.id, n, g, s);
+                    VoxelMesher.Captured.Clear();
+                    string V(Vector3 v) => $"[{v.x:0.###},{v.y:0.###},{v.z:0.###}]";
+                    sbA.Append($"{{\"id\":\"{d.id}\",\"name\":\"{d.name}\",\"plan\":\"{d.plan}\",\"nature\":\"{d.nature}\",\"len\":{d.len},\"depth\":{d.depth},\"width\":{d.width},\"leg\":{d.leg},\"neck\":{d.neck},\"head\":{d.head},\"snout\":{d.snout},\"tail\":{d.tail},\"scale\":{d.scale},\"features\":\"{d.features}\",\"flies\":{(d.flies ? "true" : "false")},\"mass\":{d.mass},\"height\":{d.Height:0.###}");
+                    sbA.Append($",\"coat\":\"{Hex(d.Coat)}\",\"belly\":\"{Hex(d.Belly)}\",\"accent\":\"{Hex(d.Accent)}\"");
+                    if (am != null)
+                        sbA.Append($",\"neck_pivot\":{V(am.neck)},\"tailRoot\":{V(am.tailRoot)},\"wingRoot\":{V(am.wingRoot)},\"seat\":{V(am.seat)},\"legLen\":{am.legLen},\"segLen\":{am.segLen},\"segments\":{am.segments},\"sprawl\":{(am.sprawl ? "true" : "false")},\"legRoots\":[{string.Join(",", (am.legRoots ?? new Vector3[0]).Select(V))}],\"legFan\":[{string.Join(",", (am.legFan ?? new float[0]))}]");
+                    sbA.Append("}\n");
+                }
+                File.WriteAllText(Path.Combine(outDir, "animals.jsonl"), sbA.ToString());
+            });
+            File.WriteAllText(Path.Combine(outDir, "index.tsv"), index.ToString());
+            Console.WriteLine("done " + written.Count);
+        }
+
+        static string Hex(MadMax.Animals.Color32Ramp r) => r.ramp == null ? "" : string.Join("-", r.ramp.Select(c => c.r.ToString("x2") + c.g.ToString("x2") + c.b.ToString("x2"))) + "/" + r.bias;
+    }
+}
