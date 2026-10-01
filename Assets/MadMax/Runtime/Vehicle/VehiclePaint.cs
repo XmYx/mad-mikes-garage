@@ -75,7 +75,13 @@ namespace MadMax.Vehicles
         readonly List<MeshFilter> targets = new List<MeshFilter>();
         Transform decalR, decalL;
 
-        void OnDestroy() { foreach (var m in owned) if (m) Destroy(m); }
+        readonly Dictionary<Material, Material> hdPaint = new Dictionary<Material, Material>();
+
+        void OnDestroy()
+        {
+            foreach (var m in owned) if (m) Destroy(m);
+            foreach (var m in hdPaint.Values) if (m) Destroy(m);
+        }
 
         /// <summary>Body, roof and the cut panels (doors, hood) mounted right now.</summary>
         void Collect()
@@ -112,6 +118,7 @@ namespace MadMax.Vehicles
         public void Apply()
         {
             Ensure();
+            if (ApplyHD()) { UpdateDecals(); return; }
             Collect();
             var dst = Ramp(colour);
             // the main paint: the ramp the most painted vertices come from
@@ -142,6 +149,44 @@ namespace MadMax.Vehicles
             UpdateDecals();
         }
 
+        /// <summary>HD models (MadMax/HDLit): the paint is a tint over the texture's paint mask, set on a per-vehicle copy of
+        /// each atlas material (body, cut panels and their LODs; glass, chrome, rust and lamps are outside the mask).</summary>
+        bool ApplyHD()
+        {
+            var body = transform.Find("Body");
+            if (!body || !MadMax.Rendering.HDModel.IsHD(body.GetComponent<Renderer>())) return false;
+            var dst = Ramp(colour);
+            var tint = dst != null ? (Color)dst[Mathf.Clamp(Mathf.RoundToInt((dst.Length - 1) * 0.6f), 0, dst.Length - 1)] : Color.white;
+            tint.a = dst != null ? 1f : 0f;
+            hdRenderers.Clear();
+            body.GetComponentsInChildren(true, hdRenderers);
+            foreach (var p in GetComponentsInChildren<VehiclePart>())
+                if ((p.category == PartCategory.Door || p.category == PartCategory.Hood) && p.Socket) hdRenderers.AddRange(p.GetComponentsInChildren<Renderer>(true));
+            foreach (var r in hdRenderers)
+            {
+                if (!r || r is ParticleSystemRenderer || r.name.StartsWith("Decal") || r.name.StartsWith("Beam")) continue;
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (!m || !m.HasProperty(MadMax.Rendering.HDModel.PaintColorId)) continue;
+                    if (!hdPaint.TryGetValue(m, out var inst))
+                    {
+                        if (hdPaint.ContainsValue(m)) inst = m;                                   // already our copy
+                        else if (dst == null) continue;                                           // factory paint on a shared material
+                        else { inst = new Material(m) { name = m.name + " (paint)" }; hdPaint[m] = inst; }
+                    }
+                    inst.SetColor(MadMax.Rendering.HDModel.PaintColorId, tint);
+                    if (mats[i] != inst) { mats[i] = inst; changed = true; }
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+            return true;
+        }
+
+        static readonly List<Renderer> hdRenderers = new List<Renderer>();
+
         void UpdateDecals()
         {
             var body = transform.Find("Body");
@@ -149,7 +194,7 @@ namespace MadMax.Vehicles
             if (!body || !mesh) { if (decalR) decalR.gameObject.SetActive(false); if (decalL) decalL.gameObject.SetActive(false); return; }
             var bf = body.GetComponent<MeshFilter>();
             var b = bf && bf.sharedMesh ? bf.sharedMesh.bounds : new Bounds(Vector3.up, Vector3.one * 2f);
-            var mat = body.GetComponent<MeshRenderer>() ? body.GetComponent<MeshRenderer>().sharedMaterial : null;
+            var mat = MadMax.Rendering.HDModel.VoxelMaterialFor(body.GetComponent<MeshRenderer>());   // voxel emblems: HDLit with vertex colours on HD bodies
             decalR = Decal(body, decalR, "Decal_R", mesh, mat, new Vector3(b.max.x + 0.005f, b.min.y + b.size.y * 0.42f, b.center.z), 90f);
             decalL = Decal(body, decalL, "Decal_L", mesh, mat, new Vector3(b.min.x - 0.005f, b.min.y + b.size.y * 0.42f, b.center.z), -90f);
         }

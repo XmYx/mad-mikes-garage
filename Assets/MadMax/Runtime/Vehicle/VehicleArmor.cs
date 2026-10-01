@@ -199,6 +199,8 @@ namespace MadMax.Vehicles
             var glassFaces = new List<(Vector3Int p, Vector3Int n)>();
             var glassT = body.Find("Glass");
             if (glassT) AddMesh(glassT, null, glassFaces);
+            foreach (var s in chassis.Sockets)                                                              // HD doors carry their windows
+                if (s.Current && s.Current.category == PartCategory.Door && s.Current.transform.Find("Glass") is Transform dg) AddMesh(dg, null, glassFaces);
 
             Vector3Int mn = new Vector3Int(int.MaxValue, int.MaxValue, int.MaxValue), mx = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
             foreach (var p in shell) { mn = Vector3Int.Min(mn, p); mx = Vector3Int.Max(mx, p); }
@@ -301,6 +303,7 @@ namespace MadMax.Vehicles
             var nrm = mesh.normals;
             if (nrm.Length != v.Length) return;
             var m = body.worldToLocalMatrix * t.localToWorldMatrix;
+            if (MadMax.Rendering.HDModel.IsHDMesh(mesh)) { AddTriangles(mesh, v, m, shell, faces); return; }
             for (int i = 0; i + 3 < v.Length; i += 4)
             {
                 var c = m.MultiplyPoint3x4((v[i] + v[i + 1] + v[i + 2] + v[i + 3]) * 0.25f) / S;
@@ -308,6 +311,31 @@ namespace MadMax.Vehicles
                 var p = Vector3Int.RoundToInt(c - n * 0.5f);
                 shell?.Add(p);
                 faces?.Add((p, Vector3Int.RoundToInt(n)));
+            }
+        }
+
+        /// <summary>HD meshes: the triangles are sampled every half voxel; each sample marks the voxel just inside the
+        /// surface (faces get the dominant axis of the triangle normal).</summary>
+        static void AddTriangles(Mesh mesh, Vector3[] v, Matrix4x4 m, HashSet<Vector3Int> shell, List<(Vector3Int, Vector3Int)> faces)
+        {
+            var tris = mesh.triangles;
+            for (int i = 0; i + 2 < tris.Length; i += 3)
+            {
+                Vector3 a = m.MultiplyPoint3x4(v[tris[i]]) / S, b = m.MultiplyPoint3x4(v[tris[i + 1]]) / S, c = m.MultiplyPoint3x4(v[tris[i + 2]]) / S;
+                var nrm = Vector3.Cross(b - a, c - a);
+                if (nrm.sqrMagnitude < 1e-10f) continue;
+                nrm.Normalize();
+                var ax = Mathf.Abs(nrm.x) >= Mathf.Abs(nrm.y) && Mathf.Abs(nrm.x) >= Mathf.Abs(nrm.z) ? new Vector3Int((int)Mathf.Sign(nrm.x), 0, 0)
+                    : Mathf.Abs(nrm.y) >= Mathf.Abs(nrm.z) ? new Vector3Int(0, (int)Mathf.Sign(nrm.y), 0) : new Vector3Int(0, 0, (int)Mathf.Sign(nrm.z));
+                int n = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max((b - a).magnitude, Mathf.Max((c - b).magnitude, (a - c).magnitude)) * 2f), 1, 64);
+                for (int u = 0; u <= n; u++)
+                for (int w = 0; w <= n - u; w++)
+                {
+                    var p = a + (b - a) * (u / (float)n) + (c - a) * (w / (float)n);
+                    var q = Vector3Int.RoundToInt(p - nrm * 0.5f);
+                    shell?.Add(q);
+                    faces?.Add((q, ax));
+                }
             }
         }
 
@@ -336,7 +364,7 @@ namespace MadMax.Vehicles
             if (z == ArmorZone.Windows) { go.transform.localPosition = body.localPosition; go.transform.localRotation = body.localRotation; go.transform.localScale = body.localScale; }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             var br = body.GetComponent<MeshRenderer>();
-            if (br) go.GetComponent<MeshRenderer>().sharedMaterial = br.sharedMaterial;
+            if (br) go.GetComponent<MeshRenderer>().sharedMaterial = MadMax.Rendering.HDModel.VoxelMaterialFor(br);   // voxel plates: HDLit with vertex colours on HD bodies
             shown[i] = go;
         }
 

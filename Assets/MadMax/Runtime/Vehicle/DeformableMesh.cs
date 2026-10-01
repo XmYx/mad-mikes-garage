@@ -13,6 +13,10 @@ namespace MadMax.Vehicles
         Vector3[] pristine, displaced, work;
         float scale = 1f;
         bool dirty;
+        // HD meshes are smooth-shaded with vertices split along UV seams: normals are re-joined across the split copies
+        bool hd;
+        Vector3[] baseNormals, normals;
+        int[] weldNext;                           // circular list of the vertices sharing a position (self = alone)
 
         public bool IsDamaged { get; private set; }
         /// <summary>Undented vertex positions (null until the first dent).</summary>
@@ -29,6 +33,41 @@ namespace MadMax.Vehicles
             pristine = mesh.vertices;
             displaced = (Vector3[])pristine.Clone();
             work = new Vector3[pristine.Length];
+            hd = MadMax.Rendering.HDModel.IsHDMesh(mesh);
+            if (hd) BuildWeld();
+        }
+
+        void BuildWeld()
+        {
+            baseNormals = mesh.normals;
+            normals = new Vector3[pristine.Length];
+            weldNext = new int[pristine.Length];
+            var first = new System.Collections.Generic.Dictionary<Vector3Int, int>(pristine.Length);
+            var last = new System.Collections.Generic.Dictionary<Vector3Int, int>(pristine.Length);
+            for (int i = 0; i < pristine.Length; i++)
+            {
+                var k = Vector3Int.RoundToInt(pristine[i] * 10000f);
+                weldNext[i] = i;
+                if (last.TryGetValue(k, out int l)) { weldNext[i] = weldNext[l]; weldNext[l] = i; }
+                else first[k] = i;
+                last[k] = i;
+            }
+        }
+
+        /// <summary>Recalculated normals, averaged over the seam copies of each vertex that were smooth together.</summary>
+        void SmoothNormals()
+        {
+            mesh.RecalculateNormals();
+            var rec = mesh.normals;
+            for (int i = 0; i < rec.Length; i++)
+            {
+                var n = rec[i];
+                for (int j = weldNext[i]; j != i; j = weldNext[j])
+                    if (Vector3.Dot(baseNormals[i], baseNormals[j]) > 0.8f) n += rec[j];
+                normals[i] = n.sqrMagnitude > 1e-12f ? n.normalized : baseNormals[i];
+            }
+            mesh.SetNormals(normals);
+            if (mesh.HasVertexAttribute(UnityEngine.Rendering.VertexAttribute.Tangent)) mesh.RecalculateTangents();
         }
 
         /// <summary>Push vertices within <paramref name="radius"/> of a world point along a world direction.</summary>
@@ -83,7 +122,8 @@ namespace MadMax.Vehicles
                 work[i] = pristine[i] + new Vector3(Mathf.Round(d.x / q) * q, Mathf.Round(d.y / q) * q, Mathf.Round(d.z / q) * q);
             }
             mesh.SetVertices(work);
-            mesh.RecalculateNormals();   // faces own their vertices, so normals stay flat per face
+            if (hd) SmoothNormals();
+            else mesh.RecalculateNormals();   // faces own their vertices, so normals stay flat per face
             mesh.RecalculateBounds();
         }
 
@@ -151,7 +191,8 @@ namespace MadMax.Vehicles
             System.Array.Copy(pristine, displaced, pristine.Length);
             dirty = false;
             mesh.SetVertices(pristine);
-            mesh.RecalculateNormals();
+            if (hd) { mesh.SetNormals(baseNormals); if (mesh.HasVertexAttribute(UnityEngine.Rendering.VertexAttribute.Tangent)) mesh.RecalculateTangents(); }
+            else mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             IsDamaged = false;
         }

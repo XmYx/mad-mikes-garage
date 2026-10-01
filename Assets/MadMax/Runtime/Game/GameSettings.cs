@@ -12,7 +12,7 @@ namespace MadMax.Game
     public class GameSettings
     {
         public bool manualTransmission;
-        public int pixelHeightIndex = 3;
+        public int pixelHeightIndex = 2;  // 270 lines: the HD asset sheets' pixel density (a sedan ~115 px wide at the default iso zoom)
         public int outline = 1;          // 0 off, 1 = 1 px, 2 = 2 px
         public int shadows = 2;          // 0 off, 1 low, 2 high
         public bool bloom = true;
@@ -27,7 +27,7 @@ namespace MadMax.Game
         public bool lineOfSight = true;  // hide objects the character cannot see
         public bool intro = true;        // boot film + flyover; off = straight to the neon sign and menu
         public int version;              // settings format (see Load migration)
-        const int CurrentVersion = 2;
+        const int CurrentVersion = 3;
         public float radioVolume = 0.8f; // master gain for all radios
         public float sfxVolume = 1f;     // sound effects
         public bool blood = true;        // blood bursts and stains on injuries
@@ -46,7 +46,7 @@ namespace MadMax.Game
         public static readonly string[] DeformationNames = { "OFF", "LIGHT", "NORMAL", "HEAVY", "EXTREME" };
         public float DeformationScale => DeformationScales[Mathf.Clamp(deformation, 0, DeformationScales.Length - 1)];
         // interface
-        public int hudScale;             // 0 = with the pixel size, else the HUD's own height index into PixelHeights
+        public int hudScale = 4;         // 0 = with the pixel size, else the HUD's own height index into PixelHeights (+1; 4 = 320 lines)
         public bool colourBlind;         // blue/orange instead of red/green on bars and lamps
         public bool metric = true;       // km/h and °C (off: mph and °F)
         public bool radioCaptions;       // subtitles for DJ talk, news and weather
@@ -88,7 +88,9 @@ namespace MadMax.Game
             try { s = Profile.HasKey(Key) ? JsonUtility.FromJson<GameSettings>(Profile.GetString(Key)) : new GameSettings { version = CurrentVersion }; }
             catch { s = new GameSettings { version = CurrentVersion }; }
             // v2: the intro became a pre-rendered boot film; old "intro off" choices predate it, so they reset once
-            if (s.version < 2) { s.intro = true; s.version = CurrentVersion; s.Save(); }
+            if (s.version < 2) { s.intro = true; s.version = 2; s.Save(); }
+            // v3: HD assets - the default pixel size follows the asset sheets (270 lines); the HUD keeps its old 320 lines
+            if (s.version < 3) { if (s.pixelHeightIndex == 3 && s.hudScale == 0) { s.pixelHeightIndex = 2; s.hudScale = 4; } s.version = CurrentVersion; s.Save(); }
             return s;
         }
 

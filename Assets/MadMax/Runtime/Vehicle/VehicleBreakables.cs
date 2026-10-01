@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using MadMax.Rendering;
 using MadMax.Voxel;
 using MadMax.World;
 using UnityEngine;
@@ -23,9 +24,10 @@ namespace MadMax.Vehicles
             public Mesh mesh;
             public Vector3[] centres, normals;           // per quad, mesh space
             public Color32[] colors;
+            public Vector2[] wear;                       // HD meshes: scrape amount in uv2.x (MadMax/HDLit), the textures stay
             public int[] tris;                           // current index buffer (quads removed = zeroed)
             public readonly HashSet<int> removed = new HashSet<int>(), scratched = new HashSet<int>();
-            public bool glass, dirtyTris, dirtyColors;
+            public bool glass, hd, dirtyTris, dirtyColors;
         }
 
         readonly Dictionary<MeshFilter, Editable> meshes = new Dictionary<MeshFilter, Editable>();
@@ -55,7 +57,14 @@ namespace MadMax.Vehicles
                 mesh = Instantiate(mesh); mesh.name = mf.sharedMesh.name + " (worn)"; mf.sharedMesh = mesh; owned.Add(mesh);
             }
             var v = mesh.vertices; var n = mesh.normals;
-            e = new Editable { mf = mf, mesh = mesh, colors = mesh.colors32, tris = mesh.triangles, glass = mf.name == "Glass" };
+            e = new Editable { mf = mf, mesh = mesh, colors = mesh.colors32, tris = mesh.triangles, glass = mf.name == "Glass", hd = HDModel.IsHDMesh(mesh) };
+            if (e.hd)
+            {
+                // HD triangle meshes: a "quad" is a pair of triangles (the same 6-index bookkeeping, saves stay compatible)
+                var uv2 = new List<Vector2>();
+                mesh.GetUVs(1, uv2);
+                e.wear = uv2.Count == v.Length ? uv2.ToArray() : new Vector2[v.Length];
+            }
             int quads = e.tris.Length / 6;
             e.centres = new Vector3[quads]; e.normals = new Vector3[quads];
             for (int q = 0; q < quads; q++)
@@ -77,7 +86,7 @@ namespace MadMax.Vehicles
             {
                 if (!e.mesh) continue;
                 if (e.dirtyTris) { e.mesh.triangles = e.tris; e.dirtyTris = false; }
-                if (e.dirtyColors) { e.mesh.colors32 = e.colors; e.dirtyColors = false; }
+                if (e.dirtyColors) { if (e.hd) e.mesh.SetUVs(1, e.wear); else e.mesh.colors32 = e.colors; e.dirtyColors = false; }
             }
         }
 
@@ -93,6 +102,12 @@ namespace MadMax.Vehicles
         static void Scratch(Editable e, int q)
         {
             e.scratched.Add(q);
+            if (e.hd)
+            {
+                for (int i = 0; i < 6; i++) { int vi = e.tris[q * 6 + i]; if (vi < e.wear.Length) e.wear[vi].x = (q * 7919) % 5 < 2 ? 0.75f : 1f; }
+                e.dirtyColors = true;
+                return;
+            }
             int v0 = e.tris[q * 6];
             if (v0 >= e.colors.Length) return;
             var c = (q * 7919) % 5 < 2 ? BareDark : Bare;                              // speckled bare metal
@@ -110,8 +125,20 @@ namespace MadMax.Vehicles
         public void Smash(Vector3 point, float radius, float power)
         {
             if (power < 1.5f) return;
+            glazing.Clear();
             var glassT = body ? body.Find("Glass") : null;
-            var gmf = glassT ? glassT.GetComponent<MeshFilter>() : null;
+            MeshFilter bodyGlass = null;
+            if (glassT && glassT.TryGetComponent(out bodyGlass)) glazing.Add(bodyGlass);
+            if (glassT && HDModel.IsHDMesh(bodyGlass ? bodyGlass.sharedMesh : null))
+                foreach (var mf in GetComponentsInChildren<MeshFilter>()) if (mf.name == "Glass" && mf != bodyGlass && (mf.transform.position - point).sqrMagnitude < 9f) glazing.Add(mf);   // HD door windows
+            foreach (var gmf in glazing) SmashGlass(gmf, point, radius);
+            SmashLamps(point, radius);
+        }
+
+        static readonly List<MeshFilter> glazing = new List<MeshFilter>();
+
+        void SmashGlass(MeshFilter gmf, Vector3 point, float radius)
+        {
             var e = Edit(gmf);
             if (e != null)
             {
@@ -129,12 +156,12 @@ namespace MadMax.Vehicles
                     dirty = true;
                 }
             }
-            SmashLamps(point, radius);
         }
 
         void SmashLamps(Vector3 point, float radius)
         {
             var bmf = body ? body.GetComponent<MeshFilter>() : null;
+            if (bmf && HDModel.IsHDMesh(bmf.sharedMesh)) { SmashHDLamps(point, radius); return; }
             var e = Edit(bmf);
             if (e == null) return;
             var lp = bmf.transform.InverseTransformPoint(point);
@@ -163,6 +190,38 @@ namespace MadMax.Vehicles
             if (BrokenLamps != before) { dirty = true; if (Lights) Lights.SetBroken(BrokenLamps); }
         }
 
+        /// <summary>HD models: lenses are their own meshes (Lamp_Head / Lamp_Tail / Lamp_Amber under the body); a broken one
+        /// loses its triangles near the hit.</summary>
+        void SmashHDLamps(Vector3 point, float radius)
+        {
+            int before = BrokenLamps;
+            float r = radius + 0.25f;
+            foreach (var mf in body.GetComponentsInChildren<MeshFilter>())
+            {
+                if (!HDModel.IsLamp(mf.transform) || !mf.TryGetComponent<Renderer>(out var rr) || rr.bounds.SqrDistance(point) > r * r) continue;
+                var e = Edit(mf);
+                if (e == null) continue;
+                var lp = mf.transform.InverseTransformPoint(point);
+                var toBody = body.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+                var kind = mf.name == "Lamp_Tail" ? Shards.Kind.Red : mf.name == "Lamp_Amber" ? Shards.Kind.Amber : Shards.Kind.Clear;
+                for (int q = 0; q < e.centres.Length; q++)
+                {
+                    if (e.removed.Contains(q) || (e.centres[q] - lp).sqrMagnitude > r * r) continue;
+                    var ctr = toBody.MultiplyPoint3x4(e.centres[q]);
+                    bool front = ctr.z > bodyBounds.center.z, left = ctr.x < 0f;
+                    int bit = front ? (left ? 1 : 2) : (left ? 4 : 8);
+                    Remove(e, q);
+                    if ((BrokenLamps & bit) != 0) continue;
+                    BrokenLamps |= bit;
+                    var at = mf.transform.TransformPoint(e.centres[q]);
+                    MadMax.Audio.Sfx.Play("glass_break", at, 0.5f, Random.Range(1.2f, 1.5f), 30f, 0.1f);
+                    Burst(at, kind == Shards.Kind.Red ? new[] { Pal.TailR } : kind == Shards.Kind.Amber ? new[] { Pal.Amber } : new[] { Pal.LightW, Pal.Glass[3] }, 6);
+                    Shards.Drop(at, kind);
+                }
+            }
+            if (BrokenLamps != before) { dirty = true; if (Lights) Lights.SetBroken(BrokenLamps); }
+        }
+
         /// <summary>Paint scraped to bare metal on every panel near <paramref name="point"/> facing the contact.</summary>
         public void Scrape(Vector3 point, Vector3 normal, float radius)
         {
@@ -174,7 +233,7 @@ namespace MadMax.Vehicles
             scrapeCandidates.Clear();
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Glass" || mf.name == "Driver" || mf.name.StartsWith("Beam") || mf.GetComponent<MadMax.Building.Placeable>()) continue;
+                if (mf.name == "Glass" || mf.name == "Driver" || mf.name.StartsWith("Beam") || HDModel.IsLamp(mf.transform) || HDModel.IsLod(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
                 var part = mf.GetComponentInParent<VehiclePart>();
                 if (part && part.category == PartCategory.Wheel) continue;
                 var r = mf.GetComponent<Renderer>();
@@ -190,7 +249,7 @@ namespace MadMax.Vehicles
                     float d = (e.centres[q] - lp).magnitude * scale;
                     if (d > Reach || Vector3.Dot(e.normals[q], ln) < 0.2f) continue;
                     int v0 = e.tris[q * 6];
-                    if (v0 < e.colors.Length && (IsLamp(e.colors[v0]) || IsGlassColor(e.colors[v0]))) continue;
+                    if (!e.hd && v0 < e.colors.Length && (IsLamp(e.colors[v0]) || IsGlassColor(e.colors[v0]))) continue;
                     scrapeCandidates.Add((e, q, d));
                     nearest = Mathf.Min(nearest, d);
                 }
