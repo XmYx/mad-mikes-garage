@@ -1,0 +1,4459 @@
+{
+ "format": 1,
+ "asset": "Fiat126p",
+ "group": "cars",
+ "kind": "vehicle",
+ "source": "Fiat126p.blend",
+ "units": "m",
+ "axes": "unity (+X right, +Y up, +Z forward); position/rotation/scale parent-local, rootPosition/rootMatrix in prefab space",
+ "mirroredOnExport": false,
+ "bakeAxisConversion": false,
+ "readable": true,
+ "rootName": "Fiat126p",
+ "rootProps": [
+  {
+   "k": "game_ground_y_m",
+   "s": "0.08800000000000001",
+   "n": 0.08800000000000001,
+   "v": []
+  }
+ ],
+ "rootBlenderMatrix": [
+  1.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  1.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  1.0,
+  -0.088,
+  0.0,
+  0.0,
+  0.0,
+  1.0
+ ],
+ "atlases": [
+  {
+   "name": "Fiat126p",
+   "size": 2048,
+   "baseMap": "Fiat126p_Base.png",
+   "maskMap": "Fiat126p_Mask.png",
+   "normalMap": "",
+   "emissionMap": "Fiat126p_Emission.png",
+   "emissionScale": 1.0,
+   "paintRef": [
+    0.2192288041114807,
+    0.028830233961343765,
+    0.02616439014673233
+   ],
+   "hasAlpha": true,
+   "materials": [
+    "Fiat126p_paint",
+    "underbody",
+    "interior_trim",
+    "carpet",
+    "plate",
+    "plate_ink",
+    "void",
+    "plastic",
+    "plastic_grey",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome",
+    "engine_block",
+    "engine_paint",
+    "paint",
+    "dash",
+    "lamp_head",
+    "lamp_amber",
+    "lamp_tail",
+    "leather",
+    "tyre_side",
+    "rubber",
+    "rim_steel"
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "Fiat126p_paint",
+   "cls": "paint"
+  },
+  {
+   "name": "Fiat126p_seam",
+   "cls": "opaque"
+  },
+  {
+   "name": "carpet",
+   "cls": "opaque"
+  },
+  {
+   "name": "chrome",
+   "cls": "opaque"
+  },
+  {
+   "name": "dash",
+   "cls": "opaque"
+  },
+  {
+   "name": "engine_block",
+   "cls": "opaque"
+  },
+  {
+   "name": "engine_paint",
+   "cls": "opaque"
+  },
+  {
+   "name": "glass",
+   "cls": "glass"
+  },
+  {
+   "name": "interior_trim",
+   "cls": "opaque"
+  },
+  {
+   "name": "lamp_amber",
+   "cls": "lamp_amber"
+  },
+  {
+   "name": "lamp_head",
+   "cls": "lamp_head"
+  },
+  {
+   "name": "lamp_tail",
+   "cls": "lamp_tail"
+  },
+  {
+   "name": "leather",
+   "cls": "opaque"
+  },
+  {
+   "name": "paint",
+   "cls": "opaque"
+  },
+  {
+   "name": "plastic",
+   "cls": "opaque"
+  },
+  {
+   "name": "plastic_grey",
+   "cls": "opaque"
+  },
+  {
+   "name": "plate",
+   "cls": "opaque"
+  },
+  {
+   "name": "plate_ink",
+   "cls": "opaque"
+  },
+  {
+   "name": "rim_steel",
+   "cls": "opaque"
+  },
+  {
+   "name": "rubber",
+   "cls": "opaque"
+  },
+  {
+   "name": "seal",
+   "cls": "opaque"
+  },
+  {
+   "name": "tyre_side",
+   "cls": "opaque"
+  },
+  {
+   "name": "underbody",
+   "cls": "opaque"
+  },
+  {
+   "name": "void",
+   "cls": "opaque"
+  }
+ ],
+ "paintMaterials": [
+  "Fiat126p_paint"
+ ],
+ "objects": [
+  {
+   "name": "Body",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body",
+   "tris": 14090,
+   "verts": 7442,
+   "boundsMin": [
+    -0.689,
+    0.248,
+    -1.58
+   ],
+   "boundsMax": [
+    0.689,
+    1.38802,
+    1.50431
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "underbody",
+    "interior_trim",
+    "carpet",
+    "plate",
+    "plate_ink",
+    "void",
+    "plastic"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_F",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.418,
+    1.52207
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.418,
+    1.52207
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.418,
+    0.0,
+    0.0,
+    1.0,
+    1.522067,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "bumper_fiat126p",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      5.224999904632568,
+      19.025836944580078
+     ]
+    }
+   ],
+   "mesh": "Bumper_F",
+   "tris": 640,
+   "verts": 324,
+   "boundsMin": [
+    -0.71615,
+    -0.045,
+    -0.23572
+   ],
+   "boundsMax": [
+    0.71615,
+    0.045,
+    0.0584
+   ],
+   "materials": [
+    "plastic",
+    "plastic_grey"
+   ],
+   "classes": [
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Bumper_R",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.418,
+    -1.59982
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.418,
+    -1.59982
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.418,
+    0.0,
+    0.0,
+    1.0,
+    -1.599816,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "bumper_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "bumper_fiat126p",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      5.224999904632568,
+      -19.997699737548828
+     ]
+    }
+   ],
+   "mesh": "Bumper_R",
+   "tris": 640,
+   "verts": 324,
+   "boundsMin": [
+    -0.71281,
+    -0.045,
+    -0.0584
+   ],
+   "boundsMax": [
+    0.71281,
+    0.045,
+    0.20816
+   ],
+   "materials": [
+    "plastic",
+    "plastic_grey"
+   ],
+   "classes": [
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_L",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.65455,
+    0.32,
+    0.67
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_L",
+   "tris": 3016,
+   "verts": 1568,
+   "boundsMin": [
+    -0.15634,
+    0.02181,
+    -0.77023
+   ],
+   "boundsMax": [
+    0.1113,
+    0.98182,
+    0.00975
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_R",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.65455,
+    0.32,
+    0.67
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_R",
+   "tris": 3016,
+   "verts": 1568,
+   "boundsMin": [
+    -0.1116,
+    0.02188,
+    -0.77024
+   ],
+   "boundsMax": [
+    0.15634,
+    0.98177,
+    0.00973
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Engine",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.384,
+    -1.114
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.384,
+    -1.114
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.384,
+    0.0,
+    0.0,
+    1.0,
+    -1.114,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "engine",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "engine_2stroke",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      4.800000190734863,
+      -13.925000190734863
+     ]
+    }
+   ],
+   "mesh": "Engine",
+   "tris": 376,
+   "verts": 198,
+   "boundsMin": [
+    -0.12606,
+    0.0,
+    -0.144
+   ],
+   "boundsMax": [
+    0.19552,
+    0.504,
+    0.152
+   ],
+   "materials": [
+    "engine_block",
+    "engine_paint",
+    "chrome",
+    "paint"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Glass",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Glass",
+   "tris": 1164,
+   "verts": 677,
+   "boundsMin": [
+    -0.65977,
+    0.92466,
+    -0.93
+   ],
+   "boundsMax": [
+    0.65977,
+    1.36733,
+    0.65
+   ],
+   "materials": [
+    "glass",
+    "seal"
+   ],
+   "classes": [
+    "glass",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Hood",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.8085,
+    0.59
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.8085,
+    0.59
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.8085,
+    0.0,
+    0.0,
+    1.0,
+    0.59,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.106249809265137,
+      7.375
+     ]
+    }
+   ],
+   "mesh": "Hood",
+   "tris": 3064,
+   "verts": 1534,
+   "boundsMin": [
+    -0.61256,
+    -0.13073,
+    0.0869
+   ],
+   "boundsMax": [
+    0.61262,
+    0.06691,
+    0.8
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Interior",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior",
+   "tris": 804,
+   "verts": 424,
+   "boundsMin": [
+    -0.52,
+    0.43811,
+    0.112
+   ],
+   "boundsMax": [
+    0.52,
+    1.18731,
+    0.68
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Lights",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Lights",
+   "tris": 264,
+   "verts": 144,
+   "boundsMin": [
+    -0.58353,
+    0.571,
+    -1.53366
+   ],
+   "boundsMax": [
+    0.57897,
+    0.87212,
+    1.4996
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Seat_Driver",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.24,
+    0.4,
+    -0.4
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.24,
+    0.4,
+    -0.4
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.24,
+    0.0,
+    1.0,
+    0.0,
+    0.4,
+    0.0,
+    0.0,
+    1.0,
+    -0.4,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -3.0,
+      5.0,
+      -5.0
+     ]
+    }
+   ],
+   "mesh": "Seat_Driver",
+   "tris": 484,
+   "verts": 248,
+   "boundsMin": [
+    -0.2,
+    -0.024,
+    -0.32293
+   ],
+   "boundsMax": [
+    0.2,
+    0.89377,
+    0.2
+   ],
+   "materials": [
+    "leather"
+   ],
+   "classes": [
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Seat_Passenger",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.24,
+    0.4,
+    -0.4
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.24,
+    0.4,
+    -0.4
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.24,
+    0.0,
+    1.0,
+    0.0,
+    0.4,
+    0.0,
+    0.0,
+    1.0,
+    -0.4,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      3.0,
+      5.0,
+      -5.0
+     ]
+    }
+   ],
+   "mesh": "Seat_Passenger",
+   "tris": 484,
+   "verts": 248,
+   "boundsMin": [
+    -0.2,
+    -0.024,
+    -0.32293
+   ],
+   "boundsMax": [
+    0.2,
+    0.89377,
+    0.2
+   ],
+   "materials": [
+    "leather"
+   ],
+   "classes": [
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Trunk",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Trunk",
+   "tris": 1916,
+   "verts": 972,
+   "boundsMin": [
+    -0.60094,
+    0.84677,
+    -1.47323
+   ],
+   "boundsMax": [
+    0.60142,
+    0.99886,
+    -1.00022
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam",
+    "void"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.58,
+    0.348,
+    0.96
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL",
+   "tris": 3112,
+   "verts": 1667,
+   "boundsMin": [
+    -0.136,
+    -0.26,
+    -0.26
+   ],
+   "boundsMax": [
+    0.1264,
+    0.26,
+    0.26
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.58,
+    0.348,
+    0.96
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR",
+   "tris": 3112,
+   "verts": 1667,
+   "boundsMin": [
+    -0.1264,
+    -0.26,
+    -0.26
+   ],
+   "boundsMax": [
+    0.136,
+    0.26,
+    0.26
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    -0.58,
+    0.348,
+    -0.88
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL",
+   "tris": 3112,
+   "verts": 1667,
+   "boundsMin": [
+    -0.136,
+    -0.26,
+    -0.26
+   ],
+   "boundsMax": [
+    0.1264,
+    0.26,
+    0.26
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR",
+   "parent": "",
+   "type": "MESH",
+   "role": "mesh",
+   "position": [
+    0.58,
+    0.348,
+    -0.88
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR",
+   "tris": 3112,
+   "verts": 1667,
+   "boundsMin": [
+    -0.1264,
+    -0.26,
+    -0.26
+   ],
+   "boundsMax": [
+    0.136,
+    0.26,
+    0.26
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__Glass",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "glass",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Door_L__Glass",
+   "tris": 364,
+   "verts": 238,
+   "boundsMin": [
+    -0.14634,
+    0.58427,
+    -0.73975
+   ],
+   "boundsMax": [
+    0.1113,
+    0.9535,
+    -0.1
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__Glass",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "glass",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Door_R__Glass",
+   "tris": 364,
+   "verts": 238,
+   "boundsMin": [
+    -0.1116,
+    0.58453,
+    -0.73967
+   ],
+   "boundsMax": [
+    0.14634,
+    0.95339,
+    -0.1
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Head",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_head",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Head",
+   "tris": 88,
+   "verts": 48,
+   "boundsMin": [
+    -0.53546,
+    0.66857,
+    1.36527
+   ],
+   "boundsMax": [
+    0.5355,
+    0.77424,
+    1.41365
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Amber",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_amber",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Amber",
+   "tris": 88,
+   "verts": 48,
+   "boundsMin": [
+    -0.5,
+    0.58299,
+    1.49274
+   ],
+   "boundsMax": [
+    0.5,
+    0.63299,
+    1.5092
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Lights__Lamp_Tail",
+   "parent": "Lights",
+   "type": "MESH",
+   "role": "lamp_tail",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [],
+   "mesh": "Lights__Lamp_Tail",
+   "tris": 88,
+   "verts": 48,
+   "boundsMin": [
+    -0.57202,
+    0.67572,
+    -1.54316
+   ],
+   "boundsMax": [
+    0.56724,
+    0.86256,
+    -1.50976
+   ],
+   "materials": [
+    "chrome",
+    "lamp_head",
+    "plastic",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "classes": [
+    "opaque",
+    "lamp_head",
+    "opaque",
+    "lamp_amber",
+    "lamp_tail"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Body__L1",
+   "parent": "Body",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body__L1",
+   "tris": 7045,
+   "verts": 3747,
+   "boundsMin": [
+    -0.68901,
+    0.24797,
+    -1.58
+   ],
+   "boundsMax": [
+    0.68901,
+    1.38802,
+    1.50431
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "underbody",
+    "interior_trim",
+    "carpet",
+    "plate",
+    "plate_ink",
+    "void",
+    "plastic"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Body__L2",
+   "parent": "Body",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Body__L2",
+   "tris": 2818,
+   "verts": 1555,
+   "boundsMin": [
+    -0.68904,
+    0.24776,
+    -1.58
+   ],
+   "boundsMax": [
+    0.68904,
+    1.38815,
+    1.50431
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "underbody",
+    "interior_trim",
+    "carpet",
+    "plate",
+    "plate_ink",
+    "void",
+    "plastic"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__L1",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_L__L1",
+   "tris": 1507,
+   "verts": 797,
+   "boundsMin": [
+    -0.15634,
+    0.02181,
+    -0.77023
+   ],
+   "boundsMax": [
+    0.1113,
+    0.98182,
+    0.00975
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_L__L2",
+   "parent": "Door_L",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_L__L2",
+   "tris": 603,
+   "verts": 331,
+   "boundsMin": [
+    -0.1571,
+    0.02292,
+    -0.76958
+   ],
+   "boundsMax": [
+    0.1113,
+    0.98164,
+    0.00964
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__L1",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_R__L1",
+   "tris": 1507,
+   "verts": 794,
+   "boundsMin": [
+    -0.1116,
+    0.02188,
+    -0.77024
+   ],
+   "boundsMax": [
+    0.15634,
+    0.98177,
+    0.00973
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Door_R__L2",
+   "parent": "Door_R",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.65455,
+    0.32,
+    0.67
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.65455,
+    0.0,
+    1.0,
+    0.0,
+    0.32,
+    0.0,
+    0.0,
+    1.0,
+    0.67,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "door",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      8.181875228881836,
+      4.0,
+      8.375
+     ]
+    }
+   ],
+   "mesh": "Door_R__L2",
+   "tris": 602,
+   "verts": 328,
+   "boundsMin": [
+    -0.1115,
+    0.02227,
+    -0.7695
+   ],
+   "boundsMax": [
+    0.15711,
+    0.98152,
+    0.0095
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "glass",
+    "Fiat126p_seam",
+    "seal",
+    "chrome"
+   ],
+   "classes": [
+    "paint",
+    "glass",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Glass__L1",
+   "parent": "Glass",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Glass__L1",
+   "tris": 582,
+   "verts": 363,
+   "boundsMin": [
+    -0.65977,
+    0.92466,
+    -0.93
+   ],
+   "boundsMax": [
+    0.65977,
+    1.36733,
+    0.65
+   ],
+   "materials": [
+    "glass",
+    "seal"
+   ],
+   "classes": [
+    "glass",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Glass__L2",
+   "parent": "Glass",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Glass__L2",
+   "tris": 232,
+   "verts": 157,
+   "boundsMin": [
+    -0.65977,
+    0.92466,
+    -0.93001
+   ],
+   "boundsMax": [
+    0.65972,
+    1.36733,
+    0.64998
+   ],
+   "materials": [
+    "glass",
+    "seal"
+   ],
+   "classes": [
+    "glass",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Hood__L1",
+   "parent": "Hood",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.8085,
+    0.59
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.8085,
+    0.0,
+    0.0,
+    1.0,
+    0.59,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.106249809265137,
+      7.375
+     ]
+    }
+   ],
+   "mesh": "Hood__L1",
+   "tris": 1532,
+   "verts": 768,
+   "boundsMin": [
+    -0.61256,
+    -0.13073,
+    0.0869
+   ],
+   "boundsMax": [
+    0.61262,
+    0.06691,
+    0.8
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Hood__L2",
+   "parent": "Hood",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.8085,
+    0.59
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.8085,
+    0.0,
+    0.0,
+    1.0,
+    0.59,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "hood",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      10.106249809265137,
+      7.375
+     ]
+    }
+   ],
+   "mesh": "Hood__L2",
+   "tris": 612,
+   "verts": 308,
+   "boundsMin": [
+    -0.61256,
+    -0.13073,
+    0.08631
+   ],
+   "boundsMax": [
+    0.61162,
+    0.06728,
+    0.80006
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam"
+   ],
+   "classes": [
+    "paint",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Interior__L1",
+   "parent": "Interior",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior__L1",
+   "tris": 402,
+   "verts": 223,
+   "boundsMin": [
+    -0.52,
+    0.43811,
+    0.11224
+   ],
+   "boundsMax": [
+    0.52,
+    1.18731,
+    0.68
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Interior__L2",
+   "parent": "Interior",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Interior__L2",
+   "tris": 160,
+   "verts": 102,
+   "boundsMin": [
+    -0.51422,
+    0.4379,
+    0.11089
+   ],
+   "boundsMax": [
+    0.50968,
+    1.19507,
+    0.66904
+   ],
+   "materials": [
+    "dash",
+    "plastic",
+    "chrome"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Trunk__L1",
+   "parent": "Trunk",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Trunk__L1",
+   "tris": 958,
+   "verts": 493,
+   "boundsMin": [
+    -0.60094,
+    0.84677,
+    -1.47323
+   ],
+   "boundsMax": [
+    0.60142,
+    0.99886,
+    -1.00022
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam",
+    "void"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Trunk__L2",
+   "parent": "Trunk",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "mesh": "Trunk__L2",
+   "tris": 382,
+   "verts": 205,
+   "boundsMin": [
+    -0.60006,
+    0.84736,
+    -1.47323
+   ],
+   "boundsMax": [
+    0.60042,
+    0.99886,
+    -1.00088
+   ],
+   "materials": [
+    "Fiat126p_paint",
+    "Fiat126p_seam",
+    "void"
+   ],
+   "classes": [
+    "paint",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL__L1",
+   "parent": "Wheel_FL",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL__L1",
+   "tris": 1556,
+   "verts": 880,
+   "boundsMin": [
+    -0.13615,
+    -0.25999,
+    -0.26006
+   ],
+   "boundsMax": [
+    0.12648,
+    0.26007,
+    0.26004
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FL__L2",
+   "parent": "Wheel_FL",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FL__L2",
+   "tris": 622,
+   "verts": 354,
+   "boundsMin": [
+    -0.13502,
+    -0.2621,
+    -0.26225
+   ],
+   "boundsMax": [
+    0.12655,
+    0.2624,
+    0.2619
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR__L1",
+   "parent": "Wheel_FR",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR__L1",
+   "tris": 1556,
+   "verts": 884,
+   "boundsMin": [
+    -0.12648,
+    -0.26,
+    -0.26013
+   ],
+   "boundsMax": [
+    0.1361,
+    0.26003,
+    0.26005
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_FR__L2",
+   "parent": "Wheel_FR",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    0.96
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    0.96,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_front",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_F",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      12.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_FR__L2",
+   "tris": 621,
+   "verts": 357,
+   "boundsMin": [
+    -0.12789,
+    -0.26269,
+    -0.26225
+   ],
+   "boundsMax": [
+    0.13495,
+    0.26222,
+    0.26058
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL__L1",
+   "parent": "Wheel_RL",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL__L1",
+   "tris": 1556,
+   "verts": 880,
+   "boundsMin": [
+    -0.13615,
+    -0.25999,
+    -0.26006
+   ],
+   "boundsMax": [
+    0.12648,
+    0.26007,
+    0.26004
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RL__L2",
+   "parent": "Wheel_RL",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    -0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    -0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear_L",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "-6.249999999999999",
+     "n": -6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "true",
+     "n": 1.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      -7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RL__L2",
+   "tris": 622,
+   "verts": 354,
+   "boundsMin": [
+    -0.13502,
+    -0.2621,
+    -0.26225
+   ],
+   "boundsMax": [
+    0.12655,
+    0.2624,
+    0.26177
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR__L1",
+   "parent": "Wheel_RR",
+   "type": "MESH",
+   "role": "lod1",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR__L1",
+   "tris": 1556,
+   "verts": 885,
+   "boundsMin": [
+    -0.12648,
+    -0.26,
+    -0.26013
+   ],
+   "boundsMax": [
+    0.1361,
+    0.26003,
+    0.26004
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  },
+  {
+   "name": "Wheel_RR__L2",
+   "parent": "Wheel_RR",
+   "type": "MESH",
+   "role": "lod2",
+   "position": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rootPosition": [
+    0.58,
+    0.348,
+    -0.88
+   ],
+   "rootMatrix": [
+    1.0,
+    0.0,
+    0.0,
+    0.58,
+    0.0,
+    1.0,
+    0.0,
+    0.348,
+    0.0,
+    0.0,
+    1.0,
+    -0.88,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "props": [
+    {
+     "k": "socket",
+     "s": "wheel_rear",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "part",
+     "s": "Fiat126p_R",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "radius_m",
+     "s": "0.26",
+     "n": 0.26,
+     "v": []
+    },
+    {
+     "k": "width_m",
+     "s": "0.24",
+     "n": 0.24,
+     "v": []
+    },
+    {
+     "k": "socket_inner_x_vox",
+     "s": "6.249999999999999",
+     "n": 6.249999999999999,
+     "v": []
+    },
+    {
+     "k": "mirrored",
+     "s": "false",
+     "n": 0.0,
+     "v": []
+    },
+    {
+     "k": "pivot_game_vox",
+     "s": "",
+     "n": 0.0,
+     "v": [
+      7.25,
+      4.349999904632568,
+      -11.0
+     ]
+    }
+   ],
+   "mesh": "Wheel_RR__L2",
+   "tris": 621,
+   "verts": 357,
+   "boundsMin": [
+    -0.12789,
+    -0.26269,
+    -0.26225
+   ],
+   "boundsMax": [
+    0.13495,
+    0.26222,
+    0.26058
+   ],
+   "materials": [
+    "tyre_side",
+    "rubber",
+    "rim_steel",
+    "chrome",
+    "void"
+   ],
+   "classes": [
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque",
+    "opaque"
+   ],
+   "atlas": "Fiat126p",
+   "skinned": false
+  }
+ ],
+ "bones": [],
+ "lodRatios": [
+  0.5,
+  0.2
+ ],
+ "lodSuffix": "__L",
+ "splitSuffix": "__",
+ "boundsMin": [
+  -0.81089,
+  0.088,
+  -1.65822
+ ],
+ "boundsMax": [
+  0.81089,
+  1.38802,
+  1.58047
+ ],
+ "fbx": "Fiat126p.fbx",
+ "files": [
+  {
+   "file": "Fiat126p.fbx",
+   "bytes": 2881980
+  },
+  {
+   "file": "Fiat126p_Base.png",
+   "bytes": 1994043
+  },
+  {
+   "file": "Fiat126p_Emission.png",
+   "bytes": 91790
+  },
+  {
+   "file": "Fiat126p_Mask.png",
+   "bytes": 2826893
+  }
+ ],
+ "tris": [
+  43398,
+  19757,
+  7895
+ ]
+}
