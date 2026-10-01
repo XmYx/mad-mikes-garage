@@ -49,6 +49,7 @@ namespace MadMax.World
             go.GetComponent<MeshFilter>().sharedMesh = BoomMesh();
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             go.transform.localScale = new Vector3(1f, 1f, length / 8f);                               // the mesh is 8 m long
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.World, "CheckpointBoom", HDProp.FlagsOf(mat));   // same length, scaled with it
             boom = go.transform;
             boomCol = go.AddComponent<BoxCollider>();
             boomCol.center = new Vector3(0f, 0f, 4f); boomCol.size = new Vector3(0.2f, 0.2f, 8f);

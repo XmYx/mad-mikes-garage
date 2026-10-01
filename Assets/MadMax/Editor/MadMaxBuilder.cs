@@ -87,6 +87,7 @@ namespace MadMax.EditorTools
         [MenuItem("MadMax/Build Game Scene")]
         public static void BuildGameScene()
         {
+            HDCatalogBuilder.Build(true);                                                   // HD world / furniture / items / animals (Resources/HDGen)
             BuildAssetsInternal(out var vehicles);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var terrainMat = Material("PixelTerrain", 0);

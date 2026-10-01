@@ -31,6 +31,9 @@ namespace MadMax.Game
         GameObject ghost;
         MeshFilter ghostMesh;
         MeshRenderer ghostRenderer;
+        GameObject ghostHD;
+        Renderer[] ghostHDRenderers = new Renderer[0];
+        string ghostHDId;
         MaterialPropertyBlock mpb;
         Transform structures;
         int yawSteps;
@@ -208,6 +211,7 @@ namespace MadMax.Game
             }
             ghost.SetActive(true);
             ghostMesh.sharedMesh = def.mesh;
+            GhostHD(def.id);
             ghost.transform.SetPositionAndRotation(parent.TransformPoint(localPos), parent.rotation * localRot);
 
             bool affordable = Affordable(def);
@@ -216,6 +220,7 @@ namespace MadMax.Game
             Status = blocked ?? (!affordable ? "NOT ENOUGH MATERIALS" : !free ? "BLOCKED" : targetPiece ? "[LMB] PLACE  [Y] ROTATE" + PieceHint(targetPiece) : def.plan >= 0 ? "[LMB] BUILD PLAN  [Y] ROTATE  [X] FORGET PLAN" : "[LMB] PLACE  [Y] ROTATE  [B] EXIT");
             mpb.SetColor("_Tint", Valid ? new Color(0.7f, 1.3f, 0.7f) : new Color(1.4f, 0.5f, 0.45f));
             ghostRenderer.SetPropertyBlock(mpb);
+            foreach (var r in ghostHDRenderers) if (r) r.SetPropertyBlock(mpb);
 
             // doors snap into doorways, garage doors into their frames, shutters over windows
             if (def.snapTo != null && targetPiece && targetPiece.id.Contains(def.snapTo))
@@ -227,6 +232,23 @@ namespace MadMax.Game
             aimParent = parent; aimPos = localPos; aimRot = localRot;
             bool place = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
             if (place) TryPlace();
+        }
+
+        /// <summary>The preview shows the piece's HD model when it has one (tinted green / red like the voxel ghost).</summary>
+        void GhostHD(string id)
+        {
+            if (id == ghostHDId && (ghostHD || ghostHDRenderers.Length == 0)) return;
+            ghostHDId = id;
+            if (ghostHD) Destroy(ghostHD);
+            ghostHDRenderers = new Renderer[0];
+            var a = MadMax.Rendering.HDAssets.Get(MadMax.Rendering.HDDomain.Furniture, id);
+            ghostRenderer.forceRenderingOff = a;
+            if (!a) return;
+            ghostHD = Instantiate(a.model, ghost.transform, false);
+            ghostHD.name = "HD";
+            MadMax.Rendering.HDAssets.SetLayer(ghostHD.transform, ghost.layer);
+            ghostHDRenderers = ghostHD.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in ghostHDRenderers) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         /// <summary>Place the current piece at the last valid aim (pays the cost).</summary>

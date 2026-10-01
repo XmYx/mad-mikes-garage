@@ -1027,6 +1027,7 @@ namespace MadMax.Game
             go.GetComponent<MeshRenderer>().sharedMaterial = propMaterial;
             go.transform.SetPositionAndRotation(w, Quaternion.Euler(0f, t.eulerAngles.y + 90f, 0f) * Quaternion.Euler(180f, 0f, 0f));   // saddle up
             go.transform.localScale = Vector3.one * 0.55f;
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.Tool, "tool_jack");
             return go;
         }
     }

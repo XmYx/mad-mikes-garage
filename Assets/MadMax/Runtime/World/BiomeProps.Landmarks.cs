@@ -207,6 +207,7 @@ namespace MadMax.World
             lg.GetComponent<MeshFilter>().sharedMesh = def.mesh;
             lg.GetComponent<MeshRenderer>().sharedMaterial = mat;
             var box = lg.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
+            MadMax.Building.FurnitureLibrary.DressHD(lg, def.id, HDProp.FlagsOf(mat));
             var loot = lg.AddComponent<Lootable>();
             loot.key = "M" + key; loot.table = pc.table;
             loot.locked = Lootable.RollLocked(loot.key, "locker");

@@ -13,7 +13,7 @@ namespace MadMax.EditorTools
     /// LOD groups for models used as-is; textures by suffix (_Base sRGB, _Mask linear, _Normal normal map, _Emission sRGB).</summary>
     public class HDAssetPostprocessor : AssetPostprocessor
     {
-        public override uint GetVersion() => 3;
+        public override uint GetVersion() => 4;
 
         static bool IsHD(string path) => path.Replace('\\', '/').StartsWith(HDSidecar.Root + "/");
 
@@ -33,7 +33,7 @@ namespace MadMax.EditorTools
             mi.preserveHierarchy = true;
             mi.sortHierarchyByName = false;
             mi.meshCompression = ModelImporterMeshCompression.Off;
-            mi.isReadable = side == null || side.readable;
+            mi.isReadable = side == null || side.readable || HDCatalogBuilder.WantsReadable(side);   // Structure pieces merge far away
             mi.optimizeMeshPolygons = true;
             mi.optimizeMeshVertices = true;
             mi.weldVertices = true;
@@ -114,12 +114,20 @@ namespace MadMax.EditorTools
             lg.RecalculateBounds();
         }
 
+        static bool catalogQueued;
+
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
             var dirs = new HashSet<string>();
             foreach (var p in imported)
             {
                 if (!IsHD(p)) continue;
+                if (p.EndsWith(".fbx") && !catalogQueued)
+                {
+                    // new or re-exported models: refresh the runtime catalog (Resources/HDGen) once the import settles
+                    catalogQueued = true;
+                    EditorApplication.delayCall += () => { catalogQueued = false; HDCatalogBuilder.Build(true); };
+                }
                 if (p.EndsWith(".hd.json") || p.EndsWith(".png")) dirs.Add(Path.GetDirectoryName(p)?.Replace('\\', '/'));
             }
             foreach (var d in dirs)

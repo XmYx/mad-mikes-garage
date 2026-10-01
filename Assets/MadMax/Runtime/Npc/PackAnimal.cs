@@ -40,6 +40,13 @@ namespace MadMax.Npc
             a.head.localPosition = new Vector3(0, 15, 10) * VoxelMesher.DefaultSize;
             a.head.GetComponent<MeshFilter>().sharedMesh = headMesh;
             a.head.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            var hd = MadMax.Rendering.HDAssets.Get(MadMax.Rendering.HDDomain.Animal, "PackMule");          // HD mule: same parts, same pivots
+            if (hd)
+            {
+                MadMax.Animals.HDAnimal.DressPart(go.transform, go.transform, hd, "Body", 0);
+                for (int k = 0; k < a.legs.Length; k++) MadMax.Animals.HDAnimal.DressPart(go.transform, a.legs[k], hd, "Leg", k);
+                MadMax.Animals.HDAnimal.DressPart(go.transform, a.head, hd, "Head", 0);
+            }
             return a;
         }
 

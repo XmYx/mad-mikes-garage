@@ -176,6 +176,7 @@ namespace MadMax.Npc
             go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
             var box = go.GetComponent<BoxCollider>(); box.center = boardMesh.bounds.center; box.size = boardMesh.bounds.size;
             go.AddComponent<MadMax.Building.BountyBoard>().town = town;
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.World, "BountyBoard");
             FloraBlocker.Add(go);
             return go;
         }
@@ -297,6 +298,7 @@ namespace MadMax.Npc
             go.GetComponent<MeshFilter>().sharedMesh = def.mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
             var box = go.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
+            MadMax.Building.FurnitureLibrary.DressHD(go, def.id);
             var loot = go.AddComponent<Lootable>();
             loot.key = "K" + key.GetHashCode(); loot.table = "shop"; loot.title = "SPILLED CARGO";
         }

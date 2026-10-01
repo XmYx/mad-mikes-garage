@@ -130,6 +130,7 @@ namespace MadMax.Building
             if (litMats.TryGetValue(src, out var m) && m) return m;
             m = new Material(src) { name = src.name + "_Lit" };
             m.SetFloat("_Unlit", 1f);
+            m.SetFloat("_LampOn", 1f);                                                       // HD bulbs: the baked glow too
             m.SetColor("_Tint", new Color(1.5f, 1.5f, 1.5f, 1f));
             return litMats[src] = m;
         }

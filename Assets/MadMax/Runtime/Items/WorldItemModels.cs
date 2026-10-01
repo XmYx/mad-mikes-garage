@@ -63,7 +63,46 @@ namespace MadMax.Items
             var centre = (min + max) * 0.5f;
             vis.localPosition = new Vector3(-centre.x, -min.y, -centre.z);
             bounds = new Bounds(new Vector3(0f, (max.y - min.y) * 0.5f, 0f), max - min);
+            AddHD(root, vis, key, ref bounds);
             return vis;
+        }
+
+        /// <summary>HD asset id of a world item key: items and tools by their id, resources by their container
+        /// (<c>world_res_fluid</c> jerry can, <c>world_res_sack</c>, <c>world_res_crate</c>), build kits the flat-pack crate.</summary>
+        public static string HDId(string key, out MadMax.Rendering.HDDomain domain)
+        {
+            domain = MadMax.Rendering.HDDomain.Item;
+            if (string.IsNullOrEmpty(key)) return null;
+            if (key.StartsWith("res:") && int.TryParse(key.Substring(4), out int r))
+            {
+                var t = (ResourceType)r;
+                return ResourceInfo.IsFluid(t) ? "world_res_fluid" : Sacked(t) ? "world_res_sack" : "world_res_crate";
+            }
+            if (key.StartsWith("tool_")) { domain = MadMax.Rendering.HDDomain.Tool; return key; }
+            if (ItemCatalog.Category(key) == ItemCategory.Kit && !MadMax.Rendering.HDAssets.Has(domain, key)) return "world_kit";
+            return key;
+        }
+
+        /// <summary>The HD model beside the voxel one (which goes dark but keeps its mesh): real size as exported (tools at
+        /// the laid-down hand scale of the sidecar, lying like the voxel tool), lowest point on the root's origin.</summary>
+        static void AddHD(Transform root, Transform vis, string key, ref Bounds bounds)
+        {
+            string id = HDId(key, out var domain);
+            var a = MadMax.Rendering.HDAssets.Get(domain, id);
+            if (!a) return;
+            bool tool = domain == MadMax.Rendering.HDDomain.Tool;
+            var lie = tool ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.identity;
+            float scale = tool ? a.worldScale : 1f;
+            var b = a.Bounds;
+            var min = Vector3.positiveInfinity; var max = Vector3.negativeInfinity;
+            for (int i = 0; i < 8; i++)
+            {
+                var c = lie * (new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z) * scale);
+                min = Vector3.Min(min, c); max = Vector3.Max(max, c);
+            }
+            var centre = (min + max) * 0.5f;
+            var v = MadMax.Rendering.HDVisual.DressAt(vis.gameObject, a, root, new Vector3(-centre.x, -min.y, -centre.z), lie, scale, 0, true);
+            if (v) bounds = new Bounds(new Vector3(0f, (max.y - min.y) * 0.5f, 0f), max - min);
         }
 
         /// <summary>A garment's rigid extra (hat, helmet, pack) as worn, at real size.</summary>

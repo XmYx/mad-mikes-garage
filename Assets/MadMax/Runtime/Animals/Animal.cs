@@ -113,6 +113,7 @@ namespace MadMax.Animals
                     wings[1].localScale = new Vector3(-1f, 1f, 1f);
                 }
             }
+            HDAnimal.Dress(rig, d.id);                                                         // HD part meshes on the same rig
             col = gameObject.AddComponent<CapsuleCollider>();
             col.direction = 2;
             if (d.plan == BodyPlan.Snake) { col.radius = 0.09f; col.height = 0.6f; col.center = new Vector3(0f, 0.09f, -0.15f); }
@@ -143,6 +144,7 @@ namespace MadMax.Animals
         {
             saddled = on;
             if (on && !saddleT && Mesh.saddle) saddleT = Part(rig, "Saddle", Mesh.saddle, new Vector3(0f, (Def.leg + Def.depth) * VoxelMesher.DefaultSize * Def.scale, -0.05f), rig.GetComponentInChildren<MeshRenderer>().sharedMaterial);
+            if (on && saddleT && !saddleT.Find("HD")) HDAnimal.DressPart(rig, saddleT, Def.id, "Saddle");
             if (saddleT) saddleT.gameObject.SetActive(on);
             if (on && !bags)
             {

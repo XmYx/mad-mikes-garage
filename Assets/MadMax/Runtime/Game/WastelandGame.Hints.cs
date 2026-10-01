@@ -103,6 +103,7 @@ namespace MadMax.Game
             go.GetComponent<MeshRenderer>().sharedMaterial = propMaterial;
             var box = go.AddComponent<BoxCollider>();
             if (def != null && def.mesh) { box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size; } else box.size = Vector3.one * 0.6f;
+            if (def != null) FurnitureLibrary.DressHD(go, def.id);
             var c = go.AddComponent<Container>();
             c.title = "YOUR STASH";
             c.capacity = 999f;

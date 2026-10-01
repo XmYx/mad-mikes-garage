@@ -32,6 +32,7 @@ namespace MadMax.World
             if (!mesh) mesh = Build();
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.World, "Campfire", HDProp.FlagsOf(mat));
             FloraBlocker.Add(go);
             return c;
         }
@@ -66,6 +67,17 @@ namespace MadMax.World
             if (!logMeshes.TryGetValue(seats, out var logMesh) || !logMesh) logMeshes[seats] = logMesh = BuildLogs(seats, ring);
             logs.GetComponent<MeshFilter>().sharedMesh = logMesh;
             logs.GetComponent<MeshRenderer>().sharedMaterial = GetComponent<MeshRenderer>().sharedMaterial;
+            if (MadMax.Rendering.HDAssets.Has(MadMax.Rendering.HDDomain.World, "CampfireLog"))
+            {
+                // one HD log per seat, placed like BuildLogs lays the voxel ones
+                var mods = new List<MadMax.Rendering.HDVisual.Module>();
+                for (int i = 0; i < seats; i++)
+                {
+                    float a = i * Mathf.PI * 2f / Mathf.Max(1, seats);
+                    mods.Add(new MadMax.Rendering.HDVisual.Module { id = "CampfireLog", pos = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * ring, rot = Quaternion.Euler(0f, i * 360f / seats, 0f) });
+                }
+                MadMax.Rendering.HDVisual.DressModules(logs, mods, MadMax.Rendering.HDDomain.World, HDProp.FlagsOf(logs.GetComponent<MeshRenderer>().sharedMaterial));
+            }
             glow = new GameObject("Glow").AddComponent<Light>();
             glow.transform.SetParent(transform, false);
             glow.transform.localPosition = Vector3.up * 0.6f;

@@ -214,10 +214,44 @@ name (`bones[i] = rig.Find(name)`, `bindposes` from the sidecar rest matrices), 
 the imported bones directly. Garments are separate meshes per piece (one atlas each) so `ClothingLibrary` slots can
 toggle them; an outfit export (`outfit_*`) is a complete dressed character.
 
-### Props and buildings (`group misc`, kind prop)
-Use the imported model as it is (root `LODGroup` from the importer). Buildings come as `Shell` (walls, slabs:
-carvable), `Glass`, `Detail`; for destruction voxelize `Shell` into a `VoxelGrid` at bake time (materials by
-material class) as CLAUDE.md asks for Blender props, and keep the HD mesh for looks until the first hit.
+### World, furniture, items, tools, animals (runtime, no prefabs)
+These keep their voxel objects as the gameplay truth and wear the imported model at runtime.
+* **Catalog**: **MadMax/HD/Build HD Catalog** (also run by MadMax/Build Game Scene) writes one `HDAssetRef` per
+  exported asset to `Assets/MadMax/Resources/HDGen/<Domain>/<game id>.asset` (gitignored like the models): domain from
+  the root props (`category` Building/Prop/Vegetation/Landmark/Stall/Site -> World; furniture categories -> Furniture;
+  `kind` item/cloth -> Item, tool -> Tool, animal/critter -> Animal, part -> Part), id = root prop `game_id`. It keeps the
+  model, bounds, `voxel`, `world_scale`, `origin` and per object `part`, `rig_part`, `index`, `mover`, `shell`, markers
+  and root matrices. `Rendering/HDAssets` loads entries on first use (misses cached); `--no-hd` or MadMax > Dev >
+  Voxel Visuals keeps every voxel visual. Structure furniture imports read/write (StructureBatcher merges it).
+* **Dressing** (`Rendering/HDVisual`): the model is instantiated as child `HD`; the voxel renderer keeps its mesh
+  (colliders, bounds, debris, dyes, batching signatures) but `forceRenderingOff` (`HDVisual.IsHost`; LineOfSight keeps
+  it dark). Objects with `mover` (and `Bulb`) are re-parented onto the voxel child of the same name (Rotor, Leaf,
+  Stamp0..2, Head, Wheel, Lever, Bulb) so the game's animation moves them; `Lamp_*` splits glow while `LampState`
+  says so (pieces: `PoweredLight.Glowing`; buildings: after dusk). Variants share copies per atlas material:
+  `_WorldCut` for world props, `_Sway` / `_SwayTip` for vegetation (vertex alpha = 1 - Sway), `_Tint` for dyes.
+  OccluderFade's `_CutY` block is copied onto the HD renderers while cut.
+* **World props and buildings**: `DestructibleVoxels.Spawn` -> `World/HDProp` by template id (sites excluded). Hybrid
+  destruction (`World/HDCarve`): pristine props draw only the shared HD materials; the first carve gives the prop a
+  3D mask (`_CarveMask`, R8 over the template's voxel bounds + 2) and per-prop material copies with `_CarveOn`; HDLit
+  clips every pass (colour, shadow, depth) where the cell half a voxel behind the surface was carved, and clears empty
+  cells within 2 of a carved cell (trims, awnings and pipes go with their wall). The faces of remaining voxels that look
+  into carved cells are drawn as `HDRim` (`HDLitVoxel`, voxel colours). Damage restored from the destruction state
+  rebuilds the mask from the template. Collision, support, collapse, debris and yields stay voxel.
+* **Sites**: SiteBuilder emits kit modules on its own plans (`Site_Bunker_*`: roofs per cell by biome, walls / outer
+  walls / doorways / entry per edge with +Z out, pillars, lamps, rubble, vents, hatches, ramp walls + sandbags mirrored
+  on the left, blast door; `Site_Tunnel_*`: walls where the mesa runs the whole 8 m segment, arch where it is roofed
+  throughout, portals, boulders; `Site_Airfield_*`), all or none per piece; voxels no module covers (roof overhangs,
+  mesa cap, high tunnel walls) are meshed on the worker and drawn HD-lit (`Residual`, re-meshed on carves).
+* **Furniture**: `FurnitureLibrary.DressHD` on placed pieces, loot spots, town fixtures, switches, stashes; build
+  ghost shows the HD model with the same tint; `StructureBatcher` merges the LOD1 meshes of far Structure pieces per
+  atlas material.
+* **Items / tools / icons**: `ToolLibrary.Create` (origin = grip, -Y along the arm, same as the voxel tools), weapon
+  racks, the work jack; `WorldItemModels.AddVisual` puts the item at real size beside the voxel icon model (tools at
+  `world_scale`, laid down; resources `world_res_fluid/sack/crate`; kits `world_kit`); `IconRenderer.Get` returns
+  `HDIcons` (off-screen URP render at 4x, box filter, outline) once rendered, the voxel icon meanwhile.
+* **Animals**: `HDAnimal.Dress(rig, species)` adds the HD mesh of each rig part (Body, Head, Leg i, Tail, WingR/L,
+  Seg i, Rattle; Saddle, Fleece when made) under the part, placed by `rootMatrix` relative to the part's rest pose;
+  the pack mule, bats, sea fish and jellyfish likewise.
 
 ### Parts (`misc/parts_*.blend`, kind part)
 Each top-level object exports as its own asset named like the part key (`wheel_street`, `engine_v8` ...), origin =
@@ -228,6 +262,8 @@ mount point (right-hand authoring). Build prefabs the way `HDVehicleBuilder.Buil
 * `python3 share/tools/compile_check.py <worktree>` must print OK.
 * `verify_render.py` side by side with `hd_preview/<group>/<name>.png` (heavy/misc show mirrored, props un-turned).
 * In Unity: reimport `Assets/MadMax/Models/HD`, then **MadMax/Build Parts + Vehicles**; console `[HD] Sedan: HD body...`.
+* World / furniture / items / animals: **MadMax/HD/Build HD Catalog** (console `[HD] catalog: World n Furniture n ...`),
+  then the acceptance scenario `hd.world` (blocked while the catalog is empty).
 
 ## 10. Known gaps
 * Source issues seen in the bakes: the cars pack has a few faces with an undefined material (magenta `ff00ff`
