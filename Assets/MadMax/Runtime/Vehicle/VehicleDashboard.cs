@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace MadMax.Vehicles
 {
-    /// <summary>Diegetic gauge cluster in front of the driver: speed and rpm dials, gear, warning lamps.</summary>
+    /// <summary>Diegetic gauge cluster in front of the driver: speed and rpm dials, gear, fuel and temperature strips
+    /// (<see cref="VehicleGauges"/>), warning lamps.</summary>
     [RequireComponent(typeof(VehicleDriver))]
     public class VehicleDashboard : MonoBehaviour
     {
@@ -16,6 +17,8 @@ namespace MadMax.Vehicles
         VehicleChassis chassis;
         PixelCanvas canvas;
         float next;
+        /// <summary>The fuel / temperature reading drawn last.</summary>
+        public VehicleGauges.Reading Last { get; private set; }
 
         static readonly Color32 Bg = new Color32(20, 13, 10, 255), Rim = new Color32(90, 55, 32, 255), Tick = new Color32(214, 180, 130, 255),
             Needle = new Color32(255, 110, 40, 255), Amber = new Color32(255, 180, 60, 255), Off = new Color32(50, 34, 26, 255);
@@ -65,6 +68,15 @@ namespace MadMax.Vehicles
             canvas.Text(29, 3, gear, Amber, 2, false);
             string s = Mathf.RoundToInt(speed).ToString("000");
             canvas.Text(26, 14, s, Tick, 1, false);
+
+            var sysG = GetComponent<VehicleSystems>();
+            if (sysG)
+            {
+                var rd = VehicleGauges.Read(sysG);
+                Last = rd;
+                VehicleGauges.DrawFuelBar(canvas, 23, 2, 16, rd, Off, Tick);
+                VehicleGauges.DrawTempBar(canvas, 39, 2, 16, rd, Off, Tick);
+            }
 
             bool wheelMissing = false;
             foreach (var sk in chassis.Sockets) if (sk.accepts == PartCategory.Wheel && !sk.Current) wheelMissing = true;

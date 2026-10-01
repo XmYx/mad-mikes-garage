@@ -58,6 +58,12 @@ namespace MadMax.Vehicles
 
         void OnCollisionEnter(Collision c) => Handle(c);
 
+        /// <summary>Velocity at the start of the last physics step, before its contacts: what an occupant thrown out in
+        /// a crash keeps going with.</summary>
+        public Vector3 PreImpactVelocity { get; private set; }
+
+        void FixedUpdate() { if (rb && driver && driver.Occupied) PreImpactVelocity = rb.linearVelocity; }
+
         /// <summary>Scraping along another vehicle, a wall or a rock: sparks (dust off stone, splinters off wood), a
         /// grinding loop, and paint worn to bare metal where the body rubs. Ground contacts under the wheels don't count.</summary>
         void OnCollisionStay(Collision c)
@@ -164,6 +170,7 @@ namespace MadMax.Vehicles
             driver.steerPull = FrameDamage * maxSteerPull * pullSign;
             MadMax.Net.NetSession.Instance?.SendImpact(driver, point, normal, rawDepth, radius);
             Impact?.Invoke(s, point);
+            if (driver && driver.Occupied) MadMax.Game.WastelandGame.Instance?.CrashEject(driver, dv, PreImpactVelocity, rb.linearVelocity);   // unbelted: over the bars / through the screen
         }
 
         /// <summary>Nearest mounted armour part within 0.9 m of a point.</summary>

@@ -849,10 +849,25 @@ namespace MadMax.Game
             if (car.TryGetComponent<VehicleSystems>(out var sys))
             {
                 int fx = x + 104;
-                Gauge(fx, y - 10, sys.FuelKind == ResourceType.Diesel ? "D" : "F", sys.FuelFraction, ResourceInfo.Color(sys.FuelKind));
-                Gauge(fx, y - 2, "O", sys.oilInFuel ? 1f : sys.OilFraction, ResourceInfo.Color(ResourceType.Oil));
-                Gauge(fx, y + 6, "T", Mathf.InverseLerp(25f, 130f, sys.Temperature), sys.Temperature > 110f ? Red : Amber);
-                Gauge(fx, y + 14, "C", sys.usesCoolant ? sys.CoolantFraction : 1f, ResourceInfo.Color(ResourceType.Coolant));
+                // fuel and temperature needles (half-dials), oil and coolant bars under them
+                var rd = MadMax.Vehicles.VehicleGauges.Read(sys);
+                MadMax.Vehicles.VehicleGauges.LastHud = rd;
+                bool blink = (Time.unscaledTime * 2f) % 1f > 0.4f;
+                if (rd.fuelShown)
+                {
+                    string ft = rd.low && blink ? "LOW" : sys.FuelKind == ResourceType.Diesel ? "DSL" : "FUEL";
+                    canvas.Text(fx + 10 - PixelCanvas.TextWidth(ft) / 2, y - 11, ft, rd.low ? Red : Dim, 1, false);
+                    MadMax.Vehicles.VehicleGauges.DrawFuel(canvas, fx + 10, y + 3, 8, rd, Dim, Amber);
+                }
+                if (rd.tempShown)
+                {
+                    string tt = (rd.airCooled ? "HD" : "") + GameSettings.Current.Temp(rd.temperature);       // air-cooled: the cylinder head
+                    var tc = rd.zone == MadMax.Vehicles.TempZone.Normal ? Dim : MadMax.Vehicles.VehicleGauges.ZoneColour(rd.zone, Dim);
+                    canvas.Text(fx + 31 - PixelCanvas.TextWidth(tt) / 2, y - 11, tt, tc, 1, false);
+                    MadMax.Vehicles.VehicleGauges.DrawTemp(canvas, fx + 31, y + 3, 8, rd, Dim, Amber);
+                }
+                Gauge(fx, y + 11, "O", sys.oilInFuel ? 1f : sys.OilFraction, ResourceInfo.Color(ResourceType.Oil));
+                Gauge(fx, y + 18, "C", sys.usesCoolant ? sys.CoolantFraction : 1f, ResourceInfo.Color(ResourceType.Coolant));
                 var fault = sys.FaultText();
                 if (fault != null && (Time.unscaledTime * 2f) % 2f > 0.6f)
                 {

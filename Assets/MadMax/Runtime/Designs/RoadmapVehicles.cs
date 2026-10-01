@@ -147,21 +147,23 @@ namespace MadMax.Designs
             d.colliders.Add(VehicleDesign.Box(-11, 12, 23, 11, 27, 45));    // hood
 
             var i = d.interior = new InteriorDesign { floorY = 16.5f, ceilingY = 44.5f, min = new Vector2(-11f, -72.5f), max = new Vector2(11f, 16f) };
-            i.doors.Add((new Vector2(0, -72), new Vector3(0, 0, -86)));
-            i.doors.Add((new Vector2(10, 14), new Vector3(21, 0, 14)));
+            i.doors.Add((new Vector2(2, -72), new Vector3(0, 0, -86)));                    // clear of the bed's foot
+            i.doors.Add((new Vector2(11, 15), new Vector3(21, 0, 14)));                    // the stairwell, clear of the seat and the dash
             i.seat = new Vector2(-4, 12);
             i.stand = new Vector2(0, 4);
             i.obstacles.Add(VehicleDesign.Box(-7, 17, 8, -1, 27, 13));       // seats
             i.obstacles.Add(VehicleDesign.Box(1, 17, 8, 7, 27, 13));
             i.obstacles.Add(VehicleDesign.Box(-9, 17, 19, 9, 24, 22));       // dashboard
             i.furniture.Add(("bed", new Vector3(-8, 16.5f, -65), new Vector3(0, 0, 0)));
+            // the aisle stays open (a person needs 0.52 m): the table stood across it from the sink and walled the
+            // driver into the front of the bus. Lounge along the right wall, kitchen along the left.
             i.furniture.Add(("sofa", new Vector3(11, 16.5f, -44), new Vector3(0, -90, 0)));
-            i.furniture.Add(("table", new Vector3(3, 16.5f, -44), new Vector3(0, 0, 0)));
+            i.furniture.Add(("table", new Vector3(8, 16.5f, -21), new Vector3(0, 90, 0)));
             i.furniture.Add(("fridge", new Vector3(-12, 16.5f, -18), new Vector3(0, 90, 0)));
             i.furniture.Add(("stove", new Vector3(-12, 16.5f, -28), new Vector3(0, 90, 0)));
             i.furniture.Add(("sink", new Vector3(-12, 16.5f, -38), new Vector3(0, 90, 0)));
             i.furniture.Add(("locker", new Vector3(12, 16.5f, -64), new Vector3(0, -90, 0)));
-            i.furniture.Add(("crate", new Vector3(11, 16.5f, -24), new Vector3(0, 0, 0)));
+            i.furniture.Add(("crate", new Vector3(-11, 16.5f, -49), new Vector3(0, 0, 0)));
             i.furniture.Add(("lamp", new Vector3(0, 44.5f, -60), new Vector3(180, 0, 0)));
             i.furniture.Add(("lamp", new Vector3(0, 44.5f, -36), new Vector3(180, 0, 0)));
             i.furniture.Add(("lamp", new Vector3(0, 44.5f, -12), new Vector3(180, 0, 0)));

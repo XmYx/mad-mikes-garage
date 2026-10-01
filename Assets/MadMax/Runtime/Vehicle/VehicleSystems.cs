@@ -156,7 +156,11 @@ namespace MadMax.Vehicles
         /// <summary>Exhaust puffs per second right now.</summary>
         public float ExhaustRate { get; private set; }
 
-        const float Ambient = 25f, HotLimit = 110f, CriticalLimit = 125f;
+        const float Ambient = 25f;
+        /// <summary>Overheating (power cut) and head-gasket (engine damage) thresholds, °C; the gauges zone on them.</summary>
+        public const float HotLimit = 110f, CriticalLimit = 125f;
+        /// <summary>Set the engine temperature (tests, fixtures).</summary>
+        public void SetTemperature(float celsius) => Temperature = celsius;
 
         void Awake()
         {
