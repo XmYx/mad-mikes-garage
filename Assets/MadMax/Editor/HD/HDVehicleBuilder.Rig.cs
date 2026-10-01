@@ -136,6 +136,16 @@ namespace MadMax.EditorTools
             }
             if (root.TryGetComponent<FlightModel>(out var flight)) flight.propAt = prop != null ? prop.RootPosition : map.Point(flight.propAt);
 
+            // ---- gearing: real (smaller / larger) tyres keep the design's road speed per rpm and tractive force
+            float gear = 1f;
+            if (root.TryGetComponent<VehicleDriver>(out var drv) && !p.crawler)
+            {
+                float rNew = 0f, rOld = 0f; int n = 0;
+                foreach (var kv in p.radii)
+                    if (oldRadii.TryGetValue(kv.Key, out var ro) && ro > 0.05f && kv.Value > 0.05f) { rNew += kv.Value; rOld += ro; n++; }
+                if (n > 0 && Mathf.Abs(rNew / rOld - 1f) > 0.02f) { gear = rNew / rOld; drv.finalDrive *= gear; }
+            }
+
             // ---- marker, mass, report
             var hd = (root.TryGetComponent<HDModel>(out var haveHDModel) ? haveHDModel : root.AddComponent<HDModel>());
             hd.asset = side.asset; hd.group = side.group;
@@ -145,7 +155,7 @@ namespace MadMax.EditorTools
             hd.wheelSockets = wn.ToArray(); hd.wheelRadii = wr.ToArray();
             var chassis = root.GetComponent<VehicleChassis>();
             if (chassis && root.TryGetComponent<Rigidbody>(out var rb)) rb.mass = chassis.TotalMass;
-            Report(d, p, map, root, oldSockets, oldRadii, oldEye);
+            Report(d, p, map, root, oldSockets, oldRadii, oldEye, gear);
         }
 
         static void Move(GameObject root, string name, Vector3 at)
@@ -242,7 +252,7 @@ namespace MadMax.EditorTools
         }
 
         /// <summary>One row per vehicle: body size and wheel radius voxel → HD, sockets that moved (cm), eye.</summary>
-        static void Report(VehicleDesign d, Plan p, BoxMap map, GameObject root, Dictionary<string, Vector3> oldSockets, Dictionary<string, float> oldRadii, Vector3 oldEye)
+        static void Report(VehicleDesign d, Plan p, BoxMap map, GameObject root, Dictionary<string, Vector3> oldSockets, Dictionary<string, float> oldRadii, Vector3 oldEye, float gear)
         {
             string V(Vector3 v) => $"{v.x:0.00}×{v.y:0.00}×{v.z:0.00}";
             var moved = new List<string>();
@@ -257,17 +267,17 @@ namespace MadMax.EditorTools
                 }
             string radii = string.Join(" ", p.radii.Where(kv => !kv.Key.EndsWith("_L")).Select(kv => $"{Strip(kv.Key)} {(oldRadii.TryGetValue(kv.Key, out var o) ? o.ToString("0.00") : "-")}→{kv.Value:0.00}"));
             var eye = root.transform.Find("DriverEye");
-            string row = $"| {d.name} | {V(map.vox.size)} | {V(map.hd.size)} | {radii} | {(eye ? $"{(eye.localPosition - oldEye).magnitude * 100f:0} cm" : "-")} | {p.keys.Count} | {string.Join(", ", moved)} |";
+            string row = $"| {d.name} | {V(map.vox.size)} | {V(map.hd.size)} | {radii} | {(gear != 1f ? "×" + gear.ToString("0.00") : "-")} | {(eye ? $"{(eye.localPosition - oldEye).magnitude * 100f:0} cm" : "-")} | {p.keys.Count} | {string.Join(", ", moved)} |";
             report[d.name] = row;
-            Debug.Log($"[HD] {d.name}: body {V(map.vox.size)} → {V(map.hd.size)} m, wheels {radii}, {p.keys.Count} HD parts, sockets moved: {string.Join(", ", moved)}");
+            Debug.Log($"[HD] {d.name}: body {V(map.vox.size)} → {V(map.hd.size)} m, wheels {radii}{(gear != 1f ? $", final drive ×{gear:0.00}" : "")}, {p.keys.Count} HD parts, sockets moved: {string.Join(", ", moved)}");
             try
             {
                 Directory.CreateDirectory("Logs");
                 var sb = new StringBuilder();
                 sb.AppendLine("# HD vehicles: changes against the voxel designs (written by HDVehicleBuilder)");
                 sb.AppendLine();
-                sb.AppendLine("| vehicle | voxel body W×H×L (m) | HD body W×H×L (m) | wheel radius voxel→HD (m) | eye moved | HD parts | sockets moved > 5 cm / added |");
-                sb.AppendLine("|---|---|---|---|---|---|---|");
+                sb.AppendLine("| vehicle | voxel body W×H×L (m) | HD body W×H×L (m) | wheel radius voxel→HD (m) | final drive | eye moved | HD parts | sockets moved > 5 cm / added |");
+                sb.AppendLine("|---|---|---|---|---|---|---|---|");
                 foreach (var r in report.Values) sb.AppendLine(r);
                 File.WriteAllText("Logs/hd_vehicles.md", sb.ToString());
             }

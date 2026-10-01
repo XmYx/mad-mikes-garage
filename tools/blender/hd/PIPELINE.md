@@ -183,7 +183,8 @@ model replaces what you see and touch and sets the real-world geometry:
    `DriverEye` = `Seat_Driver` + (0, 0.9, -0.12) m, `PassengerEye` likewise from `Seat_Passenger`, else mapped; hitch,
    coupler, `InteriorSpace` mapped, default furniture at the export's `Furn_<piece>_<n>` spots; boats: keel = HD hull
    bottom, prop at the HD `Prop`; aircraft prop at the HD `Prop`. `HDModel` on the root records the model box and the
-   wheel radii (acceptance `hd.vehicles`). Each vehicle's changes go to the console and `Logs/hd_vehicles.md`.
+   wheel radii (acceptance `hd.vehicles`). Wheeled vehicles whose HD tyres differ from the design's by > 2 % get
+   `VehicleDriver.finalDrive` scaled by r_HD / r_design (same road speed per rpm and tractive force as tuned). Each vehicle's changes go to the console and `Logs/hd_vehicles.md`.
 3. Per-part `LODGroup`s (LOD0 = the part's renderer, LOD1/LOD2 children) all sized like the whole vehicle so parts
    switch together; LOD children are skipped by dents, scrapes and armour (`HDModel.IsLod`).
 To add a vehicle: export it under the design's name, run **MadMax/Build Parts + Vehicles** (or Build Game Scene), read
