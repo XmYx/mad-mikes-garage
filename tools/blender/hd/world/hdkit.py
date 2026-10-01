@@ -415,6 +415,7 @@ class Asset:
             ob = gp.build(root, name=n)          # Blender may suffix ".001" in multi-asset files: "part" is authoritative
             ob["part"] = n
             ob["mover"] = n in self.movers
+            ob["shell"] = n.startswith("Shell")
             mats[n] = gp.byte
             objs.append(ob)
         root["game_id"] = self.gid
@@ -670,3 +671,65 @@ def stripes(gp, mats, a, b, w, t, n, axis_up=(0, 1, 0)):
         p0 = a + (b - a) * (i / n)
         p1 = a + (b - a) * ((i + 1) / n)
         gp.beam(mats[i % len(mats)], p0, p1, w, t)
+
+
+# ------------------------------------------------------------------------------------------------ game RNG / hash ports
+def pal_hash(x, y, z, seed=0):
+    """MadMax.Voxel.Pal.Hash (uint arithmetic)."""
+    M = 0xFFFFFFFF
+    h = ((x * 73856093) & M) ^ ((y * 19349663) & M) ^ ((z * 83492791) & M) ^ ((seed * 668265263) & M)
+    h ^= h >> 13
+    h = (h * 0x5bd1e995) & M
+    h ^= h >> 15
+    h = (h * 0x27d4eb2d) & M
+    h ^= h >> 16
+    return (h & 0xFFFFFF) / 16777215.0
+
+
+class NetRandom:
+    """System.Random(seed) (the legacy subtractive generator Mono / .NET use for seeded instances)."""
+    MBIG, MSEED = 2147483647, 161803398
+
+    def __init__(self, seed):
+        sub = 2147483647 if seed == -2147483648 else abs(seed)
+        mj = self.MSEED - sub
+        sa = [0] * 56
+        sa[55] = mj
+        mk = 1
+        for i in range(1, 55):
+            ii = (21 * i) % 55
+            sa[ii] = mk
+            mk = mj - mk
+            if mk < 0:
+                mk += self.MBIG
+            mj = sa[ii]
+        for _ in range(1, 5):
+            for i in range(1, 56):
+                sa[i] -= sa[1 + (i + 30) % 55]
+                if sa[i] < 0:
+                    sa[i] += self.MBIG
+        self.sa, self.inext, self.inextp = sa, 0, 21
+
+    def _sample_int(self):
+        a = self.inext + 1
+        if a >= 56:
+            a = 1
+        b = self.inextp + 1
+        if b >= 56:
+            b = 1
+        r = self.sa[a] - self.sa[b]
+        if r == self.MBIG:
+            r -= 1
+        if r < 0:
+            r += self.MBIG
+        self.sa[a] = r
+        self.inext, self.inextp = a, b
+        return r
+
+    def next_double(self):
+        return self._sample_int() * (1.0 / self.MBIG)
+
+    def next(self, lo_or_max, hi=None):
+        if hi is None:
+            return int(self.next_double() * lo_or_max)
+        return int(self.next_double() * (hi - lo_or_max)) + lo_or_max
