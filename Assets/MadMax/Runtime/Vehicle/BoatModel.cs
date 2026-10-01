@@ -38,6 +38,8 @@ namespace MadMax.Vehicles
         Rigidbody rb;
         VehicleSystems sys;
         Vector3[] points;
+        Transform rudderT;
+        Hinge rudderRest;
         float k, wake, paddleT;
 
         void Awake()
@@ -46,6 +48,8 @@ namespace MadMax.Vehicles
             rb = GetComponent<Rigidbody>();
             sys = GetComponent<VehicleSystems>();
             if (!GetComponent<HullMask>()) gameObject.AddComponent<HullMask>();               // no water surface inside the hull
+            rudderT = transform.Find("Rudder");                                                 // HD trawler: the rudder blade turns with the helm
+            if (rudderT) Hinge.Rest(rudderT, out rudderRest, true);
             if (v) { v.aircraft = true; v.drag = 0.01f; }                                   // no wheels: the engine revs with the lever, the hull does the rest
             // float points: across the beam and along the keel, a little in from the ends
             int nx = hull.x > 2.5f ? 3 : 2, nz = hull.z > 6f ? 6 : 4;
@@ -145,6 +149,7 @@ namespace MadMax.Vehicles
 
             // rudder: bites with speed through the water and with the prop's wash; paddles turn a raft slowly
             float steer = pilot ? v.steerInput : 0f;
+            if (rudderT) rudderRest.Set(rudderT, Quaternion.Euler(0f, -steer * 30f, 0f));
             float bite = Mathf.Abs(lv.z) * 0.35f + (thrust > 0f ? thrust / Mathf.Max(1f, maxThrust) * 1.2f : 0f) + (kind == Kind.Raft ? 0.6f : 0f);
             float yawRate = Vector3.Dot(rb.angularVelocity, transform.up);
             float want = steer * rudder * Mathf.Clamp(bite, 0f, 3f) * (lv.z < -0.3f ? -1f : 1f) * 0.45f;

@@ -53,7 +53,7 @@ namespace MadMax.Vehicles
         void FindLamps(Transform body)
         {
             var h = new System.Collections.Generic.List<Renderer>(); var t = new System.Collections.Generic.List<Renderer>(); var a = new System.Collections.Generic.List<Renderer>();
-            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            foreach (var r in (body.parent ? body.parent : body).GetComponentsInChildren<Renderer>(true))      // body lamps and HD lamp parts (light bars, beacons)
             {
                 if (!MadMax.Rendering.HDModel.IsLamp(r.transform)) continue;
                 (r.name == "Lamp_Tail" ? t : r.name == "Lamp_Amber" ? a : h).Add(r);

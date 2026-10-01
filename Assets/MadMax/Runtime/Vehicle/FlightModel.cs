@@ -51,7 +51,8 @@ namespace MadMax.Vehicles
         VehicleDriver v;
         Rigidbody rb;
         VehicleSystems sys;
-        Transform prop, rotor;
+        Transform prop, rotor, wing;
+        Hinge wingRest;
         float tip, propAngle, rotorAngle, crashCd, pilotPitch, pilotRoll;
         Vector3 rotorHub = new Vector3(0f, 2.7f, 0.1f);
         const float Rho = 1.225f, RotorR = 4f, RotorCt = 0.005f;
@@ -64,6 +65,8 @@ namespace MadMax.Vehicles
             prop = transform.Find("Prop");
             rotor = transform.Find("Rotor");
             if (rotor) rotorHub = rotor.localPosition;
+            wing = transform.Find("Wing");                                                      // HD trike: the wing tilts with the pilot's bar
+            if (wing) Hinge.Rest(wing, out wingRest);
             if (v) { v.aircraft = true; v.drag = 0.05f; }
             // the wing / rotor carry no collider, so give the airframe the inertia it really has (pitch, yaw, roll)
             if (rb) { rb.inertiaTensor = kind == Kind.Trike ? new Vector3(500f, 900f, 700f) : new Vector3(600f, 700f, 450f); rb.inertiaTensorRotation = Quaternion.identity; }
@@ -257,6 +260,7 @@ namespace MadMax.Vehicles
 
         void Spin(float dt, float rpmFrac)
         {
+            if (wing) wingRest.Set(wing, Quaternion.Euler(pilotPitch * 6f, 0f, -pilotRoll * 9f));
             if (prop) { propAngle = (propAngle + Mathf.Min(1400f, rpmFrac * 6000f) * dt) % 360f; prop.localRotation = Quaternion.Euler(0f, 0f, propAngle); }
             if (rotor)
             {

@@ -233,7 +233,7 @@ namespace MadMax.Vehicles
             scrapeCandidates.Clear();
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Glass" || mf.name == "Driver" || mf.name.StartsWith("Beam") || HDModel.IsLamp(mf.transform) || HDModel.IsLod(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
+                if (mf.name == "Glass" || mf.name == "Driver" || mf.name.StartsWith("Beam") || HDModel.IsLamp(mf.transform) || HDModel.IsLod(mf.transform) || HDModel.IsBelt(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
                 var part = mf.GetComponentInParent<VehiclePart>();
                 if (part && part.category == PartCategory.Wheel) continue;
                 var r = mf.GetComponent<Renderer>();

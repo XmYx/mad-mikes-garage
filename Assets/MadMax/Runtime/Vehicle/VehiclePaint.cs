@@ -186,6 +186,7 @@ namespace MadMax.Vehicles
         }
 
         static readonly List<Renderer> hdRenderers = new List<Renderer>();
+        static readonly List<Vector3> flankVerts = new List<Vector3>();
 
         void UpdateDecals()
         {
@@ -195,8 +196,34 @@ namespace MadMax.Vehicles
             var bf = body.GetComponent<MeshFilter>();
             var b = bf && bf.sharedMesh ? bf.sharedMesh.bounds : new Bounds(Vector3.up, Vector3.one * 2f);
             var mat = MadMax.Rendering.HDModel.VoxelMaterialFor(body.GetComponent<MeshRenderer>());   // voxel emblems: HDLit with vertex colours on HD bodies
-            decalR = Decal(body, decalR, "Decal_R", mesh, mat, new Vector3(b.max.x + 0.005f, b.min.y + b.size.y * 0.42f, b.center.z), 90f);
-            decalL = Decal(body, decalL, "Decal_L", mesh, mat, new Vector3(b.min.x - 0.005f, b.min.y + b.size.y * 0.42f, b.center.z), -90f);
+            float y = b.min.y + b.size.y * 0.42f, xr = b.max.x, xl = b.min.x;
+            if (MadMax.Rendering.HDModel.IsHD(body.GetComponent<Renderer>())) Flanks(body, y, b.center.z, ref xl, ref xr);
+            decalR = Decal(body, decalR, "Decal_R", mesh, mat, new Vector3(xr + 0.005f, y, b.center.z), 90f);
+            decalL = Decal(body, decalL, "Decal_L", mesh, mat, new Vector3(xl - 0.005f, y, b.center.z), -90f);
+        }
+
+        /// <summary>HD bodies: the real flank surface at (y, z) — the outermost body / door vertices near that spot (mirrors,
+        /// arches and the door cut-outs make the mesh box a poor guess).</summary>
+        void Flanks(Transform body, float y, float z, ref float xl, ref float xr)
+        {
+            float l = float.MaxValue, r = float.MinValue;
+            foreach (var mf in GetComponentsInChildren<MeshFilter>())
+            {
+                var m = mf.sharedMesh;
+                if (!m || !m.isReadable || mf.name == "Glass" || mf.name.StartsWith("Decal") || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsLamp(mf.transform)) continue;
+                var part = mf.GetComponentInParent<VehiclePart>();
+                if (part ? part.category != PartCategory.Door : mf.transform != body) continue;
+                var toBody = body.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+                m.GetVertices(flankVerts);
+                foreach (var v in flankVerts)
+                {
+                    var p = toBody.MultiplyPoint3x4(v);
+                    if (Mathf.Abs(p.y - y) > 0.12f || Mathf.Abs(p.z - z) > 0.3f) continue;
+                    l = Mathf.Min(l, p.x); r = Mathf.Max(r, p.x);
+                }
+            }
+            if (r > float.MinValue && r > 0f) xr = r;
+            if (l < float.MaxValue && l < 0f) xl = l;
         }
 
         static Transform Decal(Transform body, Transform t, string name, Mesh mesh, Material mat, Vector3 local, float yaw)
