@@ -148,8 +148,9 @@ namespace MadMax.World
 
         /// <summary>Carve the river bed and banks into <paramref name="h"/>, set the water (not in the desert: dry wadis).
         /// Returns the ford weight for roads (1 in the channel, fading up the bank).</summary>
-        float ShapeRiver(float x, float z, ref float h, ref GroundSample s, ref float wet)
+        float ShapeRiver(float x, float z, ref float h, ref GroundSample s, ref float wet, out float fordLevel)
         {
+            fordLevel = float.NaN;
             if (!RiverAt(x, z, out float level, out float half, out float dist)) return 0f;
             float depth = 0.7f + half * 0.08f;
             if (dist < half)
@@ -164,6 +165,7 @@ namespace MadMax.World
                 h = Mathf.Min(h, Mathf.Lerp(level + 0.1f, h, u));
             }
             bool dry = NaturalBiome(x, z) == Biome.Desert;
+            if (!dry) fordLevel = level;                                                          // the track dips towards it across the whole bank
             if (!dry && dist < half + 1.5f && (float.IsNaN(s.water) || s.water < level)) s.water = level;
             if (!dry) { s.shore = Mathf.Max(s.shore, Mathf.Clamp01(1f - Mathf.Abs(dist - half) / 2.5f)); wet = Mathf.Max(wet, Mathf.Clamp01(1.4f - dist / (half + BankWidth))); }
             else wet = Mathf.Max(wet, 0.25f * Mathf.Clamp01(1f - dist / (half + BankWidth)));

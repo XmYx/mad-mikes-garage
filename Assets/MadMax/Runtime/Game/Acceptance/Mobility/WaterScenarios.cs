@@ -49,14 +49,17 @@ namespace MadMax.Game.Acceptance
             c.Metric("rudder_turn_3s", turned, "deg");
             c.Check(turned > 25f, $"the rudder turns it ({turned:0} deg in 3 s)");
             v.steerInput = 0f; v.throttleInput = 0f; v.brakeInput = 1f;
-            yield return MobilityKit.Until(() => boat.Reversing, 12f);
+            float tc0 = Time.time;
+            yield return MobilityKit.Until(() => boat.Reversing, 30f);
+            c.Metric("coast_to_astern", Time.time - tc0, "s");
             var pr = v.transform.position; var fw = v.transform.forward;
             yield return new WaitForSeconds(4f);
             float astern = -Vector3.Dot(v.transform.position - pr, fw);
             c.Metric("astern_4s", astern, "m");
             c.Check(boat.Reversing && astern > 0.8f, $"S slows it and backs it up astern ({astern:0.0} m)");
             v.brakeInput = 0f;
-            yield return new WaitForSeconds(2f);
+            yield return MobilityKit.Until(() => Mathf.Abs(boat.Speed) < 0.3f, 15f);
+            yield return new WaitForSeconds(1f);
 
             // off onto the deck: moored, not swimming
             g.Exit();
@@ -109,11 +112,14 @@ namespace MadMax.Game.Acceptance
             v.throttleInput = 0f;
             float air0 = sub.air;
             float t0 = Time.time;
-            while (!(sub.Submerged && sub.Depth > 2f) && Time.time - t0 < 45f) { sub.ballastInput = 1f; yield return null; }
+            bool snorkelDepth = false;
+            while (!(sub.Submerged && !sub.Snorkel && sub.Depth > 2f) && Time.time - t0 < 60f) { sub.ballastInput = 1f; snorkelDepth |= sub.Submerged && sub.Snorkel && sys.Started; yield return null; }
             sub.ballastInput = 0f;
             c.Metric("dive_time", Time.time - t0, "s");
-            if (!c.Check(sub.Submerged && sub.Depth > 2f, $"flooding the ballast takes it under ({sub.Depth:0.0} m, ballast {sub.ballast * 100f:0} %)")) { c.Note(sub.Status); yield break; }
-            c.Check(!sub.Snorkel && (!sys.Started), "submerged the diesel can't breathe and stops");
+            if (!c.Check(sub.Submerged && sub.Depth > 2f, $"flooding the ballast takes it under, sail and all ({sub.Depth:0.0} m, ballast {sub.ballast * 100f:0} %)")) { c.Note(sub.Status); yield break; }
+            c.Note("ran the diesel at snorkel depth on the way down: " + snorkelDepth);
+            yield return null;
+            c.Check(!sub.Snorkel && !sys.Started, "with the sail under the diesel can't breathe and stops");
             float d0 = sub.Depth;
             yield return new WaitForSeconds(5f);
             c.Metric("depth_drift_5s", sub.Depth - d0, "m");

@@ -110,7 +110,10 @@ namespace MadMax.Vehicles
             {
                 // the bars that balance the current lean at this speed, plus counter-steer towards the wanted lean
                 float coord = Mathf.Atan(wheelbase * 9.81f * Mathf.Tan(-phi * Mathf.Deg2Rad) / Mathf.Max(4f, av * av)) * Mathf.Rad2Deg;
-                steerDeg = Mathf.Clamp(coord * Mathf.Sign(speed) + (target - phi) * 0.12f, -v.maxSteer, v.maxSteer);
+                // the counter-steer's roll moment grows with v² (lateral acceleration = v²·δ / wheelbase): scale it back
+                // above ~7 m/s so a quick lean change at speed doesn't overshoot past the asked-for lean
+                float counter = 0.12f * Mathf.Clamp(49f / Mathf.Max(1f, av * av), 0.12f, 1f);
+                steerDeg = Mathf.Clamp(coord * Mathf.Sign(speed) + (target - phi) * counter, -v.maxSteer, v.maxSteer);
             }
             v.steerOverride = steerDeg;
 
