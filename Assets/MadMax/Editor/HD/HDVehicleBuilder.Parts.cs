@@ -30,7 +30,7 @@ namespace MadMax.EditorTools
                     if (s == null || s.kind != "vehicle" || s.objects == null) continue;
                     foreach (var o in s.objects)
                     {
-                        if (o.role != "mesh" || !string.IsNullOrEmpty(o.parent)) continue;
+                        if (o.role != "mesh" || string.IsNullOrEmpty(o.Prop("socket"))) continue;      // a mounted part (implements sit under group empties)
                         string k = o.Prop("part");
                         if (k == null || !designs.TryGetValue(k, out var pd) || embedded.ContainsKey(k)) continue;
                         if (pd.category == PartCategory.Wheel || pd.category == PartCategory.Door || pd.category == PartCategory.Hood

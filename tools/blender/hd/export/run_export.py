@@ -28,6 +28,7 @@ JOBS = {
     "Pickup": ("cars", "cars/blend/Pickup.blend", []),
     "Fiat126p": ("cars", "cars/blend/Fiat126p.blend", []),
     "DumpTruck": ("heavy", "heavy/DumpTruck.blend", []),
+    "Tractor_implements": ("heavy", "heavy/Tractor_implements.blend", []),   # seeder / harvester / sprayer / plough parts (HDVehicleBuilder.SaveGenericParts)
     "BrickHouse": ("misc", "misc/prop_brickhouse.blend", ["--root", "BrickHouse", "--kind", "prop"]),
     "CharacterMale": ("character", "character/hd_characters.blend", ["--collection", "base_male", "--name", "CharacterMale"]),
     "CharacterMale_Starter": ("character", "character/hd_characters.blend", ["--collection", "outfit_starter", "--name", "CharacterMale_Starter"]),
