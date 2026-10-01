@@ -120,7 +120,7 @@ namespace MadMax.Npc
         void FixedUpdate()
         {
             var g = MadMax.Game.WastelandGame.Instance;
-            if (!v || (g && g.Current == v)) { Release(); return; }
+            if (!v || (g && g.Current == v)) { Release(); if (v && g && g.Current == v) v.Occupied = true; return; }   // the player took the wheel: still occupied
             float dt = Time.fixedDeltaTime;
             var pos = transform.position;
             float speed = v.ForwardSpeed;
