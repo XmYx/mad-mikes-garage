@@ -135,6 +135,7 @@ namespace MadMax.Game.Acceptance
             g.Menus.Pick(bye);
             c.Check(!mate.companion && !Companions.Live.Contains(mate) && mate.leaving && !mate.State.Has(NpcSave.Companion), "dismissed: they go their own way");
             c.Check(mate.pack.inventory.GetItem("food_can") == 0, "and spill what they carried for you");
+            c.Check(MadMax.Items.WorldItem.All.Any(w => w && w.key == "food_can" && w.count == 2 && PH.Flat(w.transform.position, mate.transform.position) < 3f), "the two cans lie on the ground by them ([E] picks them up)");
             if (g.Menus.IsOpen) g.Menus.Close();
         }
     }

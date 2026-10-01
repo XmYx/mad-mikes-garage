@@ -23,15 +23,11 @@ namespace MadMax.Game.Acceptance
             yield return PH.OnFoot(g);
             PH.Daylight(c);
             PH.Attribute(c, g, Attr.Charisma, 5);
-            var st = PH.HomeTown(g, true);
-            if (st == null) { c.Block("no village or town in the world"); yield break; }
-            yield return PH.ToTown(c, st);
-            var centre = PH.Centre(st);
-            float reach = st.radius + 40f;
-            System.Func<MadMax.Npc.Npc, bool> vendorOk = n => n.Profile.Vendor && n.Available && !n.Hostile && !n.Closed && n.Profile.role != NpcRole.Trader && n.Profile.role != NpcRole.Packer;
-            yield return PH.Until(() => PH.Nearest(centre, reach, n => vendorOk(n) && n.Profile.role == NpcRole.Stallkeeper) != null, 25f);
-            var vendor = PH.Nearest(centre, reach, n => vendorOk(n) && n.Profile.role == NpcRole.Stallkeeper) ?? PH.Nearest(centre, reach, vendorOk);
-            if (!c.Check(vendor, "a stallkeeper or shopkeeper open for business in " + Market.TownName(st))) yield break;
+            System.Func<MadMax.Npc.Npc, bool> vendorOk = n => n.Profile.Vendor && !n.Profile.Cast && n.Available && !n.Hostile && !n.Closed && (n.Profile.role == NpcRole.Stallkeeper || n.Profile.role == NpcRole.Shopkeeper);
+            var found = new PH.Found();
+            yield return PH.FindIn(c, vendorOk, false, 4, found, n => n.Profile.role == NpcRole.Stallkeeper ? 1 : 0);
+            var vendor = found.npc; var st = found.st;
+            if (!c.Check(vendor, "a stallkeeper or shopkeeper open for business in one of the four towns nearest the start")) yield break;
             var P = vendor.Profile; var S = vendor.State;
             c.Note($"vendor {P.Name}: {P.Title} ({P.role}, {P.kind}, {P.temper})");
             yield return PH.Face(c, vendor, P.role == NpcRole.Stallkeeper ? 2.4f : 1.6f);

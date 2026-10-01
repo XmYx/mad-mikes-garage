@@ -59,7 +59,8 @@ namespace MadMax.Game.Acceptance
             yield return Hold(guns, false, false, true, false, dropCar.transform.position + fwd * 30f, 0.3f);
             c.Check(g.Inventory.GetItem(RearDropper.Caltrops) == cal0 - 1 && RoadHazards.Count == hz0 + 1, $"[B] drops one bag of caltrops ({cal0} -> {g.Inventory.GetItem(RearDropper.Caltrops)})");
             c.Check(RoadHazards.At(patch, out var k1) && k1 == RoadHazards.Kind.Caltrops, "caltrops lie behind the car");
-            c.Note("dropper: " + guns.Status);
+            var rd = dropper.GetComponent<RearDropper>();
+            c.Note($"dropper: status '{guns.Status}', armed {guns.Armed}, component {(rd ? "yes" : "no")}, mounted {(rd && rd.Mounted)}, socket {(dropper.Socket ? dropper.Socket.name : "none")}, weapons on the car {dropCar.GetComponentsInChildren<VehicleWeapon>().Length}");
             yield return TestWorld.StartEngine(c, dropCar);
             dropCar.handbrake = false; dropCar.throttleInput = 0.6f;
             yield return new WaitForSeconds(2.2f);

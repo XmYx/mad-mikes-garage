@@ -73,6 +73,7 @@ namespace MadMax.Game.Acceptance
                 var sx = Engine(x); var sy = Engine(y);
                 if (!sx || !sy || sx.Current.partId == sy.Current.partId || sx.Current.sizeClass > 2 || sy.Current.sizeClass > 2) continue;
                 if (sy.maxSizeClass < sx.Current.sizeClass || sx.maxSizeClass < sy.Current.sizeClass) continue;
+                if (sx.Current.partId.Contains("diesel") != sy.Current.partId.Contains("diesel")) continue;   // a diesel in a petrol tank won't run (WrongFuel)
                 float gap = Mathf.Abs(Torque(sx.Current) - Torque(sy.Current));
                 if (gap > best) { best = gap; a = x; b = y; }
             }
@@ -99,6 +100,7 @@ namespace MadMax.Game.Acceptance
             // ---- B: hood off, engine out, set down
             var hoodB = Of(b, PartCategory.Hood); var hoodPartB = hoodB ? hoodB.Current : null;
             if (hoodPartB) { yield return Take(c, hoodPartB, "hood of " + MobilityKit.N(b)); g.Player.DropCarried(); yield return null; }
+            massB = b.Body.mass;                                                                  // without its hood
             yield return Take(c, eb, "engine of " + MobilityKit.N(b));
             yield return null;
             c.Check(!sb.Current && !b.Engine, $"{MobilityKit.N(b)} has no engine now");

@@ -46,7 +46,7 @@ namespace MadMax.Npc
             var clean = new SaveData();
             Contracts.Load(clean); Companions.Load(clean); TownQuests.Load(clean); Factions.Load(null); Market.Load(null);
             BaseRaid.NextDay = -1f; BaseRaid.Report = null;
-            MadMax.Game.Racing.Load(null);
+            MadMax.Game.Racing.Load(null); MadMax.Game.Journal.Load(null);
             var world = g.World;
             var r = new System.Random(world.seed * 101 + 5);
             // travelling traders and raider hordes on the roads

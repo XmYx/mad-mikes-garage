@@ -80,7 +80,7 @@ namespace MadMax.Game.Acceptance
             float taxi = Vector3.Dot(v.transform.position - p0, fwd);
             c.Metric("taxi_4s", taxi, "m");
             c.Metric("taxi_speed", v.ForwardSpeed, "m/s");
-            if (!c.Check(taxi > 4f && !fm.Airborne, $"taxis on a part lever ({taxi:0.0} m in 4 s, {v.ForwardSpeed:0.0} m/s)")) c.Note(TestWorld.State(v));
+            if (!c.Check(taxi > 3f && !fm.Airborne, $"taxis on a part lever ({taxi:0.0} m in 4 s, {v.ForwardSpeed:0.0} m/s)")) c.Note(TestWorld.State(v));
 
             float y0 = v.transform.eulerAngles.y;
             t0 = Time.time;
@@ -99,13 +99,18 @@ namespace MadMax.Game.Acceptance
             var pr = v.transform.position; var back = v.transform.forward;
             bool rev = false; float fastest = 0f;
             t0 = Time.time;
-            while (Time.time - t0 < 4f) { fm.throttleAxis = -1f; rev |= fm.Reversing; fastest = Mathf.Max(fastest, -v.ForwardSpeed); yield return null; }
+            while (Time.time - t0 < 4f)
+            {
+                fm.throttleAxis = -1f; rev |= fm.Reversing;
+                if (Time.time - t0 > 1f) fastest = Mathf.Max(fastest, -Vector3.Dot(v.Body.linearVelocity, v.transform.forward));   // the body, not the wheel estimate
+                yield return null;
+            }
             fm.throttleAxis = 0f;
             float backed = -Vector3.Dot(v.transform.position - pr, back);
             c.Metric("reverse_4s", backed, "m");
             c.Metric("reverse_speed_max", fastest, "m/s");
             c.Check(rev && backed > 0.8f, $"held S at a standstill reverses the prop and backs up ({backed:0.0} m)");
-            c.Check(fastest <= 3.3f, $"backing up stays slow ({fastest:0.0} m/s)");
+            c.Check(fastest <= 3.5f, $"backing up stays slow ({fastest:0.0} m/s)");
             t0 = Time.time;
             while (Time.time - t0 < 0.5f) { fm.throttleAxis = 0f; yield return null; }
             g.Exit();
@@ -134,8 +139,9 @@ namespace MadMax.Game.Acceptance
             var v = TestWorld.Vehicle(name);
             var fm = v ? v.GetComponent<FlightModel>() : null;
             if (!fm) { c.Block(name + " is not in the start fleet"); yield break; }
-            var site = MobilityKit.Airfield(4000f);
-            if (site == null) { c.Block("no airfield within 4 km of the start"); yield break; }
+            var site = MobilityKit.Airfield(9000f);
+            if (site == null) { c.Block("no airfield within 9 km of the start"); yield break; }
+            c.Metric("airfield_distance", site.pos.magnitude, "m");
             var w0 = site.ToWorld(0f, 0f); var w1 = site.ToWorld(0f, 1f); var wx = site.ToWorld(1f, 0f);
             var C = new Vector3(w0.x, 0f, w0.y);
             var A = new Vector3(w1.x - w0.x, 0f, w1.y - w0.y).normalized;

@@ -41,6 +41,12 @@ namespace MadMax.Game.Acceptance
 
             // ---- rain on the ground, then drying
             var spot = pad + side * 2f;
+            for (int k = 0; k < 60; k++)
+            {
+                var q = pad + Quaternion.Euler(0f, k * 37f, 0f) * Vector3.forward * (2f + k * 0.3f);
+                if (t.SurfaceAt(q.x, q.z).road < 0.05f && t.WaterDepth(q.x, q.z) <= 0f) { spot = q; break; }
+            }
+            c.Note($"ground probe off the road at {spot.x:0.0},{spot.z:0.0} (road {t.SurfaceAt(spot.x, spot.z).road:0.00})");
             WeatherPin.Set(false, 18f, 0f);
             yield return SurvivalKit.GameSeconds(0.3f);
             var dry = t.SurfaceAt(spot.x, spot.z);
