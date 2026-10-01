@@ -642,6 +642,7 @@ namespace MadMax.World
                     }
                 }
             }
+            TownLights.Populate(terrain, c, parent, mat);                                         // street lamps, house lights (lights block)
         }
 
         /// <summary>A searchable piece of furniture, or a light that comes on at night.</summary>
@@ -652,11 +653,11 @@ namespace MadMax.World
             var pos = new Vector3(pl.pos.x, baseY + pl.y, pl.pos.y);
             if (pl.id == "Light")
             {
-                var go = new GameObject(pl.table == "street" ? "StreetLight" : "HouseLight");
+                if (pl.table != "street") return;                                                   // houses: TownLights fixtures + switch
+                var go = new GameObject("StreetLight");
                 go.transform.SetParent(parent, true);
                 go.transform.position = pos;
-                var nl = go.AddComponent<NightLight>();
-                nl.street = pl.table == "street";
+                TownLights.CityLamp(go, st.index, i);
                 return;
             }
             var def = MadMax.Building.FurnitureLibrary.Get(pl.visual ?? "shelf");
