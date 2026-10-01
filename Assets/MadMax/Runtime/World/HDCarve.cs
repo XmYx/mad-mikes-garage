@@ -31,7 +31,8 @@ namespace MadMax.World
         /// <summary>Cells drawn by another voxel mesh (a site's residual voxels): no rim faces there.</summary>
         [System.NonSerialized] public HashSet<Vector3Int> skipRim;
 
-        static readonly int MaskId = Shader.PropertyToID("_CarveMask"), MatrixId = Shader.PropertyToID("_CarveMatrix"), MinId = Shader.PropertyToID("_CarveMin"),
+        static readonly int MaskId = Shader.PropertyToID("_CarveMask"), Row0Id = Shader.PropertyToID("_CarveRow0"), Row1Id = Shader.PropertyToID("_CarveRow1"),
+            Row2Id = Shader.PropertyToID("_CarveRow2"), MinId = Shader.PropertyToID("_CarveMin"),
             SizeId = Shader.PropertyToID("_CarveSize"), OnId = Shader.PropertyToID("_CarveOn"), InsetId = Shader.PropertyToID("_CarveInset");
 
         /// <summary>Cells carved so far (template cells no longer in the grid).</summary>
@@ -121,7 +122,7 @@ namespace MadMax.World
             if (copies.TryGetValue(src, out var m) && m) return m;
             m = new Material(src) { name = src.name + "_carved" };
             m.SetTexture(MaskId, mask);
-            m.SetMatrix(MatrixId, WorldToGrid);
+            SetMatrix(m, WorldToGrid);
             m.SetVector(MinId, new Vector4(min.x, min.y, min.z, 0f));
             m.SetVector(SizeId, new Vector4(dims.x, dims.y, dims.z, 0f));
             m.SetFloat(OnId, 1f);
@@ -134,7 +135,12 @@ namespace MadMax.World
             if (!body || !transform.hasChanged) return;
             transform.hasChanged = false;
             var w = WorldToGrid;
-            foreach (var m in copies.Values) if (m) m.SetMatrix(MatrixId, w);
+            foreach (var m in copies.Values) if (m) SetMatrix(m, w);
+        }
+
+        static void SetMatrix(Material m, Matrix4x4 w)
+        {
+            m.SetVector(Row0Id, w.GetRow(0)); m.SetVector(Row1Id, w.GetRow(1)); m.SetVector(Row2Id, w.GetRow(2));
         }
 
         static readonly Vector3Int[] Dirs = { Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1) };

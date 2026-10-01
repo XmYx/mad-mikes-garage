@@ -31,9 +31,12 @@ Shader "MadMax/HDLit"
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
         _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
         _DirtTop ("Mud Line (world Y)", Float) = -100000
-        [NoScaleOffset] _CarveMask ("Carve Mask (3D, R: 1 kept, 0 carved)", 3D) = "white" {}
+        [NoScaleOffset] _CarveMask ("Carve Mask (3D, R: 1 kept, 0 carved)", 3D) = "" {}
         _CarveOn ("Carved (destructible props)", Range(0,1)) = 0
         _CarveInset ("Carve Sample Inset (m)", Float) = 0.04
+        _CarveRow0 ("Carve World->Grid Row 0", Vector) = (1,0,0,0)
+        _CarveRow1 ("Carve World->Grid Row 1", Vector) = (0,1,0,0)
+        _CarveRow2 ("Carve World->Grid Row 2", Vector) = (0,0,1,0)
         _CarveMin ("Carve Grid Min (voxels)", Vector) = (0,0,0,0)
         _CarveSize ("Carve Grid Size (voxels)", Vector) = (1,1,1,0)
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
@@ -68,7 +71,7 @@ Shader "MadMax/HDLit"
             half _Dirt;
             float _DirtTop;
             half _Cull;
-            float4x4 _CarveMatrix;   // world -> voxel grid coordinates (voxel centres on integers)
+            float4 _CarveRow0, _CarveRow1, _CarveRow2;   // world -> voxel grid coordinates (voxel centres on integers)
             float4 _CarveMin, _CarveSize;
             half _CarveOn;
             float _CarveInset;
@@ -158,7 +161,8 @@ Shader "MadMax/HDLit"
         void CarveClip(float3 ws, float3 nws)
         {
             if (_CarveOn < 0.5) return;
-            float3 g = mul(_CarveMatrix, float4(ws - nws * _CarveInset, 1.0)).xyz;
+            float4 p = float4(ws - nws * _CarveInset, 1.0);
+            float3 g = float3(dot(_CarveRow0, p), dot(_CarveRow1, p), dot(_CarveRow2, p));
             float3 uvw = (g - _CarveMin.xyz + 0.5) / max(_CarveSize.xyz, 1.0);
             if (any(uvw < 0.0) || any(uvw > 1.0)) return;
             clip(SAMPLE_TEXTURE3D_LOD(_CarveMask, sampler_CarveMask, uvw, 0).r - 0.5);

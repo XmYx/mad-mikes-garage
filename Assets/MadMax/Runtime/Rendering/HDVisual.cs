@@ -148,7 +148,7 @@ namespace MadMax.Rendering
                 if ((flags & HDAssets.NoShadow) != 0) r.shadowCastingMode = ShadowCastingMode.Off;
                 if (r.name.StartsWith("Lamp_") || r.name.Contains("__Lamp_")) lamps.Add(r);
             }
-            RefreshMaterials();
+            if ((flags & (HDAssets.WorldCut | HDAssets.Sway)) != 0 || hasTint || materialHook != null) RefreshMaterials();   // else the imported materials as they are
             Hide(host);
             if (host && !host.enabled && followHost) SetShown(false);
             unbound.Clear();
