@@ -258,9 +258,22 @@ namespace MadMax.Game
 
         Vector3 ReachPoint(ContextTarget t)
         {
-            if (t.ground || !t.target || t.target is VehicleDriver) return t.point;
-            var col = t.target.GetComponent<Collider>();
+            if (t.ground || !t.target) return t.point;
             var eye = Player.Eye.position;
+            if (t.target is VehicleDriver v)
+            {
+                // the nearest point of the body (not its centre: the walk would push against the door)
+                var best = t.point; float bd = float.MaxValue;
+                foreach (var vc in v.GetComponentsInChildren<Collider>())
+                {
+                    if (!vc.enabled || vc.isTrigger || vc is MeshCollider) continue;
+                    var q = vc.ClosestPoint(eye);
+                    float d = (q - eye).sqrMagnitude;
+                    if (d < bd) { bd = d; best = q; }
+                }
+                return best;
+            }
+            var col = t.target.GetComponent<Collider>();
             if (col && col.enabled && col.gameObject.activeInHierarchy && !(col is CharacterController) && (!(col is MeshCollider mc) || mc.convex)) return col.ClosestPoint(eye);
             if (col && col.enabled) return col.bounds.ClosestPoint(eye);
             return t.target.transform.position + (t.target is MadMax.Npc.Npc || t.target is MadMax.Animals.Animal ? Vector3.up : Vector3.zero);
