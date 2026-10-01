@@ -13,6 +13,8 @@ namespace MadMax.Game
         public static bool Continue => Has("continue");
         /// <summary>--dev: debug keys (weather cycle, drop a part, instant repair; see <see cref="Controls"/>).</summary>
         public static bool Dev => Has("dev");
+        /// <summary>--no-hd: voxel visuals instead of the HD asset pack (world, furniture, items, tools, animals).</summary>
+        public static bool NoHD => Has("no-hd");
 
         static string[] args;
 
