@@ -79,8 +79,8 @@ def marine_diesel():
     base = Vector((-0.48, 0.48, 0.66))
     p.tube(M["rust"], [(-0.48, 0.2, 0.42), (-0.5, 0.42, 0.5), base], 0.06, 14)
     p.cyl(M["black"], 0.09, 1.3, base + Vector((0, 0, 0.68)), "Z", 20, bevel=0.004)          # lagged stack
-    for k in range(6):
-        pa.ring(p, M["steel"], base + Vector((0, 0, 0.12 + k * 0.22)), 0.092, 0.008)
+    for k in range(3):
+        pa.ring(p, M["steel"], base + Vector((0, 0, 0.2 + k * 0.4)), 0.092, 0.008, "Z", 16, 4)
     p.lathe(M["rust"], [(0.09, 0), (0.1, 0.05), (0.13, 0.08), (0.0, 0.08)], base + Vector((0, 0, 1.32)), "Z", 20)
     p.box(M["steel"], (0.1, 0.2, 0.36), (0.48, -0.42, 0.36), bevel=0.02)                   # raw-water pump
     p.cyl(M["steel"], 0.07, 0.1, (0.5, -0.42, 0.56), "X", 16, bevel=0.01)

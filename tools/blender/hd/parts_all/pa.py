@@ -18,7 +18,9 @@ the asset is finalised, so every helper of misc/kit.py, misc/comps.py and misc/p
 Sizes: after building, each rigid piece is compared with the game mesh bounds (game_parts.json, extracted from
 Generated/Meshes) and fitted to them when it is off by more than 5 % / 2 cm (logged per asset in the manifest).
 
-Run a family:  blender -b -P tools/blender/hd/parts_all/<family>.py
+Run a family:  blender -b -P tools/blender/hd/parts_all/<family>.py   (all: python3 tools/blender/hd/parts_all/build_all.py)
+Export (wave6/pipeline export_hd.py): these use the cars axis convention, i.e. `--group cars` (no mirror) with
+`--root <id> --kind part|prop`; parts_all/export_jobs.json lists every asset with its arguments.
 """
 import json
 import math
@@ -117,9 +119,20 @@ def paint_mat(name, hexcol, chips=0.35, rust=0.2):
 
 
 # ------------------------------------------------------------------------------------------------ registry
-def add(aid, fn, family, kind="part", label=None, tile=None, fit=True, azim=None, fit_axes=(0, 1, 2), **props):
+def add(aid, fn, family, kind="part", label=None, tile=None, fit=True, azim=None, fit_axes=(0, 1, 2), display=None, **props):
     """Register an asset builder. fn() returns the top mesh object (kit frame, origin at the mount point)."""
-    REG.append(dict(id=aid, fn=fn, family=family, kind=kind, label=label or aid, tile=tile, fit=fit, azim=azim, fit_axes=fit_axes, props=props))
+    REG.append(dict(id=aid, fn=fn, family=family, kind=kind, label=label or aid, tile=tile, fit=fit, azim=azim, fit_axes=fit_axes, display=display, props=props))
+
+
+def marker(name, loc_kit, parent):
+    """Empty kept on the asset (e.g. "grip" where a hand holds a bag); exported as a named child."""
+    e = bpy.data.objects.new(name, None)
+    e.empty_display_size = 0.05
+    bpy.context.scene.collection.objects.link(e)
+    e["marker"] = name
+    e.parent = parent
+    e.location = Vector(loc_kit) - parent.location
+    return e
 
 
 def seg(ob, name, pivot_kit=None, parent=None):
@@ -198,7 +211,7 @@ def _flatten(top):
                     mw = c.matrix_world.copy()
                     c.parent = owner
                     c.matrix_world = mw
-        for m in [m for m in members if m.type != "MESH"]:
+        for m in [m for m in members if m.type != "MESH" and "marker" not in m]:
             bpy.data.objects.remove(m)
         if owner.type == "MESH" and meshes:
             _join(owner, meshes)
@@ -305,6 +318,8 @@ def finalise(a, top):
         top.name = aid + "_body"
         top.data.name = aid + "_body"
     for ob in root.children_recursive:
+        if "marker" in ob:
+            ob.name = aid + ":" + ob["marker"]
         if "segment" in ob:
             ob.name = aid + ":" + ob["segment"]
             if ob.type == "MESH":
@@ -331,6 +346,13 @@ def finalise(a, top):
             segs[ob["segment"]] = {"parent": par, "pivot_game": [round(-gp.x, 4), round(gp.z, 4), round(-gp.y, 4)]}
     if segs:
         props["segments"] = json.dumps(segs)
+    marks = {}
+    for ob in root.children_recursive:
+        if "marker" in ob:
+            gp = ob.matrix_world.translation
+            marks[ob["marker"]] = [round(-gp.x, 4), round(gp.z, 4), round(-gp.y, 4)]
+    if marks:
+        props["markers"] = json.dumps(marks)
     for k, v in props.items():
         root[k] = v
     tr = kit.tris([root])
@@ -352,8 +374,8 @@ def save_asset(root, path):
     coll = bpy.data.collections[root.name]
     renamed = []
     for ob in coll.objects:
-        if "segment" in ob:
-            want = ob["segment"]
+        if "segment" in ob or "marker" in ob:
+            want = ob.get("segment") or ob.get("marker")
             clash = bpy.data.objects.get(want)
             if clash is not None and clash is not ob:
                 clash.name = clash.name + "~tmp"
@@ -431,8 +453,10 @@ def run(family, out_sub="parts_all", per_tile=6, cols=3, gap=0.3, only=None):
     for name in order:
         items = groups[name]
         roots = [r for _, r, _ in items]
-        for r in roots:
+        for (a, r, _) in items:                             # presentation only (e.g. tools laid flat); reset below
             r.location = (0, 0, 0)
+            r.rotation_euler = a["display"] or (0, 0, 0)
+        bpy.context.view_layer.update()
         kit.grid(roots, min(cols, len(roots)), gap)
         for r in roots:                                   # rest everything on the stage floor
             lo, _ = rc.bounds([r] + list(r.children_recursive))
@@ -445,6 +469,7 @@ def run(family, out_sub="parts_all", per_tile=6, cols=3, gap=0.3, only=None):
             o.hide_render = False
         for r in roots:
             r.location = (0, 0, 0)
+            r.rotation_euler = (0, 0, 0)
         ids = [a["id"] for a, _, _ in items]
         tiles.append({"name": name, "label": ", ".join(a["label"] for a, _, _ in items), "replaces": ", ".join(ids)})
         for _, _, st in items:

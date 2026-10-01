@@ -95,22 +95,22 @@ def baler():
     p.box(M["steel"], (0.24, 0.2, 0.06), V(0, 6, 0.4), bevel=0.01)
     p.box(M["steel_dark"], (2.3, 0.3, 0.2), V(0, 2, -10.5), bevel=0.02)                         # pick-up
     for k in range(-13, 14, 2):
-        p.tube(M["chrome"], [V(k, 1.6, -9.2), V(k, 0.4, -8.8), V(k, -0.2, -8.2)], 0.008, 4)
+        p.tube(M["chrome"], [V(k, 1.6, -9.2), V(k, 0.4, -8.8), V(k, -0.2, -8.2)], 0.008, 4, caps=False)
     c = V(0, 10, -19)
-    p.cyl(paint, 0.66, 1.68, c, "X", 40, bevel=0.03)
+    p.cyl(paint, 0.66, 1.68, c, "X", 28, bevel=0.03)
     for s in (-1, 1):
-        p.cyl(M["steel"], 0.7, 0.04, c + Vector((s * 0.88, 0, 0)), "X", 40, bevel=0.008)
+        p.cyl(M["steel"], 0.7, 0.04, c + Vector((s * 0.88, 0, 0)), "X", 28, bevel=0.008)
         p.cyl(M["chrome"], 0.16, 0.12, c + Vector((s * 0.94, 0, 0)), "X", 20, bevel=0.01)
-        for k in range(10):
-            a = k / 10 * math.tau
-            p.cyl(M["chrome"], 0.014, 0.02, c + Vector((s * 0.91, math.cos(a) * 0.6, math.sin(a) * 0.6)), "X", 6)
+        for k in range(8):
+            a = k / 8 * math.tau
+            p.cyl(M["chrome"], 0.014, 0.02, c + Vector((s * 0.91, math.cos(a) * 0.6, math.sin(a) * 0.6)), "X", 6, bevel=0.0)
     for k in range(6):                                                                           # chamber ribs
         a = math.radians(40 + k * 40)
         p.box(M["steel_dark"], (1.68, 0.03, 0.03), c + Vector((0, math.cos(a) * 0.665, math.sin(a) * 0.665)), (a, 0, 0), bevel=0.004)
     p.box(M["steel"], (1.62, 0.6, 0.1), V(0, 17.5, -15.5), (math.radians(-12), 0, 0), bevel=0.02)   # hood over the pick-up
     wheels = []
     for x in (-13.5, 13.5):
-        w = kit.car_wheel("w", M, 0.28, 0.17, 0.16, "sport", "steel", rim_mat=M["olive"], segs=28)
+        w = kit.car_wheel("w", M, 0.28, 0.17, 0.16, "sport", "steel", rim_mat=M["olive"], segs=24)
         w.rotation_euler = (0, 0, 0 if x > 0 else math.pi)
         w.location = V(x, 3.4, -19)
         wheels.append(w)

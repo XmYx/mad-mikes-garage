@@ -611,11 +611,11 @@ WEAPONS = [("tool_pipe_club", pipe_club), ("tool_machete", machete), ("tool_pipe
 FLUIDS = [("tool_jerrycan", jerrycan), ("tool_fuel_can", fuel_can), ("tool_bottle", bottle), ("tool_bucket", bucket), ("tool_oil_jug", oil_jug)]
 
 for i, (tid, fn) in enumerate(HAND):
-    pa.add(tid, fn, F, kind="tool", category="Tool", origin="grip", held_along="game -Y", world_scale=0.7, tile="tools_hand_%d" % (i // 7 + 1), azim=-45)
+    pa.add(tid, fn, F, kind="tool", category="Tool", origin="grip", held_along="game -Y", world_scale=0.7, tile="tools_hand_%d" % (i // 7 + 1), azim=-45, display=(0, math.pi / 2, 0.5))
 for i, (tid, fn) in enumerate(WEAPONS):
-    pa.add(tid, fn, F, kind="tool", category="Weapon", origin="grip", held_along="game -Y", world_scale=0.7, tile="tools_weapons_%d" % (i // 7 + 1), azim=-45)
+    pa.add(tid, fn, F, kind="tool", category="Weapon", origin="grip", held_along="game -Y", world_scale=0.7, tile="tools_weapons_%d" % (i // 7 + 1), azim=-45, display=(0, math.pi / 2, 0.5))
 for tid, fn in FLUIDS:
     pa.add(tid, fn, F, kind="tool", category="FluidContainer", origin="handle", held_along="game -Y", world_scale=0.7, tile="tools_fluids", azim=-45)
 
 if __name__ == "__main__":
-    pa.run(F, out_sub="items", cols=7, gap=0.15)
+    pa.run(F, out_sub="items", cols=2, gap=0.12)

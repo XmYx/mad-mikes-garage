@@ -136,12 +136,21 @@ def turret():
 
 
 def ducktail():
-    """spoiler_ducktail: low kicked-up lip on the boot lid with a chrome trim strip."""
+    """spoiler_ducktail: low kicked-up lip on the boot lid (a curved section swept across, the ends rolled down), with a
+    chrome trim strip and its mounting bolts."""
     p = Part("spoiler_ducktail")
     W = 1.84
     prof = [(0.16, 0.0), (0.16, 0.03), (0.06, 0.05), (-0.06, 0.1), (-0.2, 0.2), (-0.24, 0.2), (-0.2, 0.14), (-0.06, 0.04), (0.06, 0.0)]
-    p.add(kit.bm_loft([[(x, -y, z) for (y, z) in prof] for x in (-W / 2, W / 2)]), M["black"])
+    secs = []
+    n = 16
+    for i in range(n + 1):
+        x = -W / 2 + i * W / n
+        e = abs(x) / (W / 2)
+        drop = 0.06 * e ** 6                                     # ends roll down into the wings
+        secs.append([(x, -y, z * (1 - 0.35 * e ** 6) - drop * (z > 0.02)) for (y, z) in prof])
+    p.add(kit.bm_loft(secs), M["black"])
     p.box(M["chrome"], (W * 0.92, 0.02, 0.02), (0, -0.165, 0.015), bevel=0.004)
+    pa.bolts(p, M["chrome"], [(x, -0.1, 0.045) for x in (-0.7, -0.35, 0.0, 0.35, 0.7)], 0.01, 0.008)
     return p.build()
 
 
