@@ -17,7 +17,11 @@ namespace MadMax.Building
             public Mesh mesh;
             public int signature;
             public readonly List<MeshRenderer> hidden = new List<MeshRenderer>();
+            public readonly List<MadMax.Rendering.HDVisual> hiddenHD = new List<MadMax.Rendering.HDVisual>();
+            public readonly List<GameObject> hdGos = new List<GameObject>();
+            public readonly List<Mesh> hdMeshes = new List<Mesh>();
         }
+        readonly Dictionary<Material, List<CombineInstance>> hdCombine = new Dictionary<Material, List<CombineInstance>>();
 
         readonly Dictionary<Vector2Int, Batch> batches = new Dictionary<Vector2Int, Batch>();
         readonly Dictionary<Vector2Int, List<Placeable>> cells = new Dictionary<Vector2Int, List<Placeable>>();
@@ -93,8 +97,15 @@ namespace MadMax.Building
             b.go.transform.position = new Vector3(key.x * Cell, pieces[0].transform.position.y, key.y * Cell);
             var toLocal = b.go.transform.worldToLocalMatrix;
             combine.Clear();
+            foreach (var l in hdCombine.Values) l.Clear();
             foreach (var p in pieces)
             {
+                if (p.TryGetComponent<MadMax.Rendering.HDVisual>(out var hv) && CollectHD(hv, toLocal))      // HD pieces: their far LOD merged per atlas
+                {
+                    hv.SetShown(false);
+                    b.hiddenHD.Add(hv);
+                    continue;
+                }
                 var mf = p.GetComponent<MeshFilter>();
                 var mr = p.GetComponent<MeshRenderer>();
                 if (!material) material = mr.sharedMaterial;
@@ -107,17 +118,58 @@ namespace MadMax.Building
             b.mesh.CombineMeshes(combine.ToArray(), true, true);
             b.go.GetComponent<MeshFilter>().sharedMesh = b.mesh;
             b.go.GetComponent<MeshRenderer>().sharedMaterial = material;
+            foreach (var kv in hdCombine)
+            {
+                if (kv.Value.Count == 0) continue;
+                var go = new GameObject("StructureBatchHD", typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(b.go.transform, false);
+                var m = new Mesh { name = "StructureBatchHD", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+                m.CombineMeshes(kv.Value.ToArray(), true, true);
+                go.GetComponent<MeshFilter>().sharedMesh = m;
+                go.GetComponent<MeshRenderer>().sharedMaterial = kv.Key;
+                b.hdGos.Add(go); b.hdMeshes.Add(m);
+            }
             batches[key] = b;
+        }
+
+        /// <summary>Queue an HD piece's meshes (LOD1 where the object has one: the cell is far away) for merging; false
+        /// when they can't be merged (not readable) and the piece keeps drawing itself.</summary>
+        bool CollectHD(MadMax.Rendering.HDVisual v, Matrix4x4 toLocal)
+        {
+            if (!v.Shown || v.Renderers.Count == 0) return false;
+            var withLod = new HashSet<string>();
+            foreach (var r in v.Renderers) if (r && r.name.EndsWith("__L1")) withLod.Add(r.name.Substring(0, r.name.Length - 4));
+            var picked = new List<(MeshFilter mf, Material mat)>();
+            foreach (var r in v.Renderers)
+            {
+                if (!r || !(r is MeshRenderer) || !r.TryGetComponent<MeshFilter>(out var mf) || !mf.sharedMesh) continue;
+                string n = r.name;
+                bool lod1 = n.EndsWith("__L1"), lod2 = n.EndsWith("__L2");
+                if (lod2 || (!lod1 && withLod.Contains(n))) continue;
+                if (!mf.sharedMesh.isReadable) return false;
+                picked.Add((mf, r.sharedMaterial));
+            }
+            if (picked.Count == 0) return false;
+            foreach (var (mf, mat) in picked)
+            {
+                if (!mat) continue;
+                if (!hdCombine.TryGetValue(mat, out var list)) hdCombine[mat] = list = new List<CombineInstance>();
+                for (int sm = 0; sm < mf.sharedMesh.subMeshCount; sm++)
+                    list.Add(new CombineInstance { mesh = mf.sharedMesh, subMeshIndex = sm, transform = toLocal * mf.transform.localToWorldMatrix });
+            }
+            return true;
         }
 
         void Split(Vector2Int key, Batch b)
         {
             foreach (var r in b.hidden) if (r) r.enabled = true;
+            foreach (var v in b.hiddenHD) if (v) v.SetShown(true);
+            foreach (var m in b.hdMeshes) if (m) Destroy(m);
             if (b.mesh) Destroy(b.mesh);
             if (b.go) Destroy(b.go);
             batches.Remove(key);
         }
 
-        void OnDestroy() { foreach (var b in batches.Values) if (b.mesh) Destroy(b.mesh); }
+        void OnDestroy() { foreach (var b in batches.Values) { if (b.mesh) Destroy(b.mesh); foreach (var m in b.hdMeshes) if (m) Destroy(m); } }
     }
 }

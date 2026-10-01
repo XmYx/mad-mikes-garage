@@ -297,6 +297,7 @@ namespace MadMax.Npc
             go.GetComponent<MeshFilter>().sharedMesh = def.mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
             var box = go.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
+            MadMax.Building.FurnitureLibrary.DressHD(go, def.id);
             var loot = go.AddComponent<Lootable>();
             loot.key = "K" + key.GetHashCode(); loot.table = "shop"; loot.title = "SPILLED CARGO";
         }

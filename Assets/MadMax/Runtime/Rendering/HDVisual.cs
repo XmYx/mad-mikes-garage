@@ -37,6 +37,7 @@ namespace MadMax.Rendering
         readonly List<(Transform hd, string name)> unbound = new List<(Transform, string)>();
         readonly List<Renderer> hidden = new List<Renderer>();
         readonly List<Renderer> extra = new List<Renderer>();
+        readonly HashSet<Renderer> released = new HashSet<Renderer>();
         bool shown = true, lampsOn, hasTint;
         int flags, bindTries;
         Color32 tint;
@@ -215,6 +216,10 @@ namespace MadMax.Rendering
             foreach (var r in extra) if (r) r.enabled = on;
         }
 
+        /// <summary>Another component owns this renderer's materials from now on (a bulb swapped lit / dark by
+        /// <c>PoweredLight</c>): tints and lamp states leave it alone.</summary>
+        public void Release(Renderer r) { if (r) released.Add(r); }
+
         /// <summary>A renderer that belongs to the HD look without coming from the model (the carve rim): it is shown,
         /// hidden and cut away with the model.</summary>
         public void Adopt(Renderer r) { if (r && !extra.Contains(r)) extra.Add(r); }
@@ -233,7 +238,7 @@ namespace MadMax.Rendering
             for (int i = 0; i < renderers.Length; i++)
             {
                 var r = renderers[i];
-                if (!r) continue;
+                if (!r || released.Contains(r)) continue;
                 var src = baseMats[i];
                 var mats = new Material[src.Length];
                 bool lamp = lampsOn && lamps.Contains(r);

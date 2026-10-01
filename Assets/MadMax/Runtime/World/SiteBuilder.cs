@@ -195,7 +195,7 @@ namespace MadMax.World
                     var go = new GameObject("CampLamp", typeof(MeshFilter), typeof(MeshRenderer));
                     go.transform.SetParent(parent, true);
                     go.transform.SetPositionAndRotation(at, q);
-                    if (def != null) { go.GetComponent<MeshFilter>().sharedMesh = def.mesh; go.GetComponent<MeshRenderer>().sharedMaterial = mat; }
+                    if (def != null) { go.GetComponent<MeshFilter>().sharedMesh = def.mesh; go.GetComponent<MeshRenderer>().sharedMaterial = mat; MadMax.Building.FurnitureLibrary.DressHD(go, def.id, HDProp.FlagsOf(mat)); }
                     var glow = new GameObject("Light"); glow.transform.SetParent(go.transform, false); glow.transform.localPosition = new Vector3(0f, 0.4f, 0f);
                     var l = glow.AddComponent<BunkerLamp>();
                     l.dying = e.dying; l.hum = false; l.color = new Color(1f, 0.72f, 0.4f); l.range = 6f; l.brightness = 2.6f;
@@ -223,6 +223,7 @@ namespace MadMax.World
                     lg.GetComponent<MeshFilter>().sharedMesh = def.mesh;
                     lg.GetComponent<MeshRenderer>().sharedMaterial = mat;
                     var box = lg.AddComponent<BoxCollider>(); box.center = def.mesh.bounds.center; box.size = def.mesh.bounds.size;
+                    MadMax.Building.FurnitureLibrary.DressHD(lg, def.id, HDProp.FlagsOf(mat));
                     var loot = lg.AddComponent<Lootable>();
                     loot.key = "S" + p.site.Key + "," + n++; loot.table = e.table;
                     loot.locked = Lootable.RollLocked(loot.key, e.visual);
