@@ -64,17 +64,23 @@ namespace MadMax.Game
             }
             UpdateContextWalk();
             ContextHover = null; ContextHoverFromCursor = false;
-            if (Menus.IsOpen || TitleSequence.Playing || Dedicated || !Player || !Player.gameObject.activeSelf) { rmbArmed = false; return; }
-            UpdateContextHover(mouse);
+            bool busy = Menus.IsOpen || TitleSequence.Playing || Dedicated || !Player || !Player.gameObject.activeSelf;
+            if (!busy) UpdateContextHover(mouse);
+            if (!Dedicated && Player) Loot.Tick(kb, mouse, pad);                                 // the floating loot panels (LootOverlay)
+            if (busy) { rmbArmed = false; return; }
             if (mouse != null)
             {
-                if (mouse.rightButton.wasPressedThisFrame) { rmbAt = Time.unscaledTime; rmbTravel = 0f; rmbArmed = ContextFree(true); }
+                if (mouse.rightButton.wasPressedThisFrame) { rmbAt = Time.unscaledTime; rmbTravel = 0f; rmbArmed = ContextFree(true) && !LootOverlay.ConsumesMouse; }
                 if (mouse.rightButton.isPressed) rmbTravel += mouse.delta.ReadValue().magnitude;
                 if (mouse.rightButton.wasReleasedThisFrame && rmbArmed && ContextFree(true) && Time.unscaledTime - rmbAt < 0.3f && rmbTravel < 10f) OpenContextAtView(mouse);
                 if (!mouse.rightButton.isPressed) rmbArmed = false;
             }
-            if (Controls.Down(Controls.Act.Context) && ContextFree(false)) OpenContextAtView(mouse);
+            if (Controls.Down(Controls.Act.Context) && ContextFree(false) && !LootOverlay.ConsumesMouse) OpenContextAtView(mouse);
         }
+
+        LootOverlay loot;
+        /// <summary>The floating loot panels (Project Zomboid style) over the live game.</summary>
+        public LootOverlay Loot => loot ??= new LootOverlay(this);
 
         /// <summary>Whether a context menu may open now (<paramref name="rmb"/>: by RMB, which aiming tools keep).</summary>
         bool ContextFree(bool rmb)
@@ -244,11 +250,13 @@ namespace MadMax.Game
             if (cameraRig && cameraRig.TopDownView && mouse != null && !Aiming && !(Build && Build.Active))
             {
                 var t = PickContext(CursorViewport(mouse), true);
-                if (t != null && (t.target is Container || (t.target is Lootable l && l.HasLeftovers))) { ContextHover = t.target; ContextHoverFromCursor = true; return; }
+                if (t != null && IsLootHover(t.target)) { ContextHover = t.target; ContextHoverFromCursor = true; return; }
             }
-            if (Focused is Container fc && fc) ContextHover = fc;
-            else if (Focused is Lootable fl && fl && fl.HasLeftovers) ContextHover = fl;
+            if (Focused is Component f && f && IsLootHover(f)) ContextHover = f;
         }
+
+        /// <summary>Things whose hover brings up the loot panels: storage (not worn bags), searchable spots, items on the ground.</summary>
+        static bool IsLootHover(Component c) => c is Container k ? !k.worn : c is Lootable l ? !Lootable.Searched.Contains(l.key) || l.HasLeftovers : c is WorldItem;
 
         // ------------------------------------------------------------------ running an option
         /// <summary>Run a context option: at once when in reach (or it needs none), else after walking up to the target.</summary>

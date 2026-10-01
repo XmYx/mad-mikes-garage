@@ -341,7 +341,7 @@ namespace MadMax.Game
             float dt = Time.deltaTime;
             CloseHoods(dt);
             var mouse = UnityEngine.InputSystem.Mouse.current; var pad = UnityEngine.InputSystem.Gamepad.current;
-            bool click = !ExternalInput && ((mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame));
+            bool click = !ExternalInput && ((mouse != null && mouse.leftButton.wasPressedThisFrame && !LootOverlay.ConsumesMouse) || (pad != null && pad.rightTrigger.wasPressedThisFrame));
             if (job == null)
             {
                 // LMB with a welder / cutter / jack at a vehicle: timed work there (the swing that would follow is held off)

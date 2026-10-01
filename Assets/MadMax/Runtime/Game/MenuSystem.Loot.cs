@@ -43,7 +43,6 @@ namespace MadMax.Game
 
         readonly List<LootSource> lootSources = new List<LootSource>();
         readonly List<RectInt> lootTabRects = new List<RectInt>();
-        readonly List<Container> lootPool = new List<Container>();
         LootSource lootOpened;
         int lootTab, lootHeader = -1;
         readonly int[] paneFirst = new int[2];
@@ -91,7 +90,7 @@ namespace MadMax.Game
 
         Vector3 LootCentre => game.Current ? game.Current.transform.position : game.Player.transform.position;
 
-        bool LockedForMe(Container c)
+        public bool LockedForMe(Container c)
         {
             var door = c.GetComponent<Door>();
             return door && door.locked && !game.OwnsPiece(c.GetComponent<Placeable>());
@@ -102,18 +101,38 @@ namespace MadMax.Game
             var cur = LootCurrent;
             lootSources.Clear();
             if (lootOpened != null && lootOpened.Valid) lootSources.Add(lootOpened);
-            var at = LootCentre;
-            Container.Near(at, LootReach, lootPool);
-            foreach (var c in lootPool)
-                if (c && !LockedForMe(c) && (lootOpened == null || lootOpened.box != c)) lootSources.Add(LootSource.Of(c));
-            foreach (var l in WastelandGame.LootSpots)
-            {
-                if (!l || (lootOpened != null && lootOpened.spot == l) || (l.transform.position - at).sqrMagnitude > LootReach * LootReach) continue;
-                if (!Lootable.Searched.Contains(l.key) || l.HasLeftovers) lootSources.Add(LootSource.Of(l));
-            }
+            foreach (var s in NearbySources(LootCentre, false))
+                if (lootOpened == null || !lootOpened.Same(s)) lootSources.Add(s);
             if (lootOpened == null || !lootOpened.floor) lootSources.Add(LootSource.Floor);
             lootTab = 0;
             if (cur != null) for (int i = 0; i < lootSources.Count; i++) if (lootSources[i].Same(cur)) lootTab = i;
+        }
+
+        readonly List<LootSource> nearby = new List<LootSource>();
+
+        /// <summary>Storage within <see cref="LootReach"/> of <paramref name="at"/>, measured from each
+        /// <see cref="Container.AccessAt"/> (vehicle trunks, gloveboxes): not worn bags, not locked ones that aren't yours;
+        /// then searchable spots (unsearched, or with something left); with <paramref name="floor"/> the floor when
+        /// anything lies within <see cref="FloorReach"/>. Nearest first. The list is reused.</summary>
+        public List<LootSource> NearbySources(Vector3 at, bool floor)
+        {
+            nearby.Clear();
+            var boxes = new List<(float d, Container c)>();
+            foreach (var c in Container.All)
+            {
+                if (!c || c.worn || LockedForMe(c)) continue;
+                float d = (c.AccessAt - at).sqrMagnitude;
+                if (d < LootReach * LootReach) boxes.Add((d, c));
+            }
+            boxes.Sort((a, b) => a.d.CompareTo(b.d));
+            foreach (var b in boxes) nearby.Add(LootSource.Of(b.c));
+            foreach (var l in WastelandGame.LootSpots)
+            {
+                if (!l || (l.transform.position - at).sqrMagnitude > LootReach * LootReach) continue;
+                if (!Lootable.Searched.Contains(l.key) || l.HasLeftovers) nearby.Add(LootSource.Of(l));
+            }
+            if (floor && game.FloorStacks(at, FloorReach).Count > 0) nearby.Add(LootSource.Floor);
+            return nearby;
         }
 
         static string TabName(LootSource s)

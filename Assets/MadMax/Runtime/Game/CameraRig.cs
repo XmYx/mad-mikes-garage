@@ -163,7 +163,7 @@ namespace MadMax.Game
             if (pad != null && pad.buttonNorth.wasPressedThisFrame) Cycle();
 
             float zoom = 0f;
-            if (mouse != null) { float s = mouse.scroll.ReadValue().y; if (Mathf.Abs(s) > 0.01f) zoom -= Mathf.Sign(s); }
+            if (mouse != null && !LootOverlay.ConsumesMouse) { float s = mouse.scroll.ReadValue().y; if (Mathf.Abs(s) > 0.01f) zoom -= Mathf.Sign(s); }
             if (kb != null) zoom += ((Controls.Held(Controls.Act.ZoomOut) || kb.numpadMinusKey.isPressed ? 1f : 0f) - (Controls.Held(Controls.Act.ZoomIn) || kb.numpadPlusKey.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
             if (pad != null) zoom += ((pad.dpad.down.isPressed ? 1f : 0f) - (pad.dpad.up.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
             if (zoom != 0f) ApplyZoom(zoom);
@@ -172,7 +172,7 @@ namespace MadMax.Game
 
             // cursor: locked for on-foot free look, Esc releases, click re-locks
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) cursorReleased = false;
-            bool lockCursor = FreeLook && !cursorReleased;
+            bool lockCursor = FreeLook && !cursorReleased && !LootOverlay.WantsCursor;                 // pinned loot panels want the cursor
             Cursor.lockState = lockCursor ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !lockCursor;
 

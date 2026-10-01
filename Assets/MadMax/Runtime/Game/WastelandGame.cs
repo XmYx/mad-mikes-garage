@@ -805,7 +805,7 @@ namespace MadMax.Game
                 Player.run = shift;
                 if (spaceDown) Player.jump = true;
                 Player.crouch = Controls.Held(Controls.Act.Crouch) || (pad != null && pad.rightStickButton.isPressed);   // crouch; at a run: slide
-                bool attack = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
+                bool attack = (mouse != null && mouse.leftButton.wasPressedThisFrame && !LootOverlay.ConsumesMouse) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
                 if (Player.Tool is FishingRodTool rod && rod.Busy)
                 {
                     // line out: the button strikes a bite, reels in, and is held to reel against a hooked fish

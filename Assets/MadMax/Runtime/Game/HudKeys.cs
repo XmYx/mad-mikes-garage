@@ -179,6 +179,7 @@ namespace MadMax.Game
             Add(b, Controls.Act.CamTiltUp, "TILT CAMERA", Grp.Ui); Add(b, Controls.Act.CamTiltDown, "TILT CAMERA", Grp.Ui);
             Add(b, Controls.Act.Help, "THIS KEY MAP", Grp.Ui); Add(b, Key.F1, "THIS KEY MAP", Grp.Ui);
             Add(b, Controls.Act.Context, "CONTEXT MENU (RMB TAP)", Grp.Ui);
+            if (!car) Add(b, Controls.Act.Loot, "LOOT PANELS (PIN)", Grp.Ui);
             Add(b, Key.Escape, "MENU", Grp.Ui); Add(b, Key.Tab, "FLEET (HOLD: WHEEL)", Grp.Ui);
             return b;
         }
