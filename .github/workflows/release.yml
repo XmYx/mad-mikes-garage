@@ -1,11 +1,10 @@
 # Builds Windows, Linux and macOS players with GameCI and publishes them as a GitHub release.
-# Trigger: push a tag like v0.2.0, or Actions > Release > Run workflow (enter a version; the tag is created).
+# Trigger: manual only (Actions > Release > Run workflow). Releases are built locally with tools/release.sh;
+# tag pushes no longer start this workflow.
 # Required repository secrets: UNITY_LICENSE (.ulf file contents), UNITY_EMAIL, UNITY_PASSWORD (a real Unity ID password).
 name: Release
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:

@@ -23,6 +23,12 @@ namespace MadMax.Building
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
 
         public string title = "STORAGE";
+        /// <summary>Where it is reached from (a vehicle trunk's lid, a door for the glovebox); null = the object itself.</summary>
+        public Transform accessPoint;
+        /// <summary>Carried by the player (a worn bag): part of the player's own storage, never "nearby" loot.</summary>
+        public bool worn;
+        /// <summary>The point to stand at / measure reach from.</summary>
+        public Vector3 AccessAt => accessPoint ? accessPoint.position : transform.position;
         public float capacity = 80f;          // kg
         public bool fridge;
         /// <summary>Passive keeping without power (root cellar): the spoil rate in here, halved again in winter.</summary>
