@@ -123,9 +123,10 @@ namespace MadMax.Game
                 else Toast("SLEPT BADLY: " + Comfort.Word(comfort) + (note != null ? " (" + note + ")" : ""));
                 MadMax.Net.NetSession.Instance?.SendWeather();
                 StarterNote("slept");
+                BackSlept(1f);                                                                      // a night's sleep mends the back (WastelandGame.Bags)
                 if (GameSettings.Current.autosaveMinutes > 0) Invoke(nameof(AutosaveNow), 1.5f);         // after the toast
             }
-            else Toast("RESTED");
+            else { Toast("RESTED"); BackSlept(0.3f); }
             Stats.stamina = Stats.MaxStamina;
         }
 
@@ -427,7 +428,7 @@ namespace MadMax.Game
             MonoBehaviour pick = null;
             foreach (var p in Placeable.All) Consider(p, ref pick, ref best, eye);
             foreach (var l in LootSpots) Consider(l, ref pick, ref best, eye);
-            foreach (var c in Container.All) if (c && !c.GetComponent<Placeable>()) Consider(c, ref pick, ref best, eye);   // truck beds, hoppers
+            foreach (var c in Container.All) if (c && !c.worn && !c.GetComponent<Placeable>()) Consider(c, ref pick, ref best, eye);   // truck beds, hoppers (not the bags on your back)
             foreach (var t in TrailerDeck.All)
             {
                 if (!t) continue;

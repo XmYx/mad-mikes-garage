@@ -301,7 +301,7 @@ namespace MadMax.Vehicles
             Container target = null; float best = reach;
             foreach (var c in Container.All)
             {
-                if (!c || c == store) continue;
+                if (!c || c.worn || c == store) continue;
                 float d = Vector3.Distance(LoadPoint(c), tip);
                 if (d < best && c.Weight + units * ItemCatalog.ResourceWeight(type) <= c.capacity) { best = d; target = c; }
             }
@@ -423,7 +423,7 @@ namespace MadMax.Vehicles
             Container target = null; float best = 4f;
             foreach (var c in Container.All)
             {
-                if (!c || c == store || c.GetComponentInParent<VehicleDriver>()) continue;
+                if (!c || c.worn || c == store || c.GetComponentInParent<VehicleDriver>()) continue;
                 float d = Vector3.Distance(c.transform.position, behind);
                 if (d < best) { best = d; target = c; }
             }

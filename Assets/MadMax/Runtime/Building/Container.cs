@@ -30,6 +30,10 @@ namespace MadMax.Building
         /// <summary>The point to stand at / measure reach from.</summary>
         public Vector3 AccessAt => accessPoint ? accessPoint.position : transform.position;
         public float capacity = 80f;          // kg
+        /// <summary>Most different goods it holds (bags, belts); 0 = no limit.</summary>
+        public int slots;
+        /// <summary>What it takes (item id or "res:N"); null = anything (a tool belt takes tools only).</summary>
+        public System.Func<string, bool> accepts;
         public bool fridge;
         /// <summary>Passive keeping without power (root cellar): the spoil rate in here, halved again in winter.</summary>
         public float keep = 1f;
@@ -47,6 +51,25 @@ namespace MadMax.Building
         /// <summary>How fast food rots in here against the open pack (0 frozen .. 1).</summary>
         public float SpoilFactor => Cold ? Cold.SpoilFactor : Cooling ? 0.12f : keep < 1f && MadMax.World.Weather.Season == 2 ? keep * 0.5f : keep;
         public float Weight => ItemCatalog.TotalWeight(inventory);
+
+        /// <summary>How many of <paramref name="n"/> × item id / "res:N" it takes: its filter, a free slot (or a stack
+        /// already there) and the room left by weight.</summary>
+        public int Fits(string key, int n)
+        {
+            if (key == null || n <= 0 || (accepts != null && !accepts(key))) return 0;
+            int ri = 0;
+            bool res = key.StartsWith("res:") && int.TryParse(key.Substring(4), out ri) && ri > 0 && ri < ResourceInfo.Count;
+            var rt = res ? (ResourceType)ri : ResourceType.None;
+            if (slots > 0 && (res ? inventory.Get(rt) : inventory.GetItem(key)) <= 0)
+            {
+                int used = 0;
+                for (int t = 1; t < ResourceInfo.Count; t++) if (inventory.Get((ResourceType)t) > 0) used++;
+                foreach (var kv in inventory.Items) if (kv.Value > 0) used++;
+                if (used >= slots) return 0;
+            }
+            float w = res ? ItemCatalog.ResourceWeight(rt) : ItemCatalog.Weight(key);
+            return w > 0f ? Mathf.Clamp(Mathf.FloorToInt((capacity - Weight) / w + 1e-4f), 0, n) : n;
+        }
 
         void Update() { if (node && fridge && !Cold) node.demand = 150f; }
 

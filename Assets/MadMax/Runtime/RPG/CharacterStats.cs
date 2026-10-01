@@ -157,7 +157,7 @@ namespace MadMax.RPG
                 float m = 0f;
                 if (injuries != null)
                     foreach (var i in injuries)
-                        if (i.zone == BodyZone.Torso) m = Mathf.Max(m, (i.type == Wound.Fracture || i.type == Wound.DeepWound ? 0.8f : i.type == Wound.Laceration ? 0.4f : 0.15f) * i.severity);
+                        if (i.zone == BodyZone.Torso) m = Mathf.Max(m, (i.type == Wound.Fracture || i.type == Wound.DeepWound ? 0.8f : i.type == Wound.Strain ? 0.6f : i.type == Wound.Laceration ? 0.4f : 0.15f) * i.severity);
                 return painkilled ? m * 0.5f : m;
             }
         }

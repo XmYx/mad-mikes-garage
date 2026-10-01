@@ -107,6 +107,7 @@ namespace MadMax.Game
         public List<string> blockDefence = new List<string>();                // placed-piece ids set up by the campaign (Nell's stop, the garage)
         public List<string> blockLights = new List<string>();                 // lights block: smashed / knocked-over street lamps
         public List<string> blockContext = new List<string>();               // loot left in searched spots, last respawn choice
+        public List<string> blockBags = new List<string>();                  // worn bags' contents, back strain (WastelandGame.Bags)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

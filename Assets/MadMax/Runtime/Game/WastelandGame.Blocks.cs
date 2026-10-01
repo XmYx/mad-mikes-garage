@@ -44,10 +44,14 @@ namespace MadMax.Game
         partial void ContextSave(SaveData d);
         partial void ContextLoad(SaveData d);
         partial void ContextNewGame();
+        partial void BagsUpdate();
+        partial void BagsSave(SaveData d);
+        partial void BagsLoad(SaveData d);
+        partial void BagsNewGame();
 
-        void BlocksUpdate() { ItemsUpdate(); AnimUpdate(); RoadsUpdate(); MetalUpdate(); HusbandryUpdate(); UtilitiesUpdate(); MedMineUpdate(); DefenceUpdate(); LightsUpdate(); }
-        void BlocksSave(SaveData d) { ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); LightsSave(d); ContextSave(d); }
-        void BlocksLoad(SaveData d) { ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); LightsLoad(d); ContextLoad(d); }
-        void BlocksNewGame() { ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); LightsNewGame(); ContextNewGame(); }
+        void BlocksUpdate() { ItemsUpdate(); AnimUpdate(); RoadsUpdate(); MetalUpdate(); HusbandryUpdate(); UtilitiesUpdate(); MedMineUpdate(); DefenceUpdate(); LightsUpdate(); BagsUpdate(); }
+        void BlocksSave(SaveData d) { ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); LightsSave(d); ContextSave(d); BagsSave(d); }
+        void BlocksLoad(SaveData d) { ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); LightsLoad(d); ContextLoad(d); BagsLoad(d); }
+        void BlocksNewGame() { ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); LightsNewGame(); ContextNewGame(); BagsNewGame(); }
     }
 }

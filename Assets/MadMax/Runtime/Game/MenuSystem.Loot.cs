@@ -208,6 +208,8 @@ namespace MadMax.Game
                 float w = UnitWeight(key), room = to.box.capacity - to.box.Weight;
                 if (w > 0f) n = Mathf.Min(n, Mathf.FloorToInt(room / w));
                 if (n <= 0) { game.Toast(to.box.title + " IS FULL"); return 0; }
+                n = to.box.Fits(key, n);                                                           // bags: what they take, their slots
+                if (n <= 0) { game.Toast(to.box.title + (to.box.accepts != null && !to.box.accepts(key) ? " DOESN'T TAKE THAT" : " HAS NO ROOM")); return 0; }
             }
             int moved;
             if (from.floor)

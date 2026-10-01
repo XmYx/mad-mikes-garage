@@ -256,6 +256,7 @@ namespace MadMax.Items
             list.AddRange(DefenceRecipes());
             list.AddRange(SeasonsRecipes());
             list.AddRange(LightsRecipes());
+            list.AddRange(BagsRecipes());
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {
@@ -278,6 +279,7 @@ namespace MadMax.Items
             "duster", "poncho", "hazmat", "gasmask", "sweater", "overalls", "cowboy", "bomber", "shemagh", "fingerless", "combat_boots",
             "welding_mask", "skull_mask", "schoolbag", "hikingpack", "framepack",
             "leather_boots", "work_belt", "gun_belt", "leather_cuirass", "leather_chaps", "leather_satchel", "bee_veil",   // depth stage E (RecipeLibrary.Husbandry)
+            "backpack", "milpack", "craftpack", "toolbelt", "fanny_bag", "shoulder_bag", "sling_bag", "canvas_satchel", "duffel", "suitcase", "back_brace",   // bags (RecipeLibrary.Bags)
         };
 
         static IEnumerable<Recipe> Extra()

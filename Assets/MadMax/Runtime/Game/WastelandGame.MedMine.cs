@@ -38,7 +38,7 @@ namespace MadMax.Game
             Toast("WILLOW-BARK TEA: THE ACHES DULL");
         }
 
-        static bool MedOpenWound(Injury i) => i.type != Wound.Bruise && i.type != Wound.Fracture;
+        static bool MedOpenWound(Injury i) => i.Open;
 
         /// <summary>A herbal poultice on the worst open wound (bleeding first): binds it (the dressing soils in five
         /// minutes), draws some infection and heals it a little. False when there was nothing to put it on.</summary>

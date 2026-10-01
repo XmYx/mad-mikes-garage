@@ -693,6 +693,7 @@ namespace MadMax.Game
             Icon(tx, top + 2, ThermoIcon);
             canvas.Text(tx + 7, top + 3, GameSettings.Current.metric ? st.bodyTemp.ToString("0.0") + "C" : (st.bodyTemp * 1.8f + 32f).ToString("0.0") + "F", tc);
             if (game.Player.Encumbered) canvas.Text(tx, top + step + 3, "OVERLOADED", Red);
+            else if (game.BackTag != null) canvas.Text(tx, top + step + 3, game.BackTag, game.BackStrain > 0.75f ? Red : new Color32(230, 170, 70, 255));   // back strain warning
             if (st.sick > 0f) canvas.Text(tx, top + step * 2 + 3, "SICK", new Color32(160, 220, 80, 255));
             foreach (var inj in st.injuries) if (inj.Bleeding) { if ((Time.time * 2f) % 1f > 0.4f) canvas.Text(tx, top + step * 3 + 3, "BLEEDING  O", Red); break; }
             // buffs and the latrine need, one short tag each

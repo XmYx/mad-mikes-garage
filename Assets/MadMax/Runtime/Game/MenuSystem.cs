@@ -596,6 +596,7 @@ namespace MadMax.Game
                         items.Add(new Item { label = MadMax.RPG.Injury.ZoneNames[(int)inj.zone] + ": " + MadMax.RPG.Injury.WoundNames[(int)inj.type], value = () => i2.Status, confirm = () => { game.Treat(i2); Rebuild(); }, hint = "ENTER TREAT (SPLINT / DISINFECT / BANDAGE)" });
                     }
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
+                    items.Add(new Item { label = "LOAD ON THE BACK", value = () => game.LoadLine, enabled = () => false, hint = "OVER THE COMFORTABLE LOAD THE BACK STRAINS (RUNNING, JUMPING, CLIMBING, ONE-SIDED BAGS MORE); REST, SLEEP OR A BACK BRACE EASE IT" });
                     break;
                 }
                 case Page.Salvage:
@@ -981,7 +982,7 @@ namespace MadMax.Game
         void CycleClothing(ClothingSlot slot, int dir)
         {
             var options = new List<string> { null };
-            foreach (var d in ClothingLibrary.All) if (d.slot == slot && game.Inventory.GetItem(ClothingLibrary.ItemId(d)) > 0) options.Add(d.id);
+            foreach (var d in ClothingLibrary.All) if (d.slot == slot && (game.Inventory.GetItem(ClothingLibrary.ItemId(d)) > 0 || game.HasFullBag(d.id))) options.Add(d.id);   // a full bag unpacks when worn
             var rig = game.Player.Rig;
             string current = null;
             foreach (var id in rig.outfit) { var d = ClothingLibrary.Get(id); if (d != null && d.slot == slot) current = d.id; }
