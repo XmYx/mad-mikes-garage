@@ -15,7 +15,7 @@ namespace MadMax.World
     /// <see cref="PropLibrary.TemplateGrid"/>.</summary>
     public static class SiteBuilder
     {
-        class Extra { public string kind, table, visual; public Vector3 local; public float yaw; public bool dying; }
+        class Extra { public string kind, table, visual; public Vector3 local; public float yaw; public bool dying, mirror; public HashSet<Vector3Int> cells; }
 
         class Piece
         {
@@ -29,6 +29,7 @@ namespace MadMax.World
             public Mesh mesh;
             public List<Extra> extras;
             public Task bake;                // the collider cooked on a worker before the piece spawns
+            public VoxelMesher.MeshData residual;   // voxels the HD kit does not cover (mesa cap, roof overhangs), meshed on the worker
         }
 
         static int lastSpawnFrame = -1;
@@ -93,6 +94,7 @@ namespace MadMax.World
                 var extras = new List<Extra>();
                 var g = Build(world, s, index, pos, extras);
                 g.Bevel();
+                p.residual = ResidualData(g, extras, s.kind == SiteKind.Outcrop ? TunnelVoxel : BunkerVoxel);
                 return (g, VoxelMesher.BuildData(g, s.kind == SiteKind.Outcrop ? TunnelVoxel : BunkerVoxel), extras);
             });
         }
@@ -177,6 +179,7 @@ namespace MadMax.World
             if (!d) return;
             if (p.site.kind != SiteKind.Airfield) d.gameObject.AddComponent<Subterranean>();
             if (p.extras == null) return;
+            DressHD(d, p, mat);
             var q = Quaternion.Euler(0f, p.yaw, 0f);
             int n = 0;
             foreach (var e in p.extras)
@@ -232,6 +235,82 @@ namespace MadMax.World
             }
         }
 
+        // ------------------------------------------------------------------ HD kit (tools/blender/hd/world/sites.py)
+
+        /// <summary>Voxels the HD kit leaves uncovered, meshed for the HD look (worker thread).</summary>
+        static VoxelMesher.MeshData ResidualData(VoxelGrid g, List<Extra> extras, float size)
+        {
+            HashSet<Vector3Int> cells = null;
+            foreach (var e in extras) if (e.kind == "residual") cells = e.cells;
+            if (cells == null || cells.Count == 0) return null;
+            var sub = new VoxelGrid();
+            foreach (var c in cells) if (g.voxels.TryGetValue(c, out var v)) sub.voxels[c] = v;
+            return sub.Count > 0 ? VoxelMesher.BuildData(sub, size) : null;
+        }
+
+        static void Kit(List<Extra> extras, string id, Vector3 local, float yaw = 0f, bool mirror = false) =>
+            extras.Add(new Extra { kind = "hd", visual = id, local = local, yaw = yaw, mirror = mirror });
+
+        /// <summary>Assemble the piece's HD kit (all modules or none: a missing module would leave a hole), clip it with
+        /// the carve mask like any HD prop, and draw the uncovered voxels (mesa cap, roof overhangs) in the HD lighting.</summary>
+        static void DressHD(DestructibleVoxels d, Piece p, Material mat)
+        {
+            if (!MadMax.Rendering.HDAssets.Enabled) return;
+            var mods = new List<MadMax.Rendering.HDVisual.Module>();
+            HashSet<Vector3Int> residual = null;
+            foreach (var e in p.extras)
+            {
+                if (e.kind == "residual") residual = e.cells;
+                if (e.kind != "hd") continue;
+                if (!MadMax.Rendering.HDAssets.Has(MadMax.Rendering.HDDomain.World, e.visual)) return;
+                mods.Add(new MadMax.Rendering.HDVisual.Module { id = e.visual, pos = e.local, rot = Quaternion.Euler(0f, e.yaw, 0f), mirror = e.mirror });
+            }
+            if (mods.Count == 0) return;
+            int flags = HDProp.FlagsOf(mat);
+            var vis = MadMax.Rendering.HDVisual.DressModules(d.gameObject, mods, MadMax.Rendering.HDDomain.World, flags);
+            if (!vis) return;
+            var carve = HDCarve.Attach(d, vis);
+            if (residual == null || p.residual == null) return;
+            if (carve) carve.skipRim = residual;
+            var go = new GameObject("Residual", typeof(MeshFilter), typeof(MeshRenderer));
+            go.layer = d.gameObject.layer;
+            go.transform.SetParent(d.transform, false);
+            var r = go.GetComponent<MeshRenderer>();
+            var vm = MadMax.Rendering.HDModel.VoxelMaterial;
+            r.sharedMaterial = vm ? MadMax.Rendering.HDAssets.Variant(vm, flags) : mat;
+            vis.Adopt(r);
+            go.AddComponent<SiteResidual>().Init(d, residual, VoxelMesher.ToMesh(p.residual, "SiteResidual"));
+        }
+
+        /// <summary>The voxels of a site piece its HD kit doesn't cover, re-meshed when the piece is carved.</summary>
+        class SiteResidual : MonoBehaviour
+        {
+            DestructibleVoxels d;
+            HashSet<Vector3Int> cells;
+            Mesh mesh;
+
+            public void Init(DestructibleVoxels target, HashSet<Vector3Int> c, Mesh m)
+            {
+                d = target; cells = c; mesh = m;
+                GetComponent<MeshFilter>().sharedMesh = mesh;
+                d.Carved += Rebuild;
+                if (d.Owned) Rebuild();                                                          // streamed back in damaged
+            }
+
+            void Rebuild()
+            {
+                if (!d || d.Grid == null) return;
+                var sub = new VoxelGrid();
+                foreach (var c in cells) if (d.Grid.voxels.TryGetValue(c, out var v)) sub.voxels[c] = v;
+                var old = mesh;
+                mesh = VoxelMesher.Build(sub, "SiteResidual", d.voxelSize);
+                GetComponent<MeshFilter>().sharedMesh = mesh;
+                if (old) Destroy(old);
+            }
+
+            void OnDestroy() { if (d) d.Carved -= Rebuild; if (mesh) Destroy(mesh); }
+        }
+
         /// <summary>Pristine grid of a site piece (save/restore of destroyed voxels).</summary>
         public static VoxelGrid TemplateGrid(string id)
         {
@@ -249,6 +328,7 @@ namespace MadMax.World
             var extras = new List<Extra>();
             var g = Build(world, s, p.index, p.pos, extras);
             g.Bevel();
+            p.residual = ResidualData(g, extras, p.size);
             p.grid = g; p.extras = extras;
             p.mesh = VoxelMesher.Build(g, p.id, p.size);
             return g;
@@ -316,6 +396,10 @@ namespace MadMax.World
                 g.CylY(dx, dz, 1.6f, 0, 4, (i + rnd.Next(2)) % 2 == 0 ? Pal.Ramp(Pal.Crimson, 1, 2607) : Pal.Ramp(Pal.RigGreen, 2, 2608));
             }
             float V = BunkerVoxel;
+            Kit(extras, "Site_Airfield_Hangar", Vector3.zero);                                    // HD kit on the same plan
+            Kit(extras, "Site_Airfield_RadioHut", new Vector3(hx0, 0f, hz0) * V);
+            Kit(extras, "Site_Airfield_Windsock", new Vector3(wx, 0f, wz) * V);
+            Kit(extras, "Site_Airfield_Drums", new Vector3(-L - 4, 0f, -R + 6) * V);
             string plane = rnd.NextDouble() < 0.5 ? "Ultralight" : "Gyrocopter";
             extras.Add(new Extra { kind = "aircraft", visual = plane, local = new Vector3(2f, 0f, 0f) * 1f, yaw = -90f });
             extras.Add(new Extra { kind = "loot", table = "airfield", visual = "locker", local = new Vector3((hx1 - 2) * V, 0f, (hz0 + 3) * V), yaw = 180f });
@@ -346,6 +430,11 @@ namespace MadMax.World
             var frame = Pal.Stripe(Pal.Solid(Hazard), Pal.Ramp(Pal.Black, 1), 1, 4, 2);
             int Cx(int i) => Mathf.RoundToInt((i - (s.gw - 1) * 0.5f) * 20f);
             int Cz(int j) => Mathf.RoundToInt((j - (s.gh - 1) * 0.5f) * 20f);
+            // HD kit (sites.py): module origins in voxel units on the floor, +Z out of an outer wall; uncovered voxels listed
+            const float V = BunkerVoxel;
+            string roofKit = biome == Biome.Desert ? "Site_Bunker_Roof_Sand" : biome == Biome.Nuclear ? "Site_Bunker_Roof_Fallout" : "Site_Bunker_Roof_Green";
+            var kitWalls = new HashSet<Vector3Int>();
+            var uncovered = new HashSet<Vector3Int>();
 
             for (int j = 0; j < s.gh; j++)
             for (int i = 0; i < s.gw; i++)
@@ -361,6 +450,11 @@ namespace MadMax.World
                 g.Box(x0, Slab0, z0, x1, Slab1, z1, Pal.Ramp(Conc, 0, s.seed + 5));
                 g.Mat((byte)ResourceType.Sand);
                 g.Box(x0, Sod, z0, x1, Sod, z1, Pal.Ramp(sod, 1, s.seed + 6));
+                Kit(extras, roofKit, new Vector3(cx, 0f, cz) * V);
+                for (int x = x0; x <= x1; x++)                                                     // the overhang rim stays voxels
+                for (int z = z0; z <= z1; z++)
+                    if (Mathf.Abs(x - cx) > H || Mathf.Abs(z - cz) > H)
+                        for (int y = Slab0; y <= Sod; y++) uncovered.Add(new Vector3Int(x, y, z));
 
                 // walls on the four edges (edges shared with a neighbour are written by both: the grid dedups)
                 for (int e = 0; e < 4; e++)
@@ -373,6 +467,10 @@ namespace MadMax.World
                     bool outer = nroom < 0 && !entry;
                     int half = entry ? 7 : 4;
                     var outward = e == 0 ? Vector3Int.right : e == 1 ? Vector3Int.left : e == 2 ? new Vector3Int(0, 0, 1) : new Vector3Int(0, 0, -1);
+                    var wallAt = e < 2 ? new Vector3Int(cx + (e == 0 ? H : -H), 0, cz) : new Vector3Int(cx, 0, cz + (e == 2 ? H : -H));
+                    if (kitWalls.Add(wallAt))                                                          // a shared edge once
+                        Kit(extras, entry ? "Site_Bunker_Entry" : door ? "Site_Bunker_Doorway" : outer ? "Site_Bunker_WallOuter" : "Site_Bunker_Wall",
+                            (Vector3)wallAt * V, e == 0 ? 90f : e == 1 ? -90f : e == 2 ? 0f : 180f);
                     g.Mat(stone);
                     for (int t = -H; t <= H; t++)
                     for (int y = 0; y <= Wall; y++)
@@ -399,6 +497,7 @@ namespace MadMax.World
                 {
                     g.Mat(stone);
                     g.Box(cx + H - 1, 0, cz + H - 1, cx + H + 1, Wall, cz + H + 1, Pal.Ramp(Conc, 1, s.seed + 8));
+                    Kit(extras, "Site_Bunker_Pillar", new Vector3(cx + H, 0f, cz + H) * V);
                 }
 
                 // lamp fixture + light
@@ -407,6 +506,7 @@ namespace MadMax.World
                     g.Mat(glass); g.Box(cx - 1, Wall, cz, cx + 1, Wall, cz, Pal.Solid(Pal.LightW));
                     g.Mat(scrap); g.Box(cx - 1, Wall, cz - 1, cx + 1, Wall, cz - 1, Pal.Ramp(Pal.Metal, 1)); g.Box(cx - 1, Wall, cz + 1, cx + 1, Wall, cz + 1, Pal.Ramp(Pal.Metal, 1));
                     extras.Add(new Extra { kind = "lamp", local = new Vector3(cx * BunkerVoxel, 2.1f, cz * BunkerVoxel), dying = rnd.NextDouble() < 0.3 });
+                    Kit(extras, "Site_Bunker_Lamp", new Vector3(cx, 0f, cz) * V);
                 }
 
                 // loot against a wall of this cell
@@ -432,6 +532,7 @@ namespace MadMax.World
                 {
                     g.Mat(stone);
                     int rx = cx + (rnd.Next(2) == 0 ? -H + 2 : H - 4), rz = cz + (rnd.Next(2) == 0 ? -H + 2 : H - 4);
+                    Kit(extras, "Site_Bunker_Rubble", new Vector3(rx, 0f, rz) * V);
                     for (int k = 0; k < 14; k++) g.Set(rx + rnd.Next(3), 1 + rnd.Next(k < 8 ? 1 : 2), rz + rnd.Next(3), Pal.Ramp(Conc, rnd.Next(4), k));
                 }
 
@@ -441,6 +542,7 @@ namespace MadMax.World
                 {
                     g.Mat(scrap);
                     g.CylY(cx + 4, cz - 3, 1.6f, Sod + 1, Sod + 5, Pal.Ramp(Pal.Rust, 2, s.seed + i));
+                    Kit(extras, "Site_Bunker_Vent", new Vector3(cx, 0f, cz) * V);
                     g.Box(cx + 2, Sod + 6, cz - 5, cx + 6, Sod + 6, cz - 1, Pal.Ramp(Pal.Metal, 1));
                     g.Box(cx + 3, Sod + 5, cz - 4, cx + 5, Sod + 5, cz - 2, Pal.Ramp(Pal.Metal, 0));
                 }
@@ -448,6 +550,7 @@ namespace MadMax.World
                 {
                     g.Mat(scrap);
                     g.Box(cx - 3, Sod + 1, cz - 3, cx + 3, Sod + 1, cz + 3, Pal.Stripe(Pal.Ramp(Pal.Metal, 2), Pal.Ramp(Pal.Rust, 1), 0, 3));
+                    Kit(extras, "Site_Bunker_Hatch", new Vector3(cx, 0f, cz) * V);
                     g.Box(cx + 2, Sod + 2, cz - 1, cx + 2, Sod + 2, cz + 1, Pal.Ramp(Pal.Rust, 3));
                 }
             }
@@ -477,6 +580,13 @@ namespace MadMax.World
             for (int z = dz0; z <= dz0 + 12; z++)
             for (int y = 1; y <= 11; y++)
                 g.Set(ex + 9, y, z, (z - dz0 + y) % 6 < 2 ? Pal.Solid(Hazard) : Pal.Ramp(Pal.Rust, 2, s.seed + 12));
+            foreach (int side in new[] { -1, 1 })
+            {
+                Kit(extras, "Site_Bunker_RampWall", new Vector3(ex + side * hw, 0f, (zr + zg) * 0.5f) * V, 0f, side < 0);
+                Kit(extras, "Site_Bunker_Sandbags", new Vector3(ex + side * hw, 0f, zr) * V, 0f, side < 0);
+            }
+            Kit(extras, "Site_Bunker_BlastDoor", new Vector3(ex + 9, 0f, dz0) * V);
+            extras.Add(new Extra { kind = "residual", cells = uncovered });
             return g;
         }
 
@@ -519,6 +629,22 @@ namespace MadMax.World
             int J(float y) => Mathf.RoundToInt((y - origin.y) / v);
 
             int halfK = Mathf.RoundToInt(SegmentLen / v * 0.5f);
+            // HD kit (sites.py, 8 m modules on the segment centre): side walls where the mesa runs the whole segment, the
+            // arch where it is roofed throughout, portal faces, boulders; voxels outside them stay (mesa cap, high walls)
+            bool wallL = true, wallR = true, arch = true;
+            for (int k = -halfK; k < halfK; k++)
+            {
+                float lz = zc + k * v;
+                if (Mathf.Abs(lz) > s.halfLen + 2f) { wallL = wallR = arch = false; break; }
+                if (EdgeAdd(-1f, lz) < 0.3f) wallL = false;
+                if (EdgeAdd(1f, lz) < 0.3f) wallR = false;
+                if (!Roofed(lz) || !Roofed(lz - v) || !Roofed(lz + v)) arch = false;
+            }
+            string wallKit = oreKind == ResourceType.IronOre ? "Site_Tunnel_Wall_Iron" : oreKind == ResourceType.CopperOre ? "Site_Tunnel_Wall_Copper" : oreKind == ResourceType.Coal ? "Site_Tunnel_Wall_Coal" : "Site_Tunnel_Wall";
+            if (wallR) Kit(extras, wallKit, new Vector3(0f, Floor(2.7f, zc) - origin.y, 0f));
+            if (wallL) Kit(extras, wallKit, new Vector3(0f, Floor(-2.7f, zc) - origin.y, 0f), 0f, true);
+            if (arch) Kit(extras, "Site_Tunnel_Arch", new Vector3(0f, Floor(0f, zc) - origin.y, 0f));
+            var uncovered = new HashSet<Vector3Int>();
             for (int k = -halfK; k < halfK; k++)
             {
                 float lz = zc + k * v;
@@ -527,6 +653,7 @@ namespace MadMax.World
                 bool portal = roofed && (!Roofed(lz - v) || !Roofed(lz + v));
                 float floorMid = Floor(0f, lz);
                 float addL = EdgeAdd(-1f, lz), addR = EdgeAdd(1f, lz);
+                if (portal) Kit(extras, "Site_Tunnel_Portal", new Vector3(0f, floorMid - origin.y, k * v), Roofed(lz - v) ? 180f : 0f);
                 for (int i = -15; i <= 15; i++)
                 {
                     float lx = i * v, ax = Mathf.Abs(lx);
@@ -536,32 +663,42 @@ namespace MadMax.World
                     {
                         // rock walls: two voxels at the inner face, further out only a lip over the terrain seam
                         int from = ax < 3.2f ? j0 : Mathf.Max(j0, jc - 1);
+                        float wallTop = Floor(lx, lz) + 4.8f;
+                        bool kitWall = (lx < 0f ? wallL : wallR) && ax < 3.45f;
                         for (int j = from; j <= jc; j++)
                         {
                             bool ore = ax < 3.2f && veinChance > 0f && Pal.Noise(new Vector3(i * 0.35f, j * 0.35f, k * 0.35f), s.seed + 12) < veinChance;
                             if (ore) { g.Mat((byte)oreKind); g.Set(i, j, k, vein); g.Mat((byte)ResourceType.Stone); }
                             else g.Set(i, j, k, rock);
+                            if (!kitWall || origin.y + j * v > wallTop) uncovered.Add(new Vector3Int(i, j, k));
                         }
                         continue;
                     }
                     if (!roofed) continue;
                     // arched roof, cap skin at the mesa surface, solid portal faces
                     int ja = J(floorMid + 4.6f - lx * lx * 0.1f);
-                    if (portal) { for (int j = ja; j <= jc; j++) g.Set(i, j, k, rock); continue; }
+                    if (portal)
+                    {
+                        for (int j = ja; j <= jc; j++) { g.Set(i, j, k, rock); if (origin.y + j * v > floorMid + 6.5f) uncovered.Add(new Vector3Int(i, j, k)); }
+                        continue;
+                    }
                     g.Set(i, ja, k, rock); g.Set(i, ja + 1, k, rock);
-                    if (jc > ja + 2) { g.Set(i, jc, k, rock); g.Set(i, jc - 1, k, rock); }
+                    if (!arch) { uncovered.Add(new Vector3Int(i, ja, k)); uncovered.Add(new Vector3Int(i, ja + 1, k)); }
+                    if (jc > ja + 2) { g.Set(i, jc, k, rock); g.Set(i, jc - 1, k, rock); uncovered.Add(new Vector3Int(i, jc, k)); uncovered.Add(new Vector3Int(i, jc - 1, k)); }
                     if (Pal.Hash(i, k, s.seed + 3) < 0.04f)                    // drips
-                        for (int d = 1; d <= 1 + (int)(Pal.Hash(i, k, s.seed + 4) * 3f); d++) g.Set(i, ja - d, k, rock);
+                        for (int d = 1; d <= 1 + (int)(Pal.Hash(i, k, s.seed + 4) * 3f); d++) { g.Set(i, ja - d, k, rock); if (!arch) uncovered.Add(new Vector3Int(i, ja - d, k)); }
                 }
                 // boulders along the wall feet
                 if (Pal.Hash(0, k, s.seed + 5) < 0.06f && Mathf.Min(addL, addR) > 1f)
                 {
                     int side = Pal.Hash(1, k, s.seed + 6) < 0.5f ? -1 : 1;
                     int j = J(Floor(side * 2.4f, lz));
+                    Kit(extras, "Site_Tunnel_Boulders", new Vector3(0f, Floor(side * 2.4f, lz) - origin.y, k * v), 0f, side < 0);
                     for (int dx = 0; dx < 3; dx++) for (int dy = 0; dy < 2; dy++) for (int dz = 0; dz < 2; dz++)
                         if (Pal.Hash(dx, dy + k, dz, s.seed + 7) < 0.8f) g.Set(side * (10 - dx), j + dy, k + dz, rock);
                 }
             }
+            extras.Add(new Extra { kind = "residual", cells = uncovered });
             // the roost and an old camp in the deepest roofed stretch
             if (index == PieceCount(s) / 2 && Roofed(zc))
             {

@@ -28,6 +28,8 @@ namespace MadMax.World
         readonly Dictionary<Material, Material> copies = new Dictionary<Material, Material>();
         Mesh rim;
         MeshFilter rimFilter;
+        /// <summary>Cells drawn by another voxel mesh (a site's residual voxels): no rim faces there.</summary>
+        [System.NonSerialized] public HashSet<Vector3Int> skipRim;
 
         static readonly int MaskId = Shader.PropertyToID("_CarveMask"), MatrixId = Shader.PropertyToID("_CarveMatrix"), MinId = Shader.PropertyToID("_CarveMin"),
             SizeId = Shader.PropertyToID("_CarveSize"), OnId = Shader.PropertyToID("_CarveOn"), InsetId = Shader.PropertyToID("_CarveInset");
@@ -152,7 +154,7 @@ namespace MadMax.World
                 for (int d = 0; d < 6; d++)
                 {
                     var n = c + Dirs[d];                                                      // a voxel still there, beside the hole
-                    if (!grid.voxels.TryGetValue(n, out var v)) continue;
+                    if (!grid.voxels.TryGetValue(n, out var v) || (skipRim != null && skipRim.Contains(n))) continue;
                     Vector3 nrm = -(Vector3)Dirs[d];                                          // its face towards the hole
                     Vector3 centre = ((Vector3)n + nrm * 0.5f) * size;
                     Vector3 u = d < 2 ? Vector3.up : Vector3.right, w = Vector3.Cross(nrm, u);

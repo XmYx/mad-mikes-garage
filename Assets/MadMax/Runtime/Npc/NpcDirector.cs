@@ -176,6 +176,7 @@ namespace MadMax.Npc
             go.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
             var box = go.GetComponent<BoxCollider>(); box.center = boardMesh.bounds.center; box.size = boardMesh.bounds.size;
             go.AddComponent<MadMax.Building.BountyBoard>().town = town;
+            MadMax.Rendering.HDVisual.Dress(go, MadMax.Rendering.HDDomain.World, "BountyBoard");
             FloraBlocker.Add(go);
             return go;
         }

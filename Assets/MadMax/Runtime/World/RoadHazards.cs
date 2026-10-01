@@ -80,6 +80,7 @@ namespace MadMax.World
                 c.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                 c.GetComponent<MeshFilter>().sharedMesh = caltropMesh;
                 c.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                MadMax.Rendering.HDVisual.Dress(c, MadMax.Rendering.HDDomain.World, "Caltrop", MadMax.Rendering.HDAssets.NoShadow);
             }
         }
 
