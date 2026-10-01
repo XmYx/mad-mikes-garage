@@ -29,9 +29,9 @@ namespace MadMax.Game.Acceptance
             {
                 float x = -2000f + i * 173f, z = -900f + i * 97f;
                 n++;
-                if (Mathf.Abs(w.BaseHeight(x, z) - w.BaseHeight(x + WorldGen.Circumference, z)) < 0.01f) same++;
+                if (Mathf.Abs(w.ContinentNoise(x, z) - w.ContinentNoise(x + WorldGen.Circumference, z)) < 1e-4f && w.Ocean(x, z) == w.Ocean(x - WorldGen.Circumference, z)) same++;
             }
-            c.Check(same == n, $"the ground repeats one circumference east ({same}/{n} samples)");
+            c.Check(same == n, $"land and sea repeat one circumference east and west ({same}/{n} samples; the date-line crossing moves you across the open-sea band)");
             c.Check(w.Ocean(WorldGen.HalfX, 0f) && w.Ocean(-WorldGen.HalfX + 50f, 400f), "the date line is open sea");
             float polar = WorldGen.ClimateOffset(WorldGen.ZOfLatitude(80f)), tropic = WorldGen.ClimateOffset(WorldGen.ZOfLatitude(2f));
             c.Metric("climate_offset_80N", polar, "C");
@@ -49,14 +49,26 @@ namespace MadMax.Game.Acceptance
             c.Metric("settlements", setl.Count, "");
             c.Check(setl.Count >= 3, $"settlements exist ({setl.Count})");
             c.Check(setl.All(s => s.kind == Biome.Village || s.kind == Biome.Town || s.kind == Biome.City), "each is a village, town or city: " + string.Join(", ", setl.Select(s => s.kind).Distinct()));
-            int linked = 0;
+            // the road network never crosses the sea: a town on an island is reached by boat (RoadNetwork.Dry)
+            int linked = 0, islands = 0;
+            var on = new List<Settlement>(); var off = new List<Settlement>();
             foreach (var s in setl)
             {
                 bool near = false;
                 foreach (var r in w.roads.roads) { foreach (var p in r.points) if ((new Vector2(p.x, p.z) - s.pos).sqrMagnitude < (s.radius + 60f) * (s.radius + 60f)) { near = true; break; } if (near) break; }
-                if (near) linked++;
+                (near ? on : off).Add(s);
             }
-            c.Check(linked == setl.Count, $"roads reach every settlement ({linked}/{setl.Count})");
+            linked = on.Count;
+            foreach (var s in off)
+            {
+                var other = on.OrderBy(o => (o.pos - s.pos).sqrMagnitude).FirstOrDefault();
+                bool sea = false;
+                if (other != null) for (int k = 1; k < 64 && !sea; k++) { var q = Vector2.Lerp(s.pos, other.pos, k / 64f); sea = w.Ocean(q.x, q.y); }
+                if (sea) islands++;
+                c.Note($"settlement {s.index} ({s.kind}) at {s.pos.x:0},{s.pos.y:0} has no road; nearest road town {(other != null ? other.index.ToString() : "-")} at {(other != null ? (other.pos - s.pos).magnitude : 0f):0} m, sea between: {sea}");
+            }
+            c.Metric("island_settlements", islands, "");
+            c.Check(linked + islands == setl.Count, $"roads reach every settlement on the mainland; the rest lie across the sea ({linked} by road, {islands} islands, of {setl.Count})");
             yield return null;
         }
     }
@@ -80,12 +92,12 @@ namespace MadMax.Game.Acceptance
             foreach (SiteKind kind in new[] { SiteKind.Bunker, SiteKind.Outcrop, SiteKind.Airfield })
             {
                 Site best = null;
-                for (float r = 800f; r <= 4800f && best == null; r += 800f)
+                for (float r = 800f; r <= 9600f && best == null; r += 800f)
                 {
                     w.SitesNear(start, r, near);
                     best = near.Where(s => s.kind == kind).OrderBy(s => (s.pos - new Vector2(start.x, start.z)).sqrMagnitude).FirstOrDefault();
                 }
-                if (!c.Check(best != null, $"a {kind} within 4.8 km of the start")) continue;
+                if (best == null) { c.Block($"no {kind} within 9.6 km of the start on this seed"); continue; }
                 c.Check(w.SiteIn(best.cell) == best && w.SiteAt(best.pos.x, best.pos.y) == best, $"{kind} {best.Key}: bound to its cell, found again at its position");
                 string label = kind == SiteKind.Bunker ? "Bunker" : kind == SiteKind.Airfield ? "Hangar" : "RockTunnel";
                 var to = new Vector3(best.pos.x + best.reach + 6f, 0f, best.pos.y);

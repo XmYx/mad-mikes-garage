@@ -69,15 +69,19 @@ namespace MadMax.Game.Acceptance
             g.Exit();
             yield return SurvivalKit.GameSeconds(0.5f);
             var sys = car.GetComponent<VehicleSystems>();
-            var fuelKind = car.GetComponentInChildren<EngineStats>() && car.GetComponentInChildren<EngineStats>().name.Contains("diesel") ? ResourceType.Diesel : ResourceType.Fuel;
+            var fuelKind = sys ? sys.FuelKind : ResourceType.Fuel;
             if (inv.Get(fuelKind) < 10) { inv.Add(fuelKind, 10); c.Fixture("granted 10 L of " + fuelKind); }
             if (sys && sys.fuel > sys.fuelCapacity - 10f) { sys.fuel = sys.fuelCapacity * 0.5f; c.Fixture("tank drained to half"); }
             float fuel0 = sys ? sys.fuel : 0f;
             var side = car.transform.right;
             P.Teleport(SurvivalKit.Ground(car.transform.position + side * 2.2f) + Vector3.up * 0.1f, Mathf.Atan2(-side.x, -side.z) * Mathf.Rad2Deg);
             yield return SurvivalKit.GameSeconds(0.4f);
+            c.Note($"at the car: prompt '{g.Prompt}', tank {fuelKind}, pack {inv.Get(fuelKind)} L");
             yield return SurvivalKit.Press(Controls.Act.Service);
-            yield return SurvivalKit.Until(() => g.StarterStep >= 2, 25f, w);
+            yield return SurvivalKit.GameSeconds(0.5f);
+            c.Check(g.Working || g.Refuelling || (sys && sys.fuel > fuel0), "the service key starts the refuel (walk up, pour): " + (g.ToastText ?? g.Prompt));
+            yield return SurvivalKit.Until(() => !g.Working && !g.Refuelling && g.StarterStep >= 2, 60f, w);
+            c.Note($"after the refuel: working {g.Working}, refuelling {g.Refuelling}, step {g.StarterStep}, toast '{g.ToastText}'");
             c.Check(sys && sys.fuel > fuel0 + 0.5f, $"the service key fills the tank from the pack ({fuel0:0.0} -> {(sys ? sys.fuel : 0f):0.0} L)");
             c.Check(w.ok, "and completes FIRST STEPS 2");
             c.Metric("first_steps_pay", inv.Get(ResourceType.Scrap) - scrap0, "scrap");
