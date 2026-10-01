@@ -364,9 +364,13 @@ class Asset:
         self.order = []
         self.ref = ref if ref is not None else gid
         self.extra = {}
+        self.movers = set()
 
-    def p(self, name, byte=None, pivot=(0, 0, 0)):
-        """Get / create the sub-object `name` (default byte: the name if it is a ResourceType)."""
+    def p(self, name, byte=None, pivot=(0, 0, 0), mover=False):
+        """Get / create the sub-object `name` (default byte: the name if it is a ResourceType). Movers (rotors, leaves,
+        heads posed by the game at their pivot) are left out of the size check against the voxel template."""
+        if mover:
+            self.movers.add(name)
         if name not in self.parts:
             self.parts[name] = GP(name, byte or (name if name in RES else "Scrap"), pivot)
             self.order.append(name)
@@ -384,6 +388,7 @@ class Asset:
                 continue
             ob = gp.build(root, name=n)          # Blender may suffix ".001" in multi-asset files: "part" is authoritative
             ob["part"] = n
+            ob["mover"] = n in self.movers
             mats[n] = gp.byte
             objs.append(ob)
         root["game_id"] = self.gid
@@ -422,12 +427,12 @@ def tris_of(root):
     return n
 
 
-def game_dims(root):
-    """Bounds of the asset in game axes (x, y, z) metres, relative to the root."""
+def game_dims(root, skip_movers=True):
+    """Bounds of the asset in game axes (x, y, z) metres, relative to the root (movers left out)."""
     lo = Vector((1e9, 1e9, 1e9)); hi = -lo
     inv = root.matrix_world.inverted()
     for ob in root.children_recursive:
-        if ob.type != "MESH":
+        if ob.type != "MESH" or (skip_movers and ob.get("mover")):
             continue
         mw = inv @ ob.matrix_world
         for v in ob.data.vertices:
