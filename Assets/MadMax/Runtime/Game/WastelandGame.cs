@@ -103,7 +103,7 @@ namespace MadMax.Game
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp) urp.shadowDistance = shadowDistance;
             if (partPrefabs != null) foreach (var pp in partPrefabs) if (pp) partLookup[pp.name] = pp;
             var partList = new List<(string, PartCategory, float, int)>();
-            foreach (var kv in partLookup) if (kv.Value.TryGetComponent<VehiclePart>(out var vp)) partList.Add((kv.Key, vp.category, vp.mass, vp.sizeClass));
+            foreach (var kv in partLookup) if (!kv.Key.EndsWith("_hidden") && kv.Value.TryGetComponent<VehiclePart>(out var vp)) partList.Add((kv.Key, vp.category, vp.mass, vp.sizeClass));   // _hidden: far end of an HD roller drum
             RecipeLibrary.RegisterParts(partList);
             var vehList = new List<(string, float)>();
             foreach (var pf in vehiclePrefabs) if (pf && pf.TryGetComponent<VehicleChassis>(out var ch)) vehList.Add((pf.name, ch.TotalMass));
