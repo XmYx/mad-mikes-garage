@@ -423,7 +423,7 @@ namespace MadMax.Game
             float rules = GameRules.Current != null ? GameRules.Current.DamageTaken : 1f;
             // jumps and climbs jolt a loaded back
             bool trav = Player.Traversing;
-            bool jumped = !trav && !resting && v.y > 2.5f && lastVy <= 2.5f;
+            bool jumped = !trav && !resting && v.y > 3.2f && lastVy <= 3.2f;                     // a take-off (not a run up a slope)
             bool climbed = trav && !wasTraversing;
             lastVy = v.y; wasTraversing = trav;
             if ((jumped || climbed) && eff > comfort * 0.85f) strain += (climbed ? 0.06f : 0.035f) * (1f + 2f * excess) * ease * rules;
@@ -559,6 +559,7 @@ namespace MadMax.Game
         void SettleLoadedBags()
         {
             bagsLoaded = false;
+            if (wornBags.Count == 0) bagsMigrate = false;                                           // nothing worn: nothing to move into
             foreach (var kv in bagPending)
             {
                 var plain = BagLibrary.Plain(kv.Key);

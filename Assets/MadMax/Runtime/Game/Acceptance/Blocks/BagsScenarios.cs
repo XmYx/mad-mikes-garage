@@ -185,7 +185,7 @@ namespace MadMax.Game.Acceptance
             var g = c.Game;
             yield return ItemsScenarios.OnFootAtPad(c, 6f);
             var snap = BagsScenarios.Strip(c);
-            var tools = ToolLibrary.AllIds.Where(id => ItemCatalog.Category(id) == ItemCategory.Tool).Take(7).ToList();
+            var tools = ToolLibrary.AllIds.Where(id => ItemCatalog.Category(id) == ItemCategory.Tool && ItemCatalog.Weight(id) <= 2f).Take(7).ToList();   // hand tools (not the sledgehammer)
             const string belt = "cloth_toolbelt";
             g.Inventory.AddItem(belt); g.Inventory.AddItem("food_can");
             foreach (var t in tools) g.Inventory.AddItem(t);
