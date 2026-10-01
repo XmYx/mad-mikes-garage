@@ -217,3 +217,52 @@ mount point (right-hand authoring). Build prefabs the way `HDVehicleBuilder.Buil
 * Heavy/misc wheel instances share one mesh: their atlas islands overlap (identical bakes, fine). Large flat props
   get ~100 px/m at 1024: raise `--size` for hero buildings.
 * LODs are plain decimation (UV seams kept by Blender's collapse); thin glass/lamp children have no LODs.
+
+## 11. Full export (all content sets)
+
+`python3 tools/blender/hd/export/run_export.py --out <unity>/Assets/MadMax/Models/HD --jobs 6` exports everything
+(`--list` shows the job table; filters like `world/` or `items/food_`; `--force` ignores freshness). Resumable: a job is
+skipped when its state file (`<MadMaxUnity>/hd_export_state/`) is newer than its .blend and the exporter, and inside a
+job each asset is skipped when its sidecar is newer (`--skip-fresh`, sidecar `exporter` >= 2). Log:
+`<MadMaxUnity>/hd_export.log`; Blender output per job: `<MadMaxUnity>/hd_export_logs/`.
+
+| group folder | source | asset name | kind | atlas cap |
+|---|---|---|---|---|
+| `cars` | `wt/hd .../cars/blend` | vehicle design name | vehicle | 2048 |
+| `heavy` | `wt/hd .../heavy` (incl. `Tractor_implements`: one asset per implement) | design / part name | vehicle | 2048 |
+| `misc` | `wt/hd .../misc/{bike,boat,air}_*` (the old prop_/furn_/parts_ previews are superseded) | root name | vehicle | 2048 |
+| `parts` | `wt/hdparts .../parts_all/blend` (export_jobs.json) | part key | part | 512 |
+| `items` | `wt/hdparts .../items/blend` | item id | item | 512 (most 256) |
+| `world` | `wt/hdworld .../world` (buildings, props, sites, vegetation) | root `game_id` (`BrickHouse0`, `Ore_IronOre1`, `Pine2` ...) | prop | 1024, vegetation 256 |
+| `furniture` | `wt/hdworld .../furniture` | furniture id | prop | 512 |
+| `animals` | `wt/hdworld .../animals` | species id | animal | 1024 |
+| `character` | `character/blend/wardrobe_<KEY>.blend` (`build_wardrobe.py`) | `Character_M`, `_M2`, `_F`, `_F2` | character | body 1024, rest 512/256 |
+
+`<out>/hd_index.json` lists every current asset: `{group, id (game id), asset (folder), kind, path, sidecar, fbx,
+gameScale, rigged, tris [lod0, lod1, lod2], bytes}`. Builders should resolve assets through it.
+
+Sidecar format 2 adds `gameId`, `gameScale`, `exporter`, per object `parentBone`, per atlas `swayTip`.
+
+* **Names**: multi-asset files number duplicate object names (`Body.003`); the exporter restores the clean name
+  inside each asset. Asset folder names are the game id with characters other than `A-Za-z0-9_.-` replaced by `_`
+  (`gameId` keeps the original).
+* **UVs**: an asset whose meshes were unwrapped one by one (islands of different meshes overlap > 15 %) is
+  re-unwrapped into one atlas (log line "uv islands of ... overlap").
+* **Vegetation**: the source `Sway` attribute (0 root -> 1 tip) becomes `Col.a = 1 - Sway` (1 = rooted, the voxel
+  convention); the atlas material gets `_SwayTip = swayTip` (0.12) so HDLit bends the tips with the wind.
+* **Animals**: root empty -> `Rig` armature (one bone per part, named like `Animal`'s rig parts) -> rigid part meshes
+  parented to their bone (`parentBone` in the sidecar; props `part`, `rig_part`, `index`, `pivot_game_m`; root
+  `ref_height`, `species_name`). Exported as a rig (Generic import, bake axis conversion), no skinning: pose the
+  part transforms (or bones) by name. LODs are children of each part mesh.
+* **Characters**: one asset per body shape with the rig, `Body`, `Eye0/1`, `brows`, `beard`, `hair_<Style>` and
+  `hair_<Style>_cut` (crown cut for hats, lowest HEADWEAR cut), and every garment piece
+  `wardrobe_<KEY>_<piece>` with props `garment` (ClothingLibrary-style id from garments.GARMENTS) and `slot`.
+  Skin (`skin_tint`) and hair (`hair_tint`) are painted one neutral tone and are the paint mask (B): tint them with
+  `_PaintColor` per renderer (Appearance skin / hair colour; `_PaintRef` = the baked tone). Full body under clothes:
+  hide covered skin in game (or rely on the garment shells). Stubble (beard 1) is not baked; beard 2 is a mesh.
+* **Items**: modelled and exported at real size; `gameScale` = what `WorldItemModels` shows them at (tools 0.7,
+  clothing 0.45, media/seeds/ammo/bait 0.3, resources/kits 1, other 0.35). Origin = resting point / grip.
+* **Parts**: origin = mount point (right-hand side parts, wheels at the inner face); hinged pieces are child meshes
+  named like the game segments, pivots at the joints.
+* **World buildings**: `Shell_<Material>` (carvable; root prop `shell_parts`, `materials` JSON, `voxel` size),
+  `Detail`, `Glass`, movers (`mover = True`, pivot at the joint).
