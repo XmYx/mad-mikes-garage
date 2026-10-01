@@ -110,6 +110,19 @@ namespace MadMax.Game
 
         float scanT;
 
+        /// <summary>Is something <paramref name="gap"/> (from the vehicle's bounds to it) about to be struck by a vehicle
+        /// moving at <paramref name="vel"/>: touching (within <paramref name="contact"/>), or straight ahead within
+        /// <paramref name="lookahead"/> m (not merely passed close beside).</summary>
+        public static bool InPath(Vector3 gap, Vector3 vel, float contact, float lookahead)
+        {
+            if (gap.sqrMagnitude <= contact * contact) return true;
+            float sp = vel.magnitude;
+            if (sp < 0.01f) return false;
+            var dir = vel / sp;
+            float along = Vector3.Dot(gap, dir);
+            return along > 0f && along <= contact + lookahead && (gap - dir * along).sqrMagnitude <= contact * contact;
+        }
+
         void FixedUpdate()
         {
             if (!rd || !rd.Active) { bodies.Clear(); cols.Clear(); ignored.Clear(); return; }
@@ -136,13 +149,12 @@ namespace MadMax.Game
                 var vel = v.Body.linearVelocity - (frozen ? Vector3.zero : bodies[0].linearVelocity);   // closing speed (an ejected rider flies with the car)
                 float sp = vel.magnitude;
                 if (sp < 2.5f) continue;
-                float reach = 0.3f + sp * (frozen ? 0.13f : Time.fixedDeltaTime * 2f);
+                float ahead = sp * (frozen ? 0.13f : Time.fixedDeltaTime * 2f);
                 foreach (var b in bodies)
                 {
                     var c = b.worldCenterOfMass;
-                    var cp = v.Body.ClosestPointOnBounds(c);
-                    var d = c - cp;
-                    if (d.sqrMagnitude > reach * reach || Vector3.Dot(d, vel) < -0.05f * sp) continue;
+                    var cp = VehicleStorage.Closest(v, c);
+                    if (!InPath(c - cp, vel, 0.3f, ahead)) continue;
                     Knock(v, cp, true);
                     return;
                 }

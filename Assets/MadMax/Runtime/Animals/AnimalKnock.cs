@@ -115,10 +115,8 @@ namespace MadMax.Animals
                 var vv = v.Body.linearVelocity;
                 float sp = vv.magnitude;
                 if (sp < 2.5f) continue;
-                var cp = v.Body.ClosestPointOnBounds(c);
-                var d = c - cp;
-                float reach = col.bounds.extents.magnitude * 0.6f + 0.2f + sp * 0.08f;
-                if (d.sqrMagnitude > reach * reach || Vector3.Dot(d, vv) < -0.05f * sp) continue;
+                var cp = VehicleStorage.Closest(v, c);
+                if (!BodyKnock.InPath(c - cp, vv, col.bounds.extents.magnitude * 0.6f + 0.2f, sp * 0.08f)) continue;
                 Hit(v, cp, true);
                 return;
             }

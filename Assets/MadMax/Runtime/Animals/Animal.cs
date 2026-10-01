@@ -930,10 +930,8 @@ namespace MadMax.Animals
                 close = true;
                 if (knock && knock.IsIgnoring(v)) continue;
                 var c = transform.position + Vector3.up * Mathf.Max(0.15f, Def.Height * 0.5f * Size);
-                var cp = v.Body.ClosestPointOnBounds(c);
-                float r = col.radius * Size + 0.35f + sp * Mathf.Max(0.04f, Time.deltaTime * 2f);
-                var gap = c - cp;
-                if (gap.sqrMagnitude > r * r || Vector3.Dot(gap, vel) < -0.1f * sp) continue;
+                var cp = VehicleStorage.Closest(v, c);
+                if (!BodyKnock.InPath(c - cp, vel, col.radius * Size + 0.35f, sp * Mathf.Max(0.04f, Time.deltaTime * 2f))) continue;
                 ApplyHit(c, Flat(vel).normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
                 knock = AnimalKnock.For(this);
                 knock.Hit(v, cp, false);

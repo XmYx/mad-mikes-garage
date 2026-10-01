@@ -871,10 +871,8 @@ namespace MadMax.Npc
                 var vel = v.Body.linearVelocity;
                 float sp = vel.magnitude;
                 if (sp < 4f) continue;
-                var cp = v.Body.ClosestPointOnBounds(me);
-                float reach = 0.5f + sp * Mathf.Max(0.05f, Time.deltaTime * 2f);
-                var gap = me - cp;
-                if (gap.sqrMagnitude > reach * reach || Vector3.Dot(gap, vel) < -0.1f * sp) continue;   // behind it or beside: not this one
+                var cp = VehicleStorage.Closest(v, me);
+                if (!BodyKnock.InPath(me - cp, vel, 0.5f, sp * Mathf.Max(0.05f, Time.deltaTime * 2f))) continue;   // touching, or about to: not passing close beside
                 ApplyHit(transform.position + Vector3.up, vel.normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
                 NpcVoice.CarHit(this);
                 if (mode != Mode.Dead) KnockDown(vel);

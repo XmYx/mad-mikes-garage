@@ -76,6 +76,22 @@ namespace MadMax.Vehicles
 
         static readonly string[] LidSockets = { "trunk", "trunk_lid", "boot", "boot_lid", "tailgate", "hatch" };
 
+        Bounds hull; bool hasHull;
+
+        /// <summary>Closest point on the vehicle's body box (oriented with the vehicle, bumpers included) to <paramref name="p"/>;
+        /// the rigidbody's world AABB for vehicles without a body mesh. Used to tell who a vehicle actually strikes.</summary>
+        public static Vector3 Closest(VehicleDriver v, Vector3 p)
+        {
+            if (v.TryGetComponent<VehicleStorage>(out var s) && s.hasHull)
+            {
+                var l = v.transform.InverseTransformPoint(p);
+                var b = s.hull;
+                l = new Vector3(Mathf.Clamp(l.x, b.min.x, b.max.x), Mathf.Clamp(l.y, b.min.y, b.max.y), Mathf.Clamp(l.z, b.min.z, b.max.z));
+                return v.transform.TransformPoint(l);
+            }
+            return v.Body.ClosestPointOnBounds(p);
+        }
+
         void Build(VehicleDriver v)
         {
             vehicle = v;
@@ -83,6 +99,12 @@ namespace MadMax.Vehicles
             var body = transform.Find("Body");
             var mf = body ? body.GetComponent<MeshFilter>() : null;
             var b = mf && mf.sharedMesh ? mf.sharedMesh.bounds : new Bounds(new Vector3(0f, 0.8f, 0f), new Vector3(1.8f, 1.4f, 4.2f));
+            if (mf && mf.sharedMesh && body.localRotation == Quaternion.identity && body.localScale == Vector3.one)
+            {
+                hull = new Bounds(b.center + body.localPosition, b.size + new Vector3(0.1f, 0f, 0.5f));      // bumpers, bars
+                hull.SetMinMax(new Vector3(hull.min.x, Mathf.Min(hull.min.y, 0.25f), hull.min.z), hull.max);
+                hasHull = true;
+            }
             float half = Mathf.Max(0.3f, Mathf.Max(-b.min.x, b.max.x));
             float y = Mathf.Clamp(b.min.y, 0f, 1.2f) + 0.35f;
             var eyeT = transform.Find("DriverEye");
