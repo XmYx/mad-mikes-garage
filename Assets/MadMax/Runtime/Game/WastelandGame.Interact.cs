@@ -74,21 +74,14 @@ namespace MadMax.Game
             if (cameraRig) cameraRig.SetTarget(Player.transform);
         }
 
-        /// <summary>A bike crash (roadmap 24): off the seat and limp through the air, hurt by the speed; back on your feet
-        /// a few seconds later where you landed (unless it killed you).</summary>
+        /// <summary>A bike crash (roadmap 24) or a hard landing: off the seat and limp through the air along the travel
+        /// before the impact, hurt by the speed; back on your feet a few seconds later where you landed (unless it killed
+        /// you). See <see cref="Eject"/>.</summary>
         public void ThrowRider(VehicleDriver bike, Vector3 velocity, float severity, string why)
         {
             if (Current != bike || !Player) return;
-            var at = Player.transform.position;
-            Exit();
-            var cc = Player.GetComponent<CharacterController>();
-            if (cc) cc.enabled = false;
-            Player.transform.position = at;
-            Toast(why + "!");
-            Ragdoll.For(Player.Rig).Go(velocity * 60f + Vector3.up * 50f, at + Vector3.up * 1.1f, velocity);
-            if (cameraRig) cameraRig.Shake(Mathf.Min(8f, severity * 0.3f));
-            Vitals.Hurt(severity, "CRASH");
-            if (!Vitals.Dead) { CancelInvoke(nameof(GetUp)); Invoke(nameof(GetUp), 2.6f); }
+            var pre = bike.TryGetComponent<VehicleDamage>(out var vd) && vd.PreImpactVelocity.sqrMagnitude > velocity.sqrMagnitude ? vd.PreImpactVelocity : velocity;
+            Eject(bike, EjectVelocity(pre, velocity), severity, why);
         }
 
         void GetUp()
@@ -101,6 +94,7 @@ namespace MadMax.Game
             if (cc) cc.enabled = true;
             if (terrain) at.y = Mathf.Max(at.y - 0.9f, terrain.Height(at.x, at.z) + 0.05f);
             Player.Teleport(at, Player.transform.eulerAngles.y);
+            if (cameraRig && !Current) cameraRig.SetTarget(Player.transform);                      // off the tumbling body, back on the player
         }
 
         /// <summary>Into a walk-in space through its first door (a docked submarine, from the base's collar).</summary>

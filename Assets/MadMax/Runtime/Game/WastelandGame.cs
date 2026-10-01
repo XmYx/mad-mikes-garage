@@ -327,6 +327,7 @@ namespace MadMax.Game
             var at = spawnPoint ?? (home ? ExitPoint(home) : WorldSpawn);
             Stats.hunger = Mathf.Max(Stats.hunger, 50f); Stats.thirst = Mathf.Max(Stats.thirst, 50f); Stats.sick = 0f;
             if (Player.Interior) Player.ExitInterior(at); else Player.Teleport(at, 0f);
+            if (cameraRig) cameraRig.SetTarget(Player.transform);                                    // an ejection left it on the body
             Stats.health = Stats.MaxHealth * 0.5f;
             Stats.stamina = Stats.MaxStamina;
             // you come to patched up: open wounds are bandaged (they still heal, hurt and can get infected), so a bad
