@@ -52,7 +52,8 @@ namespace MadMax.Game.Acceptance
             Placeable door = null;
             if (doorway)
             {
-                yield return SurvivalKit.Build(c, "door_wood", doorway.transform.position + Vector3.up * 1.1f, placed, () => (g.Build.Status ?? "").Contains("FIT"));
+                // the opening is a hole: aim at the doorway's wall beside it, as a player does
+                yield return SurvivalKit.Build(c, "door_wood", doorway.transform.position + doorway.transform.right * 0.78f + Vector3.up * 1.1f, placed, () => (g.Build.Status ?? "").Contains("FIT"));
                 door = placed[0];
                 c.Check(door && door.GetComponent<Door>() && Vector3.Distance(door.transform.position, doorway.transform.position) < 0.05f, "the door snaps into the doorway");
             }

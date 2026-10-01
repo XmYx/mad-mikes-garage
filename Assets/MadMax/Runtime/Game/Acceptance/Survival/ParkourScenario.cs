@@ -31,7 +31,7 @@ namespace MadMax.Game.Acceptance
             c.Fixture($"test obstacles (boxes) along a clear lane at {pad.x:0},{pad.z:0}");
             var wall = Box(12f, 0.3f, 0.9f, 3f);
             var block = Box(16f, 2f, 1.8f, 3f);
-            var bar = Box(22f, 0.3f, 0.3f, 3f, 1.4f);
+            var bar = Box(22f, 0.3f, 0.3f, 3f, 1.5f);
             var ledge = Box(26f, 2f, 1.8f, 3f);
             Box(26f, 2f, 0.2f, 3f, 2.7f);                                                     // slab 0.9 m over the ledge
             var tower = Box(33f, 2f, 3.5f, 3f);
@@ -63,13 +63,17 @@ namespace MadMax.Game.Acceptance
 
             // ---- mantle a 1.8 m block
             yield return Stand(c, 13.5f);
-            float stam = s.stamina;
             yield return Approach(P, block, w);
-            yield return Traverse(P, w);
+            float stam = s.stamina, low = stam;
+            P.jump = true;
+            yield return SurvivalKit.Until(() => { low = Mathf.Min(low, s.stamina); return P.Traversing; }, 1f, w);
+            yield return SurvivalKit.Until(() => { low = Mathf.Min(low, s.stamina); return !P.Traversing; }, 4f);
+            P.moveInput = Vector2.zero;
+            yield return SurvivalKit.GameSeconds(0.3f);
             float onTop = P.transform.position.y - GroundY(16f);
             c.Metric("mantle_height", onTop, "m");
             c.Check(w.ok && onTop > 1.6f, $"Space at the 1.8 m block mantles onto it (feet {onTop:0.00} m up)");
-            c.Check(s.stamina < stam, $"climbing costs stamina ({stam:0} -> {s.stamina:0})");
+            c.Check(low < stam - 5f, $"climbing costs stamina ({stam:0} -> {low:0} at the lowest)");
             c.Screenshot("mantle");
             yield return null;
 
@@ -89,7 +93,7 @@ namespace MadMax.Game.Acceptance
             P.moveInput = new Vector2(0f, 1f);
             yield return SurvivalKit.GameSeconds(2.5f);
             float stuck = Along(P.transform.position);
-            c.Check(stuck < 21.95f, $"standing up the 1.4 m bar stops you ({stuck:0.0} m along, bar at 22)");
+            c.Check(stuck < 21.95f, $"standing up the 1.5 m bar stops you ({stuck:0.0} m along, bar at 22)");
             P.crouch = true;
             float crouchT = Time.time;
             yield return SurvivalKit.Until(() => Along(P.transform.position) > 22.8f, 8f, w);
