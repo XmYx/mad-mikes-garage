@@ -52,7 +52,7 @@ namespace MadMax.Npc
         public bool Alive => mode != Mode.Dead;
         public bool Surrendered => State.Has(NpcSave.Surrendered);
         /// <summary>Here to be talked to: not asleep indoors, not riding or driving.</summary>
-        public bool Available => Alive && !asleep && !Riding && !Driving;
+        public bool Available => Alive && !asleep && !Riding && !Driving && !Down;
         public bool Riding => rideSeat;
         public bool Driving => drivenCar;
         public VehicleDriver DrivenCar => drivenCar;
@@ -204,6 +204,12 @@ namespace MadMax.Npc
             if (proxy) { ProxyTick(dt); return; }
             var g = WastelandGame.Instance;
             if (!g || g.Player == null) return;
+            if (Down)
+            {
+                if (Time.time < bleedUntil && (health -= 3f * dt) <= 0f) { Die(lastByPlayer); return; }
+                DownTick();
+                return;
+            }
             if (Time.time < bleedUntil)
             {
                 health -= 3f * dt;
@@ -851,23 +857,66 @@ namespace MadMax.Npc
 
         static readonly RaycastHit[] shotHits = new RaycastHit[8];
 
-        /// <summary>Fast vehicles knock people over.</summary>
+        /// <summary>Fast vehicles knock people over: checked a little ahead of the bumper, so the hit lands before the
+        /// car meets the (immovable) CharacterController capsule. The person is thrown along the car's path as a limp
+        /// body (<see cref="BodyKnock"/>); whoever survives gets up again a few seconds later.</summary>
         void RunOver(WastelandGame g)
         {
+            var me = transform.position + Vector3.up * 0.8f;
             foreach (var v in g.AllVehicles)
             {
                 if (!v || !v.Body || v.Body.isKinematic) continue;
                 var d = v.transform.position - transform.position;
-                if (d.sqrMagnitude > 16f) continue;
-                float sp = v.Body.linearVelocity.magnitude;
+                if (d.sqrMagnitude > 64f) continue;
+                var vel = v.Body.linearVelocity;
+                float sp = vel.magnitude;
                 if (sp < 4f) continue;
-                var cp = v.Body.ClosestPointOnBounds(transform.position + Vector3.up * 0.8f);
-                if ((cp - (transform.position + Vector3.up * 0.8f)).sqrMagnitude > 0.5f * 0.5f) continue;
-                ApplyHit(transform.position + Vector3.up, v.Body.linearVelocity.normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
+                var cp = v.Body.ClosestPointOnBounds(me);
+                float reach = 0.5f + sp * Mathf.Max(0.05f, Time.deltaTime * 2f);
+                var gap = me - cp;
+                if (gap.sqrMagnitude > reach * reach || Vector3.Dot(gap, vel) < -0.1f * sp) continue;   // behind it or beside: not this one
+                ApplyHit(transform.position + Vector3.up, vel.normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
                 NpcVoice.CarHit(this);
-                if (mode == Mode.Dead) transform.position += v.Body.linearVelocity.normalized * 1.2f;
+                if (mode != Mode.Dead) KnockDown(vel);
+                var rd = rig.GetComponent<Ragdoll>();
+                if (rd && rd.Active && rig.TryGetComponent<BodyKnock>(out var knock)) knock.Knock(v, cp, false);
                 return;
             }
+        }
+
+        float downUntil;
+        /// <summary>Knocked down and lying limp (gets up after <see cref="downUntil"/>).</summary>
+        public bool Down => downUntil > 0f;
+
+        /// <summary>Struck hard but alive: limp on the ground for a few seconds.</summary>
+        void KnockDown(Vector3 velocity)
+        {
+            if (Down || mode == Mode.Dead) return;
+            if (seated) { seated = false; LeaveFire(); }
+            cc.enabled = false;
+            Ragdoll.For(rig).Go(velocity.normalized * 60f, transform.position + Vector3.up * 1.1f, lastVelocity);
+            downUntil = Time.time + Random.Range(2.5f, 4f);
+            mode = Hostile ? Mode.Fight : Mode.Flee; fleeUntil = Time.time + 12f;
+        }
+
+        /// <summary>Lying after a knock-down: up again once the body has come to rest where it fell.</summary>
+        void DownTick()
+        {
+            var rd = rig.GetComponent<Ragdoll>();
+            if (!rd || !rd.Active) { downUntil = 0f; cc.enabled = true; return; }
+            var pelvis = rig.bones[BodyPart.Pelvis];
+            var prb = pelvis ? pelvis.GetComponent<Rigidbody>() : null;
+            if (Time.time < downUntil || (prb && !prb.isKinematic && prb.linearVelocity.sqrMagnitude > 1f && Time.time < downUntil + 4f)) return;
+            var at = rd.Pelvis;
+            var terrain = DeformableTerrain.Instance;
+            float ground = terrain ? terrain.HeightNoLoad(at.x, at.z) : at.y - 0.9f;
+            rd.Restore();
+            downUntil = 0f;
+            var fwd = Flat(lastBlow); if (fwd.sqrMagnitude < 0.01f) fwd = transform.forward;
+            transform.SetPositionAndRotation(new Vector3(at.x, Mathf.Max(ground + 0.05f, at.y - 1.2f), at.z), Quaternion.LookRotation(-fwd.normalized));
+            lastPos = transform.position;
+            vy = 0f;
+            cc.enabled = true;
         }
 
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)

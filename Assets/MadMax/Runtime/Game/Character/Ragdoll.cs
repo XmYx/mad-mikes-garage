@@ -92,7 +92,19 @@ namespace MadMax.Game
             if (hit) hit.AddForceAtPosition(impulse, point, ForceMode.Impulse);
             if (bodies.TryGetValue(BodyPart.Chest, out var chest)) chest.AddForce(impulse * 0.4f, ForceMode.Impulse);
             settleAt = Time.time + 10f;
+            if (!GetComponent<BodyKnock>()) gameObject.AddComponent<BodyKnock>();   // vehicles knock the body away, never carry it
         }
+
+        /// <summary>Back to live physics (a frozen body about to be hit again); it settles and freezes once more.</summary>
+        public void Wake()
+        {
+            if (!Active) return;
+            foreach (var a in added) if (a is Rigidbody rb && rb.isKinematic) rb.isKinematic = false;
+            settleAt = Time.time + 3f;
+        }
+
+        /// <summary>Settled and frozen (kinematic bones).</summary>
+        public bool Frozen => Active && settleAt == float.MaxValue;
 
         void FixedUpdate()
         {

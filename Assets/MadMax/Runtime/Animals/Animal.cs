@@ -199,6 +199,7 @@ namespace MadMax.Animals
             var g = WastelandGame.Instance;
             if (proxy) { if (dt > 0f && state != State.Dead && proxyPos != Vector3.zero) ProxyTick(dt); return; }
             if (dt <= 0f || !g || !g.Player || state == State.Dead) return;
+            if (knock && knock.Flying) { Animate(dt); return; }                                       // thrown by a vehicle: tumbling
             CareTick(g, dt);                                                                          // wounds, wool, stable rest (Animal.Husbandry)
             if (state == State.Dead) return;
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
@@ -215,7 +216,7 @@ namespace MadMax.Animals
             else Walk(g, dt);
             Animate(dt);
             if (voice && call != null && !call.Busy) voice.SetActive(false);
-            if ((runT -= dt) <= 0f) { runT = 0.1f; RunOver(g); }
+            if ((runT -= dt) <= 0f) runT = RunOver(g) ? 0f : 0.1f;
         }
 
         void SetMove(Vector3 dir, float sp) { dir.y = 0f; moveDir = dir; moveSpeed = dir.sqrMagnitude > 0.0001f ? sp * Gait : 0f; }
@@ -666,7 +667,7 @@ namespace MadMax.Animals
             var t = DeformableTerrain.Instance;
             float h = t ? t.HeightNoLoad(p.x, p.z) : p.y;
             if (Physics.Raycast(new Vector3(p.x, Mathf.Max(p.y, h) + 0.9f, p.z), Vector3.down, out var hit, 1.8f, ~0, QueryTriggerInteraction.Ignore)
-                && hit.point.y > h + 0.05f && hit.normal.y > 0.6f && !hit.collider.transform.IsChildOf(transform) && !(g.Player && hit.collider.transform.IsChildOf(g.Player.transform)) && !hit.collider.GetComponentInParent<Animal>())
+                && hit.point.y > h + 0.05f && hit.normal.y > 0.6f && !hit.collider.transform.IsChildOf(transform) && !(g.Player && hit.collider.transform.IsChildOf(g.Player.transform)) && !hit.collider.GetComponentInParent<Animal>() && !(hit.rigidbody && !hit.rigidbody.isKinematic))   // not onto a moving car's bonnet
                 return hit.point.y;
             return h;
         }
@@ -913,24 +914,35 @@ namespace MadMax.Animals
 
         // ------------------------------------------------------------------ hits, death
 
-        void RunOver(WastelandGame g)
+        /// <summary>Vehicles hit animals a little ahead of the bumper (before the car meets the kinematic capsule) and
+        /// throw them along their path (<see cref="AnimalKnock"/>). Returns true while a fast vehicle is close (checked
+        /// every frame then).</summary>
+        bool RunOver(WastelandGame g)
         {
+            bool close = false;
             foreach (var v in g.AllVehicles)
             {
                 if (!v || !v.Body || v.Body.isKinematic) continue;
-                if ((v.transform.position - transform.position).sqrMagnitude > 36f) continue;
-                float sp = v.Body.linearVelocity.magnitude;
+                if ((v.transform.position - transform.position).sqrMagnitude > 100f) continue;
+                var vel = v.Body.linearVelocity;
+                float sp = vel.magnitude;
                 if (sp < 3f) continue;
+                close = true;
+                if (knock && knock.IsIgnoring(v)) continue;
                 var c = transform.position + Vector3.up * Mathf.Max(0.15f, Def.Height * 0.5f * Size);
                 var cp = v.Body.ClosestPointOnBounds(c);
-                float r = col.radius * Size + 0.35f;
-                if ((cp - c).sqrMagnitude > r * r) continue;
-                var push = Flat(v.Body.linearVelocity).normalized;
-                ApplyHit(c, push, sp * sp * 0.03f, 0.3f, v.gameObject);
-                transform.position += push * (Alive ? 1.5f * Mathf.Clamp(v.Body.mass / Mathf.Max(20f, Def.mass), 0.3f, 2f) : 1.2f);
-                return;
+                float r = col.radius * Size + 0.35f + sp * Mathf.Max(0.04f, Time.deltaTime * 2f);
+                var gap = c - cp;
+                if (gap.sqrMagnitude > r * r || Vector3.Dot(gap, vel) < -0.1f * sp) continue;
+                ApplyHit(c, Flat(vel).normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
+                knock = AnimalKnock.For(this);
+                knock.Hit(v, cp, false);
+                return true;
             }
+            return close;
         }
+
+        AnimalKnock knock;
 
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
