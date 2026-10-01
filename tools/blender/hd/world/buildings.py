@@ -148,7 +148,7 @@ def tower(seed):
     b.slab(w, l, 0, "Stone", "conc_dark")
     for f in range(floors):
         y0 = 1 + f * (st + 1)
-        b.walls(w, l, y0, y0 + st - 1, "Stone", "conc", seed + f * 7, f == 0, 5, frame_mat="steel_dark", sill="conc_dark", cut=cut_for(y0, y0 + st - 1))
+        b.walls(w, l, y0, y0 + st - 1, "Stone", "conc", seed + f * 7, f == 0, 5, frame_mat="steel_dark", sill=None, cut=cut_for(y0, y0 + st - 1))
         holes = []
         if f < floors - 1:
             holes.append(b.stair_hole(w // 2 if f % 2 == 0 else 0, 3, -8, st + 1))
@@ -184,9 +184,9 @@ def tower(seed):
         x, z = r2.next(-w - 8, w + 8), r2.next(-l - 8, l + 8)
         if abs(x) < w and abs(z) < l:
             continue
-        de.box(["conc_dark", "conc", "rock_grey"][i % 3], (0.18 + (i % 5) * 0.04, 0.12, 0.16 + (i % 3) * 0.05), (b.c(x), b.lo(0) + 0.06, b.c(z)), r=(i * 7 % 20 - 10, i * 37, i * 11 % 16 - 8), bevel=0.02, segs=1)
+        de.box(["conc_dark", "conc", "rock_grey"][i % 3], (0.18 + (i % 5) * 0.04, 0.12, 0.16 + (i % 3) * 0.05), (b.c(x), b.lo(0) + 0.06, b.c(z)), r=(i * 7 % 20 - 10, i * 37, i * 11 % 16 - 8), bevel=0.0)
         if r2.next_double() < 0.3:
-            de.box("conc", (0.14, 0.1, 0.12), (b.c(x), b.c(1), b.c(z)), r=(5, i * 23, 0), bevel=0.02, segs=1)
+            de.box("conc", (0.14, 0.1, 0.12), (b.c(x), b.c(1), b.c(z)), r=(5, i * 23, 0), bevel=0.0)
     for k in range(10):                                   # rebar standing out of the broken floors
         xx = b.c(bite[0]) + (k / 9) * (b.c(bite[3]) - b.c(bite[0]))
         zz = b.c(bite[2]) + jag.uniform(0, b.c(bite[5]) - b.c(bite[2]))
