@@ -29,7 +29,7 @@ namespace MadMax.Items
     }
 
     /// <summary>Food, drinks and crops (data).</summary>
-    public static class FoodLibrary
+    public static partial class FoodLibrary
     {
         static Dictionary<string, FoodDef> foods;
         static List<CropDef> crops;
@@ -120,6 +120,7 @@ namespace MadMax.Items
                 F("food_honey", "JAR OF HONEY", 22, -2, 0, H("e0a030"), 0f, 3f),
                 F("drink_mead", "MEAD", 10, 20, 0, H("d8a040")),
             }) foods[f.id] = f;
+            foreach (var f in SeasonFoods()) foods[f.id] = f;                             // Seasons: dried, pickled, jarred (FoodLibrary.Seasons)
 
             crops = new List<CropDef>
             {

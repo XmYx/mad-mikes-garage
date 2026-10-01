@@ -254,6 +254,7 @@ namespace MadMax.Items
             list.AddRange(UtilitiesRecipes());
             list.AddRange(MedMineRecipes());
             list.AddRange(DefenceRecipes());
+            list.AddRange(SeasonsRecipes());
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {

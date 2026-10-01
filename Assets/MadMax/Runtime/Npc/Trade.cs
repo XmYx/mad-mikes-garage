@@ -10,7 +10,7 @@ namespace MadMax.Npc
     /// buy at a discount that shrink with charisma, speech, how much they like you and a won haggle. Stock per trade
     /// kind (fuel, parts, scrap, food, salvage, building material) is rolled per vendor per game day; purchases
     /// count against it until the next day. Goods: item ids, <c>res:N</c> resources, <c>part:key</c> vehicle parts.</summary>
-    public static class Trade
+    public static partial class Trade
     {
         public struct Offer { public string id; public int count, price; }
 
@@ -51,6 +51,7 @@ namespace MadMax.Npc
             if (id == "trophy_tusks" || id == "trophy_horns") return 20f;
             if (id == "food_fish_glow") return 18f;                                            // collectors pay for mutants
             if (id.StartsWith("trophy_fish")) return id.EndsWith("mutant") ? 60f : 25f;
+            if (PreserveValue(id, out float kept)) return kept;                                 // preserves sell dear (Trade.Seasons)
             if (id.StartsWith("food_")) return id == "food_ration" ? 9f : id == "food_can" ? 6f : id == "food_rotten" ? 0f : id.StartsWith("food_can_") ? 9f
                 : id.Contains("stew") || id.Contains("pie") || id.Contains("soup") || id.Contains("dinner") ? 8f : 3f;
             if (id == "drink_beer" || id == "drink_cider") return 6f;
@@ -146,13 +147,13 @@ namespace MadMax.Npc
             },
             new Dictionary<string, (string, int, int)[]>
             {
-                { "food", new[] { ("food_potato", 4, 12), ("food_corn", 4, 12), ("food_pumpkin", 0, 4), ("res:" + (int)ResourceType.Salt, 2, 10), ("seed_wheat", 0, 3) } },
+                { "food", new[] { ("food_potato", 4, 12), ("food_corn", 4, 12), ("food_pumpkin", 0, 4), ("res:" + (int)ResourceType.Salt, 2, 10), ("seed_wheat", 0, 3), ("food_apple", 3, 10), ("food_cabbage", 2, 6) } },
                 { "build", new[] { ("res:2", 20, 60) } },
             },
             new Dictionary<string, (string, int, int)[]>
             {
-                { "food", new[] { ("food_jerky", 2, 6), ("food_pickles", 1, 5), ("food_meat_salted", 1, 4), ("food_can", 2, 6) } },
-                { "pack", new[] { ("food_jerky", 1, 4), ("res:2", 10, 30) } },
+                { "food", new[] { ("food_jerky", 2, 6), ("food_pickles", 1, 5), ("food_meat_salted", 1, 4), ("food_can", 2, 6), ("food_dried_fruit", 1, 4), ("food_sauerkraut", 0, 3), ("food_jar_tomato", 0, 3), ("food_sausage", 0, 2) } },
+                { "pack", new[] { ("food_jerky", 1, 4), ("res:2", 10, 30), ("food_dried_fruit", 0, 3) } },
                 { "fuel", new[] { ("res:2", 20, 60), ("res:" + (int)ResourceType.Charcoal, 5, 20) } },
                 { "build", new[] { ("res:2", 30, 90) } },
             },
@@ -208,7 +209,7 @@ namespace MadMax.Npc
             var r = new System.Random(p.seed * 31 + day * 977);
             foreach (var (id, min, max) in l)
             {
-                int n = r.Next(min, max + 1) - s.Bought(id, day);
+                int n = SeasonAdjust(id, r.Next(min, max + 1)) - s.Bought(id, day);            // fresh food scarce in winter, seed off-season (Trade.Seasons)
                 if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
             }
             // the season's goods: more of a line already stocked, or a new line

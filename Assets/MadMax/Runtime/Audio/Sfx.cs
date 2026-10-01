@@ -179,6 +179,13 @@ namespace MadMax.Audio
             requestCount = 0;
         }
 
+        /// <summary>The loop key a voice is playing for <paramref name="owner"/> right now (null: none; acceptance).</summary>
+        public static string Looping(Component owner)
+        {
+            foreach (var v in loopVoices) if (v != null && v.owner == owner && v.src && v.src.isPlaying) return v.key;
+            return null;
+        }
+
         static bool IsClaimed(LoopVoice v, int picked)
         {
             if (v.owner == null) return false;

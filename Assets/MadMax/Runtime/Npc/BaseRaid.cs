@@ -83,6 +83,13 @@ namespace MadMax.Npc
             return true;
         }
 
+        /// <summary>How the raid ended, pinned up on the boards near the homestead (TownNews).</summary>
+        void PostHomestead(Vector3 at, bool held)
+        {
+            string who = gang != null ? "THE " + gang.Gang : "RAIDERS";
+            TownNews.Post(held ? who + " HIT A HOMESTEAD " + Near(at) + " AND WERE DRIVEN OFF" : who + " RAIDED A HOMESTEAD " + Near(at) + " AND MADE OFF WITH ITS STORES", at);
+        }
+
         static string Near(Vector3 p)
         {
             var w = DeformableTerrain.Instance ? DeformableTerrain.Instance.World : null;
@@ -143,6 +150,7 @@ namespace MadMax.Npc
             {
                 over = true;
                 NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 2);
+                if (target) PostHomestead(target.transform.position, true);
                 if (gang != null) { gang.save.losses = Mathf.Min(3, gang.save.losses + 1); game.Toast("RAID REPELLED: THE " + gang.Gang + " WILL BE THINNER ON THE ROAD"); }
                 else game.Toast("RAID REPELLED");
                 MadMax.Audio.Sfx.Play("crowd_cheer", game.Player.transform.position, 0.5f);
@@ -151,7 +159,7 @@ namespace MadMax.Npc
             {
                 // they grab what they can and go
                 over = true;
-                if (target) Loot(target, 0.25f);
+                if (target) { Loot(target, 0.25f); PostHomestead(target.transform.position, false); }
                 foreach (var n in party) if (n && n.Alive) { n.raiding = false; n.aggro = false; n.Scare(60f); }
                 game.Toast("THE RAIDERS MADE OFF WITH SOME OF YOUR STORES");
             }
@@ -178,7 +186,7 @@ namespace MadMax.Npc
                     if (tur.rounds > 0) tur.rounds = 0;
                     else if (p.TryGetComponent<Container>(out var box)) box.inventory.TakeItem("ammo_mg");
                 }
-            if (defence >= strength * Random.Range(0.7f, 1.3f)) { Report = "YOUR DEFENCES DROVE OFF A RAID ON YOUR BASE"; return; }
+            if (defence >= strength * Random.Range(0.7f, 1.3f)) { Report = "YOUR DEFENCES DROVE OFF A RAID ON YOUR BASE"; PostHomestead(claim.transform.position, true); return; }
             int wreck = Mathf.Clamp(Mathf.RoundToInt(strength - defence), 1, 6);
             var outer = new List<Placeable>();
             foreach (var p in Placeable.All) if (p && !p.GetComponentInParent<Rigidbody>() && claim.Inside(p.transform.position) && !p.GetComponent<ClaimFlag>()) outer.Add(p);
@@ -193,6 +201,7 @@ namespace MadMax.Npc
             }
             bool looted = Loot(claim, 0.3f);
             int stripped = StripVehicles(claim, wreck);
+            PostHomestead(claim.transform.position, false);
             Report = "YOUR BASE WAS RAIDED: " + broken + " PIECES WRECKED" + (looted ? ", STORES LOOTED" : "") + (stripped > 0 ? ", " + stripped + " VEHICLE" + (stripped > 1 ? "S" : "") + " SIPHONED AND STRIPPED" : "");
         }
 
