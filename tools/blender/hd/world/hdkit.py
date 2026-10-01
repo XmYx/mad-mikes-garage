@@ -210,6 +210,24 @@ class GP:
         bm.free()
         return self
 
+    def add_split(self, bm, mat_fn, matrix=None):
+        """Like add, with a material per face chosen by mat_fn(face centroid in game space) -> material key."""
+        matrix = matrix or Matrix.Identity(4)
+        base = len(self.verts)
+        bm.verts.index_update()
+        for v in bm.verts:
+            self.verts.append(matrix @ v.co)
+        for f in bm.faces:
+            cen = sum((self.verts[base + v.index] for v in f.verts), Vector()) / len(f.verts)
+            m = mat_fn(cen)
+            m = M[m] if isinstance(m, str) else m
+            if m not in self.mats:
+                self.mats.append(m)
+            self.faces.append(tuple(base + v.index for v in f.verts))
+            self.fmat.append(self.mats.index(m))
+        bm.free()
+        return self
+
     @staticmethod
     def T(loc=(0, 0, 0), r=None):
         m = Matrix.Translation(Vector(loc))
@@ -429,6 +447,9 @@ class Asset:
         for k, v in self.extra.items():
             root[k] = v
         self.root, self.objs = root, objs
+        post = getattr(self, "post", None)
+        if post:
+            post(self, root)
         return root
 
 
