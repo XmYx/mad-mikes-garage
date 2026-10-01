@@ -173,13 +173,15 @@ namespace MadMax.Game
             return p;
         }
 
-        VehicleDriver FindNearby(float maxDist)
+        /// <summary>The vehicle whose collider is nearest the player within <paramref name="maxDist"/>. Trailers are
+        /// never driven; with <paramref name="tankers"/> fuel tankers count too (their pump works on foot).</summary>
+        VehicleDriver FindNearby(float maxDist, bool tankers = false)
         {
             VehicleDriver best = null; float bestD = maxDist;
             var p = Player.transform.position + Vector3.up;
-            foreach (var c in cars)
+            void Try(VehicleDriver c)
             {
-                if (!c || c.aiDriven || (c.transform.position - p).sqrMagnitude > 400f) continue;
+                if (!c || c.aiDriven || (c.transform.position - p).sqrMagnitude > 400f) return;
                 foreach (var col in c.GetComponentsInChildren<Collider>())
                 {
                     if (!col.enabled || col is MeshCollider) continue;
@@ -187,6 +189,8 @@ namespace MadMax.Game
                     if (d < bestD) { bestD = d; best = c; }
                 }
             }
+            foreach (var c in cars) Try(c);
+            if (tankers) foreach (var t in trailers) if (t && t.GetComponent<FuelTanker>()) Try(t);
             return best;
         }
 
@@ -395,7 +399,7 @@ namespace MadMax.Game
         // ------------------------------------------------------------------ fluids
         string FluidInteraction(bool G, bool K)
         {
-            var v = FindNearby(enterDistance + 0.5f);
+            var v = FindNearby(enterDistance + 0.5f, true);
             if (!v && Player.Interior) v = Player.Interior.GetComponent<VehicleDriver>();
             if (!v || !v.TryGetComponent<VehicleSystems>(out var sys)) return null;
             string text = null;

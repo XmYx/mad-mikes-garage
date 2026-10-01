@@ -24,7 +24,7 @@ namespace MadMax.Game.Acceptance
             var names = new List<string>();
             if (g != null && g.vehiclePrefabs != null) foreach (var p in g.vehiclePrefabs) if (p) names.Add(p.name);
             else if (g == null) names.AddRange(MadMax.Designs.VehicleDesigns.ModelCarNames);
-            foreach (var n in names) yield return new VehicleDrive(n);
+            foreach (var n in names) if (!MobilityScenarios.OwnSuite(n)) yield return new VehicleDrive(n);   // bikes, aircraft: mobility.*
             yield return new MachineSoilRoundTrip();
             yield return new HillHold("Sedan", 12f, 17f);
             yield return new CarsSeparate();
@@ -50,6 +50,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in UtilitiesScenarios.All()) yield return s;
             foreach (var s in MedMineScenarios.All()) yield return s;
             foreach (var s in DefenceScenarios.All()) yield return s;
+            foreach (var s in MobilityScenarios.All()) yield return s;
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);

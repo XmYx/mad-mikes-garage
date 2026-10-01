@@ -15,6 +15,8 @@ namespace MadMax.Vehicles
         public const float Capacity = 30000f;                          // Wh
         public float battery = 24000f, air = 100f, ballast;            // Wh, % of a full cabin, 0 blown .. 1 flooded
         public bool lamp;
+        /// <summary>Automation (<see cref="WastelandGame.ExternalInput"/>): -1 blows the tanks, +1 floods them.</summary>
+        [System.NonSerialized] public float ballastInput;
         const float Neutral = 0.714f;                                  // ballast that holds the depth
 
         VehicleDriver v;
@@ -72,7 +74,8 @@ namespace MadMax.Vehicles
             Crewed = driving || (g.Player && g.Player.Interior == space);
 
             // ballast: Space blows, Ctrl floods; hands off, the trim creeps to neutral and the planes hold the depth
-            float input = driving ? (Controls.Held(Controls.Act.Jump) ? -1f : 0f) + (Controls.Held(Controls.Act.Crouch) ? 1f : 0f) : 0f;
+            float input = !driving ? 0f : WastelandGame.ExternalInput ? Mathf.Clamp(ballastInput, -1f, 1f)
+                        : (Controls.Held(Controls.Act.Jump) ? -1f : 0f) + (Controls.Held(Controls.Act.Crouch) ? 1f : 0f);
             if (input != 0f) ballast = Mathf.Clamp01(ballast + input * 0.18f * dt);
             else if (Submerged) ballast = Mathf.MoveTowards(ballast, Neutral, 0.05f * dt);
             boat.lift = Mathf.Lerp(1.25f, 0.88f, ballast);

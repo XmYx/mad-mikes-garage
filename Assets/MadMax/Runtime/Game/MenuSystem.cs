@@ -240,6 +240,28 @@ namespace MadMax.Game
             Rebuild();
         }
 
+        /// <summary>Automation: put the cursor on the open page's entry labelled <paramref name="label"/> and press A/D
+        /// on it (<paramref name="dx"/> = -1 / +1) or confirm it (0), exactly as the keys do. False when the page has no
+        /// such entry, or it can't be adjusted / is greyed out.</summary>
+        public bool Press(string label, int dx = 0)
+        {
+            int i = items.FindIndex(x => x.label == label);
+            if (i < 0) return false;
+            cursor = i;
+            var it = items[i];
+            if (dx != 0) { if (it.adjust == null) return false; it.adjust(dx); return true; }
+            if (!Enabled(it) || it.confirm == null) return false;
+            it.confirm();
+            return true;
+        }
+
+        /// <summary>The value column of an entry on the open page (automation, null when absent).</summary>
+        public string ValueOf(string label)
+        {
+            var it = items.Find(x => x.label == label);
+            return it != null && it.value != null ? it.value() : null;
+        }
+
         public void Close()
         {
             if (Current == Page.Paint) RevertPaint();
