@@ -196,6 +196,18 @@ name (`bones[i] = rig.Find(name)`, `bindposes` from the sidecar rest matrices), 
 the imported bones directly. Garments are separate meshes per piece (one atlas each) so `ClothingLibrary` slots can
 toggle them; an outfit export (`outfit_*`) is a complete dressed character.
 
+In the game (approach a): **MadMax/HD/Build Character Catalog** (also run by Build Game Scene) scans every `character`
+sidecar and writes `Models/HD/Resources/HDCharacters.asset` (`HDCharacterCatalog`, meshes as sub-assets, gitignored with
+the pack): each skinned mesh copied with bindposes for the HumanRig rest pose (`T(-joint) x mesh-to-root`: identity bone
+rotations, which drops the FBX bone axes), sorted by body shape (M, M2, F, F2 from the rig joints), kind (`Body`, `Eye*`,
+`brows`, `hair_<Style>[_cut<h>]`, `beard[_stubble]`, `under`/`top`, garments by the longest ClothingLibrary / garments.py id
+prefix of the piece name; variants from the main piece's material: `tshirt_worn`, `labcoat`, `goggles_up`), LODs, the
+skin / hair index baked in (`skin<n>` / `hair<n>` material) and per body geometry x LOD x garment piece the covered body
+triangles (ray along the skin normal, 9 cm, two rings eroded). `HumanRig` (HD mode, `HumanRig.HD.cs`) instantiates the
+pieces as SkinnedMeshRenderers on its own bone transforms; garments missing from the pack fall back to their voxel shells.
+Clips: `character/clips.py` (data) + `character/anims.py` (Blender: keys, samples, exports JSON to
+`Assets/MadMax/Resources/CharacterAnims` and `Models/HD/character/anims` + a reference FBX), played by `HumanAnimator`.
+
 ### Props and buildings (`group misc`, kind prop)
 Use the imported model as it is (root `LODGroup` from the importer). Buildings come as `Shell` (walls, slabs:
 carvable), `Glass`, `Detail`; for destruction voxelize `Shell` into a `VoxelGrid` at bake time (materials by

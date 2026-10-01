@@ -501,7 +501,7 @@ namespace MadMax.Game
             j.t += dt;
             Face(j, dt);
             Player.PoseOverride = PoseAt(j.pose, j.t);
-            Player.ActionClip = j.pose == WorkPose.LeanIn || j.pose == WorkPose.Reach ? "wrench" : j.pose == WorkPose.Pour ? "pour" : j.pose == WorkPose.Kneel ? "weld" : null;
+            Player.ActionClip = j.pose == WorkPose.LeanIn ? "wrench" : j.pose == WorkPose.Pour ? "pour" : j.pose == WorkPose.Kneel ? "weld" : null;
             if (j.parked) Park(j);
             if (j.hood)
             {
