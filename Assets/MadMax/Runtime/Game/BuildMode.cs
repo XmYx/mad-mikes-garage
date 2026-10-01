@@ -331,7 +331,8 @@ namespace MadMax.Game
 
         /// <summary>Take a built piece apart: full refund of what building it costs (kit back, or the raw materials at
         /// the builder's skill price, so building and dismantling never makes material out of nothing).</summary>
-        void Dismantle(Placeable p)
+        /// <summary>Take an own piece down for its cost (kit) back (X in build mode, DISMANTLE in its context menu).</summary>
+        public void Dismantle(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }

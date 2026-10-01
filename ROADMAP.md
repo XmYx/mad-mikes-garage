@@ -543,6 +543,18 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       crash can still bleed you out in about a minute with no warning. Suggest: drop part of the pack as a
       searchable stash where you fell (scaled by difficulty), and a bleed-out warning with a bandage prompt.
       *Done:* a share of the pack stays in a searchable stash where you fell (NORMAL a third, HARD two thirds, BRUTAL all but what you wear; saved, waypoint set), and a flashing BLEEDING OUT countdown with a hint to bandage.
+- [x] **Context menus, looting and where to wake up** (wave 3). Everything is reached by its own key; nothing can
+      be right-clicked, storage is a one-column list, and death always respawns at the last spawn point.
+      *Done:* `ContextActions` provider registry + `WastelandGame.Context`: an RMB tap (or the CONTEXT key, default `)
+      on what the cursor / crosshair is on opens a pixel popup of the same calls the keys make ([E]/[T] of every
+      interactable, drive/enter/get out, take off / pick up / mount parts, refuel, siphon, weld, repair / upgrade /
+      dismantle own pieces, walk here, item use / equip / wear / drop / place, hotbar); out of reach the player walks
+      up first. RMB keeps aiming with guns, the grapple and binoculars and cancelling in build mode / PLACE. The loot
+      window (`MenuSystem.Loot`, page Container): pack and storage side by side, tabs for nearby storage, searchable
+      spots (searched into the spot, leftovers saved in `blockContext`) and the FLOOR, drag and drop, row menus (split
+      stacks), storage preview on hover. Respawn chooser: owned beds (the spawn bed first, by place name), spawn point,
+      claims, the fleet, the start road (`LastRespawn` saved). Scenarios `ui.context_menu`, `ui.loot_window`,
+      `ui.respawn_choice`. Open: a pad button to open the menu, item icons in the loot rows.
 - [x] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
       Suggest a short starter chain on the town board (patch the car, fuel it, first haul, first workbench and
       wall, first tame), each step unlocking the next and teaching one system.

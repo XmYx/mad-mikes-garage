@@ -20,7 +20,8 @@ namespace MadMax.Game
             RadioPower, RadioPrev, RadioNext, VolumeDown, VolumeUp,
             BuildRotate, BuildDismantle, BuildUpgrade, BuildRepair, BuildPrevCategory, BuildNextCategory, BuildPrevPiece, BuildNextPiece,
             DevWeather, DevDropPart, DevRepair,
-            ToolUp, ToolDown, ToolLeft, ToolRight, ToolA, ToolB                 // machines, cranes and aircraft (appended: saved maps keep their slots)
+            ToolUp, ToolDown, ToolLeft, ToolRight, ToolA, ToolB,                // machines, cranes and aircraft (appended: saved maps keep their slots)
+            Context                                                             // context menu on what the cursor / crosshair is on (RMB tap too)
         }
 
         public static readonly int Count = System.Enum.GetValues(typeof(Act)).Length;
@@ -34,7 +35,8 @@ namespace MadMax.Game
             Key.Slash, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.Y, Key.X, Key.U, Key.R, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.F9, Key.Backspace, Key.F10,
-            Key.UpArrow, Key.DownArrow, Key.LeftArrow, Key.RightArrow, Key.Q, Key.E
+            Key.UpArrow, Key.DownArrow, Key.LeftArrow, Key.RightArrow, Key.Q, Key.E,
+            Key.Backquote
         };
 
         /// <summary>Labels for the CONTROLS page.</summary>
@@ -47,7 +49,8 @@ namespace MadMax.Game
             "RADIO POWER", "RADIO TUNE DOWN", "RADIO TUNE UP", "RADIO VOLUME DOWN", "RADIO VOLUME UP",
             "BUILD: ROTATE", "BUILD: DISMANTLE", "BUILD: UPGRADE", "BUILD: REPAIR", "BUILD: PREV CATEGORY", "BUILD: NEXT CATEGORY", "BUILD: PREV PIECE", "BUILD: NEXT PIECE",
             "DEV: WEATHER", "DEV: DROP PART", "DEV: INSTANT REPAIR",
-            "TOOL UP / NOSE", "TOOL DOWN / NOSE", "TOOL LEFT / RUDDER", "TOOL RIGHT / RUDDER", "TOOL A: CURL, GRAB / ROLL LEFT", "TOOL B: DUMP / ROLL RIGHT"
+            "TOOL UP / NOSE", "TOOL DOWN / NOSE", "TOOL LEFT / RUDDER", "TOOL RIGHT / RUDDER", "TOOL A: CURL, GRAB / ROLL LEFT", "TOOL B: DUMP / ROLL RIGHT",
+            "CONTEXT MENU (ALSO RMB TAP)"
         };
 
         static Key[] map;

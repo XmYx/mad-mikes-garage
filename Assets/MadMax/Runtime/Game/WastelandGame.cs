@@ -311,20 +311,20 @@ namespace MadMax.Game
                 Invoke(nameof(ReturnToMainMenu), 4f);
                 return;
             }
-            Invoke(nameof(Respawn), 4f);
+            Invoke(nameof(RespawnChoice), 4f);                                                   // the respawn list (WastelandGame.Context)
         }
 
         bool dying;
 
-        void Respawn()
+        void Respawn() => RespawnAt(RespawnPoints()[0]);
+
+        void WakeUpAt(Vector3 at)
         {
             dying = false;
             var rd = Player.GetComponent<Ragdoll>();
             if (rd) rd.Restore();
             var cc = Player.GetComponent<CharacterController>();
             if (cc) cc.enabled = true;
-            var home = fleet.Count > 0 && fleet[0] ? fleet[0] : null;
-            var at = spawnPoint ?? (home ? ExitPoint(home) : WorldSpawn);
             Stats.hunger = Mathf.Max(Stats.hunger, 50f); Stats.thirst = Mathf.Max(Stats.thirst, 50f); Stats.sick = 0f;
             if (Player.Interior) Player.ExitInterior(at); else Player.Teleport(at, 0f);
             if (cameraRig) cameraRig.SetTarget(Player.transform);                                    // an ejection left it on the body
@@ -595,6 +595,7 @@ namespace MadMax.Game
             var kb = Keyboard.current; var pad = Gamepad.current; var mouse = Mouse.current;
             bool Pressed(Key k) => kb != null && kb[k].wasPressedThisFrame;                      // fixed keys (machine / winch / crane digits)
             UpdateRadial(kb, mouse);
+            UpdateContext(kb, mouse, pad);                                                       // context menus, respawn list (WastelandGame.Context)
 
             if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); UpdateWreckStreaming(); return; }
             Menus.Tick();
