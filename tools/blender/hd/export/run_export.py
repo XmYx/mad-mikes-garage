@@ -132,6 +132,8 @@ def index(out):
             s = json.load(open(sc))
         except ValueError:
             continue
+        if s.get("exporter", 0) < 2:
+            continue                                  # stale export of an older exporter / retired asset
         d = os.path.dirname(sc)
         rel = os.path.relpath(d, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(out))))).replace(os.sep, "/")
         files = s.get("files", [])
