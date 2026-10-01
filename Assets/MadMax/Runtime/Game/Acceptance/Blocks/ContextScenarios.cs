@@ -19,6 +19,7 @@ namespace MadMax.Game.Acceptance
             yield return new UiContextMenu();
             yield return new UiLootWindow();
             yield return new UiRespawnChoice();
+            yield return new UiLootOverlay();
         }
 
         public static string Labels(List<ContextOption> l) => string.Join(", ", l.Select(o => o.label + (o.blocked != null ? " (" + o.blocked + ")" : "")));
@@ -309,6 +310,104 @@ namespace MadMax.Game.Acceptance
             c.Check(w.ok && Flat(P.transform.position, other.at) < 2f, $"the player wakes there ({Flat(P.transform.position, other.at):0.0} m)");
             c.Check(g.LastRespawn == other.label, "the choice is remembered (saved with the context block)");
             Object.Destroy(bed.gameObject);
+        }
+    }
+
+    /// <summary>The floating loot panels: facing an item on the ground brings them up over the running game (no menu, time
+    /// runs, the player still walks) with the FLOOR section; a chest within reach joins the LOOT panel; the YOU panel holds
+    /// the pack and a worn bag (never listed as nearby loot); drags between sections (floor → bag, pack → chest, half of
+    /// the chest back) and a row menu's TAKE ONE keep pack + bag + chest + floor balanced; the pin key keeps them up.</summary>
+    class UiLootOverlay : Scenario
+    {
+        public override string Id => "ui.loot_overlay";
+        public override float Timeout => 90f;
+
+        static Dictionary<string, int> Totals(WastelandGame g, params Inventory[] invs)
+        {
+            var d = SurvivalKit.Ledger(invs);
+            foreach (var kv in g.FloorStacks(g.Player.transform.position, 8f)) { d.TryGetValue(kv.Key, out int h); d[kv.Key] = h + kv.Value; }
+            return d;
+        }
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game; var P = g.Player; var o = g.Loot; var w = new Waited(); var got = new Waited(); var at = new Vector3[1];
+            yield return SurvivalKit.OnFoot(c, 8f, got, at);
+            if (!got.ok) { c.Block("no clear pad near the start"); yield break; }
+            if (o.Pinned) o.SetPinned(false);
+            var inv = g.Inventory;
+            inv.AddItem("food_can", 3); inv.Add(ResourceType.Scrap, 10);
+            c.Fixture("3 cans and 10 scrap granted");
+
+            // ---- an item on the ground, faced: the panels come up, the game runs on
+            var can = g.DropFromPack("food_can", 1);
+            yield return SurvivalKit.GameSeconds(1f);
+            if (!c.Check(can, "a can lies on the ground")) yield break;
+            yield return SurvivalKit.Until(() => { SurvivalKit.Face(g, can.transform.position); return o.Visible && o.LootSide.Any(s => s.floor); }, 5f, w);
+            c.Check(w.ok, $"facing the can brings up the loot panels with the FLOOR section ({w.seconds:0.0} s, shown by {(o.ShownBy ? o.ShownBy.name : "-")})");
+            c.Check(!g.Menus.IsOpen && Time.timeScale == 1f, "no menu page, the world is not paused");
+            float t0 = Time.time;
+            yield return SurvivalKit.GameSeconds(0.3f);
+            c.Check(Time.time > t0, "game time runs while the panels are up");
+
+            // ---- a chest within reach and a worn bag
+            var fwd = P.transform.forward; var side = P.transform.right;
+            var chestP = SurvivalKit.Piece(g, "chest", P.transform.position + side * 1.4f, -side);
+            var chest = chestP ? chestP.GetComponent<Container>() : null;
+            if (!c.Check(chest, "a chest stands beside the player")) yield break;
+            c.Fixture("a chest built 1.4 m to the side");
+            Container bag = g.WornStorage.FirstOrDefault(b => b);
+            GameObject madeBag = null;
+            if (!bag)
+            {
+                madeBag = new GameObject("TestBag");
+                madeBag.transform.SetParent(P.transform, false);
+                bag = madeBag.AddComponent<Container>();
+                bag.title = "TEST BAG"; bag.capacity = 10f; bag.worn = true;
+                g.WornStorage.Add(bag);
+                c.Fixture("no worn bag yet: a 10 kg test bag added to WornStorage");
+            }
+            yield return SurvivalKit.Until(() => { SurvivalKit.Face(g, chest.transform.position); return o.Visible && o.LootSide.Any(s => s.box == chest); }, 5f, w);
+            c.Check(w.ok, "the chest joins the LOOT panel: " + string.Join(", ", o.LootSide.Select(s => s.Title)));
+            o.Refresh();
+            c.Check(o.LootSide.Any(s => s.floor) && o.LootSide.Any(s => s.box == chest), "LOOT lists the floor and the chest");
+            c.Check(o.PlayerSide.Any(s => s.pack) && o.PlayerSide.Any(s => s.box == bag), "YOU lists the pack and the worn bag");
+            c.Check(!o.LootSide.Any(s => s.box == bag), "the worn bag is never nearby loot");
+            c.Screenshot("loot_overlay");
+            yield return null;
+
+            // ---- drags between sections conserve everything
+            var before = Totals(g, inv, chest.inventory, bag.inventory);
+            var floorSrc = o.LootSide.First(s => s.floor); var chestSrc = o.LootSide.First(s => s.box == chest); var bagSrc = o.PlayerSide.First(s => s.box == bag);
+            int moved = o.DragRow(o.RowOf(floorSrc, "food_can"), bagSrc, 0);
+            c.Check(moved >= 1 && bag.inventory.GetItem("food_can") >= 1, $"the can dragged from the floor into the bag ({moved})");
+            string scrap = "res:" + (int)ResourceType.Scrap;
+            int s0 = inv.Get(ResourceType.Scrap);
+            moved = o.DragRow(o.RowOf(LootSource.Pack, scrap), chestSrc, 0);
+            c.Check(moved == s0 && chest.inventory.Get(ResourceType.Scrap) == s0, $"the scrap dragged from the pack into the chest ({moved})");
+            moved = o.DragRow(o.RowOf(chestSrc, scrap), LootSource.Pack, 2);
+            c.Check(moved == s0 / 2, $"Shift-drag takes half back ({moved})");
+            var row = o.RowOf(chestSrc, scrap);
+            var opts = o.RowOptions(row);
+            c.Note("row menu: " + string.Join(", ", opts.Select(x => x.label)));
+            g.Menus.OpenPopup(row.label, opts, new Vector2Int(100, 60));
+            int p0 = inv.Get(ResourceType.Scrap);
+            c.Check(g.Menus.ChoosePopup("TAKE ONE") && inv.Get(ResourceType.Scrap) == p0 + 1, "the row menu's TAKE ONE takes one");
+            yield return null; yield return null;
+            var diff = SurvivalKit.Diff(before, Totals(g, inv, chest.inventory, bag.inventory));
+            c.Check(diff == null, "pack + bag + chest + floor balance: " + (diff ?? "ok"));
+
+            // ---- the player can still move; pinned panels stay
+            var p1 = P.transform.position;
+            yield return SurvivalKit.WalkTo(g, p1 - fwd * 1.2f, 0.3f, w);
+            c.Check(Vector3.Distance(P.transform.position, p1) > 0.5f && o.Visible, "the player walks with the panels up");
+            o.SetPinned(true);
+            yield return null;
+            c.Check(o.Visible && o.Pinned, "the pin key keeps them up");
+            o.SetPinned(false);
+
+            if (madeBag) { g.WornStorage.Remove(bag); Object.Destroy(madeBag); }
+            Object.Destroy(chestP.gameObject);
         }
     }
 }

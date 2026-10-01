@@ -47,7 +47,7 @@ follows `storyline.md`.
 - Melee tools, guns with magazines and jams, thrown molotovs and smoke, fishing rods, a grappling hook.
 - Parkour: vaulting, climbing, sliding and rolling.
 - Diving gear with tank air for working underwater.
-- Right-click menus on everything (beds, chests, cars, parts, people, animals, items on the ground, pack entries), a two-pane loot window for storage, bodies and the floor with drag and drop, and a choice of where to wake up after dying.
+- Right-click menus on everything (beds, chests, cars, parts, people, animals, items on the ground, pack entries), floating loot panels (everything in reach — the ground, storage, vehicle compartments, bodies — beside your pack and worn bags) with drag and drop, a full-page loot window, and a choice of where to wake up after dying.
 
 ### Building, farming and industry
 - Walls, floors, roofs, doors, stairs and ladders in wood, planks, brick, fired brick and concrete panels. Foundations and drivable decks, garages, defences (spikes, wire, sandbags, landmines, tripwires, a motorised gate, a watchtower, MG nests and turrets), and saved blueprints of whole structures.
@@ -143,7 +143,7 @@ Dedicated server: **MadMax → Build Linux Player**, then
 `MadMikesGarage.x86_64 -batchmode -nographics -server -port 7777`.
 
 ### Controls (short version)
-`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines and cranes: arrows + `Q` `E` · aircraft: `W` `S` throttle, arrows pitch and rudder, `Q` `E` roll · `V` camera view · `/` radio (`,` `.` tune, `[` `]` volume) · `M` map and journal · hold `Tab` action wheel · `F1` key map for whatever you are doing · tap right mouse (or `` ` ``) for a context menu on what you point at.
+`WASD` drive/walk · `F` enter/exit · `E` use/open/craft · `T` second action · `1-8` hotbar · `I` inventory · `P` skills · `O` health · `B` build (hold for radial menu) · `N` lights · `K` climate · machines and cranes: arrows + `Q` `E` · aircraft: `W` `S` throttle, arrows pitch and rudder, `Q` `E` roll · `V` camera view · `/` radio (`,` `.` tune, `[` `]` volume) · `M` map and journal · hold `Tab` action wheel · `F1` key map for whatever you are doing · tap right mouse (or `` ` ``) for a context menu on what you point at · `L` pins the loot panels.
 
 ---
 

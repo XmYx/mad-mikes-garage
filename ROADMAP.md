@@ -555,6 +555,11 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       stacks), storage preview on hover. Respawn chooser: owned beds (the spawn bed first, by place name), spawn point,
       claims, the fleet, the start road (`LastRespawn` saved). Scenarios `ui.context_menu`, `ui.loot_window`,
       `ui.respawn_choice`. Open: a pad button to open the menu, item icons in the loot rows.
+      *Wave 4:* floating loot panels (`Game/LootOverlay`, Project Zomboid style) over the running game: LOOT (floor,
+      storage in reach by `Container.AccessAt` incl. vehicle compartments, searchable spots, bodies) and YOU (pack +
+      `WornStorage` bags) as collapsible sections; auto-shown on hover (storage, spot, ground item), L pins (frees the
+      cursor in first / third person); panels drag / collapse / close; drag and drop between sections or off the
+      panels to the floor, double-click quick move, RMB row menus, tooltips. Scenario `ui.loot_overlay`.
 - [x] **No guided first hour.** A new game drops you into a town with a fleet and an eight-line help strip.
       Suggest a short starter chain on the town board (patch the car, fuel it, first haul, first workbench and
       wall, first tame), each step unlocking the next and teaching one system.
