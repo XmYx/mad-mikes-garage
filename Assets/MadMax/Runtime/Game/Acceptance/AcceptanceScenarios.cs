@@ -43,6 +43,7 @@ namespace MadMax.Game.Acceptance
             yield return new CrawlerMud("Excavator");
             yield return new Boarding();
             foreach (var s in StoryScenarios.All()) yield return s;
+            foreach (var s in StoryVoiceTests.All()) yield return s;
             foreach (var s in ItemsScenarios.All()) yield return s;
             foreach (var s in AnimScenarios.All()) yield return s;
             foreach (var s in RoadsScenarios.All()) yield return s;

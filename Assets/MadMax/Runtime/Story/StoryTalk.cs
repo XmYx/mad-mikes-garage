@@ -27,16 +27,16 @@ namespace MadMax.Story
                             if (c.goal == Goal.Talk && c.key == key && c.say != null && (c.requires == null || g.Inventory.GetItem(c.requires) > 0)
                                 && (c.price <= 0 || g.Inventory.Get(MadMax.Items.ResourceType.Scrap) >= c.price))
                             {
-                                string note = "talk:" + key + ":" + c.topic; int price = c.price;
-                                list.Add(new Topic { say = c.say + (price > 0 ? " [" + price + " SCRAP]" : ""), reply = c.reply,
-                                    act = () => { if (price > 0) g.Inventory.TrySpend(MadMax.Items.ResourceType.Scrap, price); Story.Note(note); } });
+                                string note = "talk:" + key + ":" + c.topic, reply = c.reply; int price = c.price;
+                                list.Add(new Topic { say = c.say + (price > 0 ? " [" + price + " SCRAP]" : ""), reply = reply,
+                                    act = () => { if (price > 0) g.Inventory.TrySpend(MadMax.Items.ResourceType.Scrap, price); MadMax.Npc.QuestVoice.Talk(npc, key, reply); Story.Note(note); } });
                             }
                     }
                 }
                 else if (st == Story.State.Open && q.giver == key && q.offerSay != null)
                 {
-                    string id = q.id;
-                    list.Add(new Topic { say = q.offerSay, reply = q.offerReply, act = () => Story.Activate(g, id) });
+                    string id = q.id, reply = q.offerReply;
+                    list.Add(new Topic { say = q.offerSay, reply = reply, act = () => { MadMax.Npc.QuestVoice.Talk(npc, key, reply); Story.Activate(g, id); } });
                 }
             }
             return list;

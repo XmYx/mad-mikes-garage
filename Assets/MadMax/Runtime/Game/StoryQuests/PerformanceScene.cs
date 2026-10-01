@@ -148,6 +148,7 @@ namespace MadMax.Game
             {
                 var body = g.CastBody(b.who);
                 Say(body, b.line, b.seconds);
+                QuestVoice.Say(body, b.who, b.line);
                 g.Toast(NameOf(b.who) + ": " + b.line);
             }
             else g.Toast(b.line);

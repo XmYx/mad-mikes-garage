@@ -179,6 +179,7 @@ namespace MadMax.Npc
 
         bool Talking(Npc npc)
         {
+            if (npc == StorySpeaker || storyCo != null && npc == storySpeaker) return true;
             var head = npc.Head ? npc.Head : npc.transform;
             foreach (var kv in follow) if (kv.Value == head) return true;
             return false;
@@ -228,6 +229,7 @@ namespace MadMax.Npc
                 {
                     bool playing = false;
                     foreach (var s in sources) if (s.clip == kv.Value && s.isPlaying) playing = true;
+                    if (storySrc && storySrc.clip == kv.Value || radioSrc && radioSrc.clip == kv.Value) playing = true;
                     float u = lastUse.TryGetValue(kv.Key, out var v) ? v : 0f;
                     if (!playing && u < t) { t = u; oldest = kv.Key; }
                 }
@@ -237,8 +239,99 @@ namespace MadMax.Npc
             }
         }
 
+        // ------------------------------------------------------------------ story lines (QuestVoice)
+        AudioSource storySrc, radioSrc;
+        Npc storySpeaker;
+        bool storyTalk, storySeen;
+        Coroutine storyCo;
+
+        /// <summary>The cast member whose story line is playing (null when none).</summary>
+        public Npc StorySpeaker => storySrc && storySrc.isPlaying ? storySpeaker : null;
+        /// <summary>The story or radio clip playing now (its StreamingAssets/Voices path), or null.</summary>
+        public string StoryClip => storySrc && storySrc.isPlaying && storySrc.clip ? storySrc.clip.name : null;
+        public string RadioClip => radioSrc && radioSrc.isPlaying && radioSrc.clip ? radioSrc.clip.name : null;
+        /// <summary>A story line was requested and is still loading or playing.</summary>
+        public bool StoryPending => storyCo != null;
+
+        AudioSource MakeSource(string name, bool spatial)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var s = go.AddComponent<AudioSource>();
+            s.playOnAwake = false; s.spatialBlend = spatial ? 1f : 0f; s.rolloffMode = AudioRolloffMode.Linear; s.minDistance = 3f; s.maxDistance = Range + 10f;
+            s.dopplerLevel = 0f; s.ignoreListenerPause = true;
+            return s;
+        }
+
+        /// <summary>Play a story clip on <paramref name="npc"/> (QuestVoice): one at a time, cutting off the speaker's
+        /// bark; <paramref name="talk"/> lines stop when the conversation page closes.</summary>
+        public void PlayStory(Npc npc, string file, bool talk)
+        {
+            StopStory();
+            if (!npc) return;
+            storySpeaker = npc; storyTalk = talk; storySeen = false;
+            storyCo = StartCoroutine(StoryPlay(npc, file));
+        }
+
+        IEnumerator StoryPlay(Npc npc, string file)
+        {
+            var clip = Clip(file);
+            float wait = 0f;
+            while (!clip && loading.Contains(file) && wait < 4f) { wait += Time.unscaledDeltaTime; yield return null; clip = Clip(file); }
+            if (!clip || !npc || storySpeaker != npc) { storyCo = null; yield break; }
+            var head = npc.Head ? npc.Head : npc.transform;
+            foreach (var kv in follow) if (kv.Value == head && kv.Key) kv.Key.Stop();
+            if (!storySrc) storySrc = MakeSource("NpcVoiceStory", true);
+            storySrc.transform.position = head.position;
+            storySrc.clip = clip;
+            storySrc.volume = Mathf.Clamp01(MadMax.Audio.Sfx.Channel("voice_story"));
+            storySrc.pitch = 1f;
+            storySrc.Play();
+            quietUntil[npc] = Time.unscaledTime + clip.length + 4f;
+            while (storySrc && storySrc.isPlaying) yield return null;
+            storyCo = null;
+        }
+
+        public void StopStory()
+        {
+            if (storyCo != null) StopCoroutine(storyCo);
+            storyCo = null;
+            if (storySrc) storySrc.Stop();
+            storySpeaker = null;
+        }
+
+        /// <summary>A voice over the air, heard wherever the player is (2D, VOICE volume).</summary>
+        public void PlayRadio(string file) => StartCoroutine(RadioPlay(file));
+
+        IEnumerator RadioPlay(string file)
+        {
+            var clip = Clip(file);
+            float wait = 0f;
+            while (!clip && loading.Contains(file) && wait < 4f) { wait += Time.unscaledDeltaTime; yield return null; clip = Clip(file); }
+            if (!clip) yield break;
+            if (!radioSrc) radioSrc = MakeSource("NpcVoiceRadio", false);
+            radioSrc.Stop();
+            radioSrc.clip = clip;
+            radioSrc.volume = Mathf.Clamp01(MadMax.Audio.Sfx.Channel("voice_radio")) * 0.9f;
+            radioSrc.Play();
+        }
+
+        void StoryFollow()
+        {
+            if (!storySrc || !storySrc.isPlaying) return;
+            if (!storySpeaker || !storySpeaker.Alive) { StopStory(); return; }
+            storySrc.transform.position = (storySpeaker.Head ? storySpeaker.Head : storySpeaker.transform).position;
+            if (!storyTalk) return;
+            // a conversation line ends with the Talk page (lines chosen outside the menu play to the end)
+            var g = WastelandGame.Instance;
+            var with = g && g.Menus ? g.Menus.TalkingTo : null;
+            if (with == storySpeaker) storySeen = true;
+            else if (storySeen) StopStory();
+        }
+
         void LateUpdate()
         {
+            StoryFollow();
             foreach (var kv in follow) if (kv.Value && kv.Key) kv.Key.transform.position = kv.Value.position;
             for (int i = Captions.Count - 1; i >= 0; i--) if (!Captions[i].at || Time.unscaledTime > Captions[i].until) Captions.RemoveAt(i);
         }
