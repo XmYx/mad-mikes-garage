@@ -12,13 +12,14 @@ namespace MadMax.Rendering
 
         public static Color32[] Get(string key, Mesh mesh, int size, bool diagonal = false)
         {
+            if (HDIcons.TryGet(key, size, diagonal, out var hd)) return hd;                // rendered from the HD model once it is ready
             if (cache.TryGetValue(key, out var px)) return px;
             px = Render(mesh, size, diagonal);
             cache[key] = px;
             return px;
         }
 
-        public static void Invalidate() => cache.Clear();
+        public static void Invalidate() { cache.Clear(); HDIcons.Invalidate(); }
 
         static Color32[] Render(Mesh mesh, int size, bool diagonal)
         {

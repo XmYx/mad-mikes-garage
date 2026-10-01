@@ -85,6 +85,23 @@ namespace MadMax.Rendering
             return v;
         }
 
+        /// <summary>The HD model placed beside the voxel visual instead of under it: under <paramref name="parent"/> at its
+        /// own pose and scale (items lying in the world: the voxel model is an icon at a fraction of real size, the HD
+        /// model is real size). The voxel renderer of <paramref name="host"/> goes dark as usual.</summary>
+        public static HDVisual DressAt(GameObject host, HDAssetRef a, Transform parent, Vector3 pos, Quaternion rot, float scale, int flags = 0, bool followHost = false)
+        {
+            if (!host || !a || !a.model || !parent) return null;
+            var v = host.GetComponent<HDVisual>();
+            if (v && v.root) Destroy(v.root.gameObject);
+            if (!v) v = host.AddComponent<HDVisual>();
+            v.asset = a; v.flags = flags; v.followHost = followHost;
+            v.root = Instantiate(a.model, parent, false).transform;
+            v.root.name = "HD";
+            v.root.localPosition = pos; v.root.localRotation = rot; v.root.localScale = Vector3.one * scale;
+            v.Setup(host);
+            return v;
+        }
+
         /// <summary>A kit assembled from modules (bunkers, airfields): each module's HD model placed in the host's space.
         /// Modules without an export are skipped (the caller keeps voxels there). Returns null when none was placed.</summary>
         public static HDVisual DressModules(GameObject host, IList<Module> modules, HDDomain domain, int flags = 0)
