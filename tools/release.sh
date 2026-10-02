@@ -10,7 +10,7 @@
 # The HD asset pack (Assets/MadMax/Models/HD, ~1.6 GB) is not in git: it is rendered here from the committed .blend
 # sources in tools/blender/hd (Blender 5, GPU bake; only jobs whose .blend content or exporter changed are re-exported,
 # a full render from a fresh clone takes ~40 min with 6 jobs).
-# The version is the highest vMAJOR.MINOR[.PATCH] tag on the remote plus one. Builds go through CiBuild:
+# The version is the highest published vMAJOR.MINOR[.PATCH] GitHub release plus one. Builds go through CiBuild:
 # in batch mode when no editor has the project open, otherwise inside the open editor via Unity MCP
 # (tools/unity_mcp.py). Requires: Unity 6000.6.3f1 with Linux/Windows/Mac build support, gh (authenticated).
 # GitHub Actions never runs for this: the Release workflow is manual-only.
@@ -52,7 +52,8 @@ for m in LinuxStandaloneSupport WindowsStandaloneSupport MacStandaloneSupport; d
 done
 
 # ---- next version from the remote tags
-last="$(git ls-remote --tags origin 'v*' | sed -E 's#.*refs/tags/v##; s#\^\{\}##' | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 || true)"
+# published releases count (stray tags without a release, like the old CI v0.2.0, do not)
+last="$(gh release list -R "$REPO" -L 200 --json tagName --jq '.[].tagName' | sed 's#^v##' | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 || true)"
 [ -n "$last" ] || last="0.0"
 M="${last%%.*}"; rest="${last#*.}"; m="${rest%%.*}"
 if [ "$major" = 1 ]; then M=$((M + 1)); m=0; else m=$((m + 1)); fi
@@ -123,12 +124,26 @@ tar -czf "$lin" -C "$OUT" Linux &
 (cd "$OUT/macOS" && zip -qry -9 "$mac" "$GAME.app") &
 wait
 ls -la "$lin" "$win" "$mac"
+# GitHub refuses release assets over 2 GiB: bigger packages go up in 1.9 GB parts (joined with cat)
+assets=(); split_note=""
+for f in "$lin" "$win" "$mac"; do
+  if [ "$(stat -c %s "$f")" -gt 2000000000 ]; then
+    split -b 1900000000 -d -a 2 "$f" "$f.part"
+    rm -f "$f"
+    for q in "$f".part*; do assets+=("$q"); done
+    b="$(basename "$f")"; split_note+="- \`$b\` is split: \`cat $b.part* > $b\` (Windows: \`copy /b $b.part00+$b.part01 $b\`), then extract."$'\n'
+    say "split $(basename "$f") into $(ls "$f".part* | wc -l) parts"
+  else assets+=("$f"); fi
+done
 
 if [ "$dry" = 1 ]; then say "dry run: packages in $OUT, nothing published"; exit 0; fi
 
 # ---- notes + release
 nf="$OUT/notes.md"
-if [ -n "$notes" ]; then cp "$notes" "$nf"; else
+if [ -n "$notes" ]; then
+  cp "$notes" "$nf"
+  [ -z "$split_note" ] || printf "\n## Large downloads\n%s" "$split_note" >> "$nf"
+else
   {
     echo "Mad Mike's Garage $ver (player version $full, built locally from \`${sha:0:7}\`)."
     echo
@@ -136,10 +151,11 @@ if [ -n "$notes" ]; then cp "$notes" "$nf"; else
     echo "- **Linux** (x86_64): \`$(basename "$lin")\` — extract, run \`Linux/$GAME.x86_64\`."
     echo "- **Windows** (x64): \`$(basename "$win")\` — extract, run \`$GAME.exe\`."
     echo "- **macOS** (universal): \`$(basename "$mac")\` — unsigned: right-click → Open, or \`xattr -dr com.apple.quarantine $GAME.app\`."
+    [ -n "$split_note" ] && printf "%s" "$split_note"
     echo
     echo "## Changes since v$last"
     git log --no-merges --format='- %s' "v$last..$sha" 2>/dev/null | grep -v "Regenerated content" | head -80 || true
   } > "$nf"
 fi
-gh release create "$tag" -R "$REPO" --target "$sha" --title "Mad Mike's Garage $ver" --notes-file "$nf" "$lin" "$win" "$mac"
+gh release create "$tag" -R "$REPO" --target "$sha" --title "Mad Mike's Garage $ver" --notes-file "$nf" "${assets[@]}"
 say "published $(gh release view "$tag" -R "$REPO" --json url --jq .url)"
