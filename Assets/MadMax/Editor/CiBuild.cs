@@ -35,7 +35,11 @@ namespace MadMax.EditorTools
             if (!path.EndsWith(ext)) path += ext;
             try
             {
-                if (regenerate) MadMaxBuilder.BuildGameScene();
+                if (regenerate)
+                {
+                    AssetDatabase.Refresh();                                      // a freshly rendered HD pack (tools/release.sh)
+                    MadMaxBuilder.BuildGameScene();
+                }
                 if (!string.IsNullOrEmpty(version) && version != "none") BuildStamp.VersionOverride = version;
                 PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
                 if (target == BuildTarget.StandaloneLinux64)

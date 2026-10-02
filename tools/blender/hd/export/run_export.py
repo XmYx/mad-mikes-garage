@@ -4,18 +4,21 @@ resumable, with a size report and the asset index the game builders read.
 
     python3 tools/blender/hd/export/run_export.py [--out DIR] [--jobs N] [--list] [--report] [--force] [filter ...]
 
-Sources (each a tools/blender/hd folder holding the gitignored .blend files; defaults are the wave-6 worktrees,
-override with HD_SRC_VEHICLES / HD_SRC_PARTS / HD_SRC_WORLD / HD_SRC_CHARACTER):
+Sources: the .blend files committed under tools/blender/hd of this checkout (the HD binaries in Models/HD are not
+in git: tools/release.sh renders them from these at release time); override per set with HD_SRC_VEHICLES /
+HD_SRC_PARTS / HD_SRC_WORLD / HD_SRC_CHARACTER (a tools/blender/hd folder):
     vehicles   cars/blend/*.blend (cars), heavy/*.blend (heavy), misc/{bike,boat,air}_*.blend (misc vehicles)
     parts      parts_all/blend + items/blend, jobs from parts_all/export_jobs.json (parts, items)
     world      world/*.blend (world: buildings, props, sites, vegetation), furniture/*.blend, animals/*.blend
     character  character/blend/wardrobe_<M|M2|F|F2>.blend (build_wardrobe.py) -> Character_<KEY>
 --out      Unity folder (default <this checkout>/Assets/MadMax/Models/HD).
 filter     job names or prefixes (e.g. "cars/Sedan", "world/", "items/food_"); default: all jobs.
---force    re-export even when up to date (default: skip assets whose sidecar is newer than the source and from the
-           current export_hd.EXPORTER_VERSION; jobs whose state file is newer than the source).
+--force    re-export even when up to date (default: skip jobs whose state records the same .blend content hash and
+           export_hd.EXPORTER_VERSION, and inside a job assets whose sidecar is newer than the source).
+--check    exit 1 when any job is not up to date (nothing exported).
 Writes <out>/hd_index.json (every exported asset), tools/blender/hd/export/hd_report.json, appends to the log file
-($HD_EXPORT_LOG, default <MadMaxUnity>/hd_export.log), per-job Blender output in <MadMaxUnity>/hd_export_logs/.
+($HD_EXPORT_LOG, default <repo>/Logs/hd_export.log), per-job Blender output in <repo>/Logs/hd_export/, job state in
+<repo>/Logs/hd_export_state/.
 """
 import glob
 import json
@@ -28,22 +31,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 HERE = os.path.dirname(os.path.abspath(__file__))
 HD = os.path.dirname(HERE)
 REPO = os.path.abspath(os.path.join(HD, "..", "..", ".."))
-BASE = "/home/magix/PycharmProjects/MadMaxUnity"
 BLENDER = os.environ.get("BLENDER", "/usr/bin/blender")
 EXPORTER = os.path.join(HERE, "export_hd.py")
 SRC = {
-    "vehicles": os.environ.get("HD_SRC_VEHICLES", BASE + "/wt/hd/tools/blender/hd"),
-    "parts": os.environ.get("HD_SRC_PARTS", BASE + "/wt/hdparts/tools/blender/hd"),
-    "world": os.environ.get("HD_SRC_WORLD", BASE + "/wt/hdworld/tools/blender/hd"),
+    "vehicles": os.environ.get("HD_SRC_VEHICLES", HD),
+    "parts": os.environ.get("HD_SRC_PARTS", HD),
+    "world": os.environ.get("HD_SRC_WORLD", HD),
     "character": os.environ.get("HD_SRC_CHARACTER", HD),
 }
-LOG = os.environ.get("HD_EXPORT_LOG", BASE + "/hd_export.log")
-LOGDIR = BASE + "/hd_export_logs"
-STATE = BASE + "/hd_export_state"
+LOG = os.environ.get("HD_EXPORT_LOG", REPO + "/Logs/hd_export.log")
+LOGDIR = REPO + "/Logs/hd_export"
+STATE = REPO + "/Logs/hd_export_state"
 CAP = {"furniture": 512, "items": 512, "parts": 512, "vegetation": 256}
 
 
 def log(msg):
+    os.makedirs(os.path.dirname(LOG), exist_ok=True)
     line = time.strftime("%Y-%m-%d %H:%M:%S ") + msg
     print(line, flush=True)
     with open(LOG, "a") as f:
@@ -93,13 +96,27 @@ def state_file(name):
     return os.path.join(STATE, name.replace("/", "__") + ".ok")
 
 
+def blend_hash(blend):
+    import hashlib
+    h = hashlib.sha1()
+    with open(blend, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def up_to_date(name, blend):
+    """Same exporter version and the same .blend content as the last good export (a fresh clone's file times say
+    nothing); state files without a hash fall back to their time."""
     sf = state_file(name)
     if not os.path.exists(sf):
         return False
     with open(sf) as f:
-        if f.readline().strip() != "v%d" % exporter_version():
-            return False                          # exporter changes that need a re-export bump EXPORTER_VERSION
+        lines = f.read().splitlines()
+    if not lines or lines[0].strip() != "v%d" % exporter_version():
+        return False                              # exporter changes that need a re-export bump EXPORTER_VERSION
+    if len(lines) > 1 and lines[1].startswith("sha1:"):
+        return lines[1][5:] == blend_hash(blend)
     return os.path.getmtime(sf) > os.path.getmtime(blend)
 
 
@@ -127,7 +144,7 @@ def run(name, job, out, force):
     if p.returncode == 0:
         os.makedirs(STATE, exist_ok=True)
         with open(state_file(name), "w") as f:
-            f.write("v%d\n" % exporter_version() + "\n".join(done))
+            f.write("v%d\nsha1:%s\n" % (exporter_version(), blend_hash(blend)) + "\n".join(done))
         return name, "ok", time.time() - t0, "%d assets" % len(done)
     tail = "\n".join([ln for ln in lines if "FAILED" in ln or "failed" in ln][-5:] + (p.stdout + p.stderr).splitlines()[-12:])
     return name, "fail", time.time() - t0, tail
@@ -173,7 +190,7 @@ def report(rows):
 def main():
     a = sys.argv[1:]
     out = os.path.join(REPO, "Assets", "MadMax", "Models", "HD")
-    n_jobs, force, filt = 6, False, []
+    n_jobs, force, check, filt = 6, False, False, []
     i = 0
     while i < len(a):
         if a[i] == "--out":
@@ -182,6 +199,8 @@ def main():
             n_jobs = int(a[i + 1]); i += 1
         elif a[i] == "--force":
             force = True
+        elif a[i] == "--check":
+            check = True
         elif a[i] == "--list":
             for k, v in jobs().items():
                 print(k, v[1], " ".join(v[2]))
@@ -195,6 +214,10 @@ def main():
     J = jobs()
     names = [n for n in J if not filt or any(n == f or n.startswith(f) for f in filt)]
     names.sort(key=lambda n: -os.path.getsize(J[n][1]) if os.path.exists(J[n][1]) else 0)   # big files first
+    if check:
+        stale = [n for n in names if not os.path.exists(J[n][1]) or not up_to_date(n, J[n][1])]
+        print("%d of %d HD jobs stale%s" % (len(stale), len(names), (": " + ", ".join(stale[:20])) if stale else ""))
+        sys.exit(1 if stale else 0)
     os.makedirs(out, exist_ok=True)
     t0 = time.time()
     log("export start: %d jobs, %d parallel -> %s" % (len(names), n_jobs, out))
@@ -213,6 +236,8 @@ def main():
     rows = index(out)
     report(rows)
     log("export done in %.1f min: %s; failed: %s" % ((time.time() - t0) / 60, stats, failed or "none"))
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

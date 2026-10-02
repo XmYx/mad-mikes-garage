@@ -1,3 +1,18 @@
-*.blend
 *.blend1
 __pycache__/
+# The source .blend files the export jobs read are committed (tools/release.sh renders the HD pack from them; the
+# exported binaries in Assets/MadMax/Models/HD stay out of git). Scratch blends anywhere else are not.
+*.blend
+!cars/blend/*.blend
+cars/blend/*_exploded.blend
+cars/blend/*_wear.blend
+!heavy/*.blend
+!misc/bike_*.blend
+!misc/boat_*.blend
+!misc/air_*.blend
+!parts_all/blend/*.blend
+!items/blend/*.blend
+!world/*.blend
+!furniture/*.blend
+!animals/*.blend
+!character/blend/wardrobe_*.blend

@@ -5,7 +5,11 @@
 #   tools/release.sh --major         # next major: v0.4 -> v1.0
 #   tools/release.sh --dry-run       # build and package, no tag / release
 #   tools/release.sh --notes FILE    # release notes from a file (default: commits since the last tag)
+#   tools/release.sh --no-hd         # skip rendering the HD pack (ships whatever Models/HD holds, or the voxel look)
 #
+# The HD asset pack (Assets/MadMax/Models/HD, ~1.6 GB) is not in git: it is rendered here from the committed .blend
+# sources in tools/blender/hd (Blender 5, GPU bake; only jobs whose .blend content or exporter changed are re-exported,
+# a full render from a fresh clone takes ~40 min with 6 jobs).
 # The version is the highest vMAJOR.MINOR[.PATCH] tag on the remote plus one. Builds go through CiBuild:
 # in batch mode when no editor has the project open, otherwise inside the open editor via Unity MCP
 # (tools/unity_mcp.py). Requires: Unity 6000.6.3f1 with Linux/Windows/Mac build support, gh (authenticated).
@@ -19,13 +23,14 @@ MCP="$(dirname "$ROOT")/tools/unity_mcp.py"
 OUT="$ROOT/Builds/Release"
 GAME="MadMikesGarage"
 
-major=0; dry=0; notes=""
+major=0; dry=0; notes=""; hd=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --major) major=1 ;;
     --dry-run) dry=1 ;;
     --notes) notes="$2"; shift ;;
-    -h|--help) sed -n 2,13p "$0"; exit 0 ;;
+    --no-hd) hd=0 ;;
+    -h|--help) sed -n 2,18p "$0"; exit 0 ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
   shift
@@ -55,6 +60,14 @@ ver="$M.$m"; tag="v$ver"; full="$ver.0"
 sha="$(git rev-parse HEAD)"
 say "last release v$last -> $tag (player version $full) at ${sha:0:7}"
 git ls-remote --tags origin "$tag" | grep -q . && die "tag $tag already exists"
+
+# ---- HD asset pack, rendered from the committed Blender sources
+if [ "$hd" = 1 ]; then
+  command -v "${BLENDER:-blender}" >/dev/null || die "Blender not found (set BLENDER=..., or --no-hd)"
+  say "HD pack: rendering stale assets from tools/blender/hd (log: Logs/hd_export.log)"
+  python3 tools/blender/hd/export/run_export.py --jobs "${HD_JOBS:-6}" | tail -3 || die "HD export failed (see Logs/hd_export.log)"
+  python3 tools/blender/hd/export/run_export.py --check || die "HD pack still stale after the export"
+fi
 
 # ---- build
 rm -rf "$OUT"; mkdir -p "$OUT"

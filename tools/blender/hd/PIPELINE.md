@@ -15,8 +15,11 @@ blender -b <asset.blend> -P tools/blender/hd/export/export_hd.py -- --group cars
 blender -b -P tools/blender/hd/export/verify_render.py -- Assets/MadMax/Models/HD/cars/Sedan /tmp/out
 ```
 
-* Source `.blend` files are gitignored; build them with the group scripts (`cars/build.py`, `heavy/build_all.py`,
-  `misc/*.py`, `character/build_characters.py`) or point `HD_BLEND_ROOT` / `--src` at a checkout that has them.
+* Source `.blend` files the export jobs read are committed (629 files, ~140 MB: `cars/blend`, `heavy`, `misc/{bike,boat,air}_*`,
+  `parts_all/blend`, `items/blend`, `world`, `furniture`, `animals`, `character/blend/wardrobe_*`); the exported binaries
+  in `Assets/MadMax/Models/HD` (~1.6 GB) and the catalogs in `Resources/HDGen` are not in git. `tools/release.sh`
+  renders the pack from the blends at release time (`--no-hd` skips it). After changing a group script, rebuild its
+  blends (`cars/build.py`, `heavy/build_all.py`, `misc/*.py`, `character/build_wardrobe.py` ...) and commit them.
 * Output: `Assets/MadMax/Models/HD/<group>/<Asset>/` = `<Asset>.fbx`, `<Atlas>_Base.png`, `<Atlas>_Mask.png`,
   `[<Atlas>_Normal.png]`, `[<Atlas>_Emission.png]`, `<Asset>.hd.json` (sidecar). Logs: `<repo>/Logs/hd_export/`.
   Size report: `tools/blender/hd/export/hd_report.json`.
@@ -214,6 +217,10 @@ name (`bones[i] = rig.Find(name)`, `bindposes` from the sidecar rest matrices), 
 the imported bones directly. Garments are separate meshes per piece (one atlas each) so `ClothingLibrary` slots can
 toggle them; an outfit export (`outfit_*`) is a complete dressed character.
 
+Orientation: the catalogue builder measures each imported model (left arm at -X, toes in front of the ankles) and bakes
+a half turn (or a front/back mirror, flipping the winding) into joints and bindposes when the FBX axis conversion left it
+facing -Z (the 2026-10-01 export did: the player stood backwards); scenario `hd.character` checks eyes and toes face +Z.
+
 In the game (approach a): **MadMax/HD/Build Character Catalog** (also run by Build Game Scene) scans every `character`
 sidecar and writes `Resources/HDGen/Characters.asset` (`HDCharacterCatalog`, meshes as sub-assets, gitignored like the
 rest of the catalog; off with `--voxel-humans` or `--no-hd`): each skinned mesh copied with bindposes for the HumanRig rest pose (`T(-joint) x mesh-to-root`: identity bone
@@ -287,21 +294,23 @@ mount point (right-hand authoring). Build prefabs the way `HDVehicleBuilder.Buil
 ## 11. Full export (all content sets)
 
 `python3 tools/blender/hd/export/run_export.py --out <unity>/Assets/MadMax/Models/HD --jobs 6` exports everything
-(`--list` shows the job table; filters like `world/` or `items/food_`; `--force` ignores freshness). Resumable: a job is
-skipped when its state file (`<MadMaxUnity>/hd_export_state/`) is newer than its .blend and the exporter, and inside a
-job each asset is skipped when its sidecar is newer (`--skip-fresh`, sidecar `exporter` >= 2). Log:
-`<MadMaxUnity>/hd_export.log`; Blender output per job: `<MadMaxUnity>/hd_export_logs/`.
+(`--list` shows the job table; filters like `world/` or `items/food_`; `--force` ignores freshness; `--check` exits 1
+when anything is stale; exit 1 on failed jobs). Resumable: a job is skipped when its state file
+(`<repo>/Logs/hd_export_state/`) records the same `EXPORTER_VERSION` and the .blend's sha1 (file times of a fresh clone
+mean nothing), and inside a job each asset is skipped when its sidecar is newer (`--skip-fresh`, sidecar `exporter` >= 2).
+Log: `<repo>/Logs/hd_export.log`; Blender output per job: `<repo>/Logs/hd_export/`. A full render takes ~40 min
+(6 jobs, GPU bake).
 
 | group folder | source | asset name | kind | atlas cap |
 |---|---|---|---|---|
-| `cars` | `wt/hd .../cars/blend` | vehicle design name | vehicle | 2048 |
-| `heavy` | `wt/hd .../heavy` (incl. `Tractor_implements`: one asset per implement) | design / part name | vehicle | 2048 |
-| `misc` | `wt/hd .../misc/{bike,boat,air}_*` (the old prop_/furn_/parts_ previews are superseded) | root name | vehicle | 2048 |
-| `parts` | `wt/hdparts .../parts_all/blend` (export_jobs.json) | part key | part | 512 |
-| `items` | `wt/hdparts .../items/blend` | item id | item | 512 (most 256) |
-| `world` | `wt/hdworld .../world` (buildings, props, sites, vegetation) | root `game_id` (`BrickHouse0`, `Ore_IronOre1`, `Pine2` ...) | prop | 1024, vegetation 256 |
-| `furniture` | `wt/hdworld .../furniture` | furniture id | prop | 512 |
-| `animals` | `wt/hdworld .../animals` | species id | animal | 1024 |
+| `cars` | `cars/blend` | vehicle design name | vehicle | 2048 |
+| `heavy` | `heavy` (incl. `Tractor_implements`: one asset per implement) | design / part name | vehicle | 2048 |
+| `misc` | `misc/{bike,boat,air}_*` (the old prop_/furn_/parts_ previews are superseded) | root name | vehicle | 2048 |
+| `parts` | `parts_all/blend` (export_jobs.json) | part key | part | 512 |
+| `items` | `items/blend` | item id | item | 512 (most 256) |
+| `world` | `world` (buildings, props, sites, vegetation) | root `game_id` (`BrickHouse0`, `Ore_IronOre1`, `Pine2` ...) | prop | 1024, vegetation 256 |
+| `furniture` | `furniture` | furniture id | prop | 512 |
+| `animals` | `animals` | species id | animal | 1024 |
 | `character` | `character/blend/wardrobe_<KEY>.blend` (`build_wardrobe.py`) | `Character_M`, `_M2`, `_F`, `_F2` | character | body 1024, rest 512/256 |
 
 `<out>/hd_index.json` lists every current asset: `{group, id (game id), asset (folder), kind, path, sidecar, fbx,
