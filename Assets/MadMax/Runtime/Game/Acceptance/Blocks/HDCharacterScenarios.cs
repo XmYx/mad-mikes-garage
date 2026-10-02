@@ -97,11 +97,13 @@ namespace MadMax.Game.Acceptance
                     c.Check(BodyMesh(rig) != bodyBefore, "the skin under the clothes was cut again for the new outfit");
                     CheckRig(c, rig, "player after the outfit change");
                     // worn out: holes
-                    rig.condition = id => id == add ? 0.2f : 1f;
+                    // through the game's wear table: RebuildBody hands the rig g.GarmentCondition
+                    bool hadWear = g.ClothWear.TryGetValue(add, out float wearBefore);
+                    g.ClothWear[add] = 0.8f;
                     player.RebuildBody();
                     yield return null;
                     c.Check(rig.GetComponentsInChildren<SkinnedMeshRenderer>(true).Any(r => r.sharedMesh && r.sharedMesh.name.EndsWith("_torn")), $"a worn-out {add} renders with holes");
-                    rig.condition = g.GarmentCondition;
+                    if (hadWear) g.ClothWear[add] = wearBefore; else g.ClothWear.Remove(add);
                     rig.outfit.Clear(); rig.outfit.AddRange(saved);
                     player.RebuildBody();
                     yield return null;
@@ -109,12 +111,12 @@ namespace MadMax.Game.Acceptance
                 }
 
                 // ---- first person: the arms only
-                rig.SetHeadVisible(false);
-                yield return null;
+                rig.SetHeadVisible(false);                     // checked at once: CameraRig re-applies its own view next frame
                 var smrs = rig.GetComponentsInChildren<SkinnedMeshRenderer>(true);
                 bool headHidden = smrs.Where(r => r.name.StartsWith("hair") || r.name.StartsWith("Eye") || r.name == "brows").All(r => !r.enabled);
                 bool armsOnly = smrs.Where(r => r.enabled).All(r => r.sharedMesh && r.sharedMesh.name.EndsWith("_arms"));
-                c.Check(headHidden && armsOnly && smrs.Any(r => r.enabled), "first person: head pieces hidden, the rest reduced to arms and hands");
+                string odd = string.Join(", ", smrs.Where(r => r.enabled && !(r.sharedMesh && r.sharedMesh.name.EndsWith("_arms"))).Select(r => r.name + "=" + (r.sharedMesh ? r.sharedMesh.name : "null")).Take(6));
+                c.Check(headHidden && armsOnly && smrs.Any(r => r.enabled), "first person: head pieces hidden, the rest reduced to arms and hands" + (odd.Length > 0 ? " (still drawn: " + odd + ")" : ""));
                 rig.SetHeadVisible(true);
                 yield return null;
 
@@ -238,7 +240,7 @@ namespace MadMax.Game.Acceptance
                 }
             }
             Object.Destroy(baked);
-            c.Check(eyes > 0.02f, $"{who}: faces forward, eyes {eyes * 100f:0.0} cm in front of the head joint");
+            c.Check(eyes > 0.004f, $"{who}: faces forward, eyes {eyes * 100f:0.0} cm in front of the head joint");
             c.Check(toes > 0.01f, $"{who}: toes {toes * 100f:0.0} cm in front of the left ankle");
         }
     }

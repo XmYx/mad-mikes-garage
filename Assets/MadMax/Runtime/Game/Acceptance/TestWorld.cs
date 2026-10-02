@@ -175,9 +175,11 @@ namespace MadMax.Game.Acceptance
             var sys = v.GetComponent<VehicleSystems>();
             if (!sys) yield break;
             float t0 = Time.time;
+            bool lever = v.GetComponent<FlightModel>() || v.GetComponent<BoatModel>();     // these overwrite throttleInput from their own lever
             while (!sys.Started && Time.time - t0 < within)
             {
                 v.handbrake = true; v.throttleInput = 0.4f;
+                if (lever) sys.Crank();
                 yield return new WaitForSeconds(0.25f);
                 if (!sys.Started && !sys.Cranking) { v.throttleInput = 0f; yield return new WaitForSeconds(0.3f); }   // turn the key again
             }

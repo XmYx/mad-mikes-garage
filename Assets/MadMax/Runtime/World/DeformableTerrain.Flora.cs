@@ -324,6 +324,82 @@ namespace MadMax.World
             }
         }
 
+        // ---- HD primitives (two-sided material; alpha = wind weight from the height above the ground `g`)
+        static Color32 Tone(Color32 c, float f, byte a) => new Color32((byte)Mathf.Min(255, c.r * f), (byte)Mathf.Min(255, c.g * f), (byte)Mathf.Min(255, c.b * f), a);
+
+        /// <summary>Low-poly ellipsoid (or its upper half), darker underneath.</summary>
+        void Ellipsoid(Vector3 c, Vector3 r, float g, Color32 col, int seg = 7, int rings = 4, bool half = false)
+        {
+            if (boxes >= MaxBoxes) return;
+            boxes++;
+            int b = fv.Count;
+            int r0 = half ? rings / 2 : 0;
+            for (int i = r0; i <= rings; i++)
+            {
+                float v = i / (float)rings, phi = (v - 0.5f) * Mathf.PI;
+                float cy = Mathf.Sin(phi), cr = Mathf.Cos(phi);
+                for (int k = 0; k <= seg; k++)
+                {
+                    float th = k * Mathf.PI * 2f / seg;
+                    var n = new Vector3(Mathf.Cos(th) * cr, cy, Mathf.Sin(th) * cr);
+                    var p = c + Vector3.Scale(n, r);
+                    fv.Add(p); fn.Add(new Vector3(n.x / r.x, n.y / r.y, n.z / r.z).normalized);
+                    fc.Add(Tone(col, 0.68f + 0.42f * v, Bend(p.y - g)));
+                }
+            }
+            int cols = seg + 1;
+            for (int i = 0; i < rings - r0; i++)
+                for (int k = 0; k < seg; k++)
+                {
+                    int a = b + i * cols + k, d = a + cols;
+                    fi.Add(a); fi.Add(d); fi.Add(d + 1); fi.Add(a); fi.Add(d + 1); fi.Add(a + 1);
+                }
+        }
+
+        /// <summary>Tapered tube from <paramref name="a"/> to <paramref name="bTop"/> (stems, twigs, coral, cactus).</summary>
+        void Tube(Vector3 a, Vector3 bTop, float ra, float rb, float g, Color32 col, int seg = 5)
+        {
+            if (boxes >= MaxBoxes) return;
+            boxes++;
+            var ax = (bTop - a).normalized;
+            var u = Vector3.Cross(ax, Mathf.Abs(ax.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+            var w = Vector3.Cross(ax, u);
+            int b = fv.Count;
+            for (int k = 0; k <= seg; k++)
+            {
+                float th = k * Mathf.PI * 2f / seg;
+                var n = u * Mathf.Cos(th) + w * Mathf.Sin(th);
+                fv.Add(a + n * ra); fn.Add(n); fc.Add(Tone(col, 0.75f, Bend(a.y - g)));
+                fv.Add(bTop + n * rb); fn.Add(n); fc.Add(Tone(col, 1.05f, Bend(bTop.y - g)));
+            }
+            for (int k = 0; k < seg; k++)
+            {
+                int i0 = b + k * 2;
+                fi.Add(i0); fi.Add(i0 + 1); fi.Add(i0 + 3); fi.Add(i0); fi.Add(i0 + 3); fi.Add(i0 + 2);
+            }
+        }
+
+        /// <summary>A leaf / petal / frond: a diamond from the root through a widest point to the tip; with a
+        /// <paramref name="droop"/> the tip half bends down (ferns, kelp).</summary>
+        void Leaf(Vector3 root, Vector3 tip, float width, float g, Color32 col, float droop = 0f)
+        {
+            if (boxes >= MaxBoxes) return;
+            boxes++;
+            var d = tip - root;
+            var side = Vector3.Cross(Vector3.up, d).normalized;
+            if (side.sqrMagnitude < 0.01f) side = Vector3.right;
+            var mid = root + d * 0.45f + Vector3.up * (droop * d.magnitude * 0.25f);
+            var t = tip - Vector3.up * (droop * d.magnitude * 0.35f);
+            var n = (Vector3.Cross(d, side).normalized * (Vector3.Dot(Vector3.Cross(d, side), Vector3.up) < 0f ? -1f : 1f) * 0.5f + Vector3.up * 0.5f).normalized;
+            int b = fv.Count;
+            fv.Add(root); fv.Add(mid - side * width * 0.5f); fv.Add(t); fv.Add(mid + side * width * 0.5f);
+            for (int k = 0; k < 4; k++) fn.Add(n);
+            fc.Add(Tone(col, 0.75f, Bend(root.y - g))); fc.Add(Tone(col, 1f, Bend(mid.y - g))); fc.Add(Tone(col, 1.12f, Bend(t.y - g))); fc.Add(Tone(col, 1f, Bend(mid.y - g)));
+            fi.Add(b); fi.Add(b + 1); fi.Add(b + 2); fi.Add(b); fi.Add(b + 2); fi.Add(b + 3);
+        }
+
+        Vector3 At(in CellInfo c, float fx, float fz, float up = 0f) => new Vector3(c.i * Cell + fx * Cell, c.Ground(Mathf.Clamp01(fx), Mathf.Clamp01(fz)) + up, c.j * Cell + fz * Cell);
+
         // a, d on the ground; a→b up; clockwise seen from outside
         static void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n, Color32 bottom, Color32 top)
         {
@@ -366,6 +442,7 @@ namespace MadMax.World
         void Seabed(in CellInfo c, float depth, float lat)
         {
             float r = Rn(c, 3);
+            if (hdFlora && SeabedHD(c, depth, lat, r)) return;
             if (r > 0.93f)
             {
                 float x = c.i * Cell + 0.04f, z = c.j * Cell + 0.04f, y = c.Ground(0.3f, 0.3f) - 0.05f;
@@ -394,6 +471,45 @@ namespace MadMax.World
             Tuft(c, SeaGrass, 4, 0.3f);
         }
 
+        bool SeabedHD(in CellInfo c, float depth, float lat, float r)
+        {
+            float g = c.Ground(0.5f, 0.5f);
+            if (r > 0.93f)
+            {
+                var rock = At(c, 0.45f, 0.45f, 0.02f);
+                Ellipsoid(rock, new Vector3(0.1f, 0.07f, 0.09f), g + 1f, SeaRock, 7, 4, true);
+                Ellipsoid(rock + new Vector3(0.02f, 0.07f, 0.01f), new Vector3(0.035f, 0.025f, 0.035f), g + 1f, Urchin, 6, 4);
+                return true;
+            }
+            if (lat < 25f && r < 0.45f)
+            {
+                var col = Coral[Mathf.FloorToInt(Rn(c, 5) * Coral.Length) % Coral.Length];
+                var root = At(c, 0.5f, 0.5f, -0.01f);
+                int branches = 3 + Mathf.FloorToInt(Rn(c, 6) * 3f);
+                for (int b = 0; b < branches; b++)
+                {
+                    var tip = root + new Vector3((Rn(c, 50 + b) - 0.5f) * 0.25f, 0.12f + Rn(c, 70 + b) * 0.3f, (Rn(c, 60 + b) - 0.5f) * 0.25f);
+                    Tube(root, tip, 0.018f, 0.008f, g + 1f, col);
+                    Ellipsoid(tip, new Vector3(0.014f, 0.014f, 0.014f), g + 1f, col, 5, 3);
+                }
+                return true;
+            }
+            if (lat >= 25f && r < 0.25f && depth > 1.6f)
+            {
+                float h = Mathf.Min(depth - 0.3f, 6f) * (0.6f + Rn(c, 8) * 0.4f);
+                var root = At(c, 0.3f + Rn(c, 9) * 0.4f, 0.3f + Rn(c, 10) * 0.4f);
+                Tube(root, root + Vector3.up * h, 0.012f, 0.008f, root.y, Kelp[1], 4);
+                for (float y = 0.4f; y < h; y += 0.3f)
+                {
+                    float a = y * 7.1f;
+                    var at = root + Vector3.up * y;
+                    Leaf(at, at + new Vector3(Mathf.Sin(a) * 0.3f, 0.12f, Mathf.Cos(a) * 0.3f), 0.07f, root.y, Kelp[(int)(y * 3f) & 3], 0.6f);
+                }
+                return true;
+            }
+            return false;                                                                         // sea grass: Tuft (blades)
+        }
+
         void Tuft(in CellInfo c, Color32[] ramp, int maxBlades, float height)
         {
             int n = 1 + Mathf.FloorToInt(Rn(c, 1) * maxBlades);
@@ -410,6 +526,18 @@ namespace MadMax.World
             float fx = 0.3f + Rn(c, 2) * 0.4f, fz = 0.3f + Rn(c, 3) * 0.4f, h = (0.1f + Rn(c, 4) * 0.12f) * Grow(c) + FV;
             Stalk(c, fx, fz, h, MeadowGrass[1]);
             if (c.stage < 3 || c.snow >= 2) return;
+            if (hdFlora)
+            {
+                var head = At(c, fx, fz, h + 0.02f);
+                float g = c.Ground(fx, fz), pr = 0.028f + Rn(c, 5) * 0.015f;
+                for (int p = 0; p < 5; p++)
+                {
+                    float a = p * 1.2566f + Rn(c, 6) * 6.28f;
+                    Leaf(head, head + new Vector3(Mathf.Sin(a) * pr, 0.008f, Mathf.Cos(a) * pr), pr * 0.75f, g, petal);
+                }
+                Ellipsoid(head + Vector3.up * 0.004f, new Vector3(0.008f, 0.006f, 0.008f), g, petal.r > 200 && petal.g > 180 ? FlowerOrange : FlowerYellow, 5, 3);
+                return;
+            }
             float x = c.i * Cell + Mathf.Round(fx * Cell / FV) * FV - FV * 0.25f, z = c.j * Cell + Mathf.Round(fz * Cell / FV) * FV - FV * 0.25f;
             float y = c.Ground(fx, fz) + h;
             Box(x, y, z, FV * 1.5f, FV, FV * 1.5f, petal, Bend(h), Bend(h + FV));
@@ -421,6 +549,24 @@ namespace MadMax.World
             if (c.snow >= 3) s *= 0.5f;
             float cx = c.i * Cell + Cell * 0.5f, cz = c.j * Cell + Cell * 0.5f, y = c.Ground(0.5f, 0.5f) - 0.03f;
             int lumps = 3 + Mathf.FloorToInt(Rn(c, 6) * 3f);
+            if (hdFlora)
+            {
+                float g = y + 0.03f;
+                for (int l = 0; l < lumps; l++)
+                {
+                    float w = s * (0.45f + Rn(c, 50 + l) * 0.35f), h = s * (0.35f + Rn(c, 60 + l) * 0.45f);
+                    float ox = (Rn(c, 70 + l) - 0.5f) * s * 0.8f, oz = (Rn(c, 80 + l) - 0.5f) * s * 0.8f, oy = l == 0 ? 0f : Rn(c, 90 + l) * s * 0.35f;
+                    var col = ramp[Mathf.Min(ramp.Length - 1, 1 + Mathf.FloorToInt(Rn(c, 95 + l) * (ramp.Length - 1)))];
+                    Ellipsoid(new Vector3(cx + ox, y + oy + h * 0.5f, cz + oz), new Vector3(w * 0.55f, h * 0.55f, w * 0.55f), g, col, 7, 4);
+                }
+                for (int l = 0; l < 4; l++)                                                     // a few leaves poking out
+                {
+                    float a = l * 1.57f + Rn(c, 99) * 6.28f;
+                    var root = new Vector3(cx, y + s * 0.3f, cz);
+                    Leaf(root, root + new Vector3(Mathf.Sin(a) * s * 0.6f, s * 0.35f, Mathf.Cos(a) * s * 0.6f), s * 0.18f, g, ramp[ramp.Length - 1], 0.3f);
+                }
+                return;
+            }
             for (int l = 0; l < lumps; l++)
             {
                 float w = s * (0.45f + Rn(c, 50 + l) * 0.35f), h = s * (0.35f + Rn(c, 60 + l) * 0.45f);
@@ -434,6 +580,17 @@ namespace MadMax.World
         {
             float len = (0.1f + Rn(c, 7) * 0.12f) * Grow(c) + FV, cx = c.i * Cell + Cell * 0.5f, cz = c.j * Cell + Cell * 0.5f, y = c.Ground(0.5f, 0.5f);
             if (c.snow >= 2) return;
+            if (hdFlora)
+            {
+                int fronds = 5 + Mathf.FloorToInt(Rn(c, 13) * 3f);
+                var root = new Vector3(cx, y, cz);
+                for (int f = 0; f < fronds; f++)
+                {
+                    float a = f * 6.2832f / fronds + Rn(c, 14) * 6.28f, l = len * (1.4f + Rn(c, 150 + f) * 0.6f);
+                    Leaf(root, root + new Vector3(Mathf.Sin(a) * l, l * 0.55f, Mathf.Cos(a) * l), l * 0.32f, y, ramp[1 + f % 3], 0.8f);
+                }
+                return;
+            }
             Box(cx - FV * 0.5f, y - 0.02f, cz - FV * 0.5f, FV, FV * 2f, FV, ramp[1], 255, Bend(FV * 2f));
             Box(cx, y + FV, cz - FV * 0.5f, len, FV * 0.6f, FV, ramp[2], Bend(FV), Bend(FV * 2f));
             Box(cx - len, y + FV * 0.8f, cz - FV * 0.5f, len, FV * 0.6f, FV, ramp[3], Bend(FV), Bend(FV * 2f));
@@ -445,6 +602,12 @@ namespace MadMax.World
         {
             if (c.stage < 2 || c.snow >= 2) { Tuft(c, ForestGrass, 2, 0.1f); return; }
             float cx = c.i * Cell + Cell * (0.3f + Rn(c, 8) * 0.4f), cz = c.j * Cell + Cell * (0.3f + Rn(c, 9) * 0.4f), y = c.Ground(0.5f, 0.5f);
+            if (hdFlora)
+            {
+                Tube(new Vector3(cx, y - 0.02f, cz), new Vector3(cx, y + 0.085f, cz), 0.016f, 0.012f, y + 1f, Stem);
+                Ellipsoid(new Vector3(cx, y + 0.08f, cz), new Vector3(FV * 1.3f, 0.045f, FV * 1.3f), y + 1f, red ? CapRed : CapBrown, 8, 4, true);
+                return;
+            }
             Box(cx - 0.02f, y - 0.02f, cz - 0.02f, 0.04f, 0.1f, 0.04f, Stem, 255, 255);
             Box(cx - FV * 1.2f, y + 0.08f, cz - FV * 1.2f, FV * 2.4f, 0.04f, FV * 2.4f, red ? CapRed : CapBrown, 255, 255);
         }
@@ -459,6 +622,7 @@ namespace MadMax.World
                 Stalk(c, fx, fz, h, col);
                 if (c.stage == 3 && !c.frost && c.snow < 2)
                 {
+                    if (hdFlora) { Ellipsoid(At(c, fx, fz, h + FV * 0.7f), new Vector3(FV * 0.35f, FV * 0.9f, FV * 0.35f), c.Ground(fx, fz), Wheat[3], 5, 4); continue; }
                     float x = c.i * Cell + Mathf.Round(fx * Cell / FV) * FV, z = c.j * Cell + Mathf.Round(fz * Cell / FV) * FV;
                     Box(x, c.Ground(fx, fz) + h, z, FV, FV * 1.6f, FV, Wheat[3], Bend(h), Bend(h + FV * 1.6f));
                 }
@@ -475,6 +639,7 @@ namespace MadMax.World
                 Stalk(c, fx, fz, h, c.frost ? Straw[1] : Reed[b % 3]);
                 if (c.stage == 3 && Rn(c, 160 + b) < 0.35f)
                 {
+                    if (hdFlora) { Ellipsoid(At(c, fx, fz, h - FV * 1.1f), new Vector3(FV * 0.45f, FV * 1.1f, FV * 0.45f), c.Ground(fx, fz), Cattail, 6, 4); continue; }
                     float x = c.i * Cell + Mathf.Round(fx * Cell / FV) * FV, z = c.j * Cell + Mathf.Round(fz * Cell / FV) * FV;
                     Box(x - 0.005f, c.Ground(fx, fz) + h - FV * 2f, z - 0.005f, FV + 0.01f, FV * 1.8f, FV + 0.01f, Cattail, Bend(h - FV * 2f), Bend(h));
                 }
@@ -485,6 +650,19 @@ namespace MadMax.World
         {
             float cx = c.i * Cell + Cell * 0.5f, cz = c.j * Cell + Cell * 0.5f, y = c.Ground(0.5f, 0.5f) - 0.02f;
             float h = (0.12f + Rn(c, 12) * 0.16f) * (0.5f + 0.5f * Grow(c));
+            if (hdFlora)
+            {
+                var root = new Vector3(cx, y, cz);
+                var top = root + new Vector3((Rn(c, 13) - 0.5f) * 0.05f, h, (Rn(c, 14) - 0.5f) * 0.05f);
+                Tube(root, top, 0.014f, 0.005f, y, Twig[0], 4);
+                for (int b = 0; b < 3; b++)
+                {
+                    float t = 0.35f + b * 0.2f, a = b * 2.1f + Rn(c, 15) * 6.28f;
+                    var at = Vector3.Lerp(root, top, t);
+                    Tube(at, at + new Vector3(Mathf.Sin(a) * 0.1f, 0.04f + b * 0.02f, Mathf.Cos(a) * 0.1f), 0.007f, 0.003f, y, Twig[1 + b % 2], 4);
+                }
+                return;
+            }
             Box(cx - 0.02f, y, cz - 0.02f, 0.04f, h, 0.04f, Twig[0], 255, Bend(h));
             Box(cx - 0.02f, y + h * 0.6f, cz - 0.02f, 0.12f, 0.03f, 0.03f, Twig[1], Bend(h * 0.6f), Bend(h * 0.7f));
             Box(cx - 0.11f, y + h * 0.4f, cz, 0.1f, 0.03f, 0.03f, Twig[2], Bend(h * 0.4f), Bend(h * 0.5f));
@@ -495,6 +673,18 @@ namespace MadMax.World
         {
             float cx = c.i * Cell + Cell * 0.5f, cz = c.j * Cell + Cell * 0.5f, y = c.Ground(0.5f, 0.5f) - 0.02f;
             float h = 0.08f + 0.14f * Grow(c);
+            if (hdFlora)
+            {
+                Tube(new Vector3(cx, y, cz), new Vector3(cx, y + h, cz), 0.04f, 0.036f, y + 1f, CactusG, 8);
+                Ellipsoid(new Vector3(cx, y + h, cz), new Vector3(0.036f, 0.03f, 0.036f), y + 1f, CactusG, 8, 4, true);
+                if (c.stage == 3)
+                {
+                    var arm = new Vector3(cx + 0.035f, y + h * 0.5f, cz);
+                    Tube(arm, arm + new Vector3(0.05f, 0.005f, 0f), 0.02f, 0.02f, y + 1f, CactusG, 6);
+                    Tube(arm + new Vector3(0.05f, 0f, 0f), arm + new Vector3(0.05f, 0.06f, 0f), 0.02f, 0.018f, y + 1f, CactusG, 6);
+                }
+                return;
+            }
             Box(cx - 0.04f, y, cz - 0.04f, 0.08f, h, 0.08f, CactusG, 255, 255);
             if (c.stage == 3) Box(cx + 0.04f, y + h * 0.5f, cz - 0.02f, 0.05f, 0.04f, 0.04f, CactusG, 255, 255);
         }
@@ -504,6 +694,7 @@ namespace MadMax.World
             float fx = 0.5f, fz = 0.5f, h = 0.08f + 0.12f * Grow(c);
             Stalk(c, fx, fz, h, SickGrass[0]);
             if (c.stage < 3) return;
+            if (hdFlora) { Ellipsoid(At(c, fx, fz, h + FV * 0.6f), new Vector3(FV * 0.8f, FV, FV * 0.8f), c.Ground(fx, fz), PodGlow, 7, 4); return; }
             float x = c.i * Cell + Mathf.Round(fx * Cell / FV) * FV - FV * 0.25f, z = c.j * Cell + Mathf.Round(fz * Cell / FV) * FV - FV * 0.25f;
             Box(x, c.Ground(fx, fz) + h, z, FV * 1.5f, FV * 1.5f, FV * 1.5f, PodGlow, Bend(h), Bend(h + FV));
         }

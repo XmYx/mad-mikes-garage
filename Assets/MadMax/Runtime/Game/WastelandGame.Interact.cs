@@ -540,12 +540,12 @@ namespace MadMax.Game
             if (!hitch) return null;
             foreach (var t in trailers)
             {
-                var tc = t.GetComponent<TowCoupling>();
+                var tc = t ? t.GetComponent<TowCoupling>() : null;
                 if (tc && tc.Tower == tower) { text = "[J] UNHITCH " + Name(t); return tc; }
             }
             foreach (var t in trailers)
             {
-                var tc = t.GetComponent<TowCoupling>();
+                var tc = t ? t.GetComponent<TowCoupling>() : null;
                 if (!tc || tc.Tower || !tc.Coupler) continue;
                 if (Vector3.Distance(tc.Coupler.position, hitch.position) < 3.5f) { text = "[J] HITCH " + Name(t); return tc; }
             }
@@ -563,6 +563,7 @@ namespace MadMax.Game
         {
             foreach (var t in trailers)
             {
+                if (!t) continue;                                   // destroyed (scrapped, or removed by a test)
                 var tc = t.GetComponent<TowCoupling>();
                 if (!tc || !tc.Coupler || Vector3.Distance(tc.Coupler.position, Player.transform.position + Vector3.up) > 2.2f) continue;
                 if (tc.Tower)

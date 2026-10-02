@@ -1325,17 +1325,44 @@ two cabins, and lists what is not HD by shader and object (counts + captures) �
 - [x] HD model import: root LOD groups were never added (`GetComponent ?? AddComponent` with Unity's fake null);
   fixed (postprocessor version 5 re-imports the pack once). The same pattern fixed in 15 runtime spots.
 
-### Still voxel / low-res (found by `hd.audit` and review)
-- [ ] **Flora shapes** besides grass (flowers, shrubs, ferns, mushrooms, reeds, cactus sprouts, crop rows, seabed) are
-  boxes; and **crops / planters** (`CropVisuals`, `Structures/Plant`) — HD plant cards or small exported meshes.
-- [ ] **Overgrowth** on buildings (half-voxel moss / vine overlay) — HD vine strands and moss decals on the HD shells.
-- [ ] **Wildlife added after the HD export** (lizard, scorpion and the rest of `AnimalLibrary.Wild`: snakes, arthropods,
-  birds, sea life in `World/SeaLife`) render as voxel rigs — export them through `tools/blender/hd/animals`.
-- [ ] **Welded armour** (`VehicleArmor` plates built from voxel faces) — HD sheet plates with rivets / weld seams.
-- [ ] Small runtime voxel bits: lamp **bulbs** (`Bulb`), **levers**, `BrokenLamps`, `Shards`, debris cubes
-  (`DebrisSystem`), resource pickups, dropped voxel garments (poncho, hazmat, dive gear, some bags), stubble.
-- [ ] **Road paint and ruts** are still 0.25 m cell colours (blurred by the corner blend): a decal / UV-based road
-  marking layer and rut normal detail would finish the HD ground.
-- [ ] Sky and far: voxel cloud puffs, `FarTerrain` (flying) flat cells, the title / Moon set (`TitleArt`, `MoonArt`).
-- [ ] HUD and menus stay the 3×5 pixel font by design; an optional HD font for full-resolution mode would match the
-  new cabin and world look.
+### Second pass (2026-10-02, evening): everything left from the audit
+- [x] **Flora**: every ground-cover shape has an HD form (flowers with petals, shrub cushions with leaves, fern fronds,
+  mushrooms, wheat ears, cattails, branching twigs, cactus with an arm, glowing pods, coral, kelp leaves, boulders with
+  urchins) — `DeformableTerrain.Flora` HD primitives; crops in plots / planters / planted trees (`CropVisuals.BuildHD`:
+  leaf rosettes, tall stalks with cobs, canopies, fruit, pumpkins) on two-sided `HDShapes.Foliage`.
+- [x] **Overgrowth**: leaf clusters lying on the walls (hanging, more and longer with age), moss cushions on tops, weeds
+  on ledges, blossoms / spores (`Overgrowth.BuildOverlayHD`, worker thread).
+- [x] **Wildlife**: every species was exported; `hd.audit` now spawns lizard, scorpion, rat, crow and snake and checks
+  their rigs carry HD parts.
+- [x] **Welded armour**: `VehicleArmor.BuildHD` — bevelled sheets per material cell (steel with rivet rows, crooked
+  scrap patchwork, composite tiles on a strip), curved guard plates round the wheel arcs, round grille bars.
+- [x] **Small runtime pieces** (`Rendering/HDBits`, `Rendering/HDShapes`): debris chunks and round puffs, resource
+  pickups (scrap plates, planks, stones, glass, a tyre, a sack), glass / lamp shards, switch levers, smooth bulbs (every
+  `PoweredLight` bulb, town lamps; the voxel bulb hides under an HD one), runway lamps, the refuel jerry can and oil jug,
+  the fishing bobber, projectiles (arrow, bolt, stone, bottle), stamp-mill stamps, clock hands, the garden crow, soil
+  heaps in buckets / blades / beds, painted (flat) vehicle decals; smoke / dust particles, blood splats and the loading
+  wheel at high resolution.
+- [x] **Clothing**: the 28 garments without an HD mesh are modelled in `tools/blender/hd/character/garments.py`
+  (poncho, hazmat, dive suit + brass helmet + air tanks, welding mask, chitin / tyre / leather vests, gauntlets, moto
+  helmet, bee veil, leather boots / chaps, work / gun belts, fanny bag, back brace, five packs, three shoulder bags,
+  duffel, suitcase); all four wardrobes re-exported.
+- [x] **Road paint and ruts**: the highway centre line is painted by HDLit from per-vertex road distance (uv1), sharp at
+  any distance; rut depth rides in the vertex alpha and blends the mud layer per pixel.
+- [x] **Sky and far**: smooth cloud cushions, sun disc with glow ring, a smooth phased moon, star diamonds, tube
+  lightning; `FarTerrain` (the distance in ground and air views) gets shared smooth vertices and HD class weights (it was
+  drawn with the HD terrain material but no splat data).
+- [x] **Title and Moon**: bevelled 3D logo bars (sunset face, red extrusion, cream lip), neon tube lettering, smooth
+  regolith colours, round boulders, the scrap rocket and old lander built from tubes and plates, a smooth Earth.
+- [x] **HUD font**: setting HUD FONT (AUTO = HD with full-resolution rendering, PIXEL, HD) — `HudTextGraphic` draws the
+  canvas's text runs as smooth glyphs from `Resources/HDFont/hud_font.png` (`tools/hud_font.py`, DejaVu Sans Condensed
+  Bold) in the pixel font's exact layout; later opaque panels hide text under them.
+- [x] **Fixes found on the way**: HD animals never dressed (the part lookup hit the rig bone named like the mesh) and,
+  once found, stood on end and faced backwards (placement now from the imported node + a half turn when the import faces
+  -Z, `HDAnimal.Placement`); the wardrobe script shared one mesh between `tshirt` and `tshirt_worn`, so the plain shirt
+  carried the worn material and every t-shirt outfit drew both; `PlayerCharacter.SetFirstPerson` re-applied the HD
+  arms-only meshes every frame (now on change only); `hd.vehicles` destroyed the player with the walk-in Hauler.
+
+### Still open
+- [ ] The boot film (`StreamingAssets/Intro/intro.webm`) shows the old voxel title: re-record with `IntroRecorder`.
+- [ ] Flora / overgrowth are procedural HD stand-ins, not exported Blender assets; HUD icons drawn into the pixel canvas
+  (minimap, prompt icons) stay pixel art.

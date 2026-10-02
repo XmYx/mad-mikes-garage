@@ -460,7 +460,8 @@ namespace MadMax.Game
             Face(j, 1f);
             string propKey = WorkPropKey(j);
             var mesh = WorkPropMesh(propKey);
-            if (mesh) { Player.HoldProp(mesh, propMaterial); j.prop = true; }
+            bool hdProp = MadMax.Rendering.HDBits.On && (propKey == "oil" || propKey == "can");
+            if (mesh) { Player.HoldProp(mesh, hdProp ? MadMax.Rendering.HDShapes.Solid : propMaterial); j.prop = true; }
             MadMax.Net.NetSession.Instance?.SendWorkPose(true, (byte)j.pose, mesh ? propKey : null);   // remote peers see the pose
             var cat = j.part ? j.part.category : (PartCategory?)null;
             if (j.kind == WorkKind.Service || j.kind == WorkKind.Battery || ((j.kind == WorkKind.Take || j.kind == WorkKind.Mount || j.kind == WorkKind.Repair) && (cat == PartCategory.Engine || cat == PartCategory.Radiator)))
@@ -979,6 +980,7 @@ namespace MadMax.Game
 
         static Mesh OilJug()
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.OilJug();
             if (oilMesh) return oilMesh;
             var g = new VoxelGrid();
             g.Box(-1, -6, -1, 1, -1, 1, Pal.Weathered(Pal.Ochre, 0.15f, 1410, 2, 0));               // plastic jug
@@ -991,6 +993,7 @@ namespace MadMax.Game
 
         static Mesh JerryCan()
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.JerryCan();
             if (canMesh) return canMesh;
             var g = new VoxelGrid();
             g.Box(-2, -7, -1, 2, 0, 1, Pal.Weathered(Pal.Olive, 0.3f, 1400, 2, 0));

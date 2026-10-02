@@ -34,12 +34,13 @@ namespace MadMax.Building
             go.transform.SetParent(transform, false);
             go.transform.localPosition = new Vector3(0f, y * VoxelMesher.DefaultSize, 0f);
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
-            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            go.GetComponent<MeshRenderer>().sharedMaterial = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat;
             return go.transform;
         }
 
         static Mesh Hand(int length, string name)
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.ClockHand(length);
             var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Scrap);
             g.Box(0, 0, 0, 0, 0, length, Pal.Ramp(Pal.Black, 1));
             return VoxelMesher.Build(g, name);

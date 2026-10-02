@@ -375,6 +375,7 @@ namespace MadMax.Game
                     else
                     {
                         Opt("HUD SIZE", () => s.hudScale <= 0 ? "WITH PIXEL SIZE" : GameSettings.PixelHeights[s.hudScale - 1] + " LINES", d => s.hudScale = Mathf.Clamp(s.hudScale - d, 0, GameSettings.PixelHeights.Length));
+                        Opt("HUD FONT", () => s.hudFont == 1 ? "PIXEL" : s.hudFont == 2 ? "HD" : "AUTO (HD WITH FULL RES)", d => s.hudFont = (s.hudFont + d + 3) % 3);
                         Opt("COLOUR-BLIND HUD", () => s.colourBlind ? "ON (BLUE / ORANGE)" : "OFF", d => s.colourBlind = !s.colourBlind);
                         Opt("HINTS", () => s.hints ? "ON" : "OFF", d => s.hints = !s.hints);
                         Add("SHOW ALL HINTS AGAIN", () => { Hints.Reset(); game.Toast("HINTS RESET"); });

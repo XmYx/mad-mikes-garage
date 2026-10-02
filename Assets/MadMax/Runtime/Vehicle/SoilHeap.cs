@@ -32,7 +32,7 @@ namespace MadMax.Vehicles
             var h = go.AddComponent<SoilHeap>();
             h.shape = shape; h.size = size;
             h.mf = go.GetComponent<MeshFilter>(); h.mr = go.GetComponent<MeshRenderer>();
-            h.mr.sharedMaterial = mat;
+            h.mr.sharedMaterial = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat;
             go.SetActive(false);
             return h;
         }
@@ -57,7 +57,8 @@ namespace MadMax.Vehicles
         {
             long key = ((long)shape << 48) | ((long)size.x << 36) | ((long)size.y << 28) | ((long)size.z << 20) | (long)type;
             if (meshes.TryGetValue(key, out var m) && m) return m;
-            meshes[key] = m = VoxelMesher.Build(Grid(type), "SoilHeap_" + type);
+            meshes[key] = m = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDBits.SoilHeap(size, shape == Shape.Bed, ResourceInfo.Color(type), (int)type * 7919 + (int)shape)
+                : VoxelMesher.Build(Grid(type), "SoilHeap_" + type);
             return m;
         }
 

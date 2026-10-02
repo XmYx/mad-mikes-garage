@@ -52,7 +52,8 @@ namespace MadMax.Game
                     g.Bevel();
                     canMesh = VoxelMesher.Build(g, "JerryCan");
                 }
-                Player.HoldProp(canMesh, propMaterial);
+                if (MadMax.Rendering.HDBits.On) Player.HoldProp(MadMax.Rendering.HDBits.JerryCan(), MadMax.Rendering.HDShapes.Solid);
+                else Player.HoldProp(canMesh, propMaterial);
                 Player.PoseOverride = new HandPoses().Pour;
                 Player.ActionClip = "pour";
             }

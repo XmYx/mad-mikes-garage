@@ -23,7 +23,9 @@ namespace MadMax.World
         GameObject go;
         Mesh mesh;
         Vector3 centre = new Vector3(float.MaxValue, 0f, 0f);
-        Task<(Vector3[] v, Color32[] c, int[] t)> job;
+        /// <summary>A built sheet; HD: shared vertices (smooth) with the HD terrain's class weights and no road (uv1-3).</summary>
+        sealed class Sheet { public Vector3[] v; public Color32[] c; public int[] t; public Vector2[] u1; public Vector4[] u2, u3; }
+        Task<Sheet> job;
         Vector3 jobCentre;
 
         void Update()
@@ -55,10 +57,11 @@ namespace MadMax.World
             var world = t.World;
             float snow = Weather.Snow;
             jobCentre = snapped;
-            job = Task.Run(() => Build(world, snapped, snow));
+            bool hd = t.material && t.material.IsKeywordEnabled("_TERRAIN");
+            job = Task.Run(() => Build(world, snapped, snow, hd));
         }
 
-        static (Vector3[] v, Color32[] c, int[] t) Build(WorldGen world, Vector3 c, float snow)
+        static Sheet Build(WorldGen world, Vector3 c, float snow, bool hd)
         {
             var h = new float[Grid * Grid];
             var col = new Color32[Grid * Grid];
@@ -74,6 +77,7 @@ namespace MadMax.World
             }
             // flat-shaded quads like the near terrain; nothing past the ice walls at the poles (they climb steeply)
             bool Inside(int i, int j) { float z = c.z - half + j * Step; return z <= WorldGen.ZNorth - 40f && z >= WorldGen.ZSouth + 40f; }
+            if (hd) return BuildHD(h, col, half, Inside);
             int quads = 0;
             for (int j = 0; j < Grid - 1; j++) for (int i = 0; i < Grid - 1; i++) if (Inside(i, j) && Inside(i + 1, j + 1)) quads++;
             var v = new Vector3[quads * 6]; var cc = new Color32[quads * 6]; var t = new int[quads * 6];
@@ -92,10 +96,43 @@ namespace MadMax.World
                 for (int s = 0; s < 6; s++) { cc[n + s] = q; t[n + s] = n + s; }
                 n += 6;
             }
-            return (v, cc, t);
+            return new Sheet { v = v, c = cc, t = t };
         }
 
-        void Apply((Vector3[] v, Color32[] c, int[] t) r, Vector3 at, DeformableTerrain terrain)
+        /// <summary>HD sheet: one vertex per sample (smooth normals), classes guessed from the ground colour (green →
+        /// grass, pale → snow, grey → rock, dark → dirt, else sand).</summary>
+        static Sheet BuildHD(float[] h, Color32[] col, float half, System.Func<int, int, bool> inside)
+        {
+            int n = Grid * Grid;
+            var v = new Vector3[n]; var u1 = new Vector2[n]; var u2 = new Vector4[n]; var u3 = new Vector4[n];
+            for (int j = 0; j < Grid; j++)
+            for (int i = 0; i < Grid; i++)
+            {
+                int k = j * Grid + i;
+                v[k] = new Vector3(-half + i * Step, h[k], -half + j * Step);
+                u1[k] = new Vector2(99f, 0f);
+                var q = col[k];
+                float r = q.r, g = q.g, b = q.b, mx = Mathf.Max(r, Mathf.Max(g, b)), mn = Mathf.Min(r, Mathf.Min(g, b));
+                var w0 = Vector4.zero; var w1 = Vector4.zero;
+                if (mn > 175f) { }                                                                  // snow: the rest
+                else if (g > r * 0.95f && g > b) w0.z = 1f;                                         // grass
+                else if (mx - mn < 22f) w0.w = 1f;                                                  // rock / grey
+                else if (mx < 110f) w0.y = 1f;                                                      // dirt
+                else w0.x = 1f;                                                                     // sand
+                u2[k] = w0; u3[k] = w1;
+            }
+            var tl = new System.Collections.Generic.List<int>();
+            for (int j = 0; j < Grid - 1; j++)
+            for (int i = 0; i < Grid - 1; i++)
+            {
+                if (!inside(i, j) || !inside(i + 1, j + 1)) continue;
+                int k = j * Grid + i;
+                tl.Add(k); tl.Add(k + Grid); tl.Add(k + Grid + 1); tl.Add(k); tl.Add(k + Grid + 1); tl.Add(k + 1);
+            }
+            return new Sheet { v = v, c = col, t = tl.ToArray(), u1 = u1, u2 = u2, u3 = u3 };
+        }
+
+        void Apply(Sheet r, Vector3 at, DeformableTerrain terrain)
         {
             if (!go)
             {
@@ -107,7 +144,9 @@ namespace MadMax.World
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
             mesh.Clear();
-            mesh.SetVertices(r.v); mesh.SetColors(r.c); mesh.SetTriangles(r.t, 0);
+            mesh.SetVertices(r.v); mesh.SetColors(r.c);
+            if (r.u1 != null) { mesh.SetUVs(1, r.u1); mesh.SetUVs(2, r.u2); mesh.SetUVs(3, r.u3); }
+            mesh.SetTriangles(r.t, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             go.transform.position = at;

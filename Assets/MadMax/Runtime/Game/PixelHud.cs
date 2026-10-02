@@ -24,6 +24,7 @@ namespace MadMax.Game
         CameraRig rig;
         PixelCanvas canvas;
         RawImage image;
+        MadMax.Rendering.HudTextGraphic hdText;
         GameObject overlay;
         Color32[] map; int mapSize; float mapHalf, mapCz;
 
@@ -47,6 +48,11 @@ namespace MadMax.Game
             img.raycastTarget = false;
             var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
             image = img;
+            var ht = new GameObject("HDText").AddComponent<MadMax.Rendering.HudTextGraphic>();          // HUD FONT: smooth text over the pixels
+            ht.transform.SetParent(overlay.transform, false);
+            ht.raycastTarget = false;
+            var trt = ht.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
+            hdText = ht;
             BuildMinimap(g.World, 1024);
         }
 
@@ -217,6 +223,12 @@ namespace MadMax.Game
             return new Vector3(center.x + (mouse.x - x - w / 2) * mpp, 0f, center.y - (mouse.y - y - h / 2) * mpp);
         }
 
+        void Flush()
+        {
+            canvas.Upload();
+            if (hdText && hdText.enabled) hdText.SetVerticesDirty();
+        }
+
         void LateUpdate()
         {
             if (!game || !rig || !rig.pixel || !rig.pixel.Target) return;
@@ -228,10 +240,14 @@ namespace MadMax.Game
                 canvas = new PixelCanvas(hw, hh);
                 image.texture = canvas.texture;
             }
+            bool hdFont = GameSettings.Current.HDText && MadMax.Rendering.HudTextGraphic.Atlas;
+            if (hdFont && canvas.runs == null) canvas.runs = new System.Collections.Generic.List<PixelCanvas.TextRun>();
+            else if (!hdFont) canvas.runs = null;
+            if (hdText) { hdText.source = canvas; hdText.enabled = hdFont; }
             canvas.Clear(new Color32(0, 0, 0, 0));
             Canvas = canvas;
             Red = Bad; Green = Good;
-            if (TitleSequence.Playing || (game.Menus && game.Menus.Current == MenuSystem.Page.Main)) { if (game.Menus && game.Menus.IsOpen) game.Menus.Draw(canvas); canvas.Upload(); return; }
+            if (TitleSequence.Playing || (game.Menus && game.Menus.Current == MenuSystem.Page.Main)) { if (game.Menus && game.Menus.IsOpen) game.Menus.Draw(canvas); Flush(); return; }
             var car = game.Current;
             bool fps = rig.mode == ViewMode.FirstPerson;
 
@@ -343,7 +359,7 @@ namespace MadMax.Game
             }
             DrawContextUi();                                                                     // container preview (PixelHud.Context)
             if (game.Menus) game.Menus.Draw(canvas);
-            canvas.Upload();
+            Flush();
         }
 
         void DrawResources(int x, int y)

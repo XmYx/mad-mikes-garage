@@ -77,6 +77,26 @@ namespace MadMax.World
         static Texture2D Puff()
         {
             if (puff) return puff;
+            if (MadMax.Rendering.HDAssets.Enabled)
+            {
+                // HD: a soft, slightly billowed puff, bilinear (no dithered pixel edge)
+                const int N = 128;
+                puff = new Texture2D(N, N, TextureFormat.RGBA32, true) { filterMode = FilterMode.Trilinear, wrapMode = TextureWrapMode.Clamp, name = "PuffHD" };
+                var px = new Color32[N * N];
+                for (int y = 0; y < N; y++)
+                for (int x = 0; x < N; x++)
+                {
+                    float u = (x + 0.5f) / N * 2f - 1f, v = (y + 0.5f) / N * 2f - 1f;
+                    float ang = Mathf.Atan2(v, u), d = Mathf.Sqrt(u * u + v * v);
+                    float edge = 0.82f + 0.1f * Mathf.Sin(ang * 5f + 1.3f) + 0.06f * Mathf.Sin(ang * 11f);
+                    float a = Mathf.Clamp01(1f - Mathf.SmoothStep(edge * 0.35f, edge, d));
+                    float n = Mathf.PerlinNoise(x * 0.07f, y * 0.07f) * 0.35f + 0.65f;
+                    px[y * N + x] = new Color32(255, 255, 255, (byte)(255f * a * n));
+                }
+                puff.SetPixels32(px);
+                puff.Apply(true);
+                return puff;
+            }
             puff = new Texture2D(16, 16, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             for (int y = 0; y < 16; y++)
             for (int x = 0; x < 16; x++)

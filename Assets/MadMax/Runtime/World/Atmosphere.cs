@@ -164,6 +164,25 @@ namespace MadMax.World
             if (bolt && bolt.gameObject.activeSelf && Time.time > boltUntil) bolt.gameObject.SetActive(false);
         }
 
+        /// <summary>HD lightning: the same jagged path as glowing tubes, with its forks.</summary>
+        static Mesh BoltHD()
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            var rr = new System.Random(707);
+            float x = 0f, z = 0f;
+            var prev = Vector3.zero;
+            for (int y = 0; y < 80; y++)
+            {
+                if (rr.NextDouble() < 0.25) x += (float)(rr.NextDouble() * 2 - 1) * 2f;
+                if (rr.NextDouble() < 0.25) z += (float)(rr.NextDouble() * 2 - 1) * 2f;
+                var p = new Vector3(x, y, z) * 1.1f;
+                if (y > 0) b.Tube(prev, p, 0.35f, 0.35f, y % 7 == 0 ? Pal.PaleBlue[4] : Pal.Cream[4], 6);
+                if (y > 20 && y % 17 == 0) b.Tube(p, p + new Vector3(7f, -7f, 0f) * 1.1f, 0.25f, 0.08f, Pal.PaleBlue[3], 5);
+                prev = p;
+            }
+            return b.ToMesh("LightningHD");
+        }
+
         Transform BuildBolt()
         {
             var g = new VoxelGrid();
@@ -178,7 +197,7 @@ namespace MadMax.World
             }
             var go = new GameObject("Lightning", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(transform, false);
-            go.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(g, "LightningBolt", 1.1f);
+            go.GetComponent<MeshFilter>().sharedMesh = MadMax.Rendering.HDBits.On ? BoltHD() : VoxelMesher.Build(g, "LightningBolt", 1.1f);
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = SkyMaterial();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
@@ -197,7 +216,9 @@ namespace MadMax.World
             if (skyMat) return skyMat;
             var game = MadMax.Game.WastelandGame.Instance;
             if (!game || !game.propMaterial) return null;
-            skyMat = new Material(game.propMaterial);
+            bool hd = MadMax.Rendering.HDBits.On;
+            skyMat = new Material(hd ? MadMax.Rendering.HDShapes.Solid : game.propMaterial);
+            if (hd) skyMat.SetFloat("_Cull", 0f);
             skyMat.SetFloat("_Unlit", 1f); skyMat.SetFloat("_OutlinePx", 0f); skyMat.SetFloat("_NoFog", 1f); skyMat.SetFloat("_SnowMask", 0f);
             return skyMat;
         }
@@ -246,6 +267,18 @@ namespace MadMax.World
             if (sunMeshes[kind]) return sunMeshes[kind];
             var core = kind == 0 ? Pal.SunDay : kind == 1 ? Pal.LightY : Pal.SunDusk;
             var rim = kind == 0 ? Pal.LightW : kind == 1 ? Pal.Ochre[4] : Pal.Rust[4];
+            if (MadMax.Rendering.HDBits.On)
+            {
+                var b = new MadMax.Rendering.HDShapes();
+                b.Disc(Vector3.zero, Vector3.back, 3.1f, core, 48);
+                for (int k = 0; k < 48; k++)                                                        // the glow ring
+                {
+                    float a0 = k * Mathf.PI * 2f / 48f, a1 = (k + 1) * Mathf.PI * 2f / 48f;
+                    Ring(b, a0, a1, 3.1f, 4.2f, rim);
+                }
+                for (int i = 0; i < b.c.Count; i++) { var cc = b.c[i]; cc = b.v[i].magnitude > 3.05f ? rim : core; b.c[i] = cc; }
+                return sunMeshes[kind] = b.ToMesh("SunHD" + kind);
+            }
             var g = new VoxelGrid();
             for (int x = -8; x <= 8; x++)
             for (int y = -8; y <= 8; y++)
@@ -268,6 +301,7 @@ namespace MadMax.World
             float t = phase / 8f;                                    // 0..1 through the month
             float k = Mathf.Cos(t * Mathf.PI * 2f);                  // terminator: +1 new .. -1 full
             bool waxing = t < 0.5f;
+            if (MadMax.Rendering.HDBits.On) return moonMeshes[phase] = MoonHD(k, waxing, phase);
             var mg = new VoxelGrid();
             for (int x = -6; x <= 6; x++)
             for (int y = -6; y <= 6; y++)
@@ -282,6 +316,48 @@ namespace MadMax.World
             }
             if (mg.Count == 0) mg.Set(6, 0, 0, Pal.Solid(Pal.Cream[4]));
             return moonMeshes[phase] = VoxelMesher.Build(mg, "Moon" + phase, 0.5f);
+        }
+
+        static void Ring(MadMax.Rendering.HDShapes b, float a0, float a1, float r0, float r1, Color32 col)
+        {
+            int i = b.v.Count;
+            b.v.Add(new Vector3(Mathf.Cos(a0) * r0, Mathf.Sin(a0) * r0, 0f)); b.v.Add(new Vector3(Mathf.Cos(a0) * r1, Mathf.Sin(a0) * r1, 0f));
+            b.v.Add(new Vector3(Mathf.Cos(a1) * r1, Mathf.Sin(a1) * r1, 0f)); b.v.Add(new Vector3(Mathf.Cos(a1) * r0, Mathf.Sin(a1) * r0, 0f));
+            for (int q = 0; q < 4; q++) { b.n.Add(Vector3.back); b.c.Add(col); }
+            b.t.Add(i); b.t.Add(i + 1); b.t.Add(i + 2); b.t.Add(i); b.t.Add(i + 2); b.t.Add(i + 3);
+        }
+
+        /// <summary>HD moon: the lit part of a 3 m disc as rows of quads between the limb and the terminator (x = k × the
+        /// half-chord), maria shaded per vertex.</summary>
+        static Mesh MoonHD(float k, bool waxing, int phase)
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            const float R = 3f; const int rows = 40, cols = 14;
+            for (int j = 0; j < rows; j++)
+            {
+                float y0 = -R + 2f * R * j / rows, y1 = -R + 2f * R * (j + 1) / rows;
+                float h0 = Mathf.Sqrt(Mathf.Max(0f, R * R - y0 * y0)), h1 = Mathf.Sqrt(Mathf.Max(0f, R * R - y1 * y1));
+                for (int c = 0; c < cols; c++)
+                {
+                    float u0 = c / (float)cols, u1 = (c + 1) / (float)cols;
+                    // lit span of the row in limb units: waxing (k .. 1), waning (-1 .. -k)
+                    float lo = waxing ? Mathf.Clamp(k, -1f, 1f) : -1f, hi = waxing ? 1f : Mathf.Clamp(-k, -1f, 1f);
+                    if (hi <= lo) continue;
+                    float a = Mathf.Lerp(lo, hi, u0), bb = Mathf.Lerp(lo, hi, u1);
+                    var p00 = new Vector3(a * h0, y0, 0f); var p01 = new Vector3(a * h1, y1, 0f); var p11 = new Vector3(bb * h1, y1, 0f); var p10 = new Vector3(bb * h0, y0, 0f);
+                    int i = b.v.Count;
+                    foreach (var p in new[] { p00, p01, p11, p10 })
+                    {
+                        b.v.Add(p); b.n.Add(Vector3.back);
+                        float x = p.x * 2f, y = p.y * 2f;                                           // the voxel moon's maria, in its units
+                        bool mare = (x - 2) * (x - 2) + (y - 1) * (y - 1) < 5 || (x + 2) * (x + 2) + (y + 3) * (y + 3) < 3 || (x + 1) * (x + 1) + (y - 3) * (y - 3) < 2;
+                        b.c.Add(mare ? Pal.Cream[1] : Pal.Cream[4]);
+                    }
+                    b.t.Add(i); b.t.Add(i + 1); b.t.Add(i + 2); b.t.Add(i); b.t.Add(i + 2); b.t.Add(i + 3);
+                }
+            }
+            if (b.v.Count == 0) b.Disc(new Vector3(R * 0.98f, 0f, 0f), Vector3.back, 0.05f, Pal.Cream[4], 4);
+            return b.ToMesh("MoonHD" + phase);
         }
 
         void BuildSky()
@@ -301,7 +377,7 @@ namespace MadMax.World
             }
             var sg = new GameObject("Stars", typeof(MeshFilter), typeof(MeshRenderer));
             sg.transform.SetParent(transform, false);
-            sg.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(g, "Stars", 0.35f);
+            sg.GetComponent<MeshFilter>().sharedMesh = MadMax.Rendering.HDBits.On ? StarsHD() : VoxelMesher.Build(g, "Stars", 0.35f);
             var smr = sg.GetComponent<MeshRenderer>(); smr.sharedMaterial = mat;
             smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; smr.receiveShadows = false;
             stars = sg.transform;
@@ -316,7 +392,7 @@ namespace MadMax.World
             }
             var mo = new GameObject("Moon", typeof(MeshFilter), typeof(MeshRenderer));
             mo.transform.SetParent(transform, false);
-            mo.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.Build(mg, "Moon", 0.5f);
+            mo.GetComponent<MeshFilter>().sharedMesh = MadMax.Rendering.HDBits.On ? MoonMesh(4) : VoxelMesher.Build(mg, "Moon", 0.5f);
             var mmr = mo.GetComponent<MeshRenderer>(); mmr.sharedMaterial = mat;
             mmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mmr.receiveShadows = false;
             moon = mo.transform;
@@ -327,6 +403,23 @@ namespace MadMax.World
             var sr = su.GetComponent<MeshRenderer>(); sr.sharedMaterial = mat;
             sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; sr.receiveShadows = false;
             sun = su.transform;
+        }
+
+        /// <summary>HD stars: small diamonds on the dome (same scatter as the voxel stars).</summary>
+        static Mesh StarsHD()
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            var rr = new System.Random(9001);
+            for (int i = 0; i < 420; i++)
+            {
+                float az = (float)rr.NextDouble() * Mathf.PI * 2f, el = Mathf.Asin((float)rr.NextDouble() * 0.95f + 0.05f);
+                var d = new Vector3(Mathf.Cos(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Sin(az) * Mathf.Cos(el)) * 110f;
+                double t = rr.NextDouble();
+                var col = t < 0.1 ? Pal.PaleBlue[4] : t < 0.18 ? Pal.Ochre[4] : Pal.Cream[t < 0.6 ? 3 : 4];
+                b.Ellipsoid(d, Vector3.one * (0.1f + (float)rr.NextDouble() * 0.12f), col, 4, 2);
+            }
+            for (int i = 0; i < b.c.Count; i++) { var c = b.c[i]; c.a = 255; b.c[i] = c; }
+            return b.ToMesh("StarsHD");
         }
 
         static float Bell(float x, float centre, float width) { float d = (x - centre) / width; return Mathf.Exp(-d * d); }
@@ -359,8 +452,9 @@ namespace MadMax.World
         {
             var game = MadMax.Game.WastelandGame.Instance;
             if (!game || !game.propMaterial) return;
-            puffMat = new Material(game.propMaterial);
-            puffMat.SetFloat("_Unlit", 0.55f); puffMat.SetFloat("_OutlinePx", 0f); puffMat.SetFloat("_NoFog", 1f); puffMat.SetFloat("_SnowMask", 0f);
+            bool hd = MadMax.Rendering.HDBits.On;
+            puffMat = new Material(hd ? MadMax.Rendering.HDShapes.Solid : game.propMaterial);
+            puffMat.SetFloat("_Unlit", hd ? 0.45f : 0.55f); puffMat.SetFloat("_OutlinePx", 0f); puffMat.SetFloat("_NoFog", 1f); puffMat.SetFloat("_SnowMask", 0f);
             var rnd = new System.Random(4242);
             for (int m = 0; m < 4; m++)
             {
@@ -376,6 +470,19 @@ namespace MadMax.World
                         float dx = x - cx, dy = y * 1.5f, dz = z - cz;
                         if (dx * dx + dy * dy + dz * dz <= rr * rr) g.Set(x, y, z, Pal.Solid(y > rr * 0.4f ? Pal.Cream[4] : Pal.Cream[2]));
                     }
+                }
+                if (hd)
+                {
+                    // HD: the same blobs as smooth cushions (flattened bottoms, brighter crowns)
+                    var hb = new MadMax.Rendering.HDShapes();
+                    var r2 = new System.Random(4242 + m * 31);
+                    for (int b = 0; b < blobs; b++)
+                    {
+                        float cx = (float)(r2.NextDouble() * 2 - 1) * (10 + m * 3), cz = (float)(r2.NextDouble() * 2 - 1) * 6, rr = 4f + (float)r2.NextDouble() * 4f;
+                        hb.Ellipsoid(new Vector3(cx, rr * 0.25f, cz) * 0.9f, new Vector3(rr, rr * 0.62f, rr) * 0.9f, Pal.Cream[3], 14, 9);
+                    }
+                    puffMeshes.Add(hb.ToMesh("CloudHD" + m));
+                    continue;
                 }
                 puffMeshes.Add(VoxelMesher.Build(g, "CloudPuff" + m, 0.9f));
             }

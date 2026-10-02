@@ -19,7 +19,7 @@ namespace MadMax.Game
         /// <summary>Hair cut height per HD headwear (garments.py HEADWEAR): hair above it is cut away under the hat.</summary>
         static readonly Dictionary<string, float> HatCut = new Dictionary<string, float>
         {
-            { "cowboy", 0.236f }, { "sunhat", 0.232f }, { "beanie", 0.226f }, { "helmet", 0.216f }, { "moto_helmet", 0.216f },
+            { "cowboy", 0.236f }, { "sunhat", 0.232f }, { "beanie", 0.226f }, { "helmet", 0.216f }, { "moto_helmet", 0.216f }, { "dive_helmet", 0.216f }, { "bee_veil", 0.232f },
         };
 
         /// <summary>HD humans are off (player flags --voxel-humans / --no-hd, MadMax > Dev > Voxel Humans / Voxel Visuals, or a test).</summary>

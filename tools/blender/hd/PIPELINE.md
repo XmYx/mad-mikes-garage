@@ -217,6 +217,10 @@ name (`bones[i] = rig.Find(name)`, `bindposes` from the sidecar rest matrices), 
 the imported bones directly. Garments are separate meshes per piece (one atlas each) so `ClothingLibrary` slots can
 toggle them; an outfit export (`outfit_*`) is a complete dressed character.
 
+Wardrobe coverage: `garments.GARMENTS` has a garment for every `ClothingLibrary` id (checked by `hd.audit`). Preview a
+few without touching the committed blends: `HD_GARMENTS=poncho,duffel HD_WARDROBE_OUT=/tmp/wd blender -b -P
+build_wardrobe.py -- M`.
+
 Orientation: the catalogue builder measures each imported model (left arm at -X, toes in front of the ankles) and bakes
 a half turn (or a front/back mirror, flipping the winding) into joints and bindposes when the FBX axis conversion left it
 facing -Z (the 2026-10-01 export did: the player stood backwards); scenario `hd.character` checks eyes and toes face +Z.

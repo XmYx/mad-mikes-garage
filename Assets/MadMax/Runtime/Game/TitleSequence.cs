@@ -76,6 +76,7 @@ namespace MadMax.Game
             sunLight = dn ? dn.sun : RenderSettings.sun;
             if (sunLight) sunIntensity = dn && dn.SunBase > 0f ? dn.SunBase : Mathf.Max(sunLight.intensity, 1f);
             MoonArt.Prepare();
+            MoonArt.hd = MadMax.Rendering.HDBits.On;
             surfaceJob = System.Threading.Tasks.Task.Run(MoonArt.BuildSurface);                // the regolith heightfield, ready by the finale
             start = game.WorldSpawn; dir = game.SpawnDir; side = Vector3.Cross(Vector3.up, dir);
             stage = start - side * 30f + dir * 6f;
@@ -225,12 +226,12 @@ namespace MadMax.Game
             var (frameMesh, neonMesh) = TitleArt.NeonSign();
             var fr = new GameObject("Frame", typeof(MeshFilter), typeof(MeshRenderer));
             fr.transform.SetParent(sign.transform, false);
-            fr.GetComponent<MeshFilter>().sharedMesh = frameMesh; fr.GetComponent<MeshRenderer>().sharedMaterial = game.propMaterial;
+            fr.GetComponent<MeshFilter>().sharedMesh = frameMesh; fr.GetComponent<MeshRenderer>().sharedMaterial = BaseMaterial;
             var ng = new GameObject("Neon", typeof(MeshFilter), typeof(MeshRenderer));
             ng.transform.SetParent(sign.transform, false);
             ng.transform.localPosition = new Vector3(0, 0, 0.02f);
             ng.GetComponent<MeshFilter>().sharedMesh = neonMesh;
-            neonMat = new Material(game.propMaterial); neonMat.SetFloat("_Unlit", 1f); neonMat.SetFloat("_OutlinePx", 0f); neonMat.SetColor("_Tint", new Color(1.9f, 1.9f, 1.9f, 1f));
+            neonMat = new Material(BaseMaterial); neonMat.SetFloat("_Unlit", 1f); neonMat.SetFloat("_OutlinePx", 0f); neonMat.SetColor("_Tint", new Color(1.9f, 1.9f, 1.9f, 1f));
             neon = ng.GetComponent<MeshRenderer>(); neon.sharedMaterial = neonMat;
             pinkLight = Glow(sign.transform, new Vector3(-1.2f, 4.9f, 1.2f), new Color(1f, 0.25f, 0.8f));
             cyanLight = Glow(sign.transform, new Vector3(1.2f, 3.3f, 1.2f), new Color(0.25f, 0.95f, 1f));
@@ -250,7 +251,7 @@ namespace MadMax.Game
             // 3D logo floating in front of the camera
             logo = new GameObject("TitleLogo", typeof(MeshFilter), typeof(MeshRenderer));
             logo.GetComponent<MeshFilter>().sharedMesh = TitleArt.Logo();
-            logoMat = new Material(game.propMaterial); logoMat.SetFloat("_Unlit", 0.6f); logoMat.SetColor("_Tint", new Color(1.4f, 1.4f, 1.4f, 1f));
+            logoMat = new Material(BaseMaterial); logoMat.SetFloat("_Unlit", 0.6f); logoMat.SetColor("_Tint", new Color(1.4f, 1.4f, 1.4f, 1f));
             logo.GetComponent<MeshRenderer>().sharedMaterial = logoMat;
             logo.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             logo.transform.localScale = Vector3.zero;
@@ -265,9 +266,13 @@ namespace MadMax.Game
         float nearWas, farWas;
 
         /// <summary>Airless light: shadows go cold and near-black (the desert's warm shadow tint would read maroon).</summary>
+        /// <summary>The title's base material: HDLit with vertex colours when the HD pack is on (the HD title art), the
+        /// voxel material otherwise.</summary>
+        Material BaseMaterial => MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : game.propMaterial;
+
         Material MoonMaterial(bool outline, bool space)
         {
-            var m = new Material(game.propMaterial);
+            var m = new Material(BaseMaterial);
             if (!outline) m.SetFloat("_OutlinePx", 0f);
             if (space) m.SetFloat("_NoFog", 1f);
             m.SetFloat("_SnowMask", 0f);

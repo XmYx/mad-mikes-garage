@@ -80,7 +80,7 @@ namespace MadMax.Game
             anim = new HumanAnimator(Rig);
             anim.Footstep += OnFootstep;
             if (Tool) AttachTool(Tool);
-            SetFirstPerson(firstPerson);
+            SetFirstPerson(firstPerson, true);
         }
 
         // ------------------------------------------------------------------ tools
@@ -284,11 +284,12 @@ namespace MadMax.Game
             Rig.ResetHair();
         }
 
-        public void SetVisible(bool v) => Rig.SetVisible(v);
+        public void SetVisible(bool v) { Rig.SetVisible(v); if (v && firstPerson) Rig.SetHeadVisible(false); }
 
         /// <summary>First person: hide own head and hair; body, arms and tool stay visible.</summary>
-        public void SetFirstPerson(bool fp)
+        public void SetFirstPerson(bool fp, bool force = false)
         {
+            if (fp == firstPerson && !force) return;           // CameraRig calls this every frame
             firstPerson = fp;
             if (Rig) Rig.SetHeadVisible(!fp);
         }

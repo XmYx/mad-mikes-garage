@@ -42,21 +42,44 @@ namespace MadMax.World
             var rnd = new System.Random(77);
             for (int v = 0; v < mats.Length; v++)
             {
-                var tex = new Texture2D(16, 16, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "Splat" + v };
-                var px = new Color32[256];
+                bool hd = MadMax.Rendering.HDAssets.Enabled;                                   // HD: 8x the pixels, soft rims
+                int n = hd ? 128 : 16; float k = n / 16f;
+                var tex = new Texture2D(n, n, TextureFormat.RGBA32, hd) { filterMode = hd ? FilterMode.Trilinear : FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "Splat" + v };
+                var px = new Color32[n * n];
                 // a few overlapping blobs + flecks: reads as a splat at pixel resolution
                 int blobs = 3 + v;
                 var cx = new float[blobs]; var cy = new float[blobs]; var cr = new float[blobs];
                 for (int b = 0; b < blobs; b++) { cx[b] = 8 + (float)(rnd.NextDouble() * 2 - 1) * (b == 0 ? 0 : 4.5f); cy[b] = 8 + (float)(rnd.NextDouble() * 2 - 1) * (b == 0 ? 0 : 4.5f); cr[b] = b == 0 ? 4.2f : 1.2f + (float)rnd.NextDouble() * 2f; }
-                for (int y = 0; y < 16; y++)
-                for (int x = 0; x < 16; x++)
+                var fl = new System.Random(77 + v);
+                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
                 {
-                    bool on = false; float core = 0f;
-                    for (int b = 0; b < blobs; b++) { float d = Mathf.Sqrt((x - cx[b]) * (x - cx[b]) + (y - cy[b]) * (y - cy[b])); if (d < cr[b]) { on = true; core = Mathf.Max(core, 1f - d / cr[b]); } }
-                    if (!on && rnd.NextDouble() < 0.025) on = true;                                // fleck
-                    px[y * 16 + x] = on ? (core > 0.45f ? new Color32(96, 10, 12, 235) : new Color32(128, 18, 16, 215)) : new Color32(0, 0, 0, 0);
+                    float fx = (x + 0.5f) / k - 0.5f, fy = (y + 0.5f) / k - 0.5f;
+                    bool on = false; float core = 0f, rim = 0f;
+                    for (int b = 0; b < blobs; b++) { float d = Mathf.Sqrt((fx - cx[b]) * (fx - cx[b]) + (fy - cy[b]) * (fy - cy[b])); if (d < cr[b]) { on = true; core = Mathf.Max(core, 1f - d / cr[b]); } rim = Mathf.Max(rim, Mathf.Clamp01((cr[b] + 0.6f - d) / 0.6f)); }
+                    if (!hd)
+                    {
+                        if (!on && rnd.NextDouble() < 0.025) on = true;                            // fleck
+                        px[y * n + x] = on ? (core > 0.45f ? new Color32(96, 10, 12, 235) : new Color32(128, 18, 16, 215)) : new Color32(0, 0, 0, 0);
+                        continue;
+                    }
+                    float a = on ? Mathf.Lerp(0.84f, 0.92f, core) : rim * 0.84f;
+                    var col = Color32.Lerp(new Color32(128, 18, 16, 255), new Color32(96, 10, 12, 255), Mathf.Clamp01((core - 0.3f) * 3f));
+                    col.a = (byte)(255f * a);
+                    px[y * n + x] = col;
                 }
-                tex.SetPixels32(px); tex.Apply(false);
+                if (hd)                                                                              // flecks: small round drops
+                    for (int f = 0; f < 6; f++)
+                    {
+                        float dx0 = (float)fl.NextDouble() * n, dy0 = (float)fl.NextDouble() * n, rr = k * (0.4f + (float)fl.NextDouble() * 0.5f);
+                        for (int y = Mathf.Max(0, (int)(dy0 - rr - 1)); y < Mathf.Min(n, (int)(dy0 + rr + 2)); y++)
+                        for (int x = Mathf.Max(0, (int)(dx0 - rr - 1)); x < Mathf.Min(n, (int)(dx0 + rr + 2)); x++)
+                        {
+                            float d = Mathf.Sqrt((x - dx0) * (x - dx0) + (y - dy0) * (y - dy0));
+                            if (d < rr && px[y * n + x].a < 180) px[y * n + x] = new Color32(128, 18, 16, (byte)(215 * Mathf.Clamp01((rr - d) / 1.5f)));
+                        }
+                    }
+                tex.SetPixels32(px); tex.Apply(hd);
                 mats[v] = Fx.TransparentMaterial(tex);
                 mats[v].renderQueue = 2460;                                                          // after opaque ground, before other transparents
             }

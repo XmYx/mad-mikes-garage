@@ -92,7 +92,7 @@ namespace MadMax.Game.Acceptance
 
                 // body colliders inside the HD body box (parts and tools stick out by design: not checked)
                 var box = model.bounds;
-                box.Expand(0.2f);
+                box.Expand(0.4f);                                                             // 0.2 m each way
                 int outside = 0;
                 foreach (var col in v.GetComponentsInChildren<Collider>())
                 {
@@ -150,6 +150,12 @@ namespace MadMax.Game.Acceptance
                         g.Exit();
                         yield return new WaitForSeconds(0.3f);
                     }
+                }
+                // walk-in vehicles (Hauler, Bus...) keep the player inside after Exit: step out before the body goes
+                if (g.Player && g.Player.transform.IsChildOf(v.transform))
+                {
+                    g.Player.transform.SetParent(null, true);
+                    g.Player.Teleport(pad + Vector3.Cross(Vector3.up, fwd) * 8f + Vector3.up * 0.5f, 0f);
                 }
                 Object.Destroy(v.gameObject);
                 yield return null;

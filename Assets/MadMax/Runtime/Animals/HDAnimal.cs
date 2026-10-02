@@ -70,11 +70,39 @@ namespace MadMax.Animals
             var go = new GameObject("HD", typeof(MeshFilter), typeof(MeshRenderer));
             go.layer = part.gameObject.layer;
             go.transform.SetParent(part, false);
-            Apply(go.transform, RestOf(frame, part).inverse * o.rootMatrix);
+            Apply(go.transform, RestOf(frame, part).inverse * Placement(a, o));
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             go.GetComponent<MeshRenderer>().sharedMaterials = mats;
             if (part.TryGetComponent<Renderer>(out var voxel)) voxel.forceRenderingOff = true;
             return true;
+        }
+
+        static readonly System.Collections.Generic.Dictionary<HDAssetRef, Matrix4x4> turn = new System.Collections.Generic.Dictionary<HDAssetRef, Matrix4x4>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => turn.Clear();
+
+        /// <summary>Mesh vertices to rig space: the imported node's own matrix (it carries the FBX axis conversion the
+        /// sidecar's rootMatrix does not), turned half way about Y when the import faces the other way (positions
+        /// mirrored in x and z against the sidecar's).</summary>
+        static Matrix4x4 Placement(HDAssetRef a, HDAssetRef.ObjectInfo o)
+        {
+            var node = HDAssets.MeshNode(a, o.name);
+            if (!node) return o.rootMatrix;
+            var root = a.model.transform;
+            if (!turn.TryGetValue(a, out var fix))
+            {
+                float dot = 0f;
+                foreach (var x in a.objects)
+                {
+                    var n = x.role == "mesh" ? HDAssets.MeshNode(a, x.name) : null;
+                    if (!n) continue;
+                    Vector3 p = root.InverseTransformPoint(n.position), q = x.rootMatrix.GetColumn(3);
+                    dot += p.x * q.x + p.z * q.z;
+                }
+                turn[a] = fix = dot < 0f ? Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f)) : Matrix4x4.identity;
+            }
+            return fix * root.worldToLocalMatrix * node.localToWorldMatrix;
         }
 
         /// <summary>Set a transform's local pose from an affine matrix (a mirror goes into scale x).</summary>

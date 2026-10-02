@@ -26,7 +26,7 @@ namespace MadMax.Game
             var go = new GameObject(kind.ToString(), typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetPositionAndRotation(from, Quaternion.LookRotation(velocity));
             go.GetComponent<MeshFilter>().sharedMesh = MeshFor(kind);
-            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            go.GetComponent<MeshRenderer>().sharedMaterial = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat;
             var p = go.AddComponent<Projectile>();
             p.kind = kind; p.velocity = velocity; p.power = power; p.pickup = pickup; p.source = source;
             if (kind == Kind.Stone) p.life = 4f;
@@ -131,6 +131,7 @@ namespace MadMax.Game
         {
             int i = (int)k;
             if (meshes[i]) return meshes[i];
+            if (MadMax.Rendering.HDBits.On) return meshes[i] = MadMax.Rendering.HDBits.Projectile(k == Kind.Arrow ? 0 : k == Kind.Bolt ? 1 : k == Kind.Stone ? 2 : 3);
             var g = new MadMax.Voxel.VoxelGrid();
             switch (k)
             {
