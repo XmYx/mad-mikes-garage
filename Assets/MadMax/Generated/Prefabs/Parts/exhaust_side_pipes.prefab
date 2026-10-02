@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 2412402939138540984}
   - component: {fileID: 6505495972202284935}
   - component: {fileID: 813169072986483682}
+  - component: {fileID: 4692179944163790600}
   m_Layer: 0
   m_Name: exhaust_side_pipes
   m_TagString: Untagged
@@ -42,7 +43,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5920291755068795046}
-  m_Mesh: {fileID: 4300000, guid: 656bac17534adafc89b7e4ea7a15c721, type: 2}
+  m_Mesh: {fileID: -4437342196918701373, guid: ee05895a0427ffad7ae0cb04197ea142, type: 3}
 --- !u!23 &2412402939138540984
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -68,7 +69,10 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 979605b6c1889418aa88c42646a3764d, type: 2}
+  - {fileID: 2100000, guid: d76e54eaebfcf5d0db55ef5e57cc6da6, type: 2}
+  - {fileID: 2100000, guid: d76e54eaebfcf5d0db55ef5e57cc6da6, type: 2}
+  - {fileID: 2100000, guid: d76e54eaebfcf5d0db55ef5e57cc6da6, type: 2}
+  - {fileID: 2100000, guid: d76e54eaebfcf5d0db55ef5e57cc6da6, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -111,8 +115,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.24, y: 0.24, z: 1.36}
-  m_Center: {x: 0, y: 0, z: -0.56}
+  m_Size: {x: 0.24000001, y: 0.24000001, z: 1.36}
+  m_Center: {x: 0, y: -0.0000000037252903, z: -0.56}
 --- !u!114 &813169072986483682
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -132,3 +136,22 @@ MonoBehaviour:
   radius: 0
   damage: 0
   quality: 1
+--- !u!114 &4692179944163790600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5920291755068795046}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2cb93b403e84b9d8ca1ec319d40d22e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MadMax.Rendering.HDModel
+  asset: exhaust_side_pipes
+  group: parts
+  bounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 0, y: 0, z: 0}
+  wheelSockets: []
+  wheelRadii: []
