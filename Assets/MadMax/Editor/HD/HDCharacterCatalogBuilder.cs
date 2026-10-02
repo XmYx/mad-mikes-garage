@@ -173,6 +173,10 @@ namespace MadMax.EditorTools
             string prefix = side.rootName != null && side.rootName.EndsWith("_Rig") ? side.rootName.Substring(0, side.rootName.Length - 4) + "_" : "";
             var heads = new Dictionary<string, Vector3>();
             foreach (var kv in bones) heads[kv.Key] = kv.Key == "Root" ? Vector3.zero : (Vector3)RootSpace(kv.Value, root).GetColumn(3);
+            // the imported model must face +Z with its left side at -X like HumanRig; the FBX axis conversion can leave it
+            // turned (or mirrored): measure and bake the correction into joints and meshes
+            var fix = Facing(bones, heads, root, model.GetComponentsInChildren<SkinnedMeshRenderer>(true), side.asset);
+            if (!fix.isIdentity) foreach (var k in new List<string>(heads.Keys)) heads[k] = fix.MultiplyPoint3x4(heads[k]);
 
             // variants per garment come from the main piece's material (tshirt in m_tshirt_worn = the worn t-shirt)
             var variantOf = new Dictionary<string, string>();
@@ -224,7 +228,7 @@ namespace MadMax.EditorTools
                     srcs[key] = s;
                     order.Add(key);
                 }
-                var bound = Bind(r, root, bones, heads, side.asset + "/" + r.name, out var m2r, out var boneNames, out var srcMesh);
+                var bound = Bind(r, root, bones, heads, fix, side.asset + "/" + r.name, out var m2r, out var boneNames, out var srcMesh);
                 if (!bound) continue;
                 s.src[lod] = srcMesh; s.meshToRoot[lod] = m2r;
                 var lods = new List<Mesh>(s.piece.lods ?? new Mesh[0]);
@@ -323,7 +327,54 @@ namespace MadMax.EditorTools
         // ------------------------------------------------------------------ binding
         /// <summary>A copy of the renderer's mesh bound to the HumanRig rest pose: bone i = joint i with identity rotation
         /// at its rest position, so bindpose_i = T(-joint_i) x mesh-to-root. Rigid meshes become single-bone skins.</summary>
-        static Mesh Bind(Renderer r, Transform root, Dictionary<string, Transform> bones, Dictionary<string, Vector3> heads, string name,
+        static Mesh Bind(Renderer r, Transform root, Dictionary<string, Transform> bones, Dictionary<string, Vector3> heads, Matrix4x4 fix, string name,
+                         out Matrix4x4 meshToRoot, out string[] boneNames, out Mesh src)
+        {
+            var mesh = BindRaw(r, root, heads, fix, name, out meshToRoot, out boneNames, out src);
+            if (mesh && fix.determinant < 0f)                                     // a mirror turns the faces inside out
+                for (int sm = 0; sm < mesh.subMeshCount; sm++)
+                {
+                    var t = mesh.GetTriangles(sm);
+                    for (int i = 0; i < t.Length; i += 3) (t[i + 1], t[i + 2]) = (t[i + 2], t[i + 1]);
+                    mesh.SetTriangles(t, sm);
+                }
+            return mesh;
+        }
+
+        /// <summary>Correction from the imported model's root space to the game's (+Z forward, character's left at -X):
+        /// identity, a half turn (left arm at +X) or a front/back mirror (toes behind the ankles with the left arm at -X).</summary>
+        static Matrix4x4 Facing(Dictionary<string, Transform> bones, Dictionary<string, Vector3> heads, Transform root, SkinnedMeshRenderer[] skins, string asset)
+        {
+            var fix = Matrix4x4.identity;
+            if (heads.TryGetValue("UpperArmL", out var al) && heads.TryGetValue("UpperArmR", out var ar) && al.x > ar.x)
+                fix = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f));
+            // toes: body vertices below the left ankle, in front of it or behind it
+            if (heads.TryGetValue("FootL", out var foot))
+            {
+                foreach (var smr in skins)
+                {
+                    if (!smr.sharedMesh || !smr.name.StartsWith("Body") && !smr.name.EndsWith("_Body")) continue;
+                    var bt = smr.bones; var bp = smr.sharedMesh.bindposes;
+                    int ref0 = -1;
+                    for (int i = 0; i < bt.Length && i < bp.Length; i++) if (bt[i]) { ref0 = i; break; }
+                    if (ref0 < 0) continue;
+                    var m2r = fix * RootSpace(bt[ref0], root) * bp[ref0];
+                    var f = fix.MultiplyPoint3x4(foot);
+                    double sum = 0; int n = 0;
+                    foreach (var v in smr.sharedMesh.vertices)
+                    {
+                        var w = m2r.MultiplyPoint3x4(v);
+                        if (w.y < f.y && Mathf.Abs(w.x - f.x) < 0.07f) { sum += w.z - f.z; n++; }
+                    }
+                    if (n > 20 && sum / n < 0f) fix = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * fix;
+                    break;
+                }
+            }
+            if (!fix.isIdentity) Debug.Log("[HD] " + asset + ": imported " + (fix.determinant < 0f ? "mirrored front to back" : "facing backwards") + ", turned to face +Z");
+            return fix;
+        }
+
+        static Mesh BindRaw(Renderer r, Transform root, Dictionary<string, Vector3> heads, Matrix4x4 fix, string name,
                          out Matrix4x4 meshToRoot, out string[] boneNames, out Mesh src)
         {
             meshToRoot = Matrix4x4.identity; boneNames = null; src = null;
@@ -336,7 +387,7 @@ namespace MadMax.EditorTools
                 int ref0 = -1;
                 for (int i = 0; i < bt.Length && i < bp.Length; i++) if (bt[i]) { ref0 = i; break; }
                 if (ref0 < 0) return null;
-                meshToRoot = RootSpace(bt[ref0], root) * bp[ref0];
+                meshToRoot = fix * RootSpace(bt[ref0], root) * bp[ref0];
                 boneNames = new string[bt.Length];
                 var nb = new Matrix4x4[bt.Length];
                 for (int i = 0; i < bt.Length; i++)
@@ -351,7 +402,7 @@ namespace MadMax.EditorTools
             else if (r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
             {
                 src = mf.sharedMesh;
-                meshToRoot = RootSpace(r.transform, root);
+                meshToRoot = fix * RootSpace(r.transform, root);
                 string n = GameBone(r.transform.parent);
                 if (n == "Root") n = "Head";
                 boneNames = new[] { n };

@@ -209,6 +209,37 @@ namespace MadMax.Game.Acceptance
             foreach (var r in smrs) foreach (var b in r.bones) bound &= b && allowed.Contains(b);
             c.Check(bound, $"{who}: {smrs.Length} skinned meshes, every bone one of the rig's");
             c.Check(rig.HDPieces.Any(k => k.EndsWith("/Body")), $"{who}: an HD body is worn");
+            // facing: the eyes sit in front of the head joint and the toes in front of the ankles (rig space, +Z forward)
+            float eyes = float.NaN, toes = float.NaN;
+            var baked = new Mesh();
+            foreach (var r in smrs)
+            {
+                if (r.name.Contains("__L")) continue;
+                bool eye = r.name.StartsWith("Eye"), body = r.name == "Body";
+                if (!eye && !body) continue;
+                r.BakeMesh(baked, true);
+                var vs = baked.vertices;
+                if (eye && float.IsNaN(eyes))
+                {
+                    var head = rig.transform.InverseTransformPoint(rig.bones[BodyPart.Head].position);
+                    var sum = Vector3.zero; foreach (var v in vs) sum += rig.transform.InverseTransformPoint(r.transform.TransformPoint(v));
+                    eyes = sum.z / Mathf.Max(1, vs.Length) - head.z;
+                }
+                if (body)
+                {
+                    var foot = rig.transform.InverseTransformPoint(rig.bones[BodyPart.FootL].position);
+                    double z = 0; int n = 0;
+                    foreach (var v in vs)
+                    {
+                        var w = rig.transform.InverseTransformPoint(r.transform.TransformPoint(v));
+                        if (w.y < foot.y && Mathf.Abs(w.x - foot.x) < 0.07f) { z += w.z - foot.z; n++; }
+                    }
+                    if (n > 0) toes = (float)(z / n);
+                }
+            }
+            Object.Destroy(baked);
+            c.Check(eyes > 0.02f, $"{who}: faces forward, eyes {eyes * 100f:0.0} cm in front of the head joint");
+            c.Check(toes > 0.01f, $"{who}: toes {toes * 100f:0.0} cm in front of the left ankle");
         }
     }
 }

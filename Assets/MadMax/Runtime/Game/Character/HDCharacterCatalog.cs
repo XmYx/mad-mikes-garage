@@ -11,7 +11,7 @@ namespace MadMax.Game
     /// covers say which body triangles a garment hides.</summary>
     public class HDCharacterCatalog : ScriptableObject
     {
-        public const int Version = 2;
+        public const int Version = 3;
 
         [Serializable]
         public class Piece

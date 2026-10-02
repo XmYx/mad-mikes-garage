@@ -219,9 +219,9 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter(),
                                       VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel() })
             {
-                d.CarveWheelArches(k => partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels (cut doors / hood too)
+                d.CarveWheelArches(k => k != null && partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels (cut doors / hood too)
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
-                HDVehicleBuilder.SaveParts(d, parts, k => partDesigns.TryGetValue(k, out var pd) ? pd : null, PartDir);   // HD model: panels, wheels, bumpers
+                HDVehicleBuilder.SaveParts(d, parts, k => k != null && partDesigns.TryGetValue(k, out var pd) ? pd : null, PartDir);   // HD model: panels, wheels, bumpers
                 vehicles[d.name] = SaveVehicle(d, parts, mat);
             }
             lastParts = parts;
