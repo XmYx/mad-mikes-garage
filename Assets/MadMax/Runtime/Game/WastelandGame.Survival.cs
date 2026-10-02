@@ -486,8 +486,8 @@ namespace MadMax.Game
             if (SeaInteraction(p, E, T, out string sea)) return sea;
             bool toxic = terrain.BiomeAt(p.x, p.z) == Biome.Nuclear;
             if (E) { Drink(30f, true); if (toxic) Vitals.Hurt(8f, "TOXIC WATER"); }
-            if (T) { Inventory.Add(ResourceType.DirtyWater, 5); Toast("FILLED 5L DIRTY WATER"); }
-            return "[E] DRINK" + (toxic ? " (TOXIC)" : " (DIRTY)") + "  [T] FILL 5L";
+            if (T) UseCanAt(null, true, MadMax.Items.FluidFamily.Aqueous);                              // water goes in a container (bottle, bucket, can)
+            return "[E] DRINK" + (toxic ? " (TOXIC)" : " (DIRTY)") + (HasContainer ? "  [T] FILL A CONTAINER" : "");
         }
     }
 }

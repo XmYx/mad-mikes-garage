@@ -20,7 +20,7 @@ namespace MadMax.Items
         public static readonly Def[] All =
         {
             new Def { id = JerryCan, name = "JERRY CAN 20L", litres = 20f, emptyKg = 4f, meant = FluidFamily.Fuel, blurb = "20 L OF ONE FLUID: SIPHON (K) AND POUR (G) AT TANKS" },
-            new Def { id = FuelCan, name = "FUEL CAN 5L", litres = 5f, emptyKg = 1f, meant = FluidFamily.Fuel, blurb = "5 L SPOUTED CAN: TOP-UPS, GENERATORS, 2-STROKE MIX" },
+            new Def { id = FuelCan, name = "FUEL CAN 10L", litres = 10f, emptyKg = 1.6f, meant = FluidFamily.Fuel, blurb = "10 L SPOUTED CAN: TOP-UPS, GENERATORS, 2-STROKE MIX" },
             new Def { id = Bottle, name = "WATER BOTTLE 1L", litres = 1f, emptyKg = 0.2f, meant = FluidFamily.Aqueous, blurb = "1 L: DRINK (LMB), FILL AT WATER" },
             new Def { id = Bucket, name = "BUCKET 10L", litres = 10f, emptyKg = 1.2f, meant = FluidFamily.Aqueous, blurb = "10 L OPEN BUCKET: DIP AT WATER (LMB), RADIATORS, FIRES" },
             new Def { id = OilJug, name = "OIL JUG 4L", litres = 4f, emptyKg = 0.4f, meant = FluidFamily.Lube, blurb = "4 L JUG: ENGINE OIL, OIL CHANGES" },

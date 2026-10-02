@@ -5,9 +5,15 @@ using UnityEngine;
 namespace MadMax.Building
 {
     /// <summary>Pumpjack: over an oil field (tar-stained ground, WorldGen.OilAt) and on power it nods its walking beam and
-    /// fills its tank with crude (up to 0.5 L/s on the richest ground). [E] drains the tank into the pack.</summary>
+    /// fills its tank with crude (up to 0.5 L/s on the richest ground). [E] fills a container from the tank (a siphon source
+    /// for any can in hand too).</summary>
     public class Pumpjack : MonoBehaviour, IInteractable, IPlaceState
     {
+        public static readonly System.Collections.Generic.List<Pumpjack> All = new System.Collections.Generic.List<Pumpjack>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
+
         public float stored, capacity = 300f;
         const float Rate = 0.5f;
         float field = -1f, phase;
@@ -38,19 +44,15 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             if (field >= 0f && field <= 0.05f) return "PUMPJACK: NO OIL UNDER HERE";
-            return "[E] DRAIN CRUDE " + Mathf.FloorToInt(stored) + "/" + capacity + " L  FIELD " + Mathf.RoundToInt(field * 100f) + "%" + (node && !node.Powered ? "  NO POWER" : "");
+            return "[E] FILL A CAN WITH CRUDE " + Mathf.FloorToInt(stored) + "/" + capacity + " L  FIELD " + Mathf.RoundToInt(field * 100f) + "%" + (node && !node.Powered ? "  NO POWER" : "");
         }
 
+        /// <summary>Crude leaves the tank only into a container (the siphon choice opens with the best one in the pack).</summary>
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
             if (secondary) return;
-            int n = Mathf.FloorToInt(stored);
-            if (n <= 0) { g.Toast("THE TANK IS EMPTY"); return; }
-            stored -= n;
-            g.Inventory.Add(ResourceType.CrudeOil, n);
-            MadMax.Audio.Sfx.Play("pour", transform.position, 0.7f, 0.7f);
-            g.Toast("DRAINED " + n + " L CRUDE OIL");
-            GetComponent<Placeable>()?.Dirty();
+            if (stored < 1f) { g.Toast("THE TANK IS EMPTY"); return; }
+            g.UseCanAt(null, true, FluidFamily.Fuel);
         }
 
         public string SaveState() => stored.ToString("0.#", CultureInfo.InvariantCulture);

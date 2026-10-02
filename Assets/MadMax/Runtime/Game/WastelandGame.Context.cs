@@ -433,12 +433,15 @@ namespace MadMax.Game
                 else if (sys.disconnected) into.Add(Opt("RECONNECT THE BATTERY", () => ReconnectBattery(v), true, Inventory.GetItem(ItemIds.Wrench) > 0 ? null : "NEEDS A WRENCH", Controls.Act.Service));
                 else
                 {
-                    if (sys.NeedsService(Inventory) || sys.CanMaintain(Inventory)) into.Add(Opt("REFUEL / SERVICE", () => ServiceVehicle(v), true, null, Controls.Act.Service));
-                    if (sys.TotalFluids >= 1f) into.Add(Opt("SIPHON " + Mathf.FloorToInt(sys.TotalFluids) + " L", () => SiphonVehicle(v), true, null, Controls.Act.Siphon));
+                    if (sys.CanMaintain(Inventory)) into.Add(Opt("SERVICE", () => ServiceVehicle(v), true, null, Controls.Act.Service));
+                    bool cans = HasContainer;
+                    into.Add(Opt("POUR FROM A CAN", () => UseCanAt(v, false), cans, cans ? null : "NO CONTAINER", Controls.Act.Service));
+                    if (sys.TotalFluids >= 1f) into.Add(Opt("SIPHON " + Mathf.FloorToInt(sys.TotalFluids) + " L INTO A CAN", () => UseCanAt(v, true), cans, cans ? null : "NO CONTAINER", Controls.Act.Siphon));
                 }
             }
             if (Inventory.GetItem("tool_welder") > 0 && v.TryGetComponent<VehicleArmor>(out var armour)) into.Add(Opt("WELD ARMOUR", () => Menus.OpenArmour(armour), true, null, Controls.Act.Armour));
             if (v.TryGetComponent<Container>(out var cargo)) into.Add(Opt("OPEN " + cargo.title, () => Menus.OpenContainer(cargo)));
+            if (v.GetComponentInChildren<Container>()) into.Add(Opt("OPEN STORAGE (LOOT PANEL)", () => Loot.OpenVehicle(v), true, null, Controls.Act.Loot));
             var carried = Player.Carried;
             if (carried && v.TryGetComponent<VehicleChassis>(out var chassis))
             {

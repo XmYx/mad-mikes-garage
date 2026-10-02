@@ -20,8 +20,8 @@ namespace MadMax.Game
     /// container's (or anything into an empty one) — and fills it up to its capacity with that single fluid; G opens what
     /// to pour into (the same tanks, a player-built pump, the pack for a pure liquid, the ground) with the blend the tank
     /// will end up with. At a vehicle both are timed work (WastelandGame.Anim: the filler or the engine bay, the
-    /// container in hand). Without one in hand, K equips the best container in the pack and opens the choice; with none
-    /// at all, the old siphon into the pack runs (each liquid of a blend to its own resource).</para></summary>
+    /// container in hand). Without one in hand, K / G at a vehicle equip the best container in the pack and open the choice
+    /// (<see cref="UseCanAt"/>); with none, nothing moves: no liquid goes in or out of the pack without a container.</para></summary>
     public partial class WastelandGame
     {
         readonly Dictionary<string, List<CanContents>> cans = new Dictionary<string, List<CanContents>>();
@@ -123,7 +123,17 @@ namespace MadMax.Game
         partial void FluidsNewGame()
         {
             cans.Clear(); canPool.Clear();
-            if (!Rules.story) Inventory.AddItem(FluidContainers.JerryCan);                             // an empty can to start with
+            Inventory.AddItem(FluidContainers.FuelCan);                                              // an empty 10 L fuel can in every starting kit
+        }
+
+        /// <summary>Starting kit: the fuel can (added by FluidsNewGame) filled with <paramref name="litres"/> of one liquid.</summary>
+        void FillStarterCan(ResourceType t, float litres)
+        {
+            if (Inventory.GetItem(FluidContainers.FuelCan) <= 0) Inventory.AddItem(FluidContainers.FuelCan);
+            var l = CansOf(FluidContainers.FuelCan);
+            if (l.Count == 0) return;
+            l[0].litres = Mathf.Min(litres, FluidContainers.Get(FluidContainers.FuelCan).litres);
+            l[0].mix.Set(t);
         }
 
         partial void FluidsSave(SaveData d)
@@ -164,23 +174,45 @@ namespace MadMax.Game
             return Player.Tool && Player.Tool.id == id;
         }
 
-        /// <summary>K at a vehicle with no container in hand: equip the best one in the pack (an empty one, the biggest)
-        /// and open the siphon choice. False = the pack has none (the old siphon into the pack runs).</summary>
-        bool EquipCanFor(VehicleDriver v)
+        /// <summary>The pack holds at least one liquid container.</summary>
+        public bool HasContainer { get { foreach (var d in FluidContainers.All) if (Inventory.GetItem(d.id) > 0) return true; return false; } }
+
+        /// <summary>K / G at a vehicle with no container in hand. Liquids only ever move through a container: equip the
+        /// best one in the pack and open its choice (K: one with room, an empty one first; G: one holding liquid, the
+        /// vehicle's own fuel first — with only empty ones, the fill choice opens so the pack's liquids can go in first).
+        /// False with a toast when the pack has no container that can do it.</summary>
+        public bool UseCanAt(VehicleDriver v, bool siphon, FluidFamily prefer = FluidFamily.Fuel)
         {
             if (Working) return false;
+            var sys = v ? v.GetComponent<VehicleSystems>() : null;
+            var fuelFamily = sys ? FluidMix.Family(sys.FuelKind) : prefer;
             string bestId = null; int bestIndex = 0; float bestScore = -1f;
+            string roomId = null; int roomIndex = 0; float roomScore = -1f;
+            bool any = false;
             foreach (var d in FluidContainers.All)
             {
                 var l = CansOf(d.id);
                 for (int i = 0; i < l.Count; i++)
                 {
+                    any = true;
                     float room = d.litres - l[i].litres;
-                    float score = room + (l[i].Empty ? 100f : 0f) + (d.meant == FluidFamily.Fuel ? 10f : 0f);
-                    if (room > 0.05f && score > bestScore) { bestScore = score; bestId = d.id; bestIndex = i; }
+                    float rs = room + (l[i].Empty ? 100f : 0f) + (d.meant == prefer ? 10f : 0f) + (!l[i].Empty && l[i].mix.MainFamily == prefer ? 50f : 0f);
+                    if (room > 0.05f && rs > roomScore) { roomScore = rs; roomId = d.id; roomIndex = i; }
+                    if (l[i].Empty) continue;
+                    float ps = l[i].litres + (l[i].mix.MainFamily == fuelFamily ? 1000f : 0f);
+                    if (ps > bestScore) { bestScore = ps; bestId = d.id; bestIndex = i; }
                 }
             }
-            if (bestId == null || !EquipCan(bestId, bestIndex)) return false;
+            if (!any) { Toast("NO CONTAINER: LIQUIDS GO IN A CAN, BOTTLE, BUCKET OR JUG"); return false; }
+            if (!siphon && bestId != null)
+            {
+                if (!EquipCan(bestId, bestIndex)) return false;
+                OpenFluidChoice(false);
+                return true;
+            }
+            if (roomId == null) { Toast("EVERY CONTAINER YOU CARRY IS FULL"); return false; }
+            if (!EquipCan(roomId, roomIndex)) return false;
+            if (!siphon) Toast("YOUR CONTAINERS ARE EMPTY: FILL ONE FIRST");
             OpenFluidChoice(true);
             return true;
         }
@@ -296,6 +328,16 @@ namespace MadMax.Game
             }
         }
 
+        sealed class PumpjackEnd : FluidEnd
+        {
+            public Pumpjack jack;
+            public override float Available => jack.stored;
+            public override float Room => 0f;
+            public override FluidMix Mix => new FluidMix(ResourceType.CrudeOil);
+            public override float Draw(float litres, FluidMix into) { float t = Mathf.Min(litres, jack.stored); jack.stored -= t; into.Set(ResourceType.CrudeOil); jack.GetComponent<Placeable>()?.Dirty(); return t; }
+            public override float Pour(FluidMix mix, float litres) => 0f;
+        }
+
         sealed class GroundEnd : FluidEnd
         {
             public override float Available => 0f;
@@ -328,6 +370,8 @@ namespace MadMax.Game
                 if (p && Vector3.Distance(p.transform.position, feet) < 3f) l.Add(new PumpEnd { pump = p, name = "PUMP " + ResourceInfo.Name(p.kind) });
             foreach (var u in UtilityNode.All)
                 if (u && u.TryGetComponent<Generator>(out var gen) && !gen.solid && !gen.gas && Vector3.Distance(u.transform.position, feet) < 2.5f) l.Add(new GeneratorEnd { gen = gen, name = "GENERATOR" });
+            foreach (var j in Pumpjack.All)
+                if (j && Vector3.Distance(j.transform.position, feet) < 4f) l.Add(new PumpjackEnd { jack = j, name = "PUMPJACK CRUDE" });
             var terrain = DeformableTerrain.Instance;
             var ahead = feet + Player.transform.forward * 1f;
             if (terrain && (terrain.WaterDepth(ahead.x, ahead.z) > 0.08f || terrain.WaterDepth(feet.x, feet.z) > 0.08f))

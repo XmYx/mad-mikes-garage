@@ -313,8 +313,10 @@ namespace MadMax.Game.Acceptance
         }
     }
 
-    /// <summary>The floating loot panels: facing an item on the ground brings them up over the running game (no menu, time
-    /// runs, the player still walks) with the FLOOR section; a chest within reach joins the LOOT panel; the YOU panel holds
+    /// <summary>The floating loot panels: the LOOT bar always floats on foot, collapsed; an item on the ground in reach
+    /// lists the FLOOR section without opening anything; hovering expands the panels over the running game (no menu, time
+    /// runs, the player still walks); a chest within reach joins the LOOT panel; a vehicle's compartments stay off it until
+    /// opened (LOOT key / context menu); the YOU panel holds
     /// the pack and a worn bag (never listed as nearby loot); drags between sections (floor → bag, pack → chest, half of
     /// the chest back) and a row menu's TAKE ONE keep pack + bag + chest + floor balanced; the pin key keeps them up.</summary>
     class UiLootOverlay : Scenario
@@ -344,7 +346,11 @@ namespace MadMax.Game.Acceptance
             yield return SurvivalKit.GameSeconds(1f);
             if (!c.Check(can, "a can lies on the ground")) yield break;
             yield return SurvivalKit.Until(() => { SurvivalKit.Face(g, can.transform.position); return o.Visible && o.LootSide.Any(s => s.floor); }, 5f, w);
-            c.Check(w.ok, $"facing the can brings up the loot panels with the FLOOR section ({w.seconds:0.0} s, shown by {(o.ShownBy ? o.ShownBy.name : "-")})");
+            c.Check(w.ok, $"the floating LOOT bar lists the FLOOR section ({w.seconds:0.0} s)");
+            c.Check(!o.Expanded, "it stays collapsed: nothing pops up by itself");
+            o.HoverExpand(30f);
+            yield return null;
+            c.Check(o.Expanded && !o.you.closed && !o.loot.collapsed, "hovering expands LOOT and YOU");
             c.Check(!g.Menus.IsOpen && Time.timeScale == 1f, "no menu page, the world is not paused");
             float t0 = Time.time;
             yield return SurvivalKit.GameSeconds(0.3f);
@@ -403,8 +409,35 @@ namespace MadMax.Game.Acceptance
             c.Check(Vector3.Distance(P.transform.position, p1) > 0.5f && o.Visible, "the player walks with the panels up");
             o.SetPinned(true);
             yield return null;
-            c.Check(o.Visible && o.Pinned, "the pin key keeps them up");
+            c.Check(o.Visible && o.Pinned && o.Expanded, "the pin key keeps them open");
             o.SetPinned(false);
+            o.HoverExpand(0f);
+            yield return SurvivalKit.GameSeconds(0.8f);
+            c.Check(o.Visible && !o.Expanded, "unpinned and not hovered: folded back into the LOOT bar");
+
+            // ---- a vehicle's trunk / bed: never listed until opened
+            VehicleDriver car = null; Container trunk = null;
+            foreach (var v in Object.FindObjectsByType<VehicleDriver>(FindObjectsSortMode.None))
+            {
+                if (!v || v.aiDriven) continue;
+                foreach (var b in v.GetComponentsInChildren<Container>()) if (!b.worn) { car = v; trunk = b; break; }
+                if (car) break;
+            }
+            if (car)
+            {
+                var spot = trunk.AccessAt + (trunk.AccessAt - car.transform.position).normalized * 0.6f;
+                var t = MadMax.World.DeformableTerrain.Instance;
+                spot.y = (t ? t.Height(spot.x, spot.z) : spot.y) + 0.2f;
+                P.Teleport(spot, 0f);
+                yield return SurvivalKit.GameSeconds(0.5f);
+                o.Refresh();
+                c.Check(!o.LootSide.Any(s => s.box && s.box.GetComponentInParent<VehicleDriver>() == car) && !o.Expanded, $"standing at the {trunk.title} of {WastelandGame.Name(car)}: not listed, nothing pops up");
+                o.OpenVehicle(car);
+                yield return null;
+                c.Check(o.LootSide.Any(s => s.box == trunk) && o.Expanded, $"opened by the LOOT key / menu: the {trunk.title} is on the expanded LOOT panel");
+                o.SetPinned(false);
+            }
+            else c.Note("no vehicle with storage in the world: trunk check skipped");
 
             if (madeBag) { g.WornStorage.Remove(bag); Object.Destroy(madeBag); }
             Object.Destroy(chestP.gameObject);

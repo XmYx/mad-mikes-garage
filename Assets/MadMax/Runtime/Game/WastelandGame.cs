@@ -277,7 +277,7 @@ namespace MadMax.Game
                 Inventory.AddItem(ItemIds.ClawHammer);
                 Inventory.AddItem(ItemIds.Wrench);                                                   // parts come off wrecks from the first hour
                 Inventory.Add(ResourceType.Scrap, 20); Inventory.Add(ResourceType.Wood, 10); Inventory.Add(ResourceType.Rubber, 4);
-                Inventory.Add(ResourceType.Cloth, 2); Inventory.Add(ResourceType.Fuel, 10); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 2);   // light enough to run (no diesel: the machines come fuelled)
+                Inventory.Add(ResourceType.Cloth, 2); FillStarterCan(ResourceType.Fuel, 10f); Inventory.Add(ResourceType.Oil, 2); Inventory.Add(ResourceType.Coolant, 2);   // light enough to run (no diesel: the machines come fuelled)
                 Inventory.AddItem("book_mechanics_1");
             }
             if (kit >= 2)

@@ -445,15 +445,14 @@ namespace MadMax.Game
                 if (G && wrench) ReconnectBattery(v);                                            // timed at the engine bay (WastelandGame.Anim)
                 return text;
             }
-            if (sys.NeedsService(Inventory) || sys.CanMaintain(Inventory))
-            {
-                text = "[G] REFUEL/SERVICE";
-                if (G) ServiceVehicle(v);
-            }
+            // fluids only through a container from the pack (UseCanAt); G services (filters, plugs, oil change) when due
+            bool maintain = sys.CanMaintain(Inventory);
+            text = maintain ? "[G] SERVICE" : "[G] POUR FROM A CAN";
+            if (G) { if (maintain) ServiceVehicle(v); else UseCanAt(v, false); }
             if (sys.TotalFluids >= 1f)
             {
-                text = Join(text, $"[K] SIPHON {Mathf.FloorToInt(sys.TotalFluids)} L");
-                if (K && !EquipCanFor(v)) SiphonVehicle(v);                                     // a container in the pack: equip it and choose
+                text = Join(text, $"[K] SIPHON INTO A CAN ({Mathf.FloorToInt(sys.TotalFluids)} L)");
+                if (K) UseCanAt(v, true);
             }
             return text;
         }

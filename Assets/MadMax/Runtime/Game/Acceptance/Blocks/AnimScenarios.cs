@@ -62,10 +62,10 @@ namespace MadMax.Game.Acceptance
 
             // ---- a service: walked round to the engine bay, fluids only at the end
             if (sys.disconnected) { sys.Reconnect(); c.Fixture("battery lead reconnected"); }      // G would tighten it first
-            sys.fuel = sys.fuelCapacity;                                                          // a full tank: G services instead of pouring
-            sys.oil = sys.oilCapacity * 0.2f; sys.coolant = sys.coolantCapacity * 0.25f;
-            g.Inventory.Add(ResourceType.Oil, 12); g.Inventory.Add(ResourceType.Coolant, 12);
-            c.Fixture(name + ": full tank, oil 20 %, coolant 25 %; +12 oil and +12 coolant in the pack");
+            sys.fuel = sys.fuelCapacity;
+            sys.oil = sys.oilCapacity * 0.2f; sys.oilLife = 0.5f;                                 // an oil change is due (fluids alone go in with a can)
+            g.Inventory.AddItem("use_oil_filter", 3); g.Inventory.Add(ResourceType.Oil, 40);
+            c.Fixture(name + ": oil 20 %, oil life 50 %; 3 oil filters and 40 L of oil in the pack");
             float oil0 = sys.oil, cool0 = sys.coolant;
             PutPlayer(g, v, new Vector3(2.6f, 0f, -0.8f));
             c.Fixture("player 2.6 m beside the " + name);

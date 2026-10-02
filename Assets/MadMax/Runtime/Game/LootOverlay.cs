@@ -2,22 +2,24 @@ using System.Collections.Generic;
 using MadMax.Building;
 using MadMax.Items;
 using MadMax.Rendering;
+using MadMax.Vehicles;
 using MadMax.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace MadMax.Game
 {
-    /// <summary>The floating loot panels (Project Zomboid style): two small panels over the running game — LOOT (every
-    /// source within reach as a collapsible section: the floor, each storage reached at its <see cref="Container.AccessAt"/>
-    /// incl. vehicle compartments, searchable spots and bodies) and YOU (the pack and each worn bag in
-    /// <see cref="WastelandGame.WornStorage"/>). They come up by themselves when a storage, a searchable spot or an item
-    /// on the ground is hovered (cursor in top-down views, the [E] focus otherwise) and stay while something is in reach;
-    /// the LOOT key pins them (and frees the cursor in first / third person). Title bars drag the panels, [-] collapses,
-    /// [x] closes; section headers fold. Drag a row onto another section (Ctrl: one, Shift: half), off the panels to drop
-    /// it on the floor; double-click moves it across (loot → pack, yours → the first storage); RMB opens its menu; hovering
-    /// shows a tooltip. Every move is <see cref="MenuSystem.LootMove"/> (capacity, item feed, replication as the loot
-    /// window). The world never pauses.</summary>
+    /// <summary>The floating loot panels (Project Zomboid style): on foot a LOOT bar always floats over the running game,
+    /// collapsed, with the count of what is in reach (the floor, each storage reached at its
+    /// <see cref="Container.AccessAt"/>, searchable spots and bodies). Hovering it expands LOOT and the YOU panel (the
+    /// pack and each worn bag in <see cref="WastelandGame.WornStorage"/>); they fold away again when the mouse leaves. The
+    /// LOOT key pins them open (and frees the cursor in first / third person). Vehicle compartments (trunk, bed,
+    /// glovebox, saddlebags ...) never show by themselves: the LOOT key beside a vehicle or its context menu opens them
+    /// (<see cref="OpenVehicle"/>) until the player walks away. Title bars drag the panels, [+]/[-] pins, [x] unpins;
+    /// section headers fold. Drag a row onto another section (Ctrl: one, Shift: half), off the panels to drop it on the
+    /// floor; double-click moves it across (loot → pack, yours → the first storage); RMB opens its menu; hovering shows a
+    /// tooltip. Every move is <see cref="MenuSystem.LootMove"/> (capacity, item feed, replication as the loot window).
+    /// The world never pauses.</summary>
     public sealed class LootOverlay
     {
         /// <summary>The mouse is on a panel or dragging from one: clicks, wheel and RMB belong to the panels this frame.</summary>
@@ -53,10 +55,13 @@ namespace MadMax.Game
         readonly HashSet<string> folded = new HashSet<string>();
 
         public bool Pinned { get; private set; }
+        /// <summary>The LOOT bar is on screen (always on foot).</summary>
         public bool Visible { get; private set; }
-        bool autoShown;
-        Component shownBy, dismissedFor;
-        float refreshAt;
+        /// <summary>The panels are open: pinned, or the mouse is on them (a short grace after it leaves).</summary>
+        public bool Expanded { get; private set; }
+        /// <summary>The vehicle whose compartments were opened (LOOT key / context menu), null = none listed.</summary>
+        public VehicleDriver OpenedVehicle { get; private set; }
+        float refreshAt, expandUntil;
 
         // mouse
         Vector2Int mp; bool overPanel;
@@ -67,14 +72,39 @@ namespace MadMax.Game
 
         public LootOverlay(WastelandGame game) { g = game; }
 
-        /// <summary>What brought the panels up (the hovered storage / item), null when pinned or hidden.</summary>
-        public Component ShownBy => shownBy;
-
         public void SetPinned(bool on)
         {
             Pinned = on;
-            if (on) { loot.closed = you.closed = false; }
-            else autoShown = false;
+            if (!on) expandUntil = 0f;
+        }
+
+        /// <summary>Automation / gamepad: open the panels as if hovered for a moment.</summary>
+        public void HoverExpand(float seconds = 0.6f) => expandUntil = Mathf.Max(expandUntil, Time.unscaledTime + seconds);
+
+        /// <summary>List <paramref name="v"/>'s compartments in reach on the LOOT panel and pin it open.</summary>
+        public void OpenVehicle(VehicleDriver v)
+        {
+            OpenedVehicle = v;
+            SetPinned(true);
+            Refresh();
+            int n = LootSide.FindAll(src => src.box && src.box.GetComponentInParent<VehicleDriver>() == v).Count;
+            g.Toast(n > 0 ? "OPENED " + n + " STORAGE" + (n > 1 ? "S" : "") + " ON " + WastelandGame.Name(v) : "NO STORAGE OF " + WastelandGame.Name(v) + " IN REACH: GO ROUND TO IT");
+        }
+
+        /// <summary>The nearest vehicle with a storage within reach of the player, or null.</summary>
+        VehicleDriver NearVehicleWithStorage()
+        {
+            var at = g.Player.transform.position;
+            VehicleDriver best = null; float bd = 4f * 4f;
+            foreach (var c in Container.All)
+            {
+                if (!c || c.worn) continue;
+                var v = c.GetComponentInParent<VehicleDriver>();
+                if (!v) continue;
+                float d = (c.AccessAt - at).sqrMagnitude;
+                if (d < bd) { bd = d; best = v; }
+            }
+            return best;
         }
 
         bool CanShow => g.Player && g.Player.gameObject.activeSelf && !g.Current && !g.AwaitingRespawn && !g.PlacingItem && !TitleSequence.Playing
@@ -86,21 +116,27 @@ namespace MadMax.Game
             bool can = CanShow;
             if (can && !g.Menus.IsOpen && Controls.Down(Controls.Act.Loot))
             {
-                SetPinned(!Pinned);
-                g.Toast(Pinned ? "LOOT PANELS PINNED (" + Controls.Name(Controls.Act.Loot) + " TO UNPIN)" : "LOOT PANELS UNPINNED");
+                var v = Pinned ? null : NearVehicleWithStorage();
+                if (v) OpenVehicle(v);
+                else
+                {
+                    SetPinned(!Pinned);
+                    if (!Pinned) OpenedVehicle = null;
+                    g.Toast(Pinned ? "LOOT PANELS PINNED (" + Controls.Name(Controls.Act.Loot) + " TO UNPIN)" : "LOOT PANELS UNPINNED");
+                }
             }
-            if (!can) { Visible = false; CancelDrag(); return; }
-            if (!Visible && (Pinned || autoShown) && Time.unscaledTime >= refreshAt) Refresh();                            // while shown, Draw refreshes (rows keep their rects)
-            // auto show: a storage / spot / ground item is hovered; stays while something is in reach
-            var trig = g.ContextHover;
-            if (trig && trig != dismissedFor && !autoShown) { autoShown = true; shownBy = trig; loot.closed = you.closed = false; Refresh(); }
-            if (!trig) dismissedFor = null;
-            if (autoShown && LootSide.Count == 0) { autoShown = false; shownBy = null; }
-            Visible = (Pinned || autoShown) && !(loot.closed && you.closed);
-            if (!Visible) { CancelDrag(); return; }
+            if (!can) { Visible = Expanded = false; CancelDrag(); return; }
+            if (OpenedVehicle && (OpenedVehicle.transform.position - g.Player.transform.position).sqrMagnitude > 12f * 12f) { OpenedVehicle = null; Refresh(); }
+            if (!Visible && Time.unscaledTime >= refreshAt) Refresh();                                                      // while shown, Draw refreshes (rows keep their rects)
+            Visible = true;
             WantsCursor = Pinned;
-            if (g.Menus.IsOpen) return;                                                           // a row menu is up: it has the input
-            MouseInput(mouse, kb);
+            if (!g.Menus.IsOpen) MouseInput(mouse, kb);
+            if (overPanel || dragPanel != null || pressRow != null || (Expanded && g.Menus.IsOpen)) HoverExpand(0.4f);       // a row menu keeps them open
+            Expanded = Pinned || Time.unscaledTime < expandUntil;
+            loot.closed = false;
+            loot.collapsed = !Expanded;
+            you.closed = !Expanded;
+            if (!Expanded) { hoverRow = null; if (dragPanel == null) pressRow = null; }
         }
 
         void CancelDrag() { dragPanel = null; pressRow = null; draggingItem = false; }
@@ -112,7 +148,12 @@ namespace MadMax.Game
             var at = g.Player.transform.position;
             LootSide.Clear();
             bool floor = false;
-            foreach (var s in g.Menus.NearbySources(at, true)) { if (s.floor) floor = true; else LootSide.Add(s); }
+            foreach (var s in g.Menus.NearbySources(at, true))
+            {
+                if (s.floor) { floor = true; continue; }
+                if (s.box && !s.box.worn) { var v = s.box.GetComponentInParent<VehicleDriver>(); if (v && v != OpenedVehicle) continue; }   // compartments only once opened
+                LootSide.Add(s);
+            }
             if (floor) LootSide.Insert(0, LootSource.Floor);
             PlayerSide.Clear();
             PlayerSide.Add(LootSource.Pack);
@@ -246,7 +287,7 @@ namespace MadMax.Game
                 {
                     if (p.closed) continue;
                     if (p.closeBtn.Contains(mp)) { Close(p); return; }
-                    if (p.foldBtn.Contains(mp)) { p.collapsed = !p.collapsed; return; }
+                    if (p.foldBtn.Contains(mp)) { SetPinned(!Pinned); return; }
                     if (p.bar.Contains(mp)) { dragPanel = p; dragOffset = mp - p.pos; return; }
                 }
                 if (row != null) { pressRow = row; pressAt = mp; draggingItem = false; }
@@ -279,10 +320,13 @@ namespace MadMax.Game
 
         static bool SameRow(Row a, Row b) => a != null && b != null && a.header == b.header && a.search == b.search && a.key == b.key && a.panel == b.panel && a.src.Same(b.src);
 
+        /// <summary>[x]: unpin, forget an opened vehicle and fold away (the LOOT bar stays).</summary>
         void Close(Panel p)
         {
-            p.closed = true;
-            if (loot.closed && you.closed) { Pinned = false; autoShown = false; dismissedFor = shownBy; shownBy = null; }
+            SetPinned(false);
+            OpenedVehicle = null;
+            CancelDrag();
+            Refresh();
         }
 
         Row RowAt(Vector2Int p)
@@ -301,7 +345,7 @@ namespace MadMax.Game
             if (!Visible) return;
             if (loot.pos.x < 0) loot.pos = new Vector2Int(c.w - PanelW - 6, 112);
             if (you.pos.x < 0) you.pos = new Vector2Int(Mathf.Max(0, c.w - 2 * PanelW - 12), 112);
-            DrawPanel(c, loot, 1, "LOOT", LootSide.Count == 0 ? "NOTHING IN REACH" : null);
+            DrawPanel(c, loot, 1, LootSide.Count == 0 ? "LOOT  -" : "LOOT  " + LootSide.Count + " IN REACH", LootSide.Count == 0 ? "NOTHING IN REACH" : null);
             DrawPanel(c, you, 0, "YOU  " + g.CarriedWeight.ToString("0.0") + "/" + g.Stats.CarryCapacity.ToString("0") + " KG", null);
             if (draggingItem && pressRow != null)
             {
@@ -311,7 +355,7 @@ namespace MadMax.Game
                 c.Text(mp.x + 7, mp.y + 4, d, Amber, 1, false);
             }
             else if (hoverRow != null && hoverRow.key != null && Time.unscaledTime - hoverSince > 0.35f) Tooltip(c, hoverRow);
-            if (!Pinned && Cursor.lockState == CursorLockMode.Locked)
+            if (!Pinned && Cursor.lockState == CursorLockMode.Locked && LootSide.Count > 0)
             {
                 string h = Controls.Name(Controls.Act.Loot) + ": USE THE PANELS";
                 c.Text(loot.pos.x, loot.pos.y - 8, h, Dim);
@@ -333,7 +377,7 @@ namespace MadMax.Game
             c.Panel(x, y, PanelW, h);
             c.Rect(x + 1, y + 1, PanelW - 2, BarH - 1, new Color32(40, 24, 12, 230));
             c.Text(x + 3, y + 3, title.Length > 30 ? title.Substring(0, 30) : title, Amber, 1, false);
-            c.Text(p.foldBtn.x + 3, y + 3, p.collapsed ? "+" : "-", Text, 1, false);
+            c.Text(p.foldBtn.x + 3, y + 3, Pinned ? "-" : "+", Text, 1, false);
             c.Text(p.closeBtn.x + 3, y + 3, "X", Text, 1, false);
             if (p.collapsed) return;
             if (mine.Count == 0 && empty != null) { c.Text(x + 4, y + BarH + 2, empty, Dim, 1, false); return; }

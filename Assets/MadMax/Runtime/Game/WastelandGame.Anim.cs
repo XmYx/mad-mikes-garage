@@ -85,34 +85,19 @@ namespace MadMax.Game
 
         // ------------------------------------------------------------------ the vehicle verbs (G, K, E, repair kit, armour, LMB tools)
 
-        /// <summary>G at a vehicle: pour from the pack's cans at the filler (the timed jerry-can pour), else top up oil and
-        /// coolant and fit due service parts at the engine bay.</summary>
+        /// <summary>G at a vehicle when service parts are due: oil change, air filter, plugs at the engine bay (timed). Fuel,
+        /// oil and coolant top-ups go through a container (<see cref="UseCanAt"/>).</summary>
         public void ServiceVehicle(VehicleDriver v)
         {
             if (!v || !v.TryGetComponent<VehicleSystems>(out var sys)) return;
             if (Refuelling) { StopRefuel("STOPPED"); return; }
-            if (sys.fuel < sys.fuelCapacity - 1f && (Inventory.Get(sys.FuelKind) > 0 || (sys.FuelKind == ResourceType.Fuel && Inventory.Get(ResourceType.Ethanol) > 0)))
-                Timed(v, WorkKind.Refuel, null, () => StartRefuel(v, null));
-            else Timed(v, WorkKind.Service, null, () =>
+            if (!sys.CanMaintain(Inventory)) { Toast("NOTHING TO SERVICE: FLUIDS GO IN WITH A CAN"); return; }
+            Timed(v, WorkKind.Service, null, () =>
             {
                 Stats.Practice(Skill.Mechanics, 3f);
-                int n = sys.Service(Inventory);
-                string m = sys.Maintain(Inventory);                                       // oil change, filters, plugs (roadmap 19)
+                string m = sys.Maintain(Inventory);                                       // oil change, filters, plugs (roadmap 19); fluids only through a container
                 if (m != null) Stats.Practice(Skill.Mechanics, 4f);
-                Toast($"SERVICED {Name(v)}: {n} L" + (m != null ? ", " + m : ""));
-                MadMax.Net.NetSession.Instance?.SendVehicleMeta(v);
-            });
-        }
-
-        /// <summary>K at a vehicle: drain fuel, oil and coolant into the pack (kneeling at the filler with a can).</summary>
-        public void SiphonVehicle(VehicleDriver v)
-        {
-            if (!v || !v.TryGetComponent<VehicleSystems>(out var sys)) return;
-            Timed(v, WorkKind.Siphon, null, () =>
-            {
-                Stats.Practice(Skill.Survival, 2f);
-                int n = sys.Siphon(Inventory);
-                Toast($"SIPHONED {n} L");
+                Toast($"SERVICED {Name(v)}" + (m != null ? ": " + m : ""));
                 MadMax.Net.NetSession.Instance?.SendVehicleMeta(v);
             });
         }

@@ -17,6 +17,7 @@ namespace MadMax.Game.Acceptance
             yield return new FluidsSiphonRefill();
             yield return new FluidsMixing();
             yield return new FluidsSave();
+            yield return new FluidsNoContainer();
         }
 
         internal static IEnumerator Until(System.Func<bool> ok, float seconds)
@@ -318,6 +319,76 @@ namespace MadMax.Game.Acceptance
             c.Check(s2.coolantMix.Save() == cool0, "coolant blend back: " + s2.coolantMix.Label());
             var can2 = g.CansOf(FluidContainers.JerryCan);
             c.Check(can2.Count > 0 && Mathf.Abs(can2[0].litres - 12.5f) < 0.001f && can2[0].mix.Save() == canMix0, "the jerry can holds its 12.5 L of " + (can2.Count > 0 ? can2[0].mix.Label() : "?"));
+        }
+    }
+
+    /// <summary>Liquids only move through containers: the starting kit carries a 10 L fuel can (full of petrol with the
+    /// kit); with no container in the pack [K] and [G] at a parked truck move nothing (tank and pack unchanged); with an
+    /// empty can in the pack [K] equips it and opens (or runs) its fill choice; the lake [T] fills only a container.</summary>
+    class FluidsNoContainer : Scenario
+    {
+        public override string Id => "fluids.no_container";
+        public override float Timeout => 60f;
+
+        public override IEnumerator Run(ScenarioContext c)
+        {
+            var g = c.Game; var inv = g.Inventory;
+            var def = FluidContainers.Get(FluidContainers.FuelCan);
+            c.Check(def != null && def.litres == 10f, "the fuel can holds 10 L: " + (def != null ? def.name : "-"));
+            bool kit = inv.GetItem(FluidContainers.FuelCan) > 0;
+            var start = kit ? g.CansOf(FluidContainers.FuelCan)[0] : null;
+            c.Check(kit, "the starting kit has a fuel can" + (start != null ? " (" + start.Describe(def.litres) + ")" : ""));
+            if (g.Rules.startingKit >= 1) c.Check(start != null && start.litres > 9.9f && start.mix.Main == ResourceType.Fuel, "with the kit it holds 10 L of petrol");
+
+            var diesels = FluidsScenarios.Diesels(g);
+            if (diesels.Count == 0) { c.Block("no diesel vehicle in the fleet"); yield break; }
+            var truck = diesels[0]; var ts = truck.GetComponent<VehicleSystems>();
+            if (!TestWorld.Pad(9f, out var pad)) { c.Block("no level pad"); yield break; }
+            if (g.Current) { g.Exit(); yield return null; }
+            WastelandGame.ExternalInput = true;
+            g.Player.moveInput = Vector2.zero;
+            g.Player.Equip(null);
+            // every container out of the pack (counts restored at the end)
+            var held = new Dictionary<string, int>();
+            foreach (var d in FluidContainers.All) { int n = inv.GetItem(d.id); if (n > 0) { held[d.id] = n; inv.TakeItem(d.id, n); } }
+            c.Fixture("all liquid containers taken out of the pack: " + string.Join(", ", held.Select(kv => kv.Key + " x" + kv.Value)));
+            g.Player.Teleport(pad + Vector3.right * 9f + Vector3.up * 0.3f, -90f);
+            yield return TestWorld.Place(c, truck, pad, Vector3.forward, 1.5f);
+            if (ts.fuel < 20f) ts.fuel = Mathf.Min(ts.fuelCapacity, 40f);
+            ts.fuelMix.Set(ResourceType.Diesel);
+            FluidsScenarios.Beside(g, truck);
+            yield return null; yield return null;
+            float fuel0 = ts.fuel, oil0 = ts.oil; int packD = inv.Get(ResourceType.Diesel), packO = inv.Get(ResourceType.Oil);
+            c.Note("prompt: " + g.Prompt);
+            ActionPress.Press(Controls.Act.Siphon);
+            yield return FluidsScenarios.Until(() => g.FluidChoiceOpen || g.Working, 1.5f);
+            yield return FluidsScenarios.Until(() => !g.Working, 15f);
+            c.Check(!g.FluidChoiceOpen && Mathf.Abs(ts.fuel - fuel0) < 0.01f && Mathf.Abs(ts.oil - oil0) < 0.01f && inv.Get(ResourceType.Diesel) == packD && inv.Get(ResourceType.Oil) == packO,
+                $"[K] with no container moves nothing (tank {fuel0:0.0} -> {ts.fuel:0.0} L, pack diesel {packD} -> {inv.Get(ResourceType.Diesel)})");
+            inv.Add(ResourceType.Diesel, 5);
+            float f1 = ts.fuel;
+            ActionPress.Press(Controls.Act.Service);
+            yield return FluidsScenarios.Until(() => g.FluidChoiceOpen || g.Working, 1.5f);
+            yield return FluidsScenarios.Until(() => !g.Working, 15f);
+            c.Check(!g.FluidChoiceOpen && Mathf.Abs(ts.fuel - f1) < 0.01f && inv.Get(ResourceType.Diesel) == packD + 5, "[G] with diesel loose in the pack but no container pours nothing");
+            inv.TrySpend(ResourceType.Diesel, 5);
+
+            // an empty can in the pack: K equips it and fills from the truck
+            inv.AddItem(FluidContainers.FuelCan);
+            g.CansOf(FluidContainers.FuelCan)[0].Clear();
+            yield return null;
+            ActionPress.Press(Controls.Act.Siphon);
+            yield return FluidsScenarios.Until(() => g.FluidChoiceOpen || g.Working, 2f);
+            c.Check(g.Player.Tool && g.Player.Tool.id == FluidContainers.FuelCan, "[K] with an empty fuel can in the pack puts it in hand");
+            if (g.FluidChoiceOpen) { c.Note("K radial: " + FluidsScenarios.Slices(g)); g.PickRadial("FUEL TANK"); }
+            yield return FluidsScenarios.Until(() => !g.Working, 30f);
+            var can = g.CansOf(FluidContainers.FuelCan)[0];
+            c.Check(Mathf.Abs(can.litres - 10f) < 0.01f && can.mix.Main == ResourceType.Diesel && Mathf.Abs(f1 - ts.fuel - 10f) < 0.01f, $"and siphons exactly the can's 10 L ({can.Describe(10f)}, tank {f1:0.0} -> {ts.fuel:0.0} L)");
+
+            g.Player.Equip(null);
+            inv.TakeItem(FluidContainers.FuelCan, 1);
+            foreach (var kv in held) inv.AddItem(kv.Key, kv.Value);
+            c.Fixture("containers restored");
         }
     }
 }
