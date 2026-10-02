@@ -628,7 +628,7 @@ namespace MadMax.Game
                     return EngineBay(v, j.box);
                 case WorkKind.Refuel:
                 case WorkKind.Siphon:
-                    return Filler(v);
+                    return Filler(v, Player.transform.position);
                 case WorkKind.Take:
                 case WorkKind.Repair:
                     if (j.part) return j.part.TryGetComponent<Renderer>(out var r) ? r.bounds.center : j.part.transform.position;

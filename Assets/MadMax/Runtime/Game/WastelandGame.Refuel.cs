@@ -24,13 +24,17 @@ namespace MadMax.Game
             return best;
         }
 
-        static Vector3 Filler(VehicleDriver v)
+        /// <summary>The fuel filler: on the left of a car; trucks and buses (bodies over 5.5 m) carry tanks on both
+        /// sides, so the one on <paramref name="near"/>'s side (no walk round a long vehicle).</summary>
+        static Vector3 Filler(VehicleDriver v, Vector3? near = null)
         {
             var body = v.transform.Find("Body");
             var mf = body ? body.GetComponent<MeshFilter>() : null;
             if (!mf || !mf.sharedMesh) return v.transform.position;
             var b = mf.sharedMesh.bounds;
-            return body.TransformPoint(new Vector3(-b.extents.x - 0.05f, Mathf.Lerp(b.min.y, b.max.y, 0.45f), b.min.z + b.size.z * 0.22f));
+            float side = -1f;
+            if (near.HasValue && b.size.z * Mathf.Abs(body.lossyScale.z) > 5.5f && body.InverseTransformPoint(near.Value).x > b.center.x) side = 1f;
+            return body.TransformPoint(new Vector3(b.center.x + side * (b.extents.x + 0.05f), Mathf.Lerp(b.min.y, b.max.y, 0.45f), b.min.z + b.size.z * 0.22f));
         }
 
         public void StartRefuel(VehicleDriver v, GasPump pump)

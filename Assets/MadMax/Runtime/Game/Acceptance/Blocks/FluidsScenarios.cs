@@ -26,11 +26,16 @@ namespace MadMax.Game.Acceptance
             while (!ok() && Time.time - t0 < seconds) yield return null;
         }
 
-        /// <summary>Diesel-engined vehicles of the fleet (no tankers), biggest tank first.</summary>
-        internal static List<VehicleDriver> Diesels(WastelandGame g) =>
-            g.AllVehicles.Where(v => v && v.driveable && !v.aiDriven && v.TryGetComponent<VehicleSystems>(out var s) && s.HasEngine && s.FuelKind == ResourceType.Diesel
-                                     && !v.GetComponent<FuelTanker>() && !v.GetComponent<BoatModel>())
-                         .OrderByDescending(v => v.GetComponent<VehicleSystems>().fuelCapacity).ToList();
+        /// <summary>Diesel-engined road vehicles of the fleet (no tankers, machines or walk-in trucks, whose fillers the work
+        /// walk does not always reach), biggest tank first; any diesel when none of those exist.</summary>
+        internal static List<VehicleDriver> Diesels(WastelandGame g)
+        {
+            var all = g.AllVehicles.Where(v => v && v.driveable && !v.aiDriven && v.TryGetComponent<VehicleSystems>(out var s) && s.HasEngine && s.FuelKind == ResourceType.Diesel
+                                               && !v.GetComponent<FuelTanker>() && !v.GetComponent<BoatModel>())
+                                   .OrderByDescending(v => v.GetComponent<VehicleSystems>().fuelCapacity).ToList();
+            var road = all.Where(v => !v.GetComponent<Machine>() && !v.GetComponentInChildren<InteriorSpace>() && v.GetComponent<VehicleSystems>().fuelCapacity >= 20f).ToList();
+            return road.Count >= 2 ? road : all;
+        }
 
         /// <summary>Stand the player 1 m off the vehicle's right flank (by its body mesh), facing it.</summary>
         internal static void Beside(WastelandGame g, VehicleDriver v)

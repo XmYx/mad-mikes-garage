@@ -108,7 +108,7 @@ namespace MadMax.Game.Acceptance
             while (g.Working && Time.time - tw < 15f) yield return null;
             c.Metric("service_elapsed", Time.time - tw, "s");
             c.Check(g.LastWork == WorkOutcome.Done && g.LastWorkProgress >= 1f, "the work runs to the end (progress 1)");
-            c.Check(sys.oil > oil0 + 1f && sys.coolant > cool0 + 1f, $"topped up at the end: oil {oil0:0.0} > {sys.oil:0.0} L, coolant {cool0:0.0} > {sys.coolant:0.0} L");
+            c.Check(sys.oil > oil0 + 1f && sys.oilLife > 0.95f, $"oil changed at the end: oil {oil0:0.0} > {sys.oil:0.0} L, oil life {sys.oilLife:0.00}");
             c.Check(!g.Player.PoseOverride.HasValue, "the pose ends with the work");
             yield return new WaitForSeconds(0.8f);
             if (hood) c.Check(Quaternion.Angle(Quaternion.identity, hood.localRotation) < 2f, "the hood is shut again");
@@ -169,9 +169,9 @@ namespace MadMax.Game.Acceptance
             }
 
             // ---- G for a second service, then walking off: cancelled without effect
-            sys.oil = sys.oilCapacity * 0.2f;
+            sys.oil = sys.oilCapacity * 0.2f; sys.oilLife = 0.5f;
             float oil1 = sys.oil;
-            c.Fixture("oil drained to 20 % again");
+            c.Fixture("oil drained to 20 % again, oil change due");
             if (g.Working) { c.Fixture("stopped a job still running before G: " + State(g)); g.CancelWork(null); }
             if (g.Player.Carried) { c.Fixture("dropped the still-carried " + g.Player.Carried.partId); g.Player.DropCarried(); }
             PutPlayer(g, v, new Vector3(2.4f, 0f, 0f));
