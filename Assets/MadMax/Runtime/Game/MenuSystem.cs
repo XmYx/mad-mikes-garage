@@ -396,6 +396,14 @@ namespace MadMax.Game
                         if (!c.completed && !c.failed && !jp.Exists(q => q.label == c.title))
                             items.Add(new Item { label = c.title, value = () => c.need > 0 ? c.done + "/" + c.need : "", hint = c.deadline >= 0 ? "DEADLINE: DAY " + (c.deadline + 1) : null });
                     if (items.Count == 0) items.Add(new Item { label = "NO JOBS IN HAND", value = () => "BOARDS AND BOSSES IN TOWN", enabled = () => false });
+                    var shop = new List<WastelandGame.Pin>();
+                    game.WorkshopPins(shop);
+                    if (shop.Count > 0) items.Add(new Item { label = "- THE WORKSHOP AT HOME -", enabled = () => false });
+                    foreach (var pin in shop)
+                    {
+                        var pp = pin;
+                        items.Add(new Item { label = pp.label, confirm = () => { game.SetWaypoint(pp.pos, "WORKSHOP"); Close(); }, hint = "ENTER: SET A WAYPOINT HOME" });
+                    }
                     foreach (var e in Journal.Entries)
                     {
                         var en = e;
@@ -692,7 +700,14 @@ namespace MadMax.Game
                         foreach (var e in news)
                         {
                             string full = "DAY " + e.day + ": " + e.text;
-                            items.Add(new Item { label = FitCraft(full, 360), hint = e.text });
+                            if (e.wreck)
+                            {
+                                var site = new Vector3(e.x, 0f, e.z);
+                                items.Add(new Item { label = FitCraft(full, 360), confirm = () => { game.MarkNewsWreck(site); Rebuild(); },
+                                    value = () => game.NewsPins.Exists(q => (q - site).sqrMagnitude < 100f) ? "MARKED" : "",
+                                    hint = "E: MARK THE WRECK ON THE MAP (" + Mathf.RoundToInt(Vector3.Distance(new Vector3(b.transform.position.x, 0f, b.transform.position.z), site)) + " M) - WHAT THE RAIDERS LEFT IS SALVAGE" });
+                            }
+                            else items.Add(new Item { label = FitCraft(full, 360), hint = e.text });
                         }
                     }
                     break;

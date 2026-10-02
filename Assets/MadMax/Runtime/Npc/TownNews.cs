@@ -10,7 +10,7 @@ namespace MadMax.Npc
     /// trades. Saved as <c>SaveData.townNews</c>.</summary>
     public static class TownNews
     {
-        public struct Entry { public int day; public bool local; public float x, z; public string text; }
+        public struct Entry { public int day; public bool local, wreck; public float x, z; public string text; }
 
         public const float Reach = 1800f;
         const int Max = 40;
@@ -32,6 +32,19 @@ namespace MadMax.Npc
             if (at.HasValue) { n.local = true; n.x = at.Value.x; n.z = at.Value.z; }
             entries.Insert(0, n);
             if (entries.Count > Max) entries.RemoveAt(entries.Count - 1);
+        }
+
+        /// <summary>Tie the newest headline posted at <paramref name="near"/> to the wreck it left at <paramref name="wreck"/>:
+        /// boards offer to mark the site on the map.</summary>
+        public static void MarkWreck(Vector3 near, Vector3 wreck)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+                if (!e.local || (e.x - near.x) * (e.x - near.x) + (e.z - near.z) * (e.z - near.z) > 4f) continue;
+                e.wreck = true; e.x = wreck.x; e.z = wreck.z; entries[i] = e;
+                return;
+            }
         }
 
         /// <summary>The newest <paramref name="max"/> headlines a board at <paramref name="board"/> carries.</summary>
@@ -64,7 +77,7 @@ namespace MadMax.Npc
         {
             var l = new List<string>();
             foreach (var e in entries)
-                l.Add(e.day + "|" + (e.local ? e.x.ToString("0", CultureInfo.InvariantCulture) + "," + e.z.ToString("0", CultureInfo.InvariantCulture) : "") + "|" + e.text);
+                l.Add(e.day + "|" + (e.local ? e.x.ToString("0", CultureInfo.InvariantCulture) + "," + e.z.ToString("0", CultureInfo.InvariantCulture) + (e.wreck ? ",w" : "") : "") + "|" + e.text);
             return l;
         }
 
@@ -78,7 +91,8 @@ namespace MadMax.Npc
                 if (p.Length != 3 || !int.TryParse(p[0], out int d)) continue;
                 var e = new Entry { day = d, text = p[2] };
                 var xz = p[1].Split(',');
-                if (xz.Length == 2 && float.TryParse(xz[0], NumberStyles.Float, CultureInfo.InvariantCulture, out e.x)
+                e.wreck = xz.Length == 3 && xz[2] == "w";
+                if (xz.Length >= 2 && float.TryParse(xz[0], NumberStyles.Float, CultureInfo.InvariantCulture, out e.x)
                     && float.TryParse(xz[1], NumberStyles.Float, CultureInfo.InvariantCulture, out e.z)) e.local = true;
                 entries.Add(e);
             }

@@ -39,7 +39,7 @@ namespace MadMax.Vehicles
             if ((haul += Time.deltaTime * sp) < 20f) return;                                  // a fish every ~20 m of towing
             haul = 0f;
             FishLibrary.Pool(t.BiomeAt(p.x, p.z), false, pool, true);
-            var fish = FishLibrary.Pick(pool, null, DayNight.Hours, Weather.Raining, Weather.Temperature, out _);
+            var fish = FishLibrary.Pick(pool, null, DayNight.Hours, Weather.Raining, Weather.Temperature, out _, Weather.Season);
             if (fish == null || fish.junk) return;
             if (hold.Weight + 1f > hold.capacity) { if (g.Current == v) g.Toast("THE HOLD IS FULL"); return; }
             hold.inventory.AddItem(fish.mutant ? "food_fish_glow" : "food_fish_raw", 1);

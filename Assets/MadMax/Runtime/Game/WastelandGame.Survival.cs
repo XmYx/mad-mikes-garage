@@ -28,6 +28,7 @@ namespace MadMax.Game
         {
             UtilityGrid.Tick(dt);
             if ((spoilTimer += dt) > 10f) { Spoil(spoilTimer); spoilTimer = 0f; }
+            UpdatePantry();
             var s = Stats;
             float now = DayNight.TotalDays * 24f;
             if (s.rested && now >= s.restedUntil) Toast("NO LONGER WELL RESTED");

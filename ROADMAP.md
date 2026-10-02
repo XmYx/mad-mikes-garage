@@ -1260,11 +1260,11 @@ acceptance runner's `-scenario` filter takes a comma list of prefixes. All four 
 
 ### Suggestions (tie the experience together)
 - [ ] **Harvest chores in the villages**: residents walk out to the village crop rows at harvest and to the woodpile before the first snow (`Npc` Gather mode on `Fields`/flora crop rows), and `NpcLore` errands follow (bring in the crop, split firewood) — the seasons visible in town life, not only in prices.
-- [ ] **Road news you can act on**: a skirmish headline on a board pins the wreck site on the map (`SpawnRoadWreck` position → `TownNews` entry → `WastelandGame.Map` pin, cleared when looted), so reading the board leads to salvage.
-- [ ] **Hear the base from the road**: a powered or fired station heard from a parked car — loops through the vehicle cabin (muffled) and a HUD "WORKING" chip on claim pieces in the map, so a player away from home knows the queue is still running or has stalled for fuel/power.
-- [ ] **Preserving as a winter plan**: the WINTER market toast could name what the player has stored vs. needs (days of food in containers by spoilage-adjusted count) and suggest the smokehouse/cannery — one hint that ties seasons, spoilage and cooking stations together.
+- [x] **Road news you can act on** (2026-10-02: `TownNews.MarkWreck` ties the skirmish headline to its wreck; a board's ROAD NEWS line [E] marks it — `WastelandGame.MarkNewsWreck`, pin `WRECK (NEWS)`, waypoint, `SaveData.newsPins`, cleared on arrival; scenario `towns.news_wreck_pin`): a skirmish headline on a board pins the wreck site on the map (`SpawnRoadWreck` position → `TownNews` entry → `WastelandGame.Map` pin, cleared when looted), so reading the board leads to salvage.
+- [x] **Hear the base from the road** (2026-10-02, the map half: `WastelandGame.WorkshopPins` — the player's stations > 40 m away with work show WORKING n% / NO POWER / READY (n) as chips on the map and under THE WORKSHOP AT HOME in the journal (Enter = waypoint home); scenario `base.workshop_pins`. The muffled cabin loop is still open): a powered or fired station heard from a parked car — loops through the vehicle cabin (muffled) and a HUD "WORKING" chip on claim pieces in the map, so a player away from home knows the queue is still running or has stalled for fuel/power.
+- [x] **Preserving as a winter plan** (2026-10-02: `WastelandGame.Pantry/PantryNote` — 4 s after AUTUMN / WINTER arrives, a toast + journal PLAN line counts the pack and the player's containers in days of eating, split into food that keeps through the cold at its storage spoil rate and food that rots first, and names smoking / canning / the cellar; scenario `food.winter_pantry`): the WINTER market toast could name what the player has stored vs. needs (days of food in containers by spoilage-adjusted count) and suggest the smokehouse/cannery — one hint that ties seasons, spoilage and cooking stations together.
 - [ ] **Cellar in the story**: B2/B4 (supper, residents eating at 19:00) could draw from the root cellar first and complain when stores rot — residents as the reason to keep a pantry.
-- [ ] **Seasonal fishing**: species bite rates by season (`FishLibrary.BiteRate` × season), so the summer rods at the stalls mean something and winter ice fishing (hole through `Weather.Ice`) is its own activity.
+- [x] **Seasonal fishing** (2026-10-02: `FishDef.seasons` warm / cold / run profiles × `BiteRate(..., season, iceHole)`, cold-water fish ignore the cold penalty; under −4 °C fresh water ices over: casts become a hole cut at the edge (≤ 3.5 m, 2.6 s chop, ICE FISHING, cold-water fish ×1.4); a first-cast hint names what is biting this season; the trawl net follows the season too; scenario `fishing.seasons`): species bite rates by season (`FishLibrary.BiteRate` × season), so the summer rods at the stalls mean something and winter ice fishing (hole through `Weather.Ice`) is its own activity.
 
 
 ## Fluids: containers, siphon and pour, blends (2026-10-01, wave 4)
@@ -1290,3 +1290,16 @@ Contaminants add up (Σ fraction / limit > 1 = won't run). Sump: protection = 1 
 - [ ] Containers in storages and on the ground keep their own contents (today they share a per-id pool in the pack): a per-instance item state in `Container` / `WorldItem`.
 - [ ] Water network ends (taps, barrels, `WaterOutlet`, vehicle water tanks) and the still / refinery as siphon and pour targets; drums as vehicle cargo.
 - [ ] Settling: water sinks to the bottom of a parked tank over hours, a drain plug lets the first litres out (clean the tank without siphoning it all).
+
+## Scheduled update (2026-10-02)
+Done this pass (ticked above under the 2026-10-01 suggestions): seasonal and ice fishing, road news that marks the wreck,
+the winter pantry plan, the home workshop on the map. Scenarios in `Acceptance/Blocks/UpdateScenarios1002.cs`.
+
+### Suggestions (tie the experience together)
+- [ ] **Ice you can walk on**: lakes below −4 °C get a walkable ice sheet (a flat collider at the water level, thin near the shore early in winter, cracking under vehicles above a weight) — ice fishing from the middle of the lake, winter shortcuts, and a real risk for a heavy truck.
+- [ ] **One home ledger**: a HOME page (or the journal section) that merges the workshop chips, the pantry days, the power / water balance of the claim grid and BaseUpkeep wear into one "how is my base" screen — the systems already report separately.
+- [ ] **Wreck news decays**: marked wrecks get picked over by other scavengers after a few days (fewer parts, a scavenger NPC on site if the player is late), so acting on the news soon pays.
+- [ ] **Fish in the economy by season**: `Market.SeasonFactor` for fish (cheap in the summer runs, dear in winter) and fishermen residents who sell the catch of the season — the bite tables feeding prices.
+- [ ] **Pantry in the residents' talk**: B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
+- [ ] **Workshop alerts on the radio**: a powered station stalling while the player is away triggers a short WasteTalk-style radio ping on the home frequency (`RadioNetwork.Flash` with `at` = the claim) — the radio as the base's voice.
+

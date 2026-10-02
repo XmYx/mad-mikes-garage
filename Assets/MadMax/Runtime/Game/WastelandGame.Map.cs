@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MadMax.Building;
 using MadMax.World;
 using UnityEngine;
 
@@ -16,6 +17,18 @@ namespace MadMax.Game
         public readonly List<Vector3> Route = new List<Vector3>();
 
         public struct Pin { public string label; public Vector3 pos; public Color32 color; }
+
+        /// <summary>Wreck sites marked from the road news on a board (saved); a pin clears when the player gets there.</summary>
+        public readonly List<Vector3> NewsPins = new List<Vector3>();
+
+        /// <summary>Mark a wreck from the road news: a map pin and the waypoint.</summary>
+        public void MarkNewsWreck(Vector3 p)
+        {
+            foreach (var q in NewsPins) if (Flat(q - p) < 10f) { SetWaypoint(q, "WRECK SITE"); return; }
+            NewsPins.Add(p);
+            SetWaypoint(p, "WRECK SITE");
+            Journal.Add("NEWS", "MARKED A WRECK SITE AT " + Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.z));
+        }
 
         float mapCheck;
         bool waypointQuiet;                 // set by races and guides: no toasts
@@ -62,6 +75,8 @@ namespace MadMax.Game
             foreach (var m in BiomeProps.Landmarks(World))
                 if (Vector2.Distance(m.pos, new Vector2(at.x, at.z)) < 90f && Discovered.Add("lm:" + m.index))
                     Journal.Add("FOUND", m.Name + " AT " + Mathf.RoundToInt(m.pos.x) + "," + Mathf.RoundToInt(m.pos.y));
+            for (int i = NewsPins.Count - 1; i >= 0; i--)
+                if (Flat(NewsPins[i] - at) < 25f) { NewsPins.RemoveAt(i); Toast("THE WRECK FROM THE NEWS - SALVAGE IT"); }
             // the waypoint: arrive, or re-route when far off the line
             if (HasWaypoint)
             {
@@ -98,14 +113,36 @@ namespace MadMax.Game
                 var target = stage == 2 ? MadMax.Npc.TownQuests.Sister(st.index) : st;
                 if (target != null) into.Add(new Pin { label = MadMax.Npc.TownQuests.Title(stage), pos = new Vector3(target.pos.x, 0f, target.pos.y), color = new Color32(150, 220, 120, 255) });
             }
+            foreach (var p in NewsPins) into.Add(new Pin { label = "WRECK (NEWS)", pos = p, color = new Color32(200, 170, 130, 255) });
             LastEngine.Pins(into);
             StoryPins(into);
+        }
+
+        /// <summary>The player's stations away from them (> 40 m) that have work: WORKING with the job's progress, NO POWER
+        /// (a powered station whose grid is down: the queue has stalled) or READY (goods waiting on the tray).</summary>
+        public void WorkshopPins(List<Pin> into)
+        {
+            into.Clear();
+            var me = FocusPos;
+            foreach (var st in CraftingStation.All)
+            {
+                if (!st || (!st.Busy && st.TrayCount == 0) || Flat(st.transform.position - me) < 40f) continue;
+                var p = st.GetComponent<Placeable>();
+                if (!p || p.owner != Stats.name) continue;
+                string state; Color32 col;
+                if (st.Busy && !st.Powered) { state = "NO POWER"; col = PixelHud.Bad; }
+                else if (st.Busy) { state = "WORKING " + Mathf.RoundToInt(st.Current.progress * 100f) + "%" + (st.queue.Count > 1 ? " +" + (st.queue.Count - 1) : ""); col = PixelHud.Good; }
+                else { state = "READY (" + st.TrayCount + ")"; col = new Color32(240, 240, 220, 255); }
+                into.Add(new Pin { label = st.title + ": " + state, pos = st.transform.position, color = col });
+                if (into.Count >= 8) break;
+            }
         }
 
         void SaveMap(SaveData d)
         {
             d.discovered = new List<string>(Discovered);
             d.hasWaypoint = HasWaypoint; d.waypoint = Waypoint;
+            d.newsPins = new List<Vector3>(NewsPins);
             d.journal = Journal.Save();
             d.townNews = MadMax.Npc.TownNews.Save();
             d.starter = StarterStep;
@@ -121,6 +158,8 @@ namespace MadMax.Game
         {
             Discovered.Clear();
             if (d.discovered != null) foreach (var k in d.discovered) Discovered.Add(k);
+            NewsPins.Clear();
+            if (d.newsPins != null) NewsPins.AddRange(d.newsPins);
             Journal.Load(d.journal);
             MadMax.Npc.TownNews.Load(d.townNews);
             StarterStep = d.starter;

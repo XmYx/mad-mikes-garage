@@ -32,6 +32,9 @@ namespace MadMax.Game
         float fishKg, fishStamina, burst, burstT, slackT, biteUntil, biteRoll, flyT, depth;
         Vector3 bobber, castFrom, castTo, origin, runDir;
         int skill;
+        bool iceHole;                       // fishing through a hole cut in a frozen lake
+        float flyTime = 0.6f;
+        Vector3 lastHole = new Vector3(1e9f, 0f, 0f);
         readonly List<FishDef> pool = new List<FishDef>();
         GameObject bobberGo;
         LineRenderer line;
@@ -45,12 +48,17 @@ namespace MadMax.Game
             var fwd = user.transform.forward; fwd.y = 0f; fwd.Normalize();
             var from = user.transform.position;
             bool found = false;
-            for (float d = 7f + skill * 0.5f; d >= 2.5f && !found; d -= 0.5f)
+            bool frozen = Frozen(t, from + fwd * 3f);
+            for (float d = frozen ? 3.5f : 7f + skill * 0.5f; d >= (frozen ? 1.2f : 2.5f) && !found; d -= 0.5f)
             {
                 var p = from + fwd * d;
                 if (t.WaterDepth(p.x, p.z) > 0.25f) { castTo = new Vector3(p.x, t.WaterLevel(p.x, p.z), p.z); found = true; }
             }
-            if (!found) { g.Toast("CAST INTO OPEN WATER"); return; }
+            if (!found) { g.Toast(frozen ? "THE LAKE IS ICED OVER - STAND AT THE EDGE TO CUT A HOLE" : "CAST INTO OPEN WATER"); return; }
+            iceHole = frozen && Frozen(t, castTo);
+            bool newHole = iceHole && (Flat(castTo) - Flat(lastHole)).sqrMagnitude > 4f;
+            if (iceHole) lastHole = castTo;
+            flyTime = newHole ? 2.6f : 0.6f;
             bait = PreferredBait != null && g.Inventory.GetItem(PreferredBait) > 0 ? PreferredBait : null;
             if (bait == null) foreach (var b in FishLibrary.Baits) if (g.Inventory.GetItem(b) > 0) { bait = b; break; }
             if (bait != null) g.Inventory.TakeItem(bait);
@@ -61,8 +69,10 @@ namespace MadMax.Game
             depth = t.WaterDepth(castTo.x, castTo.z);
             origin = from; castFrom = TipPos(user); flyT = 0f;
             phase = Phase.Flying; Active = this;
-            Status = "CASTING";
-            MadMax.Audio.Sfx.Play("click", castFrom, 0.4f, 0.6f, 10f);
+            Status = newHole ? "CUTTING A HOLE IN THE ICE" : iceHole ? "DROPPING THE LINE" : "CASTING";
+            MadMax.Audio.Sfx.Play(newHole ? "dig" : "click", castFrom, 0.4f, newHole ? 1.4f : 0.6f, 10f);
+            string best = FishLibrary.InSeason(pool, Weather.Season);
+            if (best.Length > 0) MadMax.Game.Hints.Show("fish_season" + Weather.Season, Weather.SeasonNames[Weather.Season & 3] + ": " + best + " ARE BITING");
         }
 
         void Update()
@@ -77,13 +87,18 @@ namespace MadMax.Game
             switch (phase)
             {
                 case Phase.Flying:
-                    flyT += dt / 0.6f;
-                    bobber = Vector3.Lerp(castFrom, castTo, Mathf.Clamp01(flyT)) + Vector3.up * Mathf.Sin(Mathf.Clamp01(flyT) * Mathf.PI) * 2.2f;
+                    flyT += dt / flyTime;
+                    if (flyTime > 1f)
+                    {                                                                      // chopping: the bobber waits by the hole
+                        bobber = castTo + Vector3.up * 0.02f;
+                        if (Mathf.Repeat(flyT * 5f, 1f) < dt / flyTime * 5f) { Splash(castTo, 2); MadMax.Audio.Sfx.Play("dig", castTo, 0.35f, 1.5f, 12f, 0.2f); }
+                    }
+                    else bobber = Vector3.Lerp(castFrom, castTo, Mathf.Clamp01(flyT)) + Vector3.up * Mathf.Sin(Mathf.Clamp01(flyT) * Mathf.PI) * 2.2f;
                     if (flyT >= 1f)
                     {
                         bobber = castTo; phase = Phase.Waiting; biteRoll = 2f;
                         Splash(bobber, 4); MadMax.Audio.Sfx.Play("splash", bobber, 0.35f, 1.5f, 20f);
-                        Status = "WAITING FOR A BITE  " + FishLibrary.BaitName(bait);
+                        Status = (iceHole ? "ICE FISHING  " : "WAITING FOR A BITE  ") + FishLibrary.BaitName(bait);
                     }
                     break;
                 case Phase.Waiting:
@@ -91,7 +106,7 @@ namespace MadMax.Game
                     if ((biteRoll -= dt) <= 0f)
                     {
                         biteRoll = 1f;
-                        var f = FishLibrary.Pick(pool, bait, DayNight.Hours, Weather.Raining, Weather.Temperature, out float total);
+                        var f = FishLibrary.Pick(pool, bait, DayNight.Hours, Weather.Raining, Weather.Temperature, out float total, Weather.Season, iceHole);
                         if (f != null && Random.value < total * 0.0045f * (1f + skill * 0.05f))
                         {
                             fish = f; phase = Phase.Bite; biteUntil = Time.time + 1.1f + skill * 0.05f;
@@ -115,6 +130,14 @@ namespace MadMax.Game
             }
             if (phase != Phase.Idle) Draw(TipPos(user));
         }
+
+        /// <summary>Fresh water skins over in a hard frost (the sea never does): casts become a hole by the edge.</summary>
+        public static bool Frozen(DeformableTerrain t, Vector3 p) => Frozen(t, p, Weather.Temperature);
+
+        public static bool Frozen(DeformableTerrain t, Vector3 p, float temperature) =>
+            temperature <= IceBelow && t.WaterDepth(p.x, p.z) > 0f && !(t.World.LakeAt(p.x, p.z, out _) == null && t.World.Ocean(p.x, p.z));
+
+        public const float IceBelow = -4f;
 
         /// <summary>Button pressed while the line is out: strike on a bite, reel in while waiting.</summary>
         public void Click()

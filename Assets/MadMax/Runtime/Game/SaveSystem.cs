@@ -89,6 +89,7 @@ namespace MadMax.Game
         public List<string> foundAircraft = new List<string>(), scouted = new List<string>();
         public List<string> discovered = new List<string>(), journal = new List<string>(), townNews = new List<string>();
         public bool hasWaypoint; public Vector3 waypoint;
+        public List<Vector3> newsPins = new List<Vector3>();      // wreck sites marked from the road news
         public List<WastelandGame.StashSave> stashes = new List<WastelandGame.StashSave>();
         public List<MovedSave> moved = new List<MovedSave>();            // crates and other loose props pushed around
         public int storm; public float stormLeft, stormFor;             // Storms: kind, seconds left, total length

@@ -193,6 +193,16 @@ namespace MadMax.Game
                 c.Set(pp.x, pp.y - 2, pin.color); c.Rect(pp.x - 1, pp.y - 1, 3, 1, pin.color); c.Rect(pp.x - 2, pp.y, 5, 1, pin.color); c.Rect(pp.x - 1, pp.y + 1, 3, 1, pin.color); c.Set(pp.x, pp.y + 2, pin.color);
                 Hover(pp, pin.label);
             }
+            // the workshop at home: stations with work, a square chip coloured by state
+            game.WorkshopPins(pins);
+            foreach (var pin in pins)
+            {
+                var pp = P(pin.pos);
+                if (!Inside(pp)) continue;
+                c.Rect(pp.x - 1, pp.y - 1, 3, 3, Empty); c.Set(pp.x, pp.y, pin.color);
+                c.Rect(pp.x - 2, pp.y - 2, 5, 1, pin.color); c.Rect(pp.x - 2, pp.y + 2, 5, 1, pin.color);
+                Hover(pp, pin.label);
+            }
             // you
             var me = game.Current ? game.Current.transform : game.Player.transform;
             var mp = P(me.position);
