@@ -1303,3 +1303,39 @@ the winter pantry plan, the home workshop on the map. Scenarios in `Acceptance/B
 - [ ] **Pantry in the residents' talk**: B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
 - [ ] **Workshop alerts on the radio**: a powered station stalling while the player is away triggers a short WasteTalk-style radio ping on the home frequency (`RadioNetwork.Flash` with `at` = the claim) — the radio as the base's voice.
 
+
+## HD consistency pass (2026-10-02)
+The HD rework left the ground, the cabin and a few runtime-built visuals in the voxel / pixel look. The new acceptance
+scenario `hd.audit` (full suite) walks every visible renderer near the player in full-resolution mode, on foot and in
+two cabins, and lists what is not HD by shader and object (counts + captures) — rerun it after each HD change.
+
+### Done
+- [x] **Terrain**: with the HD pack, chunks get smooth normals, corner colours blended from the neighbouring cells and
+  per-corner weights of nine ground classes (`World/HDTerrain`, `TerrainClass`; `CellColor` sets the class); HDLit's
+  `_TERRAIN` variant (`RuntimeMaterials/HDTerrain.mat`) tints tileable detail albedo + normal maps (texture arrays,
+  triplanar on slopes, a second slow sample against tiling) with the game's own palette. Maps:
+  `tools/blender/hd/terrain/make_textures.py` → `Resources/HDTerrain` (gitignored, rendered by `release.sh`).
+- [x] **Dashboards**: `DashboardHD` geometry (dials with ticks and red zone, smooth needles, seven-segment gear and
+  speed, LED fuel / temperature bars, nine lamps) instead of the 64×24 canvas whenever the HD pack is on.
+- [x] **First-person cabins**: `HDVehicleBuilder.FitCabin` keeps the driver eye inside the glasshouse and 18 cm under
+  the roof skin (the MonsterTruck's HD seat sat behind the cab wall, its eye in the roof) and seats the gauge cluster on
+  the HD dashboard surface when it is 15–60 cm ahead.
+- [x] **Ground cover**: grass blades are tapered crossed blades off the voxel grid in HDLit (two-sided); other plants
+  are lit boxes in HDLit for now.
+- [x] HD model import: root LOD groups were never added (`GetComponent ?? AddComponent` with Unity's fake null);
+  fixed (postprocessor version 5 re-imports the pack once). The same pattern fixed in 15 runtime spots.
+
+### Still voxel / low-res (found by `hd.audit` and review)
+- [ ] **Flora shapes** besides grass (flowers, shrubs, ferns, mushrooms, reeds, cactus sprouts, crop rows, seabed) are
+  boxes; and **crops / planters** (`CropVisuals`, `Structures/Plant`) — HD plant cards or small exported meshes.
+- [ ] **Overgrowth** on buildings (half-voxel moss / vine overlay) — HD vine strands and moss decals on the HD shells.
+- [ ] **Wildlife added after the HD export** (lizard, scorpion and the rest of `AnimalLibrary.Wild`: snakes, arthropods,
+  birds, sea life in `World/SeaLife`) render as voxel rigs — export them through `tools/blender/hd/animals`.
+- [ ] **Welded armour** (`VehicleArmor` plates built from voxel faces) — HD sheet plates with rivets / weld seams.
+- [ ] Small runtime voxel bits: lamp **bulbs** (`Bulb`), **levers**, `BrokenLamps`, `Shards`, debris cubes
+  (`DebrisSystem`), resource pickups, dropped voxel garments (poncho, hazmat, dive gear, some bags), stubble.
+- [ ] **Road paint and ruts** are still 0.25 m cell colours (blurred by the corner blend): a decal / UV-based road
+  marking layer and rut normal detail would finish the HD ground.
+- [ ] Sky and far: voxel cloud puffs, `FarTerrain` (flying) flat cells, the title / Moon set (`TitleArt`, `MoonArt`).
+- [ ] HUD and menus stay the 3×5 pixel font by design; an optional HD font for full-resolution mode would match the
+  new cabin and world look.

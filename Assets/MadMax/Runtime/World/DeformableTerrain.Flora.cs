@@ -23,9 +23,15 @@ namespace MadMax.World
         static readonly List<Rect> blockers = new List<Rect>();
         int boxes;
 
+        /// <summary>HD ground cover: grass as tapered crossed blades off the voxel grid, everything in HDLit (two-sided).</summary>
+        bool hdFlora;
+
         void InitFlora(Material propMat)
         {
-            floraMaterial = new Material(propMat) { name = "GroundFlora" };
+            var hdSrc = MadMax.Rendering.HDAssets.Enabled ? Resources.Load<Material>("RuntimeMaterials/HDLitVoxel") : null;
+            hdFlora = hdSrc;
+            floraMaterial = new Material(hdSrc ? hdSrc : propMat) { name = "GroundFlora" };
+            if (hdSrc) floraMaterial.SetFloat("_Cull", 0f);
             floraMaterial.SetFloat("_OutlinePx", 0f);
             floraMaterial.SetFloat("_SwayTip", 0.045f);
             floraMaterial.SetFloat("_WorldCut", 1f);
@@ -301,6 +307,23 @@ namespace MadMax.World
             fi.Add(b); fi.Add(b + 1); fi.Add(b + 2); fi.Add(b); fi.Add(b + 2); fi.Add(b + 3);
         }
 
+        /// <summary>HD blade: two crossed tapered quads (a tip of a quarter the width), leaning by <paramref name="lean"/>
+        /// (fraction of the height) towards <paramref name="yaw"/>; the root a shade darker, the tip lighter.</summary>
+        void Blade(Vector3 root, float h, float w, float yaw, float lean, Color32 col)
+        {
+            if (boxes >= MaxBoxes) return;
+            boxes++;
+            var dir = new Vector3(Mathf.Sin(yaw), 0f, Mathf.Cos(yaw));
+            var tip = root + Vector3.up * h + dir * (lean * h);
+            Color32 cb = new Color32((byte)(col.r * 0.72f), (byte)(col.g * 0.72f), (byte)(col.b * 0.72f), 255), ct = new Color32((byte)Mathf.Min(255, col.r * 1.12f), (byte)Mathf.Min(255, col.g * 1.12f), (byte)Mathf.Min(255, col.b * 1.12f), Bend(h));
+            for (int k = 0; k < 2; k++)
+            {
+                var side = (k == 0 ? new Vector3(dir.z, 0f, -dir.x) : dir) * (w * 0.5f);
+                var n = Vector3.Cross(side, tip - root).normalized * 0.4f + Vector3.up * 0.6f;
+                Quad(root - side, tip - side * 0.25f, tip + side * 0.25f, root + side, n.normalized, cb, ct);
+            }
+        }
+
         // a, d on the ground; a→b up; clockwise seen from outside
         static void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n, Color32 bottom, Color32 top)
         {
@@ -313,10 +336,18 @@ namespace MadMax.World
 
         static byte Bend(float h) => (byte)Mathf.Clamp(255 - h * 520f, 20, 255);
 
-        /// <summary>A vertical stalk one flora voxel wide at (fx, fz) inside the cell (0..1).</summary>
+        /// <summary>A vertical stalk one flora voxel wide at (fx, fz) inside the cell (0..1); HD: a tapered blade.</summary>
         void Stalk(in CellInfo c, float fx, float fz, float h, Color32 col, float w = FV)
         {
             if (c.snow >= 2) { h -= 0.06f * c.snow; if (h < 0.03f) return; }
+            if (hdFlora)
+            {
+                float bx = c.i * Cell + Mathf.Clamp01(fx) * Cell, bz = c.j * Cell + Mathf.Clamp01(fz) * Cell;
+                float by = c.Ground(Mathf.Clamp01(fx), Mathf.Clamp01(fz)) - 0.01f + (c.snow >= 2 ? 0.06f * c.snow : 0f);
+                float seed = Hash(Mathf.RoundToInt(bx * 97f) + c.gi * 7, Mathf.RoundToInt(bz * 89f) + c.gj * 5);
+                Blade(new Vector3(bx, by, bz), h + 0.02f, w * 0.9f, seed * 6.2832f, (Hash(c.gi + 3, c.gj + Mathf.RoundToInt(fx * 50f)) - 0.5f) * 0.5f, col);
+                return;
+            }
             float x = c.i * Cell + Mathf.Round(fx * Cell / FV) * FV, z = c.j * Cell + Mathf.Round(fz * Cell / FV) * FV;
             float y = c.Ground(Mathf.Clamp01(fx), Mathf.Clamp01(fz)) - 0.02f + (c.snow >= 2 ? 0.06f * c.snow : 0f);
             Box(x, y, z, w, h + 0.02f, w, col, 255, Bend(h));

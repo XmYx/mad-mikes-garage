@@ -21,7 +21,7 @@ namespace MadMax.Game
             var truck = Q3Vehicle("Pickup", StoryAnchors.Get("l4_truck"), StoryAnchors.Yaw("l4_truck"), "l4_truck") ?? Q3Vehicle("Sedan", StoryAnchors.Get("l4_truck"), StoryAnchors.Yaw("l4_truck"), "l4_truck");
             if (!truck) return;
             truck.name = "Procession Truck";
-            var paint = truck.GetComponent<VehiclePaint>() ?? truck.gameObject.AddComponent<VehiclePaint>();
+            var paint = truck.GetComponent<VehiclePaint>(); if (!paint) paint = truck.gameObject.AddComponent<VehiclePaint>();
             paint.colour = 5; paint.decal = Factions.Decal[(int)Faction.Church]; paint.Apply();
             if (truck.Engine && truck.Engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = 0.88f;           // nine years standing
             if (truck.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = 0f; sys.oil *= 0.3f; }

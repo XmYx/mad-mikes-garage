@@ -46,7 +46,7 @@ namespace MadMax.Game
                 v.name = "Varga Bus";
                 Register(v, null);
                 StoryTag.Set(v.gameObject, "s16_bus");
-                var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+                var paint = v.GetComponent<VehiclePaint>(); if (!paint) paint = v.gameObject.AddComponent<VehiclePaint>();
                 paint.colour = 4; paint.Apply();
                 if (v.Engine && v.Engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = 0.8f;             // tired, not dead
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = 0f; sys.disconnected = true; }

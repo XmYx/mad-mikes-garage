@@ -15,6 +15,6 @@ namespace MadMax.Story
         void OnDisable() => All.Remove(this);
 
         public static StoryTag Find(string key) { foreach (var t in All) if (t && t.key == key) return t; return null; }
-        public static void Set(GameObject go, string key) { var t = go.GetComponent<StoryTag>() ?? go.AddComponent<StoryTag>(); t.key = key; }
+        public static void Set(GameObject go, string key) { var t = go.GetComponent<StoryTag>(); if (!t) t = go.AddComponent<StoryTag>(); t.key = key; }
     }
 }

@@ -4,7 +4,8 @@ using UnityEngine;
 namespace MadMax.Vehicles
 {
     /// <summary>Diegetic gauge cluster in front of the driver: speed and rpm dials, gear, fuel and temperature strips
-    /// (<see cref="VehicleGauges"/>), warning lamps.</summary>
+    /// (<see cref="VehicleGauges"/>), warning lamps. With the HD pack on it is real geometry (<see cref="DashboardHD"/>),
+    /// otherwise a 64x24 pixel canvas.</summary>
     [RequireComponent(typeof(VehicleDriver))]
     public class VehicleDashboard : MonoBehaviour
     {
@@ -16,12 +17,17 @@ namespace MadMax.Vehicles
         VehicleDriver driver;
         VehicleChassis chassis;
         PixelCanvas canvas;
-        float next;
+        DashboardHD hd;
+        float next, speedF, rpmF;
+        static Material hdMat;
+        /// <summary>The HD gauge cluster is in use.</summary>
+        public bool IsHD => hd != null;
         /// <summary>The fuel / temperature reading drawn last.</summary>
         public VehicleGauges.Reading Last { get; private set; }
 
         static readonly Color32 Bg = new Color32(20, 13, 10, 255), Rim = new Color32(90, 55, 32, 255), Tick = new Color32(214, 180, 130, 255),
             Needle = new Color32(255, 110, 40, 255), Amber = new Color32(255, 180, 60, 255), Off = new Color32(50, 34, 26, 255);
+        static readonly Color32 Ghost = new Color32(30, 20, 15, 255);                                // unlit segments / LEDs (HD)
         static Color32 Red => MadMax.Game.PixelHud.Bad;
 
         void Start()
@@ -30,6 +36,17 @@ namespace MadMax.Vehicles
             chassis = GetComponent<VehicleChassis>();
             var eye = transform.Find("DriverEye");
             if (!eye) { enabled = false; return; }
+            if (!Application.isBatchMode && MadMax.Rendering.HDAssets.Enabled && HDMaterial())
+            {
+                hd = new DashboardHD();
+                var go = hd.Build(transform, hdMat, Bg, Rim, Tick, Needle, Red, Ghost);
+                go.transform.localPosition = eye.localPosition + offsetFromEye;
+                go.transform.localRotation = Quaternion.Euler(22f, 0f, 0f);
+                float k = size.x / DashboardHD.W;
+                go.transform.localScale = new Vector3(k, k, k);
+                Draw();
+                return;
+            }
             canvas = new PixelCanvas(64, 24);
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             DestroyImmediate(quad.GetComponent<Collider>());   // a non-convex mesh collider under a rigidbody is invalid
@@ -49,15 +66,37 @@ namespace MadMax.Vehicles
             Draw();
         }
 
+        static bool HDMaterial()
+        {
+            if (hdMat) return true;
+            var src = Resources.Load<Material>("RuntimeMaterials/HDLitVoxel");
+            if (!src) return false;
+            hdMat = new Material(src) { name = "DashboardHD" };
+            hdMat.SetFloat("_Unlit", 1f);                                                     // backlit instruments
+            hdMat.SetFloat("_OutlinePx", 0f);
+            hdMat.SetFloat("_SnowMask", 0f);
+            return true;
+        }
+
         void Update()
         {
-            if (canvas == null || !driver.Occupied || Time.time < next) return;
+            if (hd != null && driver.Occupied)
+            {
+                // needles move every frame (smoothly), the rest at the refresh rate
+                var e = driver.Engine;
+                speedF = Mathf.Lerp(speedF, Mathf.Abs(driver.SpeedKmh) / maxSpeedKmh, Time.deltaTime * 10f);
+                rpmF = Mathf.Lerp(rpmF, e ? driver.Rpm / e.maxRpm : 0f, Time.deltaTime * 14f);
+                hd.SetNeedle(hd.speedNeedle, speedF);
+                hd.SetNeedle(hd.rpmNeedle, rpmF);
+            }
+            if ((canvas == null && hd == null) || !driver.Occupied || Time.time < next) return;
             next = Time.time + 1f / refreshRate;
             Draw();
         }
 
         void Draw()
         {
+            if (hd != null) { DrawHD(); return; }
             canvas.Clear(Bg);
             canvas.Frame(0, 0, 64, 24, Rim);
             float speed = Mathf.Abs(driver.SpeedKmh);                                         // the dial reads 0..max whatever the units
@@ -94,6 +133,34 @@ namespace MadMax.Vehicles
                 Lamp(53, 20, "S", (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
             }
             canvas.Upload();
+        }
+
+        void DrawHD()
+        {
+            float speed = Mathf.Abs(driver.SpeedKmh);
+            var eng = driver.Engine;
+            string gear = !eng ? "-" : driver.Reversing ? "R" : driver.manual && driver.Gear == 0 ? "N" : driver.Gear.ToString();
+            hd.SetText(gear.Length > 1 ? gear.Substring(gear.Length - 1) : gear, Mathf.Min(999, Mathf.RoundToInt(speed)).ToString().PadLeft(3), Amber, Tick, Ghost);
+            var sys = GetComponent<VehicleSystems>();
+            if (sys)
+            {
+                var rd = VehicleGauges.Read(sys);
+                Last = rd;
+                hd.SetBars(rd.fuelShown ? rd.fuelNeedle : 0f, rd.tempShown ? rd.tempNeedle : 0f, rd.low ? Amber : Tick, VehicleGauges.ZoneColour(rd.zone, Tick), Ghost);
+            }
+            bool wheelMissing = false;
+            foreach (var sk in chassis.Sockets) if (sk.accepts == PartCategory.Wheel && !sk.Current) wheelMissing = true;
+            var f = sys ? sys.Faults : default(Fault);
+            hd.SetLamp(0, (f & (Fault.NoFuel | Fault.LowFuel | Fault.FuelLeak)) != 0 ? Amber : Off);
+            hd.SetLamp(1, driver.handbrake ? Red : Off);
+            hd.SetLamp(2, !eng ? Red : eng.GetComponent<VehiclePart>().damage > 0.5f ? Amber : Off);
+            hd.SetLamp(3, wheelMissing ? Red : Off);
+            hd.SetLamp(4, driver.Mud > 0.5f ? Amber : Off);
+            hd.SetLamp(5, (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : Off);
+            hd.SetLamp(6, (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
+            hd.SetLamp(7, (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
+            hd.SetLamp(8, sys && !sys.Started ? Amber : Off);
+            hd.Upload();
         }
 
         void Lamp(int x, int y, string c, Color32 col)

@@ -31,7 +31,7 @@ namespace MadMax.Game
             {
                 if (truck.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = Mathf.Min(sys.fuelCapacity, 30f);
                 ArcCMount(truck, "cargo", "cargo_crate");
-                var paint = truck.GetComponent<VehiclePaint>() ?? truck.gameObject.AddComponent<VehiclePaint>();
+                var paint = truck.GetComponent<VehiclePaint>(); if (!paint) paint = truck.gameObject.AddComponent<VehiclePaint>();
                 paint.colour = 3; paint.Apply();
             }
             // the warden's post beside his track

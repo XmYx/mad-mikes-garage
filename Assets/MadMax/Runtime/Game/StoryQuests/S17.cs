@@ -38,7 +38,7 @@ namespace MadMax.Game
                 v.name = "Stranded Coach";
                 Register(v, null);
                 StoryTag.Set(v.gameObject, "s17_coach");
-                var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+                var paint = v.GetComponent<VehiclePaint>(); if (!paint) paint = v.gameObject.AddComponent<VehiclePaint>();
                 paint.colour = 7; paint.Apply();
                 if (v.Engine && v.Engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = 1f;               // drowned in the washout
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = 0f;

@@ -75,6 +75,7 @@ namespace MadMax.World
             {
                 case PaveGravel:
                 {
+                    cellClass = (byte)TerrainClass.Gravel;
                     float patch = Mathf.PerlinNoise(gx * 0.45f + 3f, gz * 0.45f + 17f);
                     col = GravelRoad[hs < 0.16f ? 0 : hs > 0.88f ? 3 : patch > 0.52f ? 2 : 1];
                     if (Hash(gi + 3, gj + 11) > 0.94f) col = GravelChip;
@@ -82,16 +83,19 @@ namespace MadMax.World
                     break;
                 }
                 case PaveCobbles:
+                    cellClass = (byte)TerrainClass.Rock;
                     col = hs < 0.08f ? CobbleMortar : Cobble[((gi + gj) & 1) * 2 + (hs > 0.55f ? 1 : 0)];
                     if (wet > 0.3f) col = Color32.Lerp(col, Crack, 0.2f);
                     break;
                 case PavePothole:
+                    cellClass = (byte)TerrainClass.Mud;
                     col = hs < 0.45f ? Crack : Asphalt[0];
                     if (wet > 0.25f && hs > 0.2f) col = hs > 0.9f ? WaterHi : Color32.Lerp(Water, Crack, 0.4f);
                     break;
                 default:
                 {
                     bool asphalt = PaveBase(kind) == PaveAsphalt;
+                    cellClass = (byte)(asphalt ? TerrainClass.Asphalt : TerrainClass.Concrete);
                     col = asphalt ? Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2] : Concrete[hs < 0.3f ? 1 : hs < 0.9f ? 2 : 3];
                     if (hs < 0.93f) col = PaintOf(kind) == 1 ? WhitePaint : Line;
                     break;
@@ -99,7 +103,7 @@ namespace MadMax.World
             }
             if (kind != PavePothole && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, 0.3f);
             float snow = Weather.SnowAt(gz);
-            if (snow > 0.3f) col = Color32.Lerp(col, SnowCol, Mathf.Round(snow * 2f) / 3f);
+            if (snow > 0.3f) { col = Color32.Lerp(col, SnowCol, Mathf.Round(snow * 2f) / 3f); if (snow > 0.6f) cellClass = (byte)TerrainClass.Snow; }
             return col;
         }
 

@@ -39,6 +39,11 @@ Shader "MadMax/HDLit"
         _CarveRow2 ("Carve World->Grid Row 2", Vector) = (0,0,1,0)
         _CarveMin ("Carve Grid Min (voxels)", Vector) = (0,0,0,0)
         _CarveSize ("Carve Grid Size (voxels)", Vector) = (1,1,1,0)
+        [NoScaleOffset] _TerrainAlbedo ("Terrain Detail Albedo (array, A smooth)", 2DArray) = "" {}
+        [NoScaleOffset] _TerrainNormal ("Terrain Detail Normal (array)", 2DArray) = "" {}
+        _TerrainScale0 ("Terrain Tiles per m 0-3", Vector) = (0.5,0.5,0.5,0.5)
+        _TerrainScale1 ("Terrain Tiles per m 4-7", Vector) = (0.5,0.5,0.5,0.5)
+        _TerrainScale2 ("Terrain Tiles per m 8", Vector) = (0.5,0.5,0.5,0.5)
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
     }
     SubShader
@@ -75,12 +80,15 @@ Shader "MadMax/HDLit"
             float4 _CarveMin, _CarveSize;
             half _CarveOn;
             float _CarveInset;
+            float4 _TerrainScale0, _TerrainScale1, _TerrainScale2;
         CBUFFER_END
         TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
         TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
         TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
         TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
         TEXTURE3D(_CarveMask); SAMPLER(sampler_CarveMask);
+        TEXTURE2D_ARRAY(_TerrainAlbedo); SAMPLER(sampler_TerrainAlbedo);
+        TEXTURE2D_ARRAY(_TerrainNormal); SAMPLER(sampler_TerrainNormal);
 
         // ---- MadMax globals (shared with PixelVoxel; 0 = default look)
         float _MadMaxOutlineDelta;
@@ -211,18 +219,25 @@ Shader "MadMax/HDLit"
             #pragma multi_compile_fog
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #pragma shader_feature_local _TERRAIN
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes
             {
                 float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT;
                 half4 color : COLOR; float2 uv : TEXCOORD0; float2 wear : TEXCOORD1;
+                #if defined(_TERRAIN)
+                float4 splat0 : TEXCOORD2; float4 splat1 : TEXCOORD3;
+                #endif
             };
             struct Varyings
             {
                 float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1;
                 half4 tangentWS : TEXCOORD2; float2 uv : TEXCOORD3; half4 color : COLOR; half fog : TEXCOORD4;
                 float3 positionOS : TEXCOORD5; half wear : TEXCOORD6; float3 carveWS : TEXCOORD7;
+                #if defined(_TERRAIN)
+                half4 splat0 : TEXCOORD8; half4 splat1 : TEXCOORD9;
+                #endif
             };
 
             Varyings vert (Attributes i)
@@ -239,8 +254,61 @@ Shader "MadMax/HDLit"
                 o.color = i.color;
                 o.wear = saturate(i.wear.x);
                 o.fog = ComputeFogFactor(o.positionCS.z);
+                #if defined(_TERRAIN)
+                o.splat0 = i.splat0; o.splat1 = i.splat1;
+                #endif
                 return o;
             }
+
+            #if defined(_TERRAIN)
+            // HD terrain (World/HDTerrain): nine ground classes blended by the mesh's corner weights, each a tileable detail
+            // albedo (around mid grey, A = smoothness) times 2 x the vertex colour, top projection plus the sides on slopes;
+            // a second, slower sample of the same layer breaks the tiling up.
+            void TerrainSurface(float3 ws, half3 nW, half4 s0, half4 s1, half3 vcol, out half3 albedo, out half3 n, out half smooth)
+            {
+                half w[9] = { s0.x, s0.y, s0.z, s0.w, s1.x, s1.y, s1.z, s1.w, saturate(1.0h - dot(s0, 1.0h) - dot(s1, 1.0h)) };
+                float sc[9] = { _TerrainScale0.x, _TerrainScale0.y, _TerrainScale0.z, _TerrainScale0.w,
+                                _TerrainScale1.x, _TerrainScale1.y, _TerrainScale1.z, _TerrainScale1.w, _TerrainScale2.x };
+                float3 bw = pow(abs((float3)nW), 4.0);
+                bw /= max(dot(bw, 1.0), 1e-4);
+                half3 a = 0; half sm = 0; half3 pert = 0; half tw = 0;
+                [unroll] for (int k = 0; k < 9; k++)
+                {
+                    half wk = w[k];
+                    if (wk < 0.01h) continue;
+                    float s = sc[k];
+                    half4 A = 0; half3 p = 0;
+                    if (bw.y > 0.02)
+                    {
+                        float2 uv = ws.xz * s;
+                        half4 t = SAMPLE_TEXTURE2D_ARRAY(_TerrainAlbedo, sampler_TerrainAlbedo, uv, k);
+                        half4 t2 = SAMPLE_TEXTURE2D_ARRAY(_TerrainAlbedo, sampler_TerrainAlbedo, float2(uv.y, -uv.x) * 0.231 + 0.37, k);
+                        t.rgb *= lerp(1.0h, t2.rgb * 2.0h, 0.45h);
+                        half3 nt = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(_TerrainNormal, sampler_TerrainNormal, uv, k));
+                        A += t * (half)bw.y; p += half3(nt.x, 0, nt.y) * (half)bw.y;
+                    }
+                    if (bw.x > 0.02)
+                    {
+                        float2 uv = ws.zy * s;
+                        half4 t = SAMPLE_TEXTURE2D_ARRAY(_TerrainAlbedo, sampler_TerrainAlbedo, uv, k);
+                        half3 nt = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(_TerrainNormal, sampler_TerrainNormal, uv, k));
+                        A += t * (half)bw.x; p += half3(0, nt.y, nt.x) * (half)bw.x;
+                    }
+                    if (bw.z > 0.02)
+                    {
+                        float2 uv = ws.xy * s;
+                        half4 t = SAMPLE_TEXTURE2D_ARRAY(_TerrainAlbedo, sampler_TerrainAlbedo, uv, k);
+                        half3 nt = UnpackNormal(SAMPLE_TEXTURE2D_ARRAY(_TerrainNormal, sampler_TerrainNormal, uv, k));
+                        A += t * (half)bw.z; p += half3(nt.x, nt.y, 0) * (half)bw.z;
+                    }
+                    a += A.rgb * wk; sm += A.a * wk; pert += p * wk; tw += wk;
+                }
+                tw = max(tw, 1e-3h);
+                albedo = saturate(vcol * (a / tw) * 2.0h);
+                smooth = sm / tw;
+                n = normalize(nW + pert / tw);
+            }
+            #endif
 
             half3 SunGain() { return _MadMaxHDSun.a > 0 ? _MadMaxHDSun.rgb : half3(2.72h, 2.38h, 1.91h); }
             half3 SkyFill() { return _MadMaxHDSky.a > 0 ? _MadMaxHDSky.rgb : half3(0.321h, 0.201h, 0.107h); }
@@ -279,6 +347,10 @@ Shader "MadMax/HDLit"
 
                 half3 nW = normalize(i.normalWS);
                 half3 n = nW;
+                #if defined(_TERRAIN)
+                TerrainSurface(i.positionWS, nW, i.splat0, i.splat1, vcol, albedo, n, smooth);
+                metal = 0.0h; ao = 1.0h;
+                #else
                 if (_NormalStrength > 0.001h)
                 {
                     half3 tn = UnpackNormalScale(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, i.uv), _NormalStrength);
@@ -286,6 +358,7 @@ Shader "MadMax/HDLit"
                     half3 b = cross(nW, t) * i.tangentWS.w;
                     n = normalize(tn.x * t + tn.y * b + tn.z * nW);
                 }
+                #endif
                 // mud (VehicleGrime): blotches thick low on the body, thinning out up to the mud line
                 if (_Dirt > 0.001h)
                 {

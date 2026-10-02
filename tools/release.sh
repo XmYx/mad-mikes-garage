@@ -68,6 +68,7 @@ if [ "$hd" = 1 ]; then
   say "HD pack: rendering stale assets from tools/blender/hd (log: Logs/hd_export.log)"
   python3 tools/blender/hd/export/run_export.py --jobs "${HD_JOBS:-6}" | tail -3 || die "HD export failed (see Logs/hd_export.log)"
   python3 tools/blender/hd/export/run_export.py --check || die "HD pack still stale after the export"
+  python3 tools/blender/hd/terrain/make_textures.py | tail -1 || die "HD terrain textures failed"
 fi
 
 # ---- build

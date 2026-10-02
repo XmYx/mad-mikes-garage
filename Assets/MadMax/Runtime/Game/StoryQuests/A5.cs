@@ -101,7 +101,7 @@ namespace MadMax.Game
                 tr.name = pf.name;
                 Register(tr, null);
                 StoryTag.Set(tr.gameObject, "a5_trailer");
-                var paint = tr.GetComponent<VehiclePaint>() ?? tr.gameObject.AddComponent<VehiclePaint>();
+                var paint = tr.GetComponent<VehiclePaint>(); if (!paint) paint = tr.gameObject.AddComponent<VehiclePaint>();
                 paint.colour = 11; paint.Apply();
             }
             PutAt("a5_trailer", "post", new Vector3(0.8f, 0f, 1.4f), 0f);                     // the door latch (the go)

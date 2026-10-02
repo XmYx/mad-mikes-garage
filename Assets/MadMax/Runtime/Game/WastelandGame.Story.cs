@@ -220,7 +220,7 @@ namespace MadMax.Game
             v.name = "Hearse";
             Register(v, null);
             StoryTag.Set(v.gameObject, "hearse");
-            var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+            var paint = v.GetComponent<VehiclePaint>(); if (!paint) paint = v.gameObject.AddComponent<VehiclePaint>();
             paint.colour = 5; paint.Apply();
             if (v.Engine && v.Engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = 1f;                     // seized
             if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = 12f;
@@ -300,7 +300,7 @@ namespace MadMax.Game
                 var v = Instantiate(pf, p, rot).GetComponent<VehicleDriver>();
                 v.name = "Convoy " + design;
                 Register(v, null);
-                var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+                var paint = v.GetComponent<VehiclePaint>(); if (!paint) paint = v.gameObject.AddComponent<VehiclePaint>();
                 paint.colour = 11; paint.Apply();
             }
             PutAt("depot_store", "crate", new Vector3(-1.5f, 0f, 1f), 0f);

@@ -190,7 +190,7 @@ namespace MadMax.Net
         public void UpdateAuthority(VehicleDriver v)
         {
             if (!v || !Online) return;
-            var rep = v.GetComponent<NetReplica>() ?? v.gameObject.AddComponent<NetReplica>();
+            var rep = v.GetComponent<NetReplica>(); if (!rep) rep = v.gameObject.AddComponent<NetReplica>();
             bool local = Simulates(v);
             if (rep.active == !local) return;
             rep.SetActive(!local);
@@ -570,7 +570,7 @@ namespace MadMax.Net
                             var part = Loose(id);
                             if (part && !part.transform.parent)
                             {
-                                var rep = part.GetComponent<NetReplica>() ?? part.gameObject.AddComponent<NetReplica>();
+                                var rep = part.GetComponent<NetReplica>(); if (!rep) rep = part.gameObject.AddComponent<NetReplica>();
                                 if (!rep.active) rep.SetActive(true);
                                 rep.Push(new NetReplica.State { time = st, pos = pos, rot = rot });
                             }
@@ -1078,7 +1078,7 @@ namespace MadMax.Net
         void PlaceLoose(VehiclePart part, ushort carrier, Vector3 velocity)
         {
             foreach (var c in part.GetComponentsInChildren<Collider>()) c.enabled = carrier == 0;
-            var rb = part.GetComponent<Rigidbody>() ?? part.gameObject.AddComponent<Rigidbody>();
+            var rb = part.GetComponent<Rigidbody>(); if (!rb) rb = part.gameObject.AddComponent<Rigidbody>();
             rb.mass = part.mass;
             var rep = part.GetComponent<NetReplica>();
             if (carrier != 0)

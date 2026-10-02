@@ -13,7 +13,7 @@ namespace MadMax.EditorTools
     /// LOD groups for models used as-is; textures by suffix (_Base sRGB, _Mask linear, _Normal normal map, _Emission sRGB).</summary>
     public class HDAssetPostprocessor : AssetPostprocessor
     {
-        public override uint GetVersion() => 4;
+        public override uint GetVersion() => 5;
 
         static bool IsHD(string path) => path.Replace('\\', '/').StartsWith(HDSidecar.Root + "/");
 
@@ -54,6 +54,7 @@ namespace MadMax.EditorTools
 
         void OnPreprocessTexture()
         {
+            if (assetImporter is TextureImporter tt && assetPath.Replace('\\', '/').StartsWith("Assets/MadMax/Resources/HDTerrain/")) { TerrainTexture(tt); return; }
             if (!IsHD(assetPath) || !(assetImporter is TextureImporter ti)) return;
             string n = Path.GetFileNameWithoutExtension(assetPath);
             ti.mipmapEnabled = true;
@@ -73,6 +74,25 @@ namespace MadMax.EditorTools
                 ti.sRGBTexture = n.EndsWith("_Base") || n.EndsWith("_Emission");
                 ti.alphaSource = n.EndsWith("_Emission") ? TextureImporterAlphaSource.None : TextureImporterAlphaSource.FromInput;
             }
+        }
+
+        /// <summary>HD terrain detail maps (tools/blender/hd/terrain/make_textures.py): tiling, linear detail albedo with
+        /// smoothness in A (<c>_A</c>), normal maps (<c>_N</c>); all one size and format so World/HDTerrain can stack them
+        /// into texture arrays.</summary>
+        void TerrainTexture(TextureImporter ti)
+        {
+            bool normal = Path.GetFileNameWithoutExtension(assetPath).EndsWith("_N");
+            ti.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            ti.sRGBTexture = false;
+            ti.alphaSource = normal ? TextureImporterAlphaSource.None : TextureImporterAlphaSource.FromInput;
+            ti.alphaIsTransparency = false;
+            ti.mipmapEnabled = true;
+            ti.wrapMode = TextureWrapMode.Repeat;
+            ti.filterMode = FilterMode.Trilinear;
+            ti.anisoLevel = 8;
+            ti.maxTextureSize = 1024;
+            ti.textureCompression = TextureImporterCompression.CompressedHQ;
+            ti.isReadable = false;
         }
 
         void OnPostprocessModel(GameObject root)
@@ -108,7 +128,7 @@ namespace MadMax.EditorTools
                 levels[lvl].Add(r);
             }
             if (levels[1].Count == 0) return;
-            var lg = root.GetComponent<LODGroup>() ?? root.AddComponent<LODGroup>();
+            if (!root.TryGetComponent<LODGroup>(out var lg)) lg = root.AddComponent<LODGroup>();     // (GetComponent ?? Add never adds: Unity fake null)
             var lods = HDLod.Levels(levels[0], levels[1], levels[2]);
             lg.SetLODs(lods);
             lg.RecalculateBounds();

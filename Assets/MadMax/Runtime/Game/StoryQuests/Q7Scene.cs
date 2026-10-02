@@ -48,7 +48,7 @@ namespace MadMax.Game
             if (tag != null) StoryTag.Set(v.gameObject, tag);
             if (paint >= 0)
             {
-                var vp = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+                var vp = v.GetComponent<VehiclePaint>(); if (!vp) vp = v.gameObject.AddComponent<VehiclePaint>();
                 vp.colour = paint; vp.Apply();
             }
             return v;

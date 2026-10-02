@@ -96,12 +96,21 @@ namespace MadMax.World
         float cleanupTime;
 
         static Vector3[] vb; static Vector3[] nb; static Color32[] cb; static int[] ib;
+        static Vector4[] s0b, s1b;                                   // HD terrain: class weights per vertex (uv2, uv3)
+        static Color32[] cellCol; static byte[] cellCls;             // HD terrain: one chunk's cells before blending to corners
+        /// <summary>HD terrain mesh (HDTerrain): smooth normals, corner-blended colours and class weights.</summary>
+        bool hdMesh;
+        /// <summary>The ground class of the cell CellColor coloured last (HD terrain splat).</summary>
+        byte cellClass;
 
         public void Init(WorldGen world, Material terrainMat, Material propMat)
         {
             World = world; propMaterial = propMat; Instance = this;
             material = terrainMat ? new Material(terrainMat) : null;
             if (material) { material.SetFloat("_SnowMask", 0f); material.SetFloat("_WorldCut", 1f); }   // terrain paints its own snow
+            var hdMat = HDTerrain.MakeMaterial();                                                     // HD pack: smooth, textured ground
+            hdMesh = hdMat;
+            if (hdMat) material = hdMat;
             if (propMat)
             {
                 worldPropMaterial = new Material(propMat) { name = "WorldProps" };
@@ -114,6 +123,7 @@ namespace MadMax.World
             if (vb == null)
             {
                 vb = new Vector3[N * N * 6]; nb = new Vector3[vb.Length]; cb = new Color32[vb.Length]; ib = new int[vb.Length];
+                s0b = new Vector4[vb.Length]; s1b = new Vector4[vb.Length]; cellCol = new Color32[N * N]; cellCls = new byte[N * N];
                 for (int i = 0; i < ib.Length; i++) ib[i] = i;
             }
         }
@@ -819,6 +829,7 @@ namespace MadMax.World
 
         void FillMesh(Chunk ch)
         {
+            if (hdMesh) { FillMeshHD(ch); return; }
             int n = 0;
             for (int j = 0; j < N; j++)
             for (int i = 0; i < N; i++)
@@ -848,6 +859,61 @@ namespace MadMax.World
             ch.colorSnow = Weather.SnowAt(ch.c.y * N * Cell);
         }
 
+        /// <summary>HD terrain: each corner takes the mean colour and the class mix of the cells around it (inside the
+        /// chunk) and a normal from the height field, so the ground is smooth and the detail textures blend.</summary>
+        void FillMeshHD(Chunk ch)
+        {
+            for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++) { cellCol[j * N + i] = CellColor(ch, i, j); cellCls[j * N + i] = cellClass; }
+            int n = 0;
+            for (int j = 0; j < N; j++)
+            for (int i = 0; i < N; i++)
+            {
+                int k = j * V + i;
+                // corners in the order the flat path writes them: v00 v01 v11 / v00 v11 v10
+                Corner(ch, i, j, k, n); Corner(ch, i, j + 1, k + V, n + 1); Corner(ch, i + 1, j + 1, k + V + 1, n + 2);
+                vb[n + 3] = vb[n]; nb[n + 3] = nb[n]; cb[n + 3] = cb[n]; s0b[n + 3] = s0b[n]; s1b[n + 3] = s1b[n];
+                vb[n + 4] = vb[n + 2]; nb[n + 4] = nb[n + 2]; cb[n + 4] = cb[n + 2]; s0b[n + 4] = s0b[n + 2]; s1b[n + 4] = s1b[n + 2];
+                Corner(ch, i + 1, j, k + 1, n + 5);
+                n += 6;
+            }
+            ch.mesh.SetVertices(vb);
+            ch.mesh.SetNormals(nb);
+            ch.mesh.SetColors(cb);
+            ch.mesh.SetUVs(2, s0b);
+            ch.mesh.SetUVs(3, s1b);
+            ch.mesh.SetTriangles(ib, 0);
+            ch.mesh.RecalculateBounds();
+            ch.meshDirty = false;
+            ch.colorWet = Weather.Wetness;
+            ch.colorSnow = Weather.SnowAt(ch.c.y * N * Cell);
+        }
+
+        void Corner(Chunk ch, int ci, int cj, int k, int n)
+        {
+            float y = ch.h[k] + ch.d[k];
+            vb[n] = new Vector3(ci * Cell, y, cj * Cell);
+            float hl = ci > 0 ? ch.h[k - 1] + ch.d[k - 1] : y, hr = ci < N ? ch.h[k + 1] + ch.d[k + 1] : y;
+            float hd = cj > 0 ? ch.h[k - V] + ch.d[k - V] : y, hu = cj < N ? ch.h[k + V] + ch.d[k + V] : y;
+            float sx = (ci > 0 && ci < N) ? 2f : 1f, sz = (cj > 0 && cj < N) ? 2f : 1f;
+            nb[n] = new Vector3(-(hr - hl) / (sx * Cell), 1f, -(hu - hd) / (sz * Cell)).normalized;
+            int r = 0, g = 0, b = 0, cnt = 0;
+            Vector4 w0 = Vector4.zero, w1 = Vector4.zero;
+            for (int dj = -1; dj <= 0; dj++)
+            for (int di = -1; di <= 0; di++)
+            {
+                int x = ci + di, z = cj + dj;
+                if (x < 0 || z < 0 || x >= N || z >= N) continue;
+                var c = cellCol[z * N + x];
+                r += c.r; g += c.g; b += c.b; cnt++;
+                int cls = cellCls[z * N + x];
+                if (cls < 4) w0[cls] += 1f; else if (cls < 8) w1[cls - 4] += 1f;
+            }
+            float inv = 1f / Mathf.Max(1, cnt);
+            cb[n] = new Color32((byte)(r * inv), (byte)(g * inv), (byte)(b * inv), 255);
+            s0b[n] = w0 * inv; s1b[n] = w1 * inv;                                                  // snow = 1 - the rest
+        }
+
         // ------------------------------------------------------------------ colours
         static readonly Color32[] Sand = { C(0x8a4a24), C(0xa65c2e), C(0xbb6c36), C(0xcf8044), C(0xe09a58) };
         static readonly Color32[] Asphalt = { C(0x2f2a28), C(0x3a3432), C(0x443d39), C(0x4e4540) };
@@ -875,6 +941,7 @@ namespace MadMax.World
             {
                 case 1:
                 {
+                    cellClass = (byte)TerrainClass.Rock;
                     bool sand = (Biome)ch.biome[k] == Biome.Desert;
                     var ramp = sand ? Sandstone : RockGrey;
                     int band = Mathf.FloorToInt(y * 1.6f + Mathf.PerlinNoise(gx * 0.2f, gz * 0.2f) * 0.8f);
@@ -882,19 +949,24 @@ namespace MadMax.World
                     return ramp[b];
                 }
                 case 2:
+                    cellClass = (byte)TerrainClass.Concrete;
                     if (Mathf.Repeat(gx, 2f) < Cell * 0.99f || Mathf.Repeat(gz, 2f) < Cell * 0.99f) return Joint;
                     return Concrete[hs < 0.1f ? 0 : hs < 0.75f ? 1 : 2];
                 case 4:                                                                             // runway tarmac, weathered
+                    cellClass = (byte)TerrainClass.Asphalt;
                     if (Mathf.Abs(Mathf.PerlinNoise(gx * 0.6f + 31f, gz * 0.6f + 7f) - 0.5f) < 0.02f) return Crack;
                     return Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2];
                 case 5:                                                                             // faded runway paint
+                    cellClass = (byte)TerrainClass.Asphalt;
                     return hs < 0.18f ? Asphalt[1] : Line;
                 case 6:                                                                             // start yard: packed gravel, oil stains
+                    cellClass = (byte)TerrainClass.Gravel;
                     float patch = Mathf.PerlinNoise(gx * 0.18f + 11f, gz * 0.18f + 23f);
                     var gravel = Color32.Lerp(Gravel[1], Gravel[2], Mathf.Clamp01(patch + (hs - 0.5f) * 0.2f));
                     if (patch > 0.78f) gravel = Color32.Lerp(gravel, Dirt[0], 0.3f);
                     return hs > 0.97f ? Color32.Lerp(gravel, RockGrey[2], 0.25f) : gravel;
                 default:
+                    cellClass = (byte)TerrainClass.Gravel;
                     return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
             }
         }
@@ -960,6 +1032,7 @@ namespace MadMax.World
             float gx = gi * Cell, gz = gj * Cell;
 
             Color32 col;
+            cellClass = (byte)TerrainClass.Sand;
             byte feat = ch.feature[k];
             if (feat != 0)
             {
@@ -970,6 +1043,7 @@ namespace MadMax.World
             {
                 if (paved)
                 {
+                    cellClass = (byte)TerrainClass.Asphalt;
                     col = Asphalt[hs < 0.15f ? 0 : hs < 0.8f ? 1 : 2 + (hs > 0.95f ? 1 : 0)];
                     float cr = Mathf.PerlinNoise(gx * 0.9f + 17f, gz * 0.9f + 3f);
                     if (Mathf.Abs(cr - 0.5f) < 0.02f) col = Crack;
@@ -977,6 +1051,7 @@ namespace MadMax.World
                 }
                 else
                 {
+                    cellClass = (byte)TerrainClass.Dirt;
                     col = Dirt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2];
                     if (dist > 0.5f && dist < 1.2f) col = Color32.Lerp(col, Mud, 0.35f); // worn wheel tracks
                 }
@@ -988,24 +1063,24 @@ namespace MadMax.World
                 int bi = Mathf.Clamp(b + (hs < 0.12f ? -1 : hs > 0.9f ? 1 : 0), 0, 4);
                 switch ((Biome)ch.biome[k])
                 {
-                    case Biome.Forest: col = hs > 0.93f ? Litter : ForestG[bi]; break;
-                    case Biome.Tundra: col = hs > 0.95f ? Gravel[1] : TundraG[bi]; break;
-                    case Biome.Tropical: col = TropicG[bi]; break;
+                    case Biome.Forest: col = hs > 0.93f ? Litter : ForestG[bi]; cellClass = (byte)(hs > 0.93f ? TerrainClass.Dirt : TerrainClass.Grass); break;
+                    case Biome.Tundra: col = hs > 0.95f ? Gravel[1] : TundraG[bi]; cellClass = (byte)(hs > 0.95f ? TerrainClass.Gravel : TerrainClass.Grass); break;
+                    case Biome.Tropical: col = TropicG[bi]; cellClass = (byte)TerrainClass.Grass; break;
                     case Biome.Nuclear:
-                        col = NukeG[bi];
+                        col = NukeG[bi]; cellClass = (byte)TerrainClass.Grass;
                         if (hs > 0.988f) col = Glow;
                         else if (Mathf.Abs(Mathf.PerlinNoise(gx * 0.5f + 3f, gz * 0.5f) - 0.5f) < 0.025f) col = Crack;
                         break;
                     case Biome.Village:
                     {
-                        col = MeadowG[bi];
+                        col = MeadowG[bi]; cellClass = (byte)TerrainClass.Grass;
                         float field = Mathf.PerlinNoise(gx * 0.02f + 40f, gz * 0.02f + 12f);
-                        if (field > 0.55f) col = Mathf.Repeat(gx + (field > 0.62f ? gz : 0f), 1.5f) < 0.6f ? Soil : (hs > 0.3f ? Crop : Soil);
+                        if (field > 0.55f) { col = Mathf.Repeat(gx + (field > 0.62f ? gz : 0f), 1.5f) < 0.6f ? Soil : (hs > 0.3f ? Crop : Soil); cellClass = (byte)TerrainClass.Dirt; }
                         break;
                     }
-                    case Biome.Town: col = hs > 0.55f ? Gravel[bi] : Sand[bi]; break;
+                    case Biome.Town: col = hs > 0.55f ? Gravel[bi] : Sand[bi]; cellClass = (byte)(hs > 0.55f ? TerrainClass.Gravel : TerrainClass.Sand); break;
                     case Biome.City:
-                        col = Concrete[bi];
+                        col = Concrete[bi]; cellClass = (byte)TerrainClass.Concrete;
                         if (Mathf.Repeat(gx, 4f) < Cell * 0.99f || Mathf.Repeat(gz, 4f) < Cell * 0.99f) col = Joint;
                         else if (hs > 0.965f) col = Gravel[1];
                         break;
@@ -1020,8 +1095,8 @@ namespace MadMax.World
                     else if (seep < oil * 0.75f + 0.08f) col = Color32.Lerp(col, Tar, 0.35f);
                 }
                 float sh = ch.shore[k];
-                if (sh > 0.45f && (Biome)ch.biome[k] != Biome.Nuclear) col = Sand[hs > 0.5f ? 4 : 3];
-                if (!float.IsNaN(ch.water[k]) && ch.h[k] + ch.d[k] < ch.water[k] - 0.05f) col = Color32.Lerp(LakeBed, col, 0.25f);
+                if (sh > 0.45f && (Biome)ch.biome[k] != Biome.Nuclear) { col = Sand[hs > 0.5f ? 4 : 3]; cellClass = (byte)TerrainClass.Sand; }
+                if (!float.IsNaN(ch.water[k]) && ch.h[k] + ch.d[k] < ch.water[k] - 0.05f) { col = Color32.Lerp(LakeBed, col, 0.25f); cellClass = (byte)TerrainClass.Mud; }
             }
 
             if (ch.pave[k] > 0)
@@ -1029,6 +1104,7 @@ namespace MadMax.World
                 if (ch.pave[k] >= PaveGravel) return RoadColor(ch, k, hs, gx, gz, gi, gj);
                 float set = ch.cure[k];
                 bool asphalt = ch.pave[k] == 1;
+                cellClass = (byte)(asphalt ? TerrainClass.Asphalt : TerrainClass.Concrete);
                 var baseC = asphalt ? Asphalt[hs < 0.2f ? 0 : hs < 0.85f ? 1 : 2] : Concrete[hs < 0.3f ? 1 : hs < 0.9f ? 2 : 3];
                 if (ch.compact[k] == 0 && set >= 1f && hs > 0.8f) baseC = asphalt ? Asphalt[3] : Concrete[0];   // rough, unrolled finish
                 col = set < 1f ? Color32.Lerp(asphalt ? C(0x1a1614) : Concrete[0], baseC, set * 0.7f) : baseC;
@@ -1044,12 +1120,16 @@ namespace MadMax.World
                 col = Color32.Lerp(col, Crack, wq * 0.35f);
                 if (Weather.Wetness > 0.4f && hs > 0.93f) col = Color32.Lerp(col, WaterHi, 0.45f);           // wet asphalt catches the light
             }
-            else col = Color32.Lerp(col, hs > 0.5f ? Mud : MudLight, wq * 0.7f);
+            else
+            {
+                col = Color32.Lerp(col, hs > 0.5f ? Mud : MudLight, wq * 0.7f);
+                if (wq >= 0.75f) cellClass = (byte)TerrainClass.Mud;
+            }
             // puddles on roads and tracks: they spread in the rain and shrink back as the ground dries
             if (road > 0.4f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, paved ? 0.25f : 0.1f);
             if (s.wet > 0.85f && (d < -0.03f || ch.wet[k] > 0.8f) && Weather.Wetness > 0.25f && road < 0.5f)
                 col = hs > 0.88f ? WaterHi : Water;
-            if (d < -0.015f) col = Color32.Lerp(col, Mud, Mathf.Clamp(-d * 3f, 0.12f, 0.45f));
+            if (d < -0.015f) { col = Color32.Lerp(col, Mud, Mathf.Clamp(-d * 3f, 0.12f, 0.45f)); if (d < -0.08f) cellClass = (byte)TerrainClass.Mud; }
             else if (d > 0.015f) col = Color32.Lerp(col, Sand[4], 0.12f);
             // snow cover: patchy at first, thinner on roads, ruts cut through to the ground
             float snow = Weather.SnowAt(gz);                                                         // weather cover or the latitude's lasting snow
@@ -1060,6 +1140,7 @@ namespace MadMax.World
                 cover = Mathf.Round(cover * 3f) / 3f;
                 if (Weather.Ice > 0.4f && paved && road > 0.5f) col = Color32.Lerp(col, IceCol, 0.4f);
                 col = Color32.Lerp(col, hs > 0.93f ? SnowShade : SnowCol, cover);
+                if (cover > 0.5f) cellClass = (byte)TerrainClass.Snow;
             }
             return col;
         }

@@ -57,7 +57,7 @@ namespace MadMax.Game
             ArcCPut("f1_yard", "crate", new Vector3(-8.4f, 0f, -5f), 60f);
             ArcCPut("f1_yard", "sandbag_wall", new Vector3(-2.5f, 0f, 4.5f), 0f);
             var tractor = ArcCVehicle("Hauler", "f1_yard", new Vector3(-14f, 0f, -7f), 90f, "f1_guild", "Guild Tractor");
-            if (tractor) { var vp = tractor.GetComponent<VehiclePaint>() ?? tractor.gameObject.AddComponent<VehiclePaint>(); vp.colour = 5; vp.Apply(); }
+            if (tractor) { var vp = tractor.GetComponent<VehiclePaint>(); if (!vp) vp = tractor.gameObject.AddComponent<VehiclePaint>(); vp.colour = 5; vp.Apply(); }
             string city = "THE DISPATCH CITY";
             if (World != null && StoryAnchors.Has("dispatch"))
             {
@@ -494,7 +494,7 @@ namespace MadMax.Game
             if (!load) return;
             ArcCMount(load, "cargo", "cargo_twin_fuel_tanks");
             if (load.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = sys.fuelCapacity * 0.9f;
-            var vp = load.GetComponent<VehiclePaint>() ?? load.gameObject.AddComponent<VehiclePaint>();
+            var vp = load.GetComponent<VehiclePaint>(); if (!vp) vp = load.gameObject.AddComponent<VehiclePaint>();
             vp.colour = 5; vp.Apply();
         }
 

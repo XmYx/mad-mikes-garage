@@ -119,6 +119,7 @@ namespace MadMax.EditorTools
             var seat = side.Get("Seat_Driver");
             var oldEye = eye ? eye.localPosition : Vector3.zero;
             if (eye) eye.localPosition = seat != null ? seat.RootPosition + new Vector3(0f, 0.9f, -0.12f) : map.Point((Vector3)d.eye * S);
+            if (eye) FitCabin(root, eye, d.name);
             if (d.hitch.HasValue) Move(root, "Hitch", map.Point((Vector3)d.hitch.Value * S));
             if (d.coupler.HasValue) Move(root, "Coupler", map.Point((Vector3)d.coupler.Value * S));
             var pseat = side.Get("Seat_Passenger");
@@ -252,6 +253,99 @@ namespace MadMax.EditorTools
         }
 
         /// <summary>One row per vehicle: body size and wheel radius voxel → HD, sockets that moved (cm), eye.</summary>
+        /// <summary>First person in the HD cabin: the eye stays 18 cm under the outer skin of the roof above it (seat + 0.9 m
+        /// put it inside the roof of tall cabs; at most 40 cm lower; no roof or a glass roof: unchanged). The gauge cluster moves to 2 cm in front
+        /// of the HD dashboard when the ray towards it meets a front face 15-60 cm out; past the glass or nothing near, it
+        /// keeps its default spot. Rays against the body's own triangles (root space; parts, seats, the wheel and the
+        /// baked driver ignored).</summary>
+        static void FitCabin(GameObject root, Transform eye, string name)
+        {
+            var tris = new List<Vector3>(); var glass = new List<bool>();
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (!mf.sharedMesh || mf.name == "Driver" || mf.name == "Dashboard" || mf.name.Contains("Steer") || mf.name.StartsWith("Seat")) continue;
+                bool skip = false;
+                for (var x = mf.transform; x && x != root.transform; x = x.parent) if (x.name == "Sockets" || x.name == "Driver") { skip = true; break; }
+                if (skip) continue;
+                bool isGlass = mf.name.Contains("Glass");
+                var m = root.transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+                var vs = mf.sharedMesh.vertices; var ts = mf.sharedMesh.triangles;
+                for (int i = 0; i < ts.Length; i++) tris.Add(m.MultiplyPoint3x4(vs[ts[i]]));
+                for (int i = 0; i < ts.Length / 3; i++) glass.Add(isGlass);
+            }
+            if (tris.Count == 0) return;
+            // inside the glasshouse: some HD seats sit behind the cab's back wall (MonsterTruck), so the eye goes where the
+            // glass is (20 cm in from the rear window, 30 cm behind the windscreen, 10 cm under the top of the glass)
+            var e = eye.localPosition;
+            var gb = new Bounds(); bool hasGlass = false;
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (!mf.sharedMesh || mf.name != "Glass") continue;
+                var b = mf.sharedMesh.bounds;
+                var m = root.transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;
+                for (int k = 0; k < 8; k++)
+                {
+                    var p = m.MultiplyPoint3x4(new Vector3((k & 1) == 0 ? b.min.x : b.max.x, (k & 2) == 0 ? b.min.y : b.max.y, (k & 4) == 0 ? b.min.z : b.max.z));
+                    if (!hasGlass) { gb = new Bounds(p, Vector3.zero); hasGlass = true; } else gb.Encapsulate(p);
+                }
+            }
+            if (hasGlass && gb.size.z > 0.6f)
+            {
+                var was = e;
+                e.z = Mathf.Clamp(e.z, gb.min.z + 0.2f, Mathf.Max(gb.min.z + 0.2f, gb.max.z - 0.3f));
+                e.y = Mathf.Min(e.y, gb.max.y - 0.1f);
+                if ((e - was).magnitude > 0.02f) { eye.localPosition = e; Debug.Log($"[HD] {name}: driver eye moved {(e - was).magnitude * 100f:0} cm into the glasshouse"); }
+            }
+            // the roof's outer skin straight above the eye (a ray down from over the cab): the eye stays 18 cm under it
+            var top = new Vector3(e.x, e.y + 3f, e.z);
+            float down = Cast(tris, glass, top, Vector3.down, 6f, out _, out bool roofGlass);
+            float roofY = top.y - down;
+            if (down < 6f && !roofGlass && roofY > e.y - 0.3f && e.y > roofY - 0.18f)       // lower hits are the seat or floor of an open cab
+            {
+                float y = Mathf.Max(roofY - 0.18f, e.y - 0.4f);
+                Debug.Log($"[HD] {name}: driver eye lowered {(e.y - y) * 100f:0} cm under the roof (roof at {roofY:0.00} m)");
+                e.y = y; eye.localPosition = e;
+            }
+            var dash = root.GetComponent<VehicleDashboard>();
+            if (!dash) return;
+            var dir = new Vector3(0f, dash.offsetFromEye.y, dash.offsetFromEye.z).normalized;
+            float hit = Cast(tris, glass, eye.localPosition, dir, 0.6f, out bool backHit, out bool glassHit);
+            if (hit >= 0.15f && hit < 0.6f && !backHit && !glassHit)
+            {
+                dash.offsetFromEye = dir * (hit - 0.02f);
+                Debug.Log($"[HD] {name}: gauge cluster {hit - 0.02f:0.00} m from the eye, on the dashboard");
+            }
+        }
+
+        /// <summary>Distance along <paramref name="dir"/> to the nearest triangle (Möller–Trumbore), or <paramref name="max"/>;
+        /// <paramref name="back"/> = the ray met its back face (leaving a solid), <paramref name="isGlass"/> = a glazing triangle.</summary>
+        static float Cast(List<Vector3> tris, List<bool> glass, Vector3 o, Vector3 dir, float max, out bool back, out bool isGlass)
+        {
+            float best = max; back = false; isGlass = false;
+            for (int i = 0; i + 2 < tris.Count; i += 3)
+            {
+                Vector3 a = tris[i], e1 = tris[i + 1] - a, e2 = tris[i + 2] - a;
+                var p = Vector3.Cross(dir, e2);
+                float det = Vector3.Dot(e1, p);
+                if (Mathf.Abs(det) < 1e-9f) continue;
+                float inv = 1f / det;
+                var tv = o - a;
+                float u = Vector3.Dot(tv, p) * inv;
+                if (u < 0f || u > 1f) continue;
+                var q = Vector3.Cross(tv, e1);
+                float v = Vector3.Dot(dir, q) * inv;
+                if (v < 0f || u + v > 1f) continue;
+                float t = Vector3.Dot(e2, q) * inv;
+                if (t > 0.005f && t < best)
+                {
+                    best = t;
+                    back = Vector3.Dot(Vector3.Cross(e1, e2), dir) > 0f;      // Unity winding: clockwise front, normal = e1 x e2 points out
+                    isGlass = glass[i / 3];
+                }
+            }
+            return best;
+        }
+
         static void Report(VehicleDesign d, Plan p, BoxMap map, GameObject root, Dictionary<string, Vector3> oldSockets, Dictionary<string, float> oldRadii, Vector3 oldEye, float gear)
         {
             string V(Vector3 v) => $"{v.x:0.00}×{v.y:0.00}×{v.z:0.00}";

@@ -71,7 +71,7 @@ namespace MadMax.Game
             if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel = sys.fuelCapacity * 0.9f;
             if (i == 0) { ArcCMount(v, "cargo", "cargo_water_tank"); C5WaterTruck(v, 300f); }
             if (i == 1) ArcCMount(v, "cargo", "cargo_crate");
-            var paint = v.GetComponent<VehiclePaint>() ?? v.gameObject.AddComponent<VehiclePaint>();
+            var paint = v.GetComponent<VehiclePaint>(); if (!paint) paint = v.gameObject.AddComponent<VehiclePaint>();
             paint.colour = i == 0 ? 2 : i == 1 ? 3 : 9; paint.Apply();
             return v;
         }
