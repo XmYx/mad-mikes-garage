@@ -32,6 +32,8 @@ namespace MadMax.Npc
         readonly List<Spot> wanted = new List<Spot>();
         readonly HashSet<string> wantedIds = new HashSet<string>();
         readonly List<string> drop = new List<string>();
+        /// <summary>Scavengers picking at a road wreck (id → spot), set by <c>WastelandGame.UpdateRoadWrecks</c>.</summary>
+        public readonly Dictionary<string, Vector3> Scavengers = new Dictionary<string, Vector3>();
         float scanAt;
         List<ConvoySave> pendingConvoys;
 
@@ -262,7 +264,7 @@ namespace MadMax.Npc
                     if (raidersWin)
                     {
                         t.WipeOffscreen();
-                        if (t.designs.Count > 0) game.SpawnRoadWreck(t.designs[0], at, Quaternion.LookRotation(dir.sqrMagnitude > 0.01f ? dir : Vector3.forward) * Quaternion.Euler(0f, 35f, 0f), rnd.Next());
+                        if (t.designs.Count > 0 && game.SpawnRoadWreck(t.designs[0], at, Quaternion.LookRotation(dir.sqrMagnitude > 0.01f ? dir : Vector3.forward) * Quaternion.Euler(0f, 35f, 0f), rnd.Next())) game.NoteRoadWreck(at);
                         SpillCrate(at + dir.normalized * 5f, key);
                         MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: THE " + r.Gang + " HIT A GUILD CONVOY" + where + ". DRIVE CAREFUL.", 45f, tp);
                         TownNews.MarkWreck(tp, at);
@@ -271,7 +273,7 @@ namespace MadMax.Npc
                     {
                         r.save.losses = Mathf.Min(3, r.save.losses + 1);
                         if (rnd.NextDouble() < 0.5) r.WipeOffscreen();
-                        if (r.designs.Count > 0) game.SpawnRoadWreck(r.designs[r.designs.Count - 1], at, Quaternion.LookRotation(side), rnd.Next());
+                        if (r.designs.Count > 0 && game.SpawnRoadWreck(r.designs[r.designs.Count - 1], at, Quaternion.LookRotation(side), rnd.Next())) game.NoteRoadWreck(at);
                         MadMax.Audio.RadioNetwork.Flash("WORD ON THE ROAD: A GUILD CONVOY SHOT ITS WAY PAST THE " + r.Gang + where + ".", 45f, tp);
                         if (r.designs.Count > 0) TownNews.MarkWreck(tp, at);
                     }
@@ -494,6 +496,8 @@ namespace MadMax.Npc
                     Want(new Spot { id = "w" + c.x + "," + c.y + "," + i, role = NpcRole.Wanderer, pos = Ground(p), radius = 25f }, focus);
                 }
             }
+            foreach (var kv in Scavengers)
+                Want(new Spot { id = kv.Key, role = NpcRole.Wanderer, kind = "scavenger", pos = Ground(new Vector2(kv.Value.x, kv.Value.z)), radius = 6f }, focus);
             // fold away the far ones
             drop.Clear();
             foreach (var kv in live)

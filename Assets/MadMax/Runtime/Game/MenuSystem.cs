@@ -384,7 +384,13 @@ namespace MadMax.Game
                     break;
                 case Page.Journal:
                 {
-                    // live jobs first (ENTER: waypoint to where they lead), then the notebook
+                    // the base at a glance, live jobs (ENTER: waypoint to where they lead), then the notebook
+                    var ledger = new List<string>();
+                    game.HomeLedger(ledger);
+                    items.Add(new Item { label = "- HOME -", enabled = () => false });
+                    foreach (var l in ledger) { var ll = l; items.Add(new Item { label = ll.Length > 66 ? ll.Substring(0, 64) + ".." : ll, hint = ll.Length > 66 ? ll : null, enabled = () => false }); }
+                    items.Add(new Item { label = "- JOBS -", enabled = () => false });
+                    int jobsFrom = items.Count;
                     var jp = new List<WastelandGame.Pin>();
                     game.JobPins(jp);
                     foreach (var pin in jp)
@@ -396,7 +402,7 @@ namespace MadMax.Game
                     foreach (var c in MadMax.Npc.Contracts.Active)
                         if (!c.completed && !c.failed && !jp.Exists(q => q.label == c.title))
                             items.Add(new Item { label = c.title, value = () => c.need > 0 ? c.done + "/" + c.need : "", hint = c.deadline >= 0 ? "DEADLINE: DAY " + (c.deadline + 1) : null });
-                    if (items.Count == 0) items.Add(new Item { label = "NO JOBS IN HAND", value = () => "BOARDS AND BOSSES IN TOWN", enabled = () => false });
+                    if (items.Count == jobsFrom) items.Add(new Item { label = "NO JOBS IN HAND", value = () => "BOARDS AND BOSSES IN TOWN", enabled = () => false });
                     var shop = new List<WastelandGame.Pin>();
                     game.WorkshopPins(shop);
                     if (shop.Count > 0) items.Add(new Item { label = "- THE WORKSHOP AT HOME -", enabled = () => false });

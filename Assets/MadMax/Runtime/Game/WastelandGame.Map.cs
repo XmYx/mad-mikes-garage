@@ -60,6 +60,8 @@ namespace MadMax.Game
         {
             if (Time.time < mapCheck || World == null) return;
             mapCheck = Time.time + 1f;
+            UpdateHomeRadio();
+            UpdateRoadWrecks();
             var at = FocusPos;
             // towns entered, sites walked into or seen from the air
             foreach (var st in World.settlements)
@@ -152,6 +154,7 @@ namespace MadMax.Game
             BlocksSave(d);
             d.records = Racing.Save();
             SaveWreckPlan(d);
+            SaveHome(d);
         }
 
         void LoadMap(SaveData d)
@@ -169,6 +172,7 @@ namespace MadMax.Game
             BlocksLoad(d);
             Racing.Load(d.records);
             LoadWreckPlan(d);
+            LoadHome(d);
             if (d.hasWaypoint) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }
         }
     }

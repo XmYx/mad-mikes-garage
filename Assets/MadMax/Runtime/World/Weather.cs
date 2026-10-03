@@ -193,7 +193,8 @@ namespace MadMax.World
                 {
                     Season = s;
                     MadMax.Game.WastelandGame.Instance?.Toast(SeasonNames[s] + " IS HERE - " + MadMax.Npc.Market.SeasonNews(s));
-                    MadMax.Audio.RadioNetwork.Flash(SeasonNames[s] + " MARKETS: " + MadMax.Npc.Market.SeasonNews(s), 120f);
+                    string fish = MadMax.Npc.Market.FishNews(s);
+                    MadMax.Audio.RadioNetwork.Flash(SeasonNames[s] + " MARKETS: " + MadMax.Npc.Market.SeasonNews(s) + (fish != null ? ". " + fish : ""), 120f);
                 }
                 SeasonProgress = d - Mathf.Floor(d);
             }

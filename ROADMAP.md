@@ -1297,11 +1297,11 @@ the winter pantry plan, the home workshop on the map. Scenarios in `Acceptance/B
 
 ### Suggestions (tie the experience together)
 - [ ] **Ice you can walk on**: lakes below −4 °C get a walkable ice sheet (a flat collider at the water level, thin near the shore early in winter, cracking under vehicles above a weight) — ice fishing from the middle of the lake, winter shortcuts, and a real risk for a heavy truck.
-- [ ] **One home ledger**: a HOME page (or the journal section) that merges the workshop chips, the pantry days, the power / water balance of the claim grid and BaseUpkeep wear into one "how is my base" screen — the systems already report separately.
-- [ ] **Wreck news decays**: marked wrecks get picked over by other scavengers after a few days (fewer parts, a scavenger NPC on site if the player is late), so acting on the news soon pays.
-- [ ] **Fish in the economy by season**: `Market.SeasonFactor` for fish (cheap in the summer runs, dear in winter) and fishermen residents who sell the catch of the season — the bite tables feeding prices.
-- [ ] **Pantry in the residents' talk**: B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
-- [ ] **Workshop alerts on the radio**: a powered station stalling while the player is away triggers a short WasteTalk-style radio ping on the home frequency (`RadioNetwork.Flash` with `at` = the claim) — the radio as the base's voice.
+- [x] **One home ledger** (2026-10-03: the journal opens with a HOME section — `WastelandGame.HomeLedger`: per owned claim the workshop (working / stalled / ready), power in / out + battery, water held, weathered pieces, and the pantry days; scenario `base.home_ledger`): a HOME page (or the journal section) that merges the workshop chips, the pantry days, the power / water balance of the claim grid and BaseUpkeep wear into one "how is my base" screen — the systems already report separately.
+- [x] **Wreck news decays** (2026-10-03: skirmish wrecks are recorded (`WastelandGame.RoadWrecks`, `NoteRoadWreck`, saved `SaveData.roadWrecks`); reached after 1.5 days they have lost parts, loose parts, storage and fuel by age (`ScavengedShare`, 85 % by day 4), between 1.5 and 4 days a scavenger is still on site (`NpcDirector.Scavengers`); scenario `towns.wreck_scavenged`): marked wrecks get picked over by other scavengers after a few days (fewer parts, a scavenger NPC on site if the player is late), so acting on the news soon pays.
+- [x] **Fish in the economy by season** (2026-10-03, the price half: `Market.FishSeason` from the weighted mean bite factor of the season — fresh fish cheap in the summer runs, dear in winter, preserved fish a third of the swing; the season flash adds `Market.FishNews`; scenario `market.fish_seasons`. Fishermen residents are still open): `Market.SeasonFactor` for fish (cheap in the summer runs, dear in winter) and fishermen residents who sell the catch of the season — the bite tables feeding prices.
+- [x] **Pantry in the residents' talk** (2026-10-03: in autumn / winter residents, leaders, shopkeepers and wanderers answer WILL MY STORES SEE ME THROUGH THE WINTER? with `Dialogue.PantryVerdict` (temper × `Pantry` days vs. the days to spring, rot warning); scenario `talk.pantry`. The B2/B4 supper hook is still open): B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
+- [x] **Workshop alerts on the radio** (2026-10-03: the player's stations > 40 m away call the HOME FREQUENCY on lost power, power back and a finished queue (`WastelandGame.UpdateHomeRadio/HomeCall`, `RadioNetwork.Flash(..., post: false)` keeps it off the boards, journal HOME); scenario `base.home_radio`): a powered station stalling while the player is away triggers a short WasteTalk-style radio ping on the home frequency (`RadioNetwork.Flash` with `at` = the claim) — the radio as the base's voice.
 
 
 ## HD consistency pass (2026-10-02)
@@ -1366,3 +1366,24 @@ two cabins, and lists what is not HD by shader and object (counts + captures) �
 - [ ] The boot film (`StreamingAssets/Intro/intro.webm`) shows the old voxel title: re-record with `IntroRecorder`.
 - [ ] Flora / overgrowth are procedural HD stand-ins, not exported Blender assets; HUD icons drawn into the pixel canvas
   (minimap, prompt icons) stay pixel art.
+
+
+## Scheduled update (2026-10-03)
+Done this pass (ticked above under the 2026-10-02 suggestions): the HOME ledger at the top of the journal, home-frequency
+radio calls from the workshop, news wrecks picked over by scavengers, seasonal fish prices, pantry talk. Scenarios in
+`Acceptance/Blocks/UpdateScenarios1003.cs` (all five pass in the editor, seed 7). `fishing.seasons` reports BLOCKED in
+the editor world (no lake within 2.4 km of the start) — look at the lake search radius.
+
+### Suggestions (tie the experience together)
+- [ ] **Journal job list is flooded**: on day 1 the journal lists ~40 `? NAME` story-cast pins (every authored person
+  as a job) before the player's real jobs — group them under one STORY line per quest, or show only quests in progress.
+- [ ] **Scavengers you can deal with**: the wreck scavenger offers what they stripped for trade (the removed parts go
+  into their stock instead of vanishing), or fights for it if the player is hostile — the late arrival becomes a choice.
+- [ ] **Home frequency needs a radio**: the calls reach the journal always but the radio only when one is on; a cheap
+  handheld radio item (`tool_radio`) in the starting kit would make the base's voice part of every trip.
+- [ ] **Ledger with actions**: HOME lines become selectable — ENTER on a stalled station sets a waypoint, on WEATHERED
+  lists the pieces (and their repair cost), on PANTRY opens the cooking stations that would save the rotting food.
+- [ ] **Fishermen at the lakes**: village residents by a lake fish at dawn (Gather mode at the shore with a rod visual)
+  and sell the catch of the season at their stall — the bite tables visible in town life.
+- [ ] **Seasonal wreck salvage**: winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
+  are stripped fastest — scale `ScavengedShare` by season and road traffic.

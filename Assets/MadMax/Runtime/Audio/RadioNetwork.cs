@@ -52,11 +52,12 @@ namespace MadMax.Audio
         public static bool FlashOn => FlashText != null && Time.time < flashUntil;
 
         /// <summary>Break into the talk station with <paramref name="text"/> for <paramref name="seconds"/>. Anyone with a
-        /// radio on hears the news beep; it goes in the journal when the player is listening to WasteTalk.</summary>
-        public static void Flash(string text, float seconds = 45f, Vector3? at = null)
+        /// radio on hears the news beep; it goes in the journal when the player is listening to WasteTalk. <paramref name="post"/>
+        /// false keeps a private message (the home frequency) off the town boards.</summary>
+        public static void Flash(string text, float seconds = 45f, Vector3? at = null, bool post = true)
         {
             FlashText = text; flashUntil = Time.time + seconds;
-            MadMax.Npc.TownNews.Post(text, at);
+            if (post) MadMax.Npc.TownNews.Post(text, at);
             var rx = Heard();
             if (!rx) return;
             Sfx.Play2D("beep", 0.25f, 1.6f);

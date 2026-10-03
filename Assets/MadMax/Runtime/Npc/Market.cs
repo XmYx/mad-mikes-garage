@@ -117,7 +117,22 @@ namespace MadMax.Npc
             if (st == null) return 1.1f;
             var r = new System.Random(Seed(st.index, g * 7717 + 1, DayNight.Day));
             float wobble = 0.94f + 0.12f * (float)r.NextDouble();
-            return Mathf.Clamp(Base(st, g) * (1f + Pressure(st.index)[g]) * wobble * SeasonFactor(g, st.kind), 0.4f, 2.2f);
+            return Mathf.Clamp(Base(st, g) * (1f + Pressure(st.index)[g]) * wobble * SeasonFactor(g, st.kind) * FishSeason(id, Weather.Season), 0.4f, 2.2f);
+        }
+
+        /// <summary>Fish follow the bite tables: the season's mean bite factor over the clean-water and sea species (the
+        /// summer runs flood the market, winter catches are few) sets fresh fish; preserved fish (smoked, salted, dried,
+        /// tinned) swings a third as much — it was put up for the winter.</summary>
+        public static float FishSeason(string id, int season)
+        {
+            if (id == null || season < 0 || !id.StartsWith("food_") || !id.Contains("fish") || id.Contains("glow")) return 1f;
+            float sum = 0f, wsum = 0f;
+            foreach (var f in FishLibrary.All)
+                if (!f.junk && !f.mutant) { sum += FishLibrary.SeasonFactor(f, season) * f.weight; wsum += f.weight; }
+            float bite = wsum > 0f ? sum / wsum : 1f;                                          // ~0.6 in winter .. ~1.4 in summer
+            float fresh = Mathf.Clamp(1f / Mathf.Sqrt(Mathf.Max(0.2f, bite)), 0.7f, 1.45f);
+            bool preserved = id.Contains("smoked") || id.Contains("salted") || id.Contains("dried") || id.Contains("pickled") || id.StartsWith("food_can_");
+            return preserved ? 1f + (fresh - 1f) / 3f : fresh;
         }
 
         /// <summary>The season's pull on a good: food is cheap at the autumn harvest (cheapest where it grows) and dear
@@ -145,6 +160,13 @@ namespace MadMax.Npc
             : season == 2 ? "WINTER PRICES: FOOD, FUEL, CLOTH AND MEDICINE GO DEAR"
             : season == 3 ? "HUNGRY SPRING: FOOD STAYS DEAR, TIMBER AND BRICK ARE IN DEMAND"
             : "SUMMER: WATER FETCHES A PRICE, WARM CLOTHES SELL CHEAP";
+
+        /// <summary>The fish market of the season, one line (null: nothing notable).</summary>
+        public static string FishNews(int season)
+        {
+            float f = FishSeason("food_fish_raw", season);
+            return f < 0.92f ? "THE FISH ARE RUNNING: FRESH FISH SELLS CHEAP" : f > 1.12f ? "FEW FISH UNDER THE ICE: A CATCH FETCHES A PRICE" : null;
+        }
 
         /// <summary>The player sold <paramref name="n"/> of a good here: the market floods.</summary>
         public static void Sold(Settlement st, string id, int n)

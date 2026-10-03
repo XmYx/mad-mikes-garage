@@ -9,6 +9,46 @@ namespace MadMax.Npc
     /// their stores, goodwill and a little reputation.</summary>
     public partial class Dialogue
     {
+        bool pantryTalked;
+
+        /// <summary>Autumn and winter: townsfolk weigh in on the player's stores (<c>WastelandGame.Pantry</c>, days of food
+        /// that keep through the cold vs. what rots first).</summary>
+        void PantryChoice()
+        {
+            int season = MadMax.World.Weather.Season;
+            if (pantryTalked || (season != 1 && season != 2) || S.disposition < -10) return;
+            if (P.role != NpcRole.Resident && P.role != NpcRole.Leader && P.role != NpcRole.Wanderer && P.role != NpcRole.Shopkeeper) return;
+            Add("WILL MY STORES SEE ME THROUGH THE WINTER?", () =>
+            {
+                pantryTalked = true; asked = true;
+                float need = Mathf.Max(1, MadMax.World.Weather.DaysPerSeason) * (season == 1 ? 2f : 1f);
+                g.Pantry(need, out float keeps, out float rots);
+                line = PantryVerdict(P.temper, keeps, rots, need);
+                Change(1);
+                g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.5f);
+                Hub(false);
+            }, "WHAT THEY THINK OF YOUR LARDER");
+        }
+
+        /// <summary>A townsperson's verdict on stores of <paramref name="keeps"/> days that keep and <paramref name="rots"/>
+        /// days that spoil first, against the <paramref name="need"/> days to spring.</summary>
+        public static string PantryVerdict(Temper t, float keeps, float rots, float need)
+        {
+            string days = Mathf.RoundToInt(keeps) + " DAYS";
+            string head;
+            if (keeps >= need)
+                head = t == Temper.Gruff ? days + " PUT BY? YOU'LL DO." : t == Temper.Joker ? days + "? YOU'LL BE THE FATTEST THING ALIVE COME SPRING."
+                    : t == Temper.Pious ? days + " IN THE LARDER. THE LORD PROVIDES, AND SO DID YOU." : "YOUR LARDER WILL HOLD - " + days + " OF FOOD THAT KEEPS.";
+            else if (keeps >= need * 0.5f)
+                head = t == Temper.Nervous ? "ONLY " + days + "? THAT WON'T REACH SPRING. IT WON'T." : t == Temper.Greedy ? days + ". I COULD SELL YOU THE REST. AT WINTER PRICES."
+                    : days + " THAT KEEPS. HALF A WINTER. HUNT, FISH THE ICE, PUT UP MORE.";
+            else
+                head = t == Temper.Joker ? days + "? HOPE YOU LIKE THE TASTE OF BOOT LEATHER." : t == Temper.Gruff ? days + ". YOU'LL STARVE BY MIDWINTER."
+                    : "WITH " + days + " PUT BY WE'LL BE EATING BOOT LEATHER BY SPRING. STOCK A CELLAR.";
+            if (rots >= 1f) head += " AND " + Mathf.RoundToInt(rots) + " DAYS OF IT WILL TURN - SMOKE IT, SALT IT OR CAN IT.";
+            return head;
+        }
+
         void SeasonChoreChoice()
         {
             if (P.role != NpcRole.Resident || S.disposition < -5) return;

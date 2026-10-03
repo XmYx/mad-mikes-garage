@@ -195,6 +195,7 @@ namespace MadMax.Npc
             if (S.jobState == 0 && S.disposition >= -5) Add("NEED A HAND WITH ANYTHING?", OfferJob);
             else if (S.jobState == 1) Add("ABOUT THAT ERRAND...", TurnIn);
             SeasonChoreChoice();                                                                // residents' seasonal chores (Dialogue.Seasons)
+            PantryChoice();
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);
