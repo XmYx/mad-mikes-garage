@@ -276,7 +276,7 @@ namespace MadMax.Npc
             cars.Clear(); walkers.Clear();
         }
 
-        Npc Walker(WastelandGame g, int crewIndex, Vector3 near, bool aggro)
+        Npc Walker(WastelandGame g, int crewIndex, Vector3 near, bool aggro, AiDriver from = null)
         {
             var terrain = DeformableTerrain.Instance;
             var p = near; p.y = terrain.HeightNoLoad(p.x, p.z) + 0.1f;
@@ -284,7 +284,25 @@ namespace MadMax.Npc
             n.convoy = this; n.aggro = aggro;
             n.mode = aggro ? Npc.Mode.Fight : Npc.Mode.Stand;
             walkers.Add(n);
+            if (from) TakeKey(n, from);
             return n;
+        }
+
+        /// <summary>The driver climbs out with the key on their ring: the car won't start for anyone else until the
+        /// key is looted off them (or the car is hotwired).</summary>
+        static void TakeKey(Npc n, AiDriver car)
+        {
+            if (!car.TryGetComponent<VehicleIgnition>(out var ign) || !ign.NeedsKey || ign.key != VehicleIgnition.Where.Ignition) return;
+            ign.key = VehicleIgnition.Where.Carried;
+            n.carriedKey = ign.KeyItem; n.keyFor = ign;
+        }
+
+        /// <summary>A walker gets back in (or is folded away beside the car): the key goes back in the ignition.</summary>
+        static void ReturnKey(Npc n)
+        {
+            if (!n || !n.keyFor) return;
+            if (n.keyFor.key == VehicleIgnition.Where.Carried) n.keyFor.key = VehicleIgnition.Where.Ignition;
+            n.carriedKey = null; n.keyFor = null;
         }
 
         // ------------------------------------------------------------------ traders
@@ -297,14 +315,14 @@ namespace MadMax.Npc
             lead.goal = AiDriver.Goal.Park;
             if (NpcRegistry.IsDead(crew[0].id)) return;
             var t = lead.transform;
-            Boss = Walker(g, 0, t.position - t.right * 2.2f, false);
+            Boss = Walker(g, 0, t.position - t.right * 2.2f, false, lead);
             Boss.home = Boss.transform.position; Boss.homeYaw = t.eulerAngles.y - 90f;
             MadMax.Audio.Sfx.Play("car_door", t.position, 0.6f);
         }
 
         void Resume()
         {
-            if (Boss && Boss.Alive) { walkers.Remove(Boss); UnityEngine.Object.Destroy(Boss.gameObject); }
+            if (Boss && Boss.Alive) { ReturnKey(Boss); walkers.Remove(Boss); UnityEngine.Object.Destroy(Boss.gameObject); }
             Boss = null;
             var lead = Leader();
             if (lead) lead.SetPath(route, lead.dir);
@@ -352,7 +370,7 @@ namespace MadMax.Npc
             if (!Boss && slow && (dist < 30f || (dist < 90f && stallT > 3f)) && !NpcRegistry.IsDead(crew[0].id))
             {
                 var t = lead.transform;
-                Boss = Walker(g, 0, t.position - t.right * 2.2f, false);
+                Boss = Walker(g, 0, t.position - t.right * 2.2f, false, lead);
                 MadMax.Audio.Sfx.Play("car_door", t.position, 0.7f);
             }
             if (Boss && Boss.Alive)
@@ -491,7 +509,7 @@ namespace MadMax.Npc
             phase = Phase.Leave; timer = 0f;
             truceUntil = Time.time + 600f;
             foreach (var w in walkers) if (w) w.aggro = false;
-            if (Boss && Boss.Alive) { walkers.Remove(Boss); UnityEngine.Object.Destroy(Boss.gameObject); Boss = null; }
+            if (Boss && Boss.Alive) { ReturnKey(Boss); walkers.Remove(Boss); UnityEngine.Object.Destroy(Boss.gameObject); Boss = null; }
             var lead = Leader();
             foreach (var c in cars)
             {
@@ -513,7 +531,7 @@ namespace MadMax.Npc
                 int crewIndex = Mathf.Min(i, crew.Count - 1);
                 if (NpcRegistry.IsDead(crew[crewIndex].id) || walkers.Exists(w => w && w.Profile.id == crew[crewIndex].id)) continue;
                 bool truce = Time.time < truceUntil;                                            // paid off / talked down: a crash on the way out is no reason to fight
-                var w = Walker(g, crewIndex, c.transform.position - c.transform.right * 2f, raiders && !truce);
+                var w = Walker(g, crewIndex, c.transform.position - c.transform.right * 2f, raiders && !truce, c);
                 if (!raiders) w.Scare(20f);
                 else if (phase != Phase.Attack && !truce) Attack(g);
             }

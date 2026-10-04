@@ -432,20 +432,42 @@ namespace MadMax.Game
             if (World != null) StoryAnchors.Bind(World);
         }
 
-        /// <summary>Map pins: quests on offer ("?" at the giver) and the active steps' places.</summary>
+        /// <summary>Unmet story givers with work on offer shown as pins (the nearest ones; met givers always show).</summary>
+        public const int StoryOfferStrangers = 3;
+        static readonly List<string> offerSeen = new List<string>();
+        static readonly List<KeyValuePair<float, Pin>> offerStrangers = new List<KeyValuePair<float, Pin>>();
+
+        /// <summary>Map pins: quests in progress (the active step's place) and quests on offer — one "?" per giver, named
+        /// once met; of the strangers only the <see cref="StoryOfferStrangers"/> nearest, by what they look like.</summary>
         void StoryPins(List<Pin> into)
         {
             var offer = new Color32(240, 200, 90, 255); var job = new Color32(255, 230, 150, 255);
+            offerSeen.Clear(); offerStrangers.Clear();
+            var me = FocusPos;
             foreach (var q in StoryLibrary.All)
             {
                 if (!Story.Story.Runs(q)) continue;
                 var st = Story.Story.StateOf(q.id);
                 var m = q.giver != null ? StoryCast.Find(q.giver) : null;
-                if (st == Story.Story.State.Open && m != null && m.Value.anchor != null && StoryAnchors.Has(m.Value.anchor))
-                    into.Add(new Pin { label = "? " + m.Value.name, pos = StoryAnchors.Get(m.Value.anchor), color = offer });
+                if (st == Story.Story.State.Open && m != null && m.Value.anchor != null && StoryAnchors.Has(m.Value.anchor) && !offerSeen.Contains(m.Value.key))
+                {
+                    offerSeen.Add(m.Value.key);
+                    var at = StoryAnchors.Get(m.Value.anchor);
+                    if (CastMet(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.name, pos = at, color = offer });
+                    else offerStrangers.Add(new KeyValuePair<float, Pin>(Flat(at - me), new Pin { label = "? " + m.Value.title, pos = at, color = offer }));
+                }
                 var s = Story.Story.Current(q);
                 if (s != null && s.waypoint != null && StoryAnchors.Has(s.waypoint)) into.Add(new Pin { label = q.title, pos = StoryAnchors.Get(s.waypoint), color = job });
             }
+            offerStrangers.Sort((a, b) => a.Key.CompareTo(b.Key));
+            for (int i = 0; i < offerStrangers.Count && i < StoryOfferStrangers; i++) into.Add(offerStrangers[i].Value);
+        }
+
+        /// <summary>The player has spoken with this cast member.</summary>
+        bool CastMet(string key)
+        {
+            var p = World != null ? StoryCast.Profile(key, World.seed) : null;
+            return p != null && MadMax.Npc.NpcRegistry.Peek(p.id) is MadMax.Npc.NpcSave s && s.Has(MadMax.Npc.NpcSave.Met);
         }
     }
 }

@@ -20,6 +20,9 @@ namespace MadMax.Game
         /// <summary>The last home-frequency message (tests, HUD).</summary>
         public string LastHomeCall { get; private set; }
 
+        /// <summary>Home calls heard on the handheld radio in the pack (tests).</summary>
+        public int HandRadioCalls { get; private set; }
+
         public static int StationState(CraftingStation st) => st.Busy ? (st.Powered ? 1 : 2) : st.TrayCount > 0 ? 3 : 0;
 
         void UpdateHomeRadio()
@@ -61,6 +64,13 @@ namespace MadMax.Game
             LastHomeCall = msg;
             Journal.Add("HOME", msg.Replace("HOME FREQUENCY: ", ""));
             MadMax.Audio.RadioNetwork.Flash(msg, 30f, at, false);
+            if (Inventory.GetItem(SafetyTools.HandRadio) > 0 && !MadMax.Audio.RadioNetwork.Heard())
+            {
+                // the handheld in the pack crackles with the home frequency
+                MadMax.Audio.Sfx.Play2D("beep", 0.3f, 1.3f);
+                Toast(msg);
+                HandRadioCalls++;
+            }
         }
 
         // ------------------------------------------------------------------ the home ledger

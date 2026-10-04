@@ -32,6 +32,10 @@ namespace MadMax.Npc
                 float v = 12f + d.mass * 0.25f + d.sizeClass * 8f;
                 return d.category == MadMax.Vehicles.PartCategory.Engine ? v * 1.8f : v;
             }
+            if (id == "tool_extinguisher") return 28f;
+            if (id == "tool_radio") return 30f;
+            if (id == "tool_crutch") return 8f;
+            if (id.StartsWith("pros_")) return MadMax.Game.ProstheticLibrary.Get(id) is MadMax.Game.ProstheticDef pd ? (pd.tool != null ? 70f : pd.climbs || pd.carry > 0f ? 45f : 22f) : 20f;
             if (id.StartsWith("tool_")) return id == "tool_bolt_rifle" ? 120f : id == "tool_revolver" ? 90f : id == "tool_crossbow" ? 60f : id == "tool_pipe_pistol" ? 45f : id == "tool_flare_gun" ? 35f : id == "tool_bow" || id == "tool_leaf_blade" ? 30f : id.Contains("shotgun") ? 70f : id.Contains("gas_torch") || id.Contains("cutter") ? 45f : id.Contains("wrench") ? 30f : id.Contains("lantern") ? 18f : id.Contains("torch") ? 6f : 22f;
             if (id == Contracts.Chit) return ChitValue;
             if (id.StartsWith("ammo_")) return id == "ammo_flare" ? 8f : id == "ammo_rifle" ? 4f : id == "ammo_cartridge" ? 3f : id == "ammo_arrow" ? 1f : 2f;
@@ -122,7 +126,7 @@ namespace MadMax.Npc
             { "parts", new[] { ("part:wheel_street", 0, 2), ("part:wheel_offroad", 0, 2), ("part:wheel_small", 0, 1), ("part:radiator_car", 0, 1), ("part:exhaust_side_pipes", 0, 1),
                                ("part:bumper_bull_bar", 0, 1), ("part:engine_i4", 0, 1), ("part:engine_i6", 0, 1), ("part:engine_v8_blower", 0, 1), ("part:armor_plate", 0, 1),
                                ("part:armor_spikes", 0, 1), ("part:bumper_ram", 0, 1), ("part:cargo_jerry_rack", 0, 1), ("tool_wrench", 0, 1),
-                               ("use_oil_filter", 0, 3), ("use_air_filter", 0, 3), ("use_spark_plugs", 0, 2), ("part:lights_emergency", 0, 1), ("part:wheel_monster", 0, 1) } },
+                               ("use_oil_filter", 0, 3), ("use_air_filter", 0, 3), ("use_spark_plugs", 0, 2), ("part:lights_emergency", 0, 1), ("part:wheel_monster", 0, 1), ("tool_extinguisher", 0, 1) } },
             { "scrap", new[] { ("res:1", 20, 80), ("res:20", 2, 10), ("res:21", 1, 8), ("res:4", 4, 16), ("res:5", 4, 16), ("res:6", 4, 12), ("kit_wall_scrap", 0, 2), ("kit_barricade", 0, 2), ("tool_cutter", 0, 1) } },
             { "pack", new[] { ("food_can", 1, 4), ("drink_water", 2, 6), ("med_bandage", 1, 4), ("med_pills", 0, 2), ("ammo_shells", 0, 8), ("ammo_cartridge", 0, 6),
                               ("use_oil_filter", 0, 2), ("use_air_filter", 0, 1), ("dye_red", 0, 2), ("dye_blue", 0, 2), ("seed_tomato", 0, 3), ("res:6", 2, 8), ("res:32", 0, 4),
@@ -132,7 +136,8 @@ namespace MadMax.Npc
                               ("animal_chick", 0, 4), ("animal_piglet", 0, 1), ("animal_kid", 0, 1), ("animal_lamb", 0, 1), ("food_egg", 0, 6), ("drink_milk", 0, 3) } },
             { "salvage", new[] { ("med_bandage", 1, 5), ("med_pills", 0, 3), ("med_splint", 0, 2), ("med_disinfectant", 0, 2), ("ammo_shells", 5, 20), ("throw_molotov", 0, 3),
                                  ("tool_torch", 1, 3), ("tool_lantern", 0, 2), ("tool_gas_torch", 0, 1), ("tool_pipe_shotgun", 0, 1), ("tool_machete", 0, 1),
-                                 ("book_charm", 0, 1), ("book_mechanics_1", 0, 1), ("vhs_salesman", 0, 1), ("vhs_driving", 0, 1), ("kit_floodlight", 0, 1) } },
+                                 ("book_charm", 0, 1), ("book_mechanics_1", 0, 1), ("vhs_salesman", 0, 1), ("vhs_driving", 0, 1), ("kit_floodlight", 0, 1),
+                                 ("tool_radio", 0, 1), ("tool_crutch", 0, 1), ("pros_hook", 0, 1), ("pros_peg_leg", 0, 1), ("pros_wood_hand", 0, 1), ("pros_wood_foot", 0, 1) } },
             { "build", new[] { ("res:2", 20, 80), ("res:3", 20, 80), ("res:26", 5, 30), ("res:27", 5, 20), ("res:10", 10, 40), ("res:11", 10, 40), ("kit_chest", 0, 2), ("kit_wall_scrap", 0, 3) } },
         };
 
@@ -188,7 +193,7 @@ namespace MadMax.Npc
             { "scrap", new[] { "res:4", "res:5", "res:6", "res:15", "res:16", "res:17", "res:18", "res:20", "res:21", "res:22", "res:23", "kit_" } },
             { "food", new[] { "food_", "drink_", "seed_", "res:28" } },
             { "pack", new[] { "food_", "crop_", "med_", "cloth_", "misc_", "trophy_", "res:6", "res:31", "res:32" } },
-            { "salvage", new[] { "book_", "vhs_", "med_", "tool_", "ammo_", "cloth_", "misc_", "throw_" } },
+            { "salvage", new[] { "book_", "vhs_", "med_", "tool_", "ammo_", "cloth_", "misc_", "throw_", "pros_" } },
             { "build", new[] { "res:2", "res:3", "res:10", "res:11", "res:12", "res:13", "res:24", "res:26", "res:27" } },
         };
 

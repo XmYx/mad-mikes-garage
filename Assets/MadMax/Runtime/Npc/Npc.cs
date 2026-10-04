@@ -32,6 +32,9 @@ namespace MadMax.Npc
         /// <summary>Raiders of a convoy that is attacking.</summary>
         public bool aggro;
         public Convoy convoy;
+        /// <summary>The key of the car this convoy driver climbed out of (looted off the body; <see cref="Convoy"/>).</summary>
+        [System.NonSerialized] public string carriedKey;
+        [System.NonSerialized] public VehicleIgnition keyFor;
         /// <summary>Raiding a claimed base (<see cref="BaseRaid"/>): batter the nearest built piece around
         /// <see cref="raidAt"/> unless the player is close enough to fight.</summary>
         public bool raiding;
@@ -1070,6 +1073,7 @@ namespace MadMax.Npc
                 var cd = ClothingLibrary.Get(o);
                 if (cd?.armor != null && Random.value < 0.7f) loot.extra.Add(ClothingLibrary.ItemId(cd));
             }
+            if (carriedKey != null) loot.extra.Add(carriedKey);                               // the car key on their ring
             if (pack) foreach (var kv in new List<KeyValuePair<string, int>>(pack.inventory.Items)) for (int i = 0; i < kv.Value; i++) loot.extra.Add(kv.Key);   // what they carried for you
             MadMax.Game.LastEngine.BossDrop(Profile, loot);
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);

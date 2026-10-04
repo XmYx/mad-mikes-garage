@@ -225,11 +225,17 @@ namespace MadMax.Game
                     var foot = left ? BodyZone.FootL : BodyZone.FootR;
                     if (!Limbs.Gone(a.lost, foot)) continue;
                     var d = FittedFor(left ? BodyZone.LegL : BodyZone.LegR, foot);
-                    m *= d != null ? d.speed : 0.3f;
+                    m *= d != null ? d.speed : OnCrutch ? CrutchHop : 0.3f;
                 }
                 return Mathf.Max(0.12f, m);
             }
         }
+
+        /// <summary>Hopping speed on a crutch (no prosthetic on that leg).</summary>
+        public const float CrutchHop = 0.55f;
+
+        /// <summary>The player walks with the crutch in hand (it takes the place of any tool).</summary>
+        public bool OnCrutch => Player && Player.Tool && Player.Tool.id == SafetyTools.Crutch;
 
         /// <summary>Stamina drain from fitted pieces (heavy arms, springy legs).</summary>
         public float LimbStamina { get { float m = 1f; foreach (var (_, d) in ProstheticLibrary.Fitted(Look)) m *= d.stamina; return m; } }

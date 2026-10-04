@@ -45,6 +45,13 @@ namespace MadMax.Game
                 if (free < 0) break;
                 Hotbar[free] = id;
             }
+            // a mount arm's tool is part of the body: it always gets a slot (the last pack tool gives way)
+            foreach (var (_, d) in ProstheticLibrary.Fitted(Look))
+            {
+                if (d.tool == null || System.Array.IndexOf(Hotbar, d.tool) >= 0) continue;
+                for (int i = HotbarSize - 1; i >= 0; i--)
+                    if (Hotbar[i] == null || BuiltInTool(Hotbar[i]) <= 0) { Hotbar[i] = d.tool; break; }
+            }
         }
         bool autoSlotMedia = true;
 

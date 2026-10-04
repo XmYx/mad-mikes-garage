@@ -163,6 +163,16 @@ namespace MadMax.World
             return c.mix.Of(FluidFamily.Lube) + c.mix[ResourceType.CrudeOil] + c.mix[ResourceType.Diesel] * 0.6f > 0.4f;
         }
 
+        /// <summary>Dry powder over burning pools (<see cref="MadMax.Game.ExtinguisherTool"/>): puts out every pool alight
+        /// within the radius; returns how many.</summary>
+        public static int Smother(Vector3 at, float radius)
+        {
+            if (!Instance) return 0;
+            int n = 0;
+            foreach (var c in Instance.Near(at, radius, 0f)) if (c.burning > 0f) { c.burning = 0f; Instance.Dirty(c); n++; }
+            return n;
+        }
+
         /// <summary>Fuel and oil (litres) and coolant / acid soaked into the ground within <paramref name="radius"/>.</summary>
         public static void SoakedNear(Vector3 p, float radius, out float fuel, out float toxic)
         {

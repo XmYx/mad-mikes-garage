@@ -151,7 +151,7 @@ namespace MadMax.Game
                 {
                     bool leg = i.zone == BodyZone.LegL || i.zone == BodyZone.LegR || i.zone == BodyZone.FootL || i.zone == BodyZone.FootR;
                     if (!leg) continue;
-                    m *= i.type == Wound.Fracture ? (i.splinted ? 0.7f : 0.45f) : 1f - 0.15f * i.severity;
+                    m *= i.type == Wound.Fracture ? (i.splinted ? (OnCrutch ? 0.85f : 0.7f) : OnCrutch ? 0.6f : 0.45f) : 1f - 0.15f * i.severity;
                 }
                 if (Stats.bodyTemp < 35f) m *= 0.75f;
                 return m * BagSpeed * LimbSpeed;                                                                // a bad back, luggage in hand

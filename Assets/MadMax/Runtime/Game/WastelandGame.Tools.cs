@@ -23,6 +23,15 @@ namespace MadMax.Game
             if (string.IsNullOrEmpty(id) || Inventory.GetItem(id) <= 0) return;
             ToolWear.TryGetValue(id, out var w);
             w += amount * Mathf.Max(0.5f, 1f - Stats.Level(Skill.Crafting) * 0.04f) * GameRules.Current.DamageTaken * QualityWear(id);
+            if (id == SafetyTools.Extinguisher)
+            {
+                // bursts, not wear: a fixed share of the bottle each squeeze, empty stays in the pack for a refill
+                ToolWear.TryGetValue(id, out var was);
+                w = was + amount;
+                if (w >= 0.999f) { w = 1f; Toast("THE EXTINGUISHER IS EMPTY"); }
+                ToolWear[id] = w;
+                return;
+            }
             if (id == "tool_flashlight" && w >= 1f)
             {
                 // a flat battery, not a broken torch: swap in a fresh one if there is one
@@ -44,6 +53,7 @@ namespace MadMax.Game
         public (ResourceType type, int amount) RepairCost(string id)
         {
             float w = 1f - Condition(id);
+            if (id == SafetyTools.Extinguisher) return (ResourceType.Sand, Mathf.Max(1, Mathf.CeilToInt(w * 4f)));   // dry powder
             var t = id.Contains("torch") && !id.Contains("gas") ? ResourceType.Cloth
                   : id == "tool_axe" || id == "tool_shovel" || id == "tool_pickaxe" || id == ItemIds.Sledgehammer ? ResourceType.Iron
                   : id.Contains("geiger") || id.Contains("flashlight") || id.Contains("welder") ? ResourceType.Copper
@@ -60,7 +70,7 @@ namespace MadMax.Game
             ToolWear[id] = 0f;
             Stats.Practice(Skill.Crafting, 3f);
             MadMax.Audio.Sfx.Play2D("ratchet", 0.6f);
-            Toast(ItemCatalog.Name(id) + " REPAIRED");
+            Toast(ItemCatalog.Name(id) + (id == SafetyTools.Extinguisher ? " REFILLED" : " REPAIRED"));
             return true;
         }
 

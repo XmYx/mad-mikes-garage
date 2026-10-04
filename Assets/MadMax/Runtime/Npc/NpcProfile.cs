@@ -155,6 +155,9 @@ namespace MadMax.Npc
             return s;
         }
 
+        /// <summary>The state if this NPC has one yet (never creates it).</summary>
+        public static NpcSave Peek(string id) => id != null && states.TryGetValue(id, out var s) ? s : null;
+
         public static bool IsDead(string id) => states.TryGetValue(id, out var s) && s.dead;
 
         public static List<NpcSave> SaveAll() => new List<NpcSave>(states.Values);

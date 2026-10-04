@@ -657,6 +657,27 @@ namespace MadMax.Vehicles
         float partScan;
         float heatSoak;
 
+        float foam, smotheredUntil;
+
+        /// <summary>Bursts of dry powder (<see cref="MadMax.Game.ExtinguisherTool"/>) needed to put the fire out: more as it
+        /// takes hold and with fuel aboard feeding it.</summary>
+        public float FoamNeeded => 2f + (burnState ? burnState.burn * 4f : 0f) + (fuel > 20f ? 1f : 0f);
+
+        /// <summary>One burst on the engine fire: knocks the flames down; enough of them put it out (true), cool the bay
+        /// and keep it from flaring up again for a minute and a half.</summary>
+        public bool Extinguish(float amount)
+        {
+            if (!fire) return false;
+            foam += amount;
+            fire.intensity *= 0.55f;
+            if (foam < FoamNeeded) return false;
+            Destroy(fire.gameObject);
+            fire = null; foam = 0f; heatSoak = 0f;
+            Temperature = Mathf.Min(Temperature, HotLimit - 10f);
+            smotheredUntil = Time.time + 90f;
+            return true;
+        }
+
         /// <summary>External heat (a fire next to or under the vehicle).</summary>
         public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); }
 
@@ -667,8 +688,9 @@ namespace MadMax.Vehicles
             var damage = GetComponent<VehicleDamage>();
             float frame = damage ? damage.FrameDamage : 0f;
             heatSoak = Mathf.Max(0f, heatSoak - dt * 0.2f);
-            // ignition: cooked engine, ruptured fuel system on a wreck, or outside heat
-            if (!fire && (Temperature > CriticalLimit + 15f || (frame > 0.85f && fuel > 1f && UnityEngine.Random.value < dt * 0.05f) || heatSoak > 2f))
+            foam = Mathf.Max(0f, foam - dt * 0.08f);
+            // ignition: cooked engine, ruptured fuel system on a wreck, or outside heat (not while the powder is fresh)
+            if (!fire && Time.time >= smotheredUntil && (Temperature > CriticalLimit + 15f || (frame > 0.85f && fuel > 1f && UnityEngine.Random.value < dt * 0.05f) || heatSoak > 2f))
                 fire = MadMax.World.Fire.Ignite(enginePos + Vector3.up * 0.3f, transform, 25f + fuel * 0.5f, 0.7f);
             if (!fire) return;
             f |= Fault.OnFire;

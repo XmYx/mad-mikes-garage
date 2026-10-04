@@ -1375,11 +1375,11 @@ radio calls from the workshop, news wrecks picked over by scavengers, seasonal f
 the editor world (no lake within 2.4 km of the start) — look at the lake search radius.
 
 ### Suggestions (tie the experience together)
-- [ ] **Journal job list is flooded**: on day 1 the journal lists ~40 `? NAME` story-cast pins (every authored person
+- [x] **Journal job list is flooded**: on day 1 the journal lists ~40 `? NAME` story-cast pins (every authored person
   as a job) before the player's real jobs — group them under one STORY line per quest, or show only quests in progress.
 - [ ] **Scavengers you can deal with**: the wreck scavenger offers what they stripped for trade (the removed parts go
   into their stock instead of vanishing), or fights for it if the player is hostile — the late arrival becomes a choice.
-- [ ] **Home frequency needs a radio**: the calls reach the journal always but the radio only when one is on; a cheap
+- [x] **Home frequency needs a radio**: the calls reach the journal always but the radio only when one is on; a cheap
   handheld radio item (`tool_radio`) in the starting kit would make the base's voice part of every trip.
 - [ ] **Ledger with actions**: HOME lines become selectable — ENTER on a stalled station sets a waypoint, on WEATHERED
   lists the pieces (and their repair cost), on PANTRY opens the cooking stations that would save the rotting food.
@@ -1404,11 +1404,11 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
   hydraulic arm, peg, strut, spring blade, wooden foot); crafted, looted; fitted on healed stumps.
 
 ### Suggestions
-- [ ] **Extinguisher item**: a fire extinguisher (and sand from the shovel) to beat a vehicle fire before the tank roll.
-- [ ] **Key rings on NPC drivers**: convoy drivers carry their car's key (loot it off the body) instead of leaving it in.
+- [x] **Extinguisher item**: a fire extinguisher to beat a vehicle fire before the tank roll (2026-10-04 scheduled; sand thrown from the shovel still open).
+- [x] **Key rings on NPC drivers**: convoy drivers carry their car's key (loot it off the body) instead of leaving it in.
 - [ ] **HD prosthetic meshes**: a Blender group for the twelve pieces (they render as 4 cm voxel props today).
-- [ ] **Crutch tool**: a one-legged player hops at 30 %; a crutch (two-handed, no tools) could lift that to 55 %.
-- [ ] **Prosthetics at the clinic vendor**: medical traders stock hooks and pegs; surgeons fit them for scrap.
+- [x] **Crutch tool**: a one-legged player hops at 30 %; a crutch (two-handed, no tools) could lift that to 55 %.
+- [x] **Prosthetics at the clinic vendor**: medical (salvage) traders stock hooks and pegs (2026-10-04 scheduled); surgeons fitting them for scrap still open.
 
 ## Interface pass (2026-10-05)
 - [x] **No spoilers in player text**: condition / odds / growth / trust in words, fuel blends by smell, symptoms not
@@ -1420,7 +1420,7 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 
 ### Suggestions
 - [ ] **Descriptions for every build piece** (`FurnitureDef.desc`): the panel reads most from the piece's id today.
-- [ ] **survival.loop** still grants loose fuel and presses G: update it to the can-based refuel (2026-10-02 fluids).
+- [x] **survival.loop** still grants loose fuel and presses G: update it to the can-based refuel (2026-10-02 fluids).
 - [x] **Search box** in the catalogues, labelled cells sorted A–Z, filter chips (known / can make / can build), unknown recipes greyed, hover-only panel.
 - [x] **HANDCRAFT** on foot (N): simple raw-material recipes without a bench, slower, queue of 4, saved.
 
@@ -1449,3 +1449,29 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 - [ ] SSR on water (needs a DepthNormals pass on the transparent water shader) and in the orthographic views (URP SSR skips orthographic cameras)
 - [ ] GTAO ambient occlusion (needs URP's `MODERN_SSAO` define)
 
+## Scheduled update (2026-10-04)
+Done this pass (ticked above): story offers in the journal (one "?" per giver, named only once met, at most the three
+nearest strangers; jobs in progress always), the fire extinguisher (`tool_extinguisher`: 8 bursts, an engine fire takes
+2–7 by how far it has taken hold, stays out 90 s, refilled with sand like a repair; also smothers prop/ground fires and
+burning spill pools), convoy drivers who climb out carry the key (`Npc.carriedKey`, looted off the body; back in the
+ignition when they get back in), the crutch (hop 0.3 → 0.55, broken leg 0.45 → 0.6, splinted 0.7 → 0.85), the handheld
+radio (`tool_radio`, starting kit: a receiver in hand, the home frequency from the pack), prosthetics / crutches /
+radios at salvage vendors with real prices; a mount arm's tool always gets a hotbar slot (the starting radio filled the
+bar). Scenarios `Acceptance/Blocks/ScheduledScenarios1004.cs` — all six pass in a Linux player build, plus vehicle.burnout,
+vehicle.keys, body.limbs, body.prosthetics, base.home_radio, story.first_hour, story.sandbox, items.visible, ui.catalogue,
+ui.no_spoilers. `survival.loop` is flaky: once the Sedan sat at 2000 rpm in gear 1 doing 0 m/s in rain (radiator leak),
+then passed on the re-run — look at the launch assists on wet ground.
+
+### Suggestions (tie the experience together)
+- [ ] **The car as a kit**: a glovebox / boot checklist (extinguisher, first-aid kit, spare key, tyre patch, flares)
+  shown on the vehicle's LOOT panel and as a FIRST STEPS tip — every trip starts with deciding what rides along.
+- [ ] **NPC drivers fight fires too**: convoy cars carry an extinguisher; a driver whose engine catches climbs out and
+  beats it (or abandons the car when it's past saving) — raider molotovs become a fight over a car, not a coin toss.
+- [ ] **Spare keys and locksmiths**: a key blank + the original at a workbench cuts a copy (companions can take a fleet
+  car); town mechanics sell a key for a found car whose key is lost, for scrap and a day's wait.
+- [ ] **Walkie-talkie orders**: a companion carrying a handheld radio takes orders from any distance (come, hold, bring
+  the car) through the radio keys — the radio as the tool that keeps a crew together.
+- [ ] **Rumours reveal givers**: unmet story givers beyond the nearest three are heard of in town talk (`Dialogue`
+  rumours: "THE RELAY WOMAN OUT EAST NEEDS A HAND") and only then pinned — the journal grows by talking to people.
+- [ ] **Recovery arc for a broken leg**: a splinted fracture heals over days; the crutch, rest in a bed and the clinic
+  speed it; until then driving a manual is out (clutch foot) — the injury becomes a few days of play, not a number.
