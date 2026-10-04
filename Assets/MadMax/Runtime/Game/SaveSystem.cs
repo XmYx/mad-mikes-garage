@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MadMax.Game
 {
-    [Serializable] public class SocketSave { public string socket, part, state; public float damage, wear; public int q; }   // q = make + 1 (0: unknown, sturdy)
+    [Serializable] public class SocketSave { public string socket, part, state; public float damage, wear, mud; public int q; }   // q = make + 1 (0: unknown, sturdy)
 
     [Serializable]
     public class VehicleSave
@@ -29,6 +29,8 @@ namespace MadMax.Game
         public string paint;               // VehiclePaint colour,decal
         public string service;             // VehicleSystems maintenance (oil life, air filter, plugs, hours)
         public string wear;                // VehicleBreakables: broken glass and lamps, scraped paint
+        public string burn;                // VehicleBurn: "burn[,c charred][,x exploded][,r tank rolled]"
+        public string ignition;            // VehicleIgnition: "where,hotwired,id" (null = key in the ignition)
         public string storage;             // VehicleStorage compartments (trunk, glovebox, back seat...)
         public string fluids;              // VehicleSystems blends: fuel tank, sump, coolant (null = pure, from tank)
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
@@ -102,6 +104,7 @@ namespace MadMax.Game
         public List<uint> storyProps = new List<uint>();
         // depth blocks (WastelandGame.Blocks): each block's own saved state
         public List<string> blockItems = new List<string>();
+        public List<string> handcraft = new List<string>();      // personal handcraft jobs: "recipe id|progress|cost mult"
         public List<string> blockAnim = new List<string>();
         public List<string> blockRoads = new List<string>();
         public List<string> blockMetal = new List<string>();

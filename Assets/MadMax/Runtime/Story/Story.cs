@@ -269,6 +269,7 @@ namespace MadMax.Story
             if (r.scrap > 0) { g.Inventory.Add(ResourceType.Scrap, r.scrap); parts.Add(r.scrap + " SCRAP"); }
             foreach (var (item, n) in r.items) { g.Inventory.AddItem(item, n); parts.Add(ItemCatalog.Name(item)); }
             foreach (var (t, n) in r.resources) { g.Inventory.Add(t, n); parts.Add(n + " " + ResourceInfo.Name(t)); }
+            foreach (var (can, t, l) in r.cans) { g.GiveFilledCan(can, t, l); parts.Add(ItemCatalog.Name(can) + " (" + Mathf.RoundToInt(l) + " L " + ResourceInfo.Name(t) + ")"); }
             foreach (var (skill, xp) in r.training) g.Stats.Practice(skill, xp);
             if (r.flag != null) flags.Add(r.flag);
             foreach (var e in r.evidence) if (evidence.Add(e)) { Journal.Add("EVIDENCE", EvidenceText(e)); parts.Add("EVIDENCE: " + EvidenceName(e)); }

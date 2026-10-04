@@ -50,9 +50,17 @@ namespace MadMax.Rendering
 
         public static void Invalidate() { done.Clear(); failed.Clear(); }
 
+        /// <summary>The HD icon for <paramref name="key"/> at <paramref name="size"/> is done.</summary>
+        public static bool Ready(string key, int size) => done.ContainsKey(key + "#" + size) || done.ContainsKey(key + "#" + size + "d");
+
         static HDAssetRef Resolve(string key)
         {
+            int hash = key.IndexOf('#');
+            if (hash > 0) key = key.Substring(0, hash);                                         // catalogue keys carry their size
             if (key.StartsWith("feed:")) key = key.Substring(5);
+            if (key.StartsWith("piece:")) return HDAssets.Get(HDDomain.Furniture, key.Substring(6));
+            if (key.StartsWith("part:")) return HDAssets.Get(HDDomain.Part, key.Substring(5));
+            if (key.StartsWith("vehicle:")) return null;
             string id = MadMax.Items.WorldItemModels.HDId(key, out var domain);
             var a = HDAssets.Get(domain, id);
             if (a) return a;

@@ -22,7 +22,8 @@ namespace MadMax.Game
             DevWeather, DevDropPart, DevRepair,
             ToolUp, ToolDown, ToolLeft, ToolRight, ToolA, ToolB,                // machines, cranes and aircraft (appended: saved maps keep their slots)
             Context,                                                            // context menu on what the cursor / crosshair is on (RMB tap too)
-            Loot                                                                // pin / unpin the floating loot panels
+            Loot,                                                               // pin / unpin the floating loot panels
+            Craft                                                               // the HANDCRAFT menu (appended)
         }
 
         public static readonly int Count = System.Enum.GetValues(typeof(Act)).Length;
@@ -37,7 +38,7 @@ namespace MadMax.Game
             Key.Y, Key.X, Key.U, Key.R, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.F9, Key.Backspace, Key.F10,
             Key.UpArrow, Key.DownArrow, Key.LeftArrow, Key.RightArrow, Key.Q, Key.E,
-            Key.Backquote, Key.L
+            Key.Backquote, Key.L, Key.N
         };
 
         /// <summary>Labels for the CONTROLS page.</summary>
@@ -51,7 +52,7 @@ namespace MadMax.Game
             "BUILD: ROTATE", "BUILD: DISMANTLE", "BUILD: UPGRADE", "BUILD: REPAIR", "BUILD: PREV CATEGORY", "BUILD: NEXT CATEGORY", "BUILD: PREV PIECE", "BUILD: NEXT PIECE",
             "DEV: WEATHER", "DEV: DROP PART", "DEV: INSTANT REPAIR",
             "TOOL UP / NOSE", "TOOL DOWN / NOSE", "TOOL LEFT / RUDDER", "TOOL RIGHT / RUDDER", "TOOL A: CURL, GRAB / ROLL LEFT", "TOOL B: DUMP / ROLL RIGHT",
-            "CONTEXT MENU (ALSO RMB TAP)", "LOOT PANELS (PIN / UNPIN)"
+            "CONTEXT MENU (ALSO RMB TAP)", "LOOT PANELS (PIN / UNPIN)", "HANDCRAFT (ON FOOT)"
         };
 
         static Key[] map;

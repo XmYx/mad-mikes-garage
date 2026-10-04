@@ -44,7 +44,7 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             if (field >= 0f && field <= 0.05f) return "PUMPJACK: NO OIL UNDER HERE";
-            return "[E] FILL A CAN WITH CRUDE " + Mathf.FloorToInt(stored) + "/" + capacity + " L  FIELD " + Mathf.RoundToInt(field * 100f) + "%" + (node && !node.Powered ? "  NO POWER" : "");
+            return "[E] FILL A CAN WITH CRUDE " + Mathf.FloorToInt(stored) + "/" + capacity + " L" + (field > 0.6f ? "  THE FIELD RUNS STRONG" : field > 0.25f ? "  THE FIELD RUNS STEADY" : "  THE FIELD RUNS THIN") + (node && !node.Powered ? "  NO POWER" : "");
         }
 
         /// <summary>Crude leaves the tank only into a container (the siphon choice opens with the best one in the pack).</summary>

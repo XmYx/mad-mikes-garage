@@ -28,7 +28,7 @@ namespace MadMax.Items
             return ItemCategory.Other;
         }
 
-        public static float Weight(string id) => MadMax.Game.BagLibrary.IsFilled(id) ? MadMax.Game.BagLibrary.FilledWeight(id) : id.StartsWith("coin_") ? 0.002f : MetalItems.Weight(id) > 0f ? MetalItems.Weight(id) : FluidContainers.Get(id) is FluidContainers.Def fc ? fc.emptyKg : Category(id) switch
+        public static float Weight(string id) => MadMax.Game.BagLibrary.IsFilled(id) ? MadMax.Game.BagLibrary.FilledWeight(id) : id.StartsWith("coin_") ? 0.002f : ItemIds.IsCarKey(id) ? 0.02f : MadMax.Game.ProstheticLibrary.Get(id) is MadMax.Game.ProstheticDef pd ? pd.kg : id.StartsWith("limb_") ? (id == "limb_leg" ? 4f : id == "limb_arm" ? 1.8f : 0.6f) : MetalItems.Weight(id) > 0f ? MetalItems.Weight(id) : FluidContainers.Get(id) is FluidContainers.Def fc ? fc.emptyKg : Category(id) switch
         {
             ItemCategory.Tool => id == ItemIds.Sledgehammer ? 5f : 1.5f,
             ItemCategory.Weapon => id == "tool_bolt_rifle" ? 4f : id == "tool_crossbow" ? 3.5f : id == "tool_knife" || id == "tool_slingshot" ? 0.3f : id == "tool_bow" || id == "tool_flare_gun" ? 1f : id == "tool_revolver" || id == "tool_pipe_pistol" ? 1.2f : 2.5f,

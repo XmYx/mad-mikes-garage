@@ -42,7 +42,7 @@ namespace MadMax.Building
         {
             var def = FoodLibrary.Crop(sapling);
             if (def == null) return null;
-            if (growth < 1f) return def.name + " " + Mathf.RoundToInt(growth * 100) + "%";
+            if (growth < 1f) return def.name + " " + MadMax.Game.Words.Growth(growth);
             return fruit >= 1f ? "[E] PICK " + def.name : def.name + " (CHOP WITH AXE)";
         }
 

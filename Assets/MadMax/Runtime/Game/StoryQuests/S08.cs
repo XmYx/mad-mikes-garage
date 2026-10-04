@@ -85,7 +85,7 @@ namespace MadMax.Game
                 MadMax.Story.Story.SetFlag("s08:torn");
                 ClothWear.TryGetValue("duster", out float w);
                 ClothWear["duster"] = Mathf.Max(w, 0.72f);
-                Toast("THE GROOM'S COAT: A SLEEVE HALF OFF, THE HEM IN RIBBONS (" + Mathf.RoundToInt(GarmentCondition("duster") * 100f) + "%)");
+                Toast("THE GROOM'S COAT: A SLEEVE HALF OFF, THE HEM IN RIBBONS");
             }
             if (MadMax.Story.Story.Flag("s08:torn") && Inventory.GetItem("cloth_duster") > 0 && GarmentCondition("duster") >= 0.95f)
             {

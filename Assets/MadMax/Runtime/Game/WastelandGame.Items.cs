@@ -33,12 +33,12 @@ namespace MadMax.Game
         /// <summary>Drop gone items from the hotbar and slot in newly owned ones.</summary>
         void SyncHotbar()
         {
-            for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) + BeltCount(Hotbar[i]) <= 0) Hotbar[i] = null;   // tools on a belt stay slotted
+            for (int i = 0; i < HotbarSize; i++) if (Hotbar[i] != null && Inventory.GetItem(Hotbar[i]) + BeltCount(Hotbar[i]) + BuiltInTool(Hotbar[i]) <= 0) Hotbar[i] = null;   // tools on a belt or a mount arm stay slotted
             var order = new List<string>(ToolLibrary.AllIds);
             foreach (var kv in Inventory.Items) if (kv.Value > 0 && !order.Contains(kv.Key)) order.Add(kv.Key);
             foreach (var id in order)
             {
-                if (Inventory.GetItem(id) + BeltCount(id) <= 0 || !HotbarItem(id) || System.Array.IndexOf(Hotbar, id) >= 0) continue;
+                if (Inventory.GetItem(id) + BeltCount(id) + BuiltInTool(id) <= 0 || !HotbarItem(id) || System.Array.IndexOf(Hotbar, id) >= 0) continue;
                 var cat = ItemCatalog.Category(id);
                 if ((cat == ItemCategory.Media && !autoSlotMedia) || cat == ItemCategory.Food || cat == ItemCategory.Seed) continue;   // food and seeds only when assigned
                 int free = System.Array.IndexOf(Hotbar, null);
@@ -88,12 +88,13 @@ namespace MadMax.Game
         /// <summary>Equip a tool, read a book, play a tape, or place a kit.</summary>
         public void UseItem(string id)
         {
-            if (Inventory.GetItem(id) <= 0 && !DrawFromBelt(id)) return;                          // a tool belt: straight into the hand
+            if (Inventory.GetItem(id) <= 0 && BuiltInTool(id) <= 0 && !DrawFromBelt(id)) return;   // a tool belt: straight into the hand; a mount arm has its own
             switch (ItemCatalog.Category(id))
             {
                 case ItemCategory.Tool:
                 case ItemCategory.Weapon:
                     if (Current) return;
+                    if (!CanUse(id) && !(Player.Tool && Player.Tool.id == id)) { Toast("NO HAND TO HOLD IT"); return; }
                     if (Player.Tool && Player.Tool.id == id) Player.Equip(null);
                     else Player.Equip(ToolLibrary.Create(id, propMaterial));
                     break;
@@ -313,7 +314,7 @@ namespace MadMax.Game
         }
 
         // ---------------------------------------------------------------- loot
-        static readonly string[] LootMedia = { "book_mechanics_1", "book_mechanics_2", "book_gunsmith", "book_builder", "book_scrapper", "book_chemistry", "vhs_driving", "vhs_survival", "vhs_karate", "vhs_demolition" };
+        static readonly string[] LootMedia = { "book_mechanics_1", "book_mechanics_2", "book_gunsmith", "book_builder", "book_scrapper", "book_hotwiring", "book_chemistry", "vhs_driving", "vhs_survival", "vhs_karate", "vhs_demolition" };
 
         /// <summary>Chance to turn up a book or tape while salvaging (Perception and Salvaging help).</summary>
         public void RollLoot(float baseChance)

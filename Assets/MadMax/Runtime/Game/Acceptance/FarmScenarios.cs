@@ -22,16 +22,29 @@ namespace MadMax.Game.Acceptance
             if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
             if (!TestWorld.Pad(26f, 0f, out var pad, out var dir)) { c.Block("no open pad"); yield break; }
             var side = Vector3.Cross(Vector3.up, dir);
-            // a clear lane off the road: two 2 m cells wide and 16 m long, every cell tillable
+            // a clear lane off the road: four 2 m cells wide and 16 m long, every cell tillable, level and free of
+            // props (which only stream in near the player: walk over, let them load, look again)
             var field = pad + side * 14f; bool lane = false;
-            for (int k = 0; k < 24 && !lane; k++)
+            int first = 0;
+            for (int attempt = 0; attempt < 14; attempt++)
             {
-                var start = pad + side * (12f + k * 3f);
-                lane = true;
-                for (float t = 0f; t <= 16f && lane; t += 2f)
-                    foreach (float o in new[] { -1f, 1f })
-                        if (!Fields.CanTill(start + dir * t + side * o, out _)) { lane = false; break; }
-                if (lane) field = start;
+                lane = false;
+                for (int k = first; k < 200 && !lane; k++)                                            // off any paving (the start yard is paved): both sides, further out
+                {
+                    var start = pad + side * ((k & 1) == 0 ? 1f : -1f) * (12f + (k / 2) * 3f);
+                    lane = true;
+                    for (float t = 0f; t <= 16f && lane; t += 2f)
+                        foreach (float o in new[] { -3f, -1f, 1f, 3f })                                // the sprayer's booms reach 2.1 m out
+                            if (!Fields.CanTill(start + dir * t + side * o, out _) || Flat(start + dir * t + side * o) < 0.99f) { lane = false; break; }   // level: the tractor crawls up soft slopes
+                    if (lane && !Clear(start - dir * 4f, dir, 24f, 6f)) lane = false;              // rocks and props the implements would catch on
+                    if (lane) { field = start; first = k + 1; }
+                }
+                if (!lane) break;
+                var look = field + side * 5f; look.y = MadMax.World.DeformableTerrain.Instance.Height(look.x, look.z) + 0.3f;
+                g.Player.Teleport(look, 0f);
+                yield return new WaitForSeconds(2.5f);                                               // the props there spawn
+                if (Clear(field - dir * 4f, dir, 24f, 6f)) break;
+                lane = false;
             }
             if (!lane) c.Note("no fully clear lane found; using the nearest");
             // ---- by hand: hoe, then sow
@@ -132,6 +145,19 @@ namespace MadMax.Game.Acceptance
 
         /// <summary>One pass down the lane: back to the headland (a disclosed fixture: the driver's turn), implement
         /// lowered, 16 m straight at a walking pace.</summary>
+        /// <summary>Nothing but terrain and triggers in a 2.5 m high box over the strip (<paramref name="width"/> m wide).</summary>
+        static bool Clear(Vector3 from, Vector3 dir, float length, float width)
+        {
+            var t = MadMax.World.DeformableTerrain.Instance;
+            var mid = from + dir * (length * 0.5f); mid.y = t.Height(mid.x, mid.z) + 1.35f;
+            int terrain = LayerMask.NameToLayer("Terrain");
+            foreach (var col in Physics.OverlapBox(mid, new Vector3(width * 0.5f, 1.2f, length * 0.5f), Quaternion.LookRotation(dir), ~0, QueryTriggerInteraction.Ignore))
+                if (col.gameObject.layer != terrain && !col.GetComponentInParent<VehicleDriver>() && !col.GetComponentInParent<PlayerCharacter>()) return false;
+            return true;
+        }
+
+        static float Flat(Vector3 p) => MadMax.World.DeformableTerrain.Instance.Normal(p.x, p.z).y;
+
         static IEnumerator Pass(ScenarioContext c, VehicleDriver tr, Vector3 headland, Vector3 dir)
         {
             var m = tr.GetComponent<Machine>(); int w0 = m.Worked;
@@ -149,7 +175,17 @@ namespace MadMax.Game.Acceptance
                 tr.brakeInput = 0f;
                 yield return null;
             }
-            c.Note($"pass: moved {Vector3.Distance(p0, tr.transform.position):0.0} m in {Time.time - t0:0.0} s, worked {m.Worked - w0}, {m.Status}");
+            var touching = new System.Collections.Generic.HashSet<string>();
+            foreach (var col in tr.GetComponentsInChildren<MountSocket>().Where(k => k.name == "tool" && k.Current).SelectMany(k => k.Current.GetComponentsInChildren<Collider>()))
+            {
+                if (!col.enabled) continue;
+                var b = col.bounds;
+                foreach (var o in Physics.OverlapBox(b.center, b.extents, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+                    if (!o.transform.IsChildOf(tr.transform) && o.gameObject.layer != LayerMask.NameToLayer("Terrain")) touching.Add(o.name + "@" + LayerMask.LayerToName(o.gameObject.layer) + " vs " + col.name + "@" + LayerMask.LayerToName(col.gameObject.layer));
+            }
+            c.Note("implement overlaps: " + (touching.Count == 0 ? "none" : string.Join("; ", touching)) + $"; body mass {tr.Body.mass:0} kg");
+            var gs = MadMax.World.DeformableTerrain.Instance.SurfaceAt(p0.x, p0.z);
+            c.Note($"pass: moved {Vector3.Distance(p0, tr.transform.position):0.0} m in {Time.time - t0:0.0} s, worked {m.Worked - w0}, {m.Status} (ground: level {Flat(p0):0.000}, soft {gs.softness:0.00}, mud {gs.mud:0.00}; {TestWorld.Contacts(tr)}; {TestWorld.State(tr)})");
             tr.throttleInput = 0f; tr.brakeInput = 1f; tr.steerInput = 0f;
             yield return new WaitForSeconds(0.6f);
             tr.brakeInput = 0f;

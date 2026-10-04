@@ -79,7 +79,17 @@ namespace MadMax.Game.Acceptance
             c.Note($"at the car: prompt '{g.Prompt}', tank {fuelKind}, pack {inv.Get(fuelKind)} L");
             yield return SurvivalKit.Press(Controls.Act.Service);
             yield return SurvivalKit.GameSeconds(0.5f);
-            c.Check(g.Working || g.Refuelling || (sys && sys.fuel > fuel0), "the service key starts the refuel (walk up, pour): " + (g.ToastText ?? g.Prompt));
+            // G equips a can and opens its choice: an empty can fills from the pack first, then pours into the tank
+            if (g.FluidChoiceOpen && !g.RadialActions.Any(a => a.label.Contains("FUEL TANK")) && g.PickRadial("PACK"))
+            {
+                yield return SurvivalKit.GameSeconds(0.3f);
+                yield return SurvivalKit.Press(Controls.Act.Service);
+                yield return SurvivalKit.GameSeconds(0.3f);
+            }
+            c.Note("pour choice: " + FluidsScenarios.Slices(g));
+            if (g.FluidChoiceOpen) g.PickRadial("FUEL TANK");
+            yield return SurvivalKit.GameSeconds(0.5f);
+            c.Check(g.Working || g.Refuelling || (sys && sys.fuel > fuel0), "the service key starts the refuel (a can from the pack, walk up, pour): " + (g.ToastText ?? g.Prompt));
             yield return SurvivalKit.Until(() => !g.Working && !g.Refuelling && g.StarterStep >= 2, 60f, w);
             c.Note($"after the refuel: working {g.Working}, refuelling {g.Refuelling}, step {g.StarterStep}, toast '{g.ToastText}'");
             c.Check(sys && sys.fuel > fuel0 + 0.5f, $"the service key fills the tank from the pack ({fuel0:0.0} -> {(sys ? sys.fuel : 0f):0.0} L)");

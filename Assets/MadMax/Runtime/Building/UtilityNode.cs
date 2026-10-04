@@ -4,7 +4,9 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    [System.Flags] public enum UtilityKind : byte { None = 0, Power = 1, Water = 2 }
+    /// <summary>What a node carries; a link of kind <c>Water | OneWay</c> is a one-way pipe from the node that holds it
+    /// to the other (<see cref="UtilityGrid"/>).</summary>
+    [System.Flags] public enum UtilityKind : byte { None = 0, Power = 1, Water = 2, OneWay = 8 }
 
     /// <summary>A piece on the power and/or water network. Cables and pipes are links stored on the node that made them.
     /// Producers set <see cref="produce"/>, consumers set <see cref="demand"/> every frame; <see cref="UtilityGrid"/> solves.</summary>
@@ -54,6 +56,8 @@ namespace MadMax.Building
         [System.NonSerialized] public WaterTaint convertedTaint;
 
         internal int powerNet = -1, waterNet = -1;
+        /// <summary>Litres that left this node through its one-way pipes (tests).</summary>
+        [System.NonSerialized] public float flowed;
 
         public readonly List<(uint id, UtilityKind kind)> links = new List<(uint, UtilityKind)>();
 

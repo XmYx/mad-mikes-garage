@@ -137,7 +137,7 @@ namespace MadMax.Game.Acceptance
             c.Check(g.Fleet.Count == 1, $"one vehicle to your name ({g.Fleet.Count})");
             var car = g.Fleet.Count > 0 ? g.Fleet[0] : null;
             var sys = car ? car.GetComponent<VehicleSystems>() : null;
-            if (!c.Check(sys && sys.disconnected && sys.fuel < 0.5f, "the stranded car has a loose battery lead and an empty tank")) yield break;
+            if (!c.Check(sys && sys.disconnected && sys.fuel >= 5f, $"the stranded car has a loose battery lead and fuel in the tank ({(sys ? sys.fuel : 0f):0.0} L)")) yield break;
             sys.Crank();
             c.Check(!sys.Cranking, "a loose lead: the starter doesn't even turn");
             c.Screenshot("wake");
@@ -145,6 +145,8 @@ namespace MadMax.Game.Acceptance
 
             // ---- A1: the satchel
             yield return Walk(c, "satchel", 1.5f);
+            c.Check(!MadMax.Story.Story.StepDone("A1", "things"), "walking up to the satchel takes nothing");
+            H.TakeSatchel(c);
             yield return Until(() => MadMax.Story.Story.StepDone("A1", "things"), 4f);
             c.Check(MadMax.Story.Story.StepDone("A1", "things") && g.Inventory.GetItem(ItemIds.Wrench) > 0, "your things: a wrench, a knife, a canteen, a tin, a bandage");
             // ---- Nell's stop
@@ -164,13 +166,18 @@ namespace MadMax.Game.Acceptance
             g.Build.Repair(rc);
             yield return Until(() => MadMax.Story.Story.StepDone("A1", "collector"), 4f);
             c.Check(rc.hits == rc.MaxHits && MadMax.Story.Story.StepDone("A1", "collector"), "the rain collector is patched");
-            c.Check(g.Inventory.Get(ResourceType.Fuel) >= 8, "Nell pays in fuel (" + g.Inventory.Get(ResourceType.Fuel) + " L)");
+            var nellCan = g.CansOf(FluidContainers.FuelCan).FirstOrDefault(k => !k.Empty);
+            c.Check(nellCan != null && nellCan.litres >= 7.9f && nellCan.mix.Main == ResourceType.Fuel, "Nell pays with her fuel can, petrol in it (" + (nellCan != null ? nellCan.Describe(10f) : "no can") + ")");
             // ---- the stranded car
             yield return Walk(c, "car", 3f);
             sys.Reconnect();
             c.Fixture("battery lead reconnected (the service key's wrench action)");
-            int moved = sys.Service(g.Inventory);
-            c.Check(sys.fuel >= 5f, $"fuel poured in from the can ({moved} L)");
+            // the player's way: G at the car equips the can and opens the pour radial; the pour is timed work
+            float tank0 = sys.fuel;
+            c.Check(g.UseCanAt(car, false) && g.PickRadial("FUEL TANK"), "G at the car: pour the can into the fuel tank (" + FluidsScenarios.Slices(g) + ")");
+            yield return Until(() => sys.fuel >= tank0 + 7.5f && !g.Working, 30f);
+            if (sys.fuel < tank0 + 7.5f) c.Note("pour: " + g.LastTransferNote + "; work " + g.LastWork + " '" + g.LastWorkNote + "'; " + g.WorkDebug);
+            c.Check(sys.fuel >= tank0 + 7.5f, $"Nell's petrol is in the tank ({tank0:0.0} -> {sys.fuel:0.0} L)");
             // onto the road, pointing along it (a player steers there; the test doesn't steer)
             if (NearestRoad(g.World, car.transform.position, out var rp, out var rd))
             {
@@ -214,6 +221,12 @@ namespace MadMax.Game.Acceptance
             var bar = Placeable.All.FirstOrDefault(p => p && p.id == "barricade" && g.IsStoryProp(p));
             if (!c.Check(bar, "a barricade blocks the garage doorway")) yield break;
             c.Screenshot("garage");
+            yield return null;
+            // the player's way: RMB on it, DISMANTLE (claw hammer); smashing it works too
+            if (g.Inventory.GetItem(ItemIds.ClawHammer) <= 0) g.Inventory.AddItem(ItemIds.ClawHammer);
+            var dis = g.ContextOptionsFor(bar).FirstOrDefault(o => o.label.StartsWith("DISMANTLE"));
+            c.Check(dis != null && dis.blocked == null, "RMB on the barricade offers DISMANTLE" + (dis != null && dis.blocked != null ? " (" + dis.blocked + ")" : ""));
+            if (dis != null && dis.blocked == null) dis.run();
             yield return null;
             for (int i = 0; i < 12 && bar; i++) { bar.ApplyHit(bar.transform.position + Vector3.up * 0.5f, Vector3.forward, 1f, 0.4f, g.Player.gameObject); yield return null; }
             yield return Until(() => MadMax.Story.Story.StepDone("B1", "clear"), 4f);
@@ -588,6 +601,17 @@ namespace MadMax.Game.Acceptance
     /// <summary>Shared test steps for story scenarios.</summary>
     static class H
     {
+        /// <summary>[E] on the A1 satchel lying by the wreck (nothing is collected by walking up to it).</summary>
+        public static bool TakeSatchel(ScenarioContext c)
+        {
+            var at = StoryAnchors.Get("satchel");
+            MadMax.Items.WorldItem bag = null;
+            foreach (var w in MadMax.Items.WorldItem.All)
+                if (w && w.key.StartsWith("cloth_canvas_satchel") && new Vector2(w.transform.position.x - at.x, w.transform.position.z - at.z).sqrMagnitude < 16f) bag = w;
+            c.Check(bag && bag.GetComponentInChildren<MeshRenderer>(), "your satchel lies by the wreck, visible");
+            return bag && c.Game.PickUpItem(bag);
+        }
+
         public static IEnumerator Walk(ScenarioContext c, string anchor, float off)
         {
             var g = c.Game;

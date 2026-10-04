@@ -194,7 +194,7 @@ namespace MadMax.Game
             Register(v, v.driveable ? wrecks : null);
             Ruin(v, new System.Random(seed));
             if (go.TryGetComponent<VehicleDamage>(out var settle)) { settle.graceUntil = Time.time + 4f; settle.AddFrameDamage(0.5f, 1f); }
-            if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = sys.fuelCapacity * 0.05f; }
+            if (go.TryGetComponent<VehicleSystems>(out var sys) && !(go.TryGetComponent<VehicleBurn>(out var vb) && vb.charred)) { sys.fuel = sys.fuelCapacity * 0.05f; }
             v.Body.isKinematic = true;
             return v;
         }
@@ -236,7 +236,10 @@ namespace MadMax.Game
                 dmg.AddFrameDamage((float)rnd.NextDouble() * 0.6f, rnd.NextDouble() < 0.5 ? -1f : 1f);
             }
             int stash = rnd.Next();
-            if (v.TryGetComponent<VehicleStorage>(out var storage)) storage.FillWreck(stash);         // a searchable trunk and glovebox
+            bool burned = rnd.NextDouble() < 0.12;                                                   // burned out where it stopped
+            if (v.TryGetComponent<VehicleStorage>(out var storage) && !burned) storage.FillWreck(stash);   // a searchable trunk and glovebox
+            if (burned && v.TryGetComponent<VehicleBurn>(out var vb)) vb.Char(false);
+            if (v.TryGetComponent<VehicleIgnition>(out var ign)) ign.RollWreck(new System.Random(stash ^ 0x6b1d), storage);   // after the stash: the glovebox may hold the key
         }
 
         /// <summary>Wake bodies near the player (terrain colliders exist there), freeze distant ones.</summary>

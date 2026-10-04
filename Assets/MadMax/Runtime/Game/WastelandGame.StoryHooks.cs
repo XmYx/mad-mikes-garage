@@ -5,6 +5,8 @@ namespace MadMax.Game
     /// Implement them in Game/StoryQuests/&lt;id&gt;.cs (public partial class WastelandGame).</summary>
     public partial class WastelandGame
     {
+        partial void Scene_A1();
+        partial void Tick_A1();
         partial void Scene_A5();
         partial void Tick_A5();
         partial void Scene_A6();
@@ -108,6 +110,7 @@ namespace MadMax.Game
 
         void QuestHooks()
         {
+            if (Opened("A1")) Scene_A1(); if (Running("A1")) Tick_A1();
             if (Opened("A5")) Scene_A5(); if (Running("A5")) Tick_A5();
             if (Opened("A6")) Scene_A6(); if (Running("A6")) Tick_A6();
             if (Opened("B3")) Scene_B3(); if (Running("B3")) Tick_B3();

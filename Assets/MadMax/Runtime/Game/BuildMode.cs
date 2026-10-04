@@ -9,16 +9,17 @@ using UnityEngine.InputSystem;
 namespace MadMax.Game
 {
     /// <summary>On-foot building: place furniture/panels on any floor, wall or ceiling — world, structures or vehicles
-    /// (pieces on a vehicle ride with it). B toggle · 1-0 select · Y rotate · LMB place. Costs come from the Inventory.</summary>
+    /// (pieces on a vehicle ride with it). B opens the build menu (<see cref="MenuSystem.OpenBuild"/>), picking a piece
+    /// starts placing it; tap B again to put the hammer away. 1-0 / page keys select in the category, Y rotate, LMB
+    /// place. Costs come from the Inventory.</summary>
     public class BuildMode : MonoBehaviour
     {
         public float reach = 4f;
         public float grid = 0.08f;
 
         public bool Active { get; private set; }
-        public bool RadialOpen { get; private set; }
-        public int RadialHover { get; private set; } = -1;
         float bHeld;
+        bool bArmed;
 
         public void Select(string id) { var d = FurnitureLibrary.Get(id); if (d == null) return; SetCategory(d.category); var all = Pieces; for (int i = 0; i < all.Count; i++) if (all[i].id == id) Selected = i; }
         public int Selected { get; private set; }
@@ -66,7 +67,6 @@ namespace MadMax.Game
         public List<FurnitureDef> Pieces => FurnitureLibrary.InCategory(Category);
         public FurnitureDef Current { get { var p = Pieces; return p[Mathf.Clamp(Selected, 0, p.Count - 1)]; } }
         public static readonly BuildCategory[] Categories = { BuildCategory.Structure, BuildCategory.Furniture, BuildCategory.Utility, BuildCategory.Garden, BuildCategory.Industry, BuildCategory.Defence, BuildCategory.Decor };
-        public int RadialCategory { get; private set; }
         UtilityNode linkStart;
         public UtilityNode LinkStart => linkStart;
 
@@ -87,40 +87,22 @@ namespace MadMax.Game
 
         public void Tick(Keyboard kb, Mouse mouse, Gamepad pad)
         {
-            if (pad != null && pad.dpad.left.wasPressedThisFrame) SetActive(!Active);
+            if (pad != null && pad.dpad.left.wasPressedThisFrame) { if (Active) SetActive(false); else { game.Menus.OpenBuild(); return; } }
             if (kb != null && game.Player && !game.Current)
             {
-                // tap B toggles, hold B opens the radial picker (release on a slice to build it)
-                if (Controls.Down(Controls.Act.Build)) { bHeld = 0f; RadialHover = -1; }
-                if (Controls.Held(Controls.Act.Build))
+                // tap B: the build menu (while building: put the hammer away); hold B: the build menu either way
+                if (Controls.Down(Controls.Act.Build)) { bHeld = 0f; bArmed = game.Menus.ClosedFrame != Time.frameCount; }   // not the press that just closed the menu
+                if (bArmed && Controls.Held(Controls.Act.Build))
                 {
                     bHeld += Time.unscaledDeltaTime;
-                    if (bHeld > 0.22f) RadialOpen = true;
-                    if (RadialOpen && Mouse.current != null)
-                    {
-                        // inner ring: categories; outer ring: the pieces of the last hovered category
-                        var d = Mouse.current.position.ReadValue() - new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-                        float r = d.magnitude / Screen.height;
-                        float a = (Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg + 360f) % 360f;
-                        if (r > 0.05f && r < 0.2f)
-                        {
-                            int nc = Categories.Length;
-                            RadialCategory = Mathf.Clamp(Mathf.FloorToInt(((a + 180f / nc) % 360f) / (360f / nc)), 0, nc - 1);
-                            RadialHover = -1;
-                        }
-                        else if (r >= 0.2f)
-                        {
-                            int cnt = FurnitureLibrary.InCategory(Categories[RadialCategory]).Count;
-                            RadialHover = Mathf.Clamp(Mathf.FloorToInt(((a + 180f / cnt) % 360f) / (360f / cnt)), 0, cnt - 1);
-                        }
-                    }
+                    if (bHeld > 0.3f) { bArmed = false; if (ghost) ghost.SetActive(false); game.Menus.OpenBuild(); return; }
                 }
-                if (Controls.Up(Controls.Act.Build))
+                if (bArmed && Controls.Up(Controls.Act.Build))
                 {
-                    if (RadialOpen) { SetCategory(Categories[RadialCategory]); if (RadialHover >= 0) Selected = RadialHover; SetActive(true); RadialOpen = false; }
-                    else SetActive(!Active);
+                    bArmed = false;
+                    if (Active) SetActive(false);
+                    else { if (ghost) ghost.SetActive(false); game.Menus.OpenBuild(); return; }
                 }
-                if (RadialOpen) { if (ghost) ghost.SetActive(false); return; }
             }
             if (!Active || !game.Player || !game.Player.gameObject.activeSelf) { if (ghost) ghost.SetActive(false); return; }
 
@@ -321,14 +303,15 @@ namespace MadMax.Game
             ghost.SetActive(false);
             var node = target ? target.GetComponent<UtilityNode>() : null;
             bool fits = node && (node.kinds & def.link) != 0;
-            string what = def.link == UtilityKind.Power ? "CABLE" : "PIPE";
+            bool oneWay = (def.link & UtilityKind.OneWay) != 0;
+            string what = def.link == UtilityKind.Power ? "CABLE" : oneWay ? "ONE-WAY PIPE" : "PIPE";
             float reach = def.link == UtilityKind.Power ? UtilityGrid.CableReach : UtilityGrid.PipeReach;
             if (node && Controls.Down(Controls.Act.BuildDismantle)) { node.Unlink(); game.Toast("LINKS CUT"); linkStart = null; return; }
             bool click = mouse != null && mouse.leftButton.wasPressedThisFrame;
             if (!linkStart)
             {
                 Valid = fits;
-                Status = fits ? "[LMB] START " + what + " HERE  [X] CUT LINKS" : "AIM AT A " + (def.link == UtilityKind.Power ? "POWERED" : "WATER") + " PIECE";
+                Status = fits ? "[LMB] START " + what + (oneWay ? " AT THE SOURCE" : " HERE") + "  [X] CUT LINKS" : "AIM AT A " + (def.link == UtilityKind.Power ? "POWERED" : "WATER") + " PIECE";
                 if (click && fits) linkStart = node;
                 return;
             }
@@ -339,7 +322,7 @@ namespace MadMax.Game
             bool ok = fits && node != linkStart && d <= reach && game.Inventory.Get(res) >= cost;
             Valid = ok;
             Status = !fits ? "CONNECT TO...  [RMB] CANCEL" : node == linkStart ? "PICK ANOTHER PIECE" : d > reach ? "TOO FAR (" + Mathf.RoundToInt(d) + " M)" :
-                     game.Inventory.Get(res) < cost ? "NEED " + cost + " " + ResourceInfo.Name(res) : "[LMB] CONNECT " + Mathf.RoundToInt(d) + " M (" + cost + " " + ResourceInfo.Name(res) + ")";
+                     game.Inventory.Get(res) < cost ? "NEED " + cost + " " + ResourceInfo.Name(res) : "[LMB] CONNECT " + Mathf.RoundToInt(d) + " M (" + cost + " " + ResourceInfo.Name(res) + ")" + (oneWay ? ": WATER RUNS THIS WAY ONLY" + (node.PortWorld.y > linkStart.PortWorld.y + 0.1f ? ", UPHILL NEEDS A PUMP" : "") : "");
             if (mouse != null && mouse.rightButton.wasPressedThisFrame) { linkStart = null; return; }
             if (click && ok)
             {
@@ -358,7 +341,8 @@ namespace MadMax.Game
         {
             var def = FurnitureLibrary.Get(p.id);
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
-            if (p.TryGetComponent<Container>(out var box) && !Empty(box.inventory)) { game.Toast("EMPTY IT FIRST"); return; }   // coins weigh next to nothing
+            if (p.TryGetComponent<Container>(out var box) && !Empty(box.inventory)) { game.Toast("EMPTY IT FIRST"); return; }
+            if (p.TryGetComponent<FluidStore>(out var store) && store.Contents > 1f) { game.Toast("DRAIN IT FIRST"); return; }   // coins weigh next to nothing
             if (p.TryGetComponent<UtilityNode>(out var un)) un.Unlink();
             if (def != null)
             {

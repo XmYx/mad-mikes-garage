@@ -5,32 +5,21 @@ using UnityEngine;
 
 namespace MadMax.World
 {
-    /// <summary>Resource pickups (scrap sheets, planks, stones...). Collected by walking or driving near them.</summary>
+    /// <summary>Resource pickups (scrap sheets, planks, stones...) knocked loose by carving, salvage and breakage. Each is a
+    /// <see cref="WorldItem"/> ("res:N", drawn as loose debris): nothing is collected by walking or driving near it,
+    /// the player takes it with [E] (hold: everything within 3 m). A fresh bundle joins a resting pile of the same
+    /// thing within 0.8 m; the oldest loose bundles go when more than <see cref="maxPickups"/> lie about.</summary>
     public class PickupSystem : MonoBehaviour
     {
         public static PickupSystem Instance { get; private set; }
 
         public int maxPickups = 250;
-        public float magnetTime = 0.3f;
 
-        [HideInInspector] public Transform collector;
-        [HideInInspector] public float collectRadius = 1.8f;
-
-        class Pickup
-        {
-            public GameObject go;
-            public ResourceType type;
-            public int amount;
-            public float magnet = -1f;
-            public Vector3 from;
-        }
-
-        readonly List<Pickup> live = new List<Pickup>();
+        readonly List<WorldItem> live = new List<WorldItem>();
         readonly Mesh[] meshes = new Mesh[ResourceInfo.Count];
         Material material;
-        Inventory inventory;
 
-        public void Init(Material mat, Inventory inv) { material = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat; inventory = inv; Instance = this; }
+        public void Init(Material mat) { material = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat; Instance = this; }
         void OnDestroy() { if (Instance == this) Instance = null; foreach (var m in meshes) if (m) Destroy(m); }
 
         Mesh MeshFor(ResourceType t)
@@ -54,48 +43,21 @@ namespace MadMax.World
         public void Spawn(ResourceType type, int amount, Vector3 pos, Vector3 velocity)
         {
             if (type == ResourceType.None || amount <= 0) return;
-            if (live.Count >= maxPickups) { Destroy(live[0].go); live.RemoveAt(0); }
-            var go = new GameObject("Pickup_" + ResourceInfo.Name(type), typeof(MeshFilter), typeof(MeshRenderer), typeof(Rigidbody));
-            go.transform.SetParent(transform, false);
-            go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0, Random.Range(0, 360f), 0));
-            var mesh = MeshFor(type);
-            go.GetComponent<MeshFilter>().sharedMesh = mesh;
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            var box = go.AddComponent<BoxCollider>();
-            box.center = mesh.bounds.center; box.size = mesh.bounds.size + Vector3.one * 0.04f;
-            var rb = go.GetComponent<Rigidbody>();
-            rb.mass = 2f;
-            rb.linearVelocity = velocity;
-            live.Add(new Pickup { go = go, type = type, amount = amount });
-        }
-
-        void Update()
-        {
-            if (!collector || inventory == null) return;
-            var target = collector.position + Vector3.up * 0.8f;
-            float r2 = collectRadius * collectRadius;
+            string key = "res:" + (int)type;
             for (int i = live.Count - 1; i >= 0; i--)
             {
-                var p = live[i];
-                if (!p.go) { live.RemoveAt(i); continue; }
-                if (p.magnet < 0f)
-                {
-                    if ((p.go.transform.position - target).sqrMagnitude > r2) continue;
-                    p.magnet = 0f;
-                    p.from = p.go.transform.position;
-                    Destroy(p.go.GetComponent<Rigidbody>());
-                    Destroy(p.go.GetComponent<Collider>());
-                }
-                p.magnet += Time.deltaTime / magnetTime;
-                p.go.transform.position = Vector3.Lerp(p.from, target, p.magnet * p.magnet);
-                if (p.magnet >= 1f)
-                {
-                    using (Inventory.Source("PICKED UP")) inventory.Add(p.type, p.amount);
-                    MadMax.Audio.Sfx.Play("pickup", target, 0.35f, Random.Range(0.95f, 1.15f), 20f, 0.08f);
-                    Destroy(p.go);
-                    live.RemoveAt(i);
-                }
+                var w = live[i];
+                if (!w || w.count <= 0) { live.RemoveAt(i); continue; }
+                if (w.key != key || w.OnVehicle || w.Body.linearVelocity.sqrMagnitude > 0.25f || (w.transform.position - pos).sqrMagnitude > 0.64f) continue;
+                w.count += amount; w.Refresh();
+                return;
             }
+            while (live.Count >= maxPickups) { if (live[0]) Destroy(live[0].gameObject); live.RemoveAt(0); }
+            var item = WorldItem.Create(key, amount, -1f, material, pos, Quaternion.Euler(0, Random.Range(0, 360f), 0), null, MeshFor(type));
+            var game = MadMax.Game.WastelandGame.Instance;
+            if (game && game.Player && game.Player.TryGetComponent<Collider>(out var pc)) Physics.IgnoreCollision(item.Box, pc);
+            item.Body.linearVelocity = velocity;
+            live.Add(item);
         }
     }
 }

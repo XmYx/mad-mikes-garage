@@ -49,7 +49,7 @@ namespace MadMax.Vehicles
 
         Editable Edit(MeshFilter mf)
         {
-            if (!mf || !mf.sharedMesh) return null;
+            if (!mf || !mf.sharedMesh || !mf.sharedMesh.isReadable) return null;               // imported HD pieces without Read/Write (cloth) stay as they are
             if (meshes.TryGetValue(mf, out var e) && e.mesh == mf.sharedMesh) return e;
             var mesh = mf.sharedMesh;
             if (!mesh.name.EndsWith("(dented)") && !owned.Contains(mesh))

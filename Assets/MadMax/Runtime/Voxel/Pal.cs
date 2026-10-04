@@ -18,6 +18,8 @@ namespace MadMax.Voxel
         public static readonly Color32[] Chrome = R("4d4f56", "7c7f88", "aeb1b8", "e3e5e8");
         public static readonly Color32[] Glass = R("10151d", "1a2330", "2c3c52", "5a7390");
         public static readonly Color32[] Tire = R("121010", "1c1918", "282322", "3a3230");
+        /// <summary>Stumps (Limbs): raw flesh, its lighter speckle, the dressing over it.</summary>
+        public static readonly Color32 Flesh = Hex("8c3a2e"), FleshLight = Hex("a24a3a"), Dressing = Hex("d8cfc0");
         public static readonly Color32[] Bronze = R("5a2c14", "7d4020", "a0582c", "c47a40");
         public static readonly Color32[] Olive = R("4a2a1a", "6b3e24", "8c5634", "b07244", "cf9458");
         public static readonly Color32[] Metal = R("24211f", "38332f", "4f4842", "6b625a");

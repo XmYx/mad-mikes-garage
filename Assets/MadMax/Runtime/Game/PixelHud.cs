@@ -48,7 +48,9 @@ namespace MadMax.Game
             img.raycastTarget = false;
             var rt = img.rectTransform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
             image = img;
-            var ht = new GameObject("HDText").AddComponent<MadMax.Rendering.HudTextGraphic>();          // HUD FONT: smooth text over the pixels
+            // HUD FONT: smooth text over the pixels. The CanvasRenderer is added explicitly: in editor play mode the
+            // Graphic's RequireComponent did not always bring one, and without it nothing draws (builds were fine)
+            var ht = new GameObject("HDText", typeof(RectTransform), typeof(CanvasRenderer)).AddComponent<MadMax.Rendering.HudTextGraphic>();
             ht.transform.SetParent(overlay.transform, false);
             ht.raycastTarget = false;
             var trt = ht.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
@@ -120,20 +122,63 @@ namespace MadMax.Game
         static readonly List<WastelandGame.Pin> pins = new List<WastelandGame.Pin>();
         static readonly List<MadMax.World.Site> mapSites = new List<MadMax.World.Site>();
 
+        /// <summary>The terrain colour at a world point: nearest map cell, or (<paramref name="smooth"/>, HD) blended
+        /// between the four around it.</summary>
+        Color32 MapAt(float wx, float wz, bool smooth, Color32 outside)
+        {
+            float mapMpp = 2f * mapHalf / mapSize;
+            float fx = (WorldGen.WrapX(wx) + mapHalf) / mapMpp, fy = (wz - mapCz + mapHalf) / mapMpp;
+            if (!smooth)
+            {
+                int mx = Mathf.FloorToInt(fx), my = Mathf.FloorToInt(fy);
+                return mx < 0 || my < 0 || mx >= mapSize || my >= mapSize ? outside : map[my * mapSize + mx];
+            }
+            fx -= 0.5f; fy -= 0.5f;
+            int x0 = Mathf.FloorToInt(fx), y0 = Mathf.FloorToInt(fy);
+            if (x0 < 0 || y0 < 0 || x0 >= mapSize - 1 || y0 >= mapSize - 1) return MapAt(wx, wz, false, outside);
+            float tx = fx - x0, ty = fy - y0;
+            Color32 a = map[y0 * mapSize + x0], b = map[y0 * mapSize + x0 + 1], cc = map[(y0 + 1) * mapSize + x0], d = map[(y0 + 1) * mapSize + x0 + 1];
+            return Color32.Lerp(Color32.Lerp(a, b, tx), Color32.Lerp(cc, d, tx), ty);
+        }
+
+        Color32[] landCache;
+        Vector4 landKey;
+
+        /// <summary>The map page's terrain at the canvas' detail (HD MAP: every physical pixel, blended), kept between
+        /// frames while the view doesn't move.</summary>
+        void DrawMapLand(PixelCanvas c, int x, int y, int w, int h, Vector2 center, float mpp)
+        {
+            int r = c.res, fw = w * r, fh = h * r;
+            bool smooth = r > 1;
+            var key = new Vector4(center.x, center.y, mpp, fw * 10000 + fh);
+            if (landCache == null || landCache.Length != fw * fh || key != landKey)
+            {
+                if (landCache == null || landCache.Length != fw * fh) landCache = new Color32[fw * fh];
+                landKey = key;
+                float fm = mpp / r;
+                var buf = landCache;
+                System.Threading.Tasks.Parallel.For(0, fh, j =>
+                {
+                    for (int i = 0; i < fw; i++)
+                        buf[j * fw + i] = MapAt(center.x + (i - fw / 2) * fm, center.y - (j - fh / 2) * fm, smooth, new Color32(22, 13, 9, 255));
+                });
+            }
+            for (int j = 0; j < fh; j++)
+            {
+                int fy = y * r + j;
+                if (fy < 0 || fy >= c.ph) continue;
+                int dst = (c.ph - 1 - fy) * c.pw + x * r;
+                System.Array.Copy(landCache, j * fw, c.px, dst, Mathf.Min(fw, c.pw - x * r));
+            }
+        }
+
         /// <summary>Full world map (MAP page): the land, roads and towns, found sites, claims, the fleet, job pins, the
         /// waypoint and its route. <paramref name="center"/> in world x/z, <paramref name="mpp"/> metres per pixel.
         /// Returns the world point under <paramref name="mouse"/> (canvas pixels) for the caller.</summary>
         public Vector3 DrawWorldMap(PixelCanvas c, int x, int y, int w, int h, Vector2 center, float mpp, Vector2Int mouse, out string hover)
         {
             string hovered = null;
-            float mapMpp = 2f * mapHalf / mapSize;
-            for (int j = 0; j < h; j++)
-            for (int i = 0; i < w; i++)
-            {
-                float wx = center.x + (i - w / 2) * mpp, wz = center.y - (j - h / 2) * mpp;
-                int mx = Mathf.FloorToInt((WorldGen.WrapX(wx) + mapHalf) / mapMpp), my = Mathf.FloorToInt((wz - mapCz + mapHalf) / mapMpp);
-                c.Set(x + i, y + j, (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(22, 13, 9, 255) : map[my * mapSize + mx]);
-            }
+            DrawMapLand(c, x, y, w, h, center, mpp);
             DrawPlayerRoads(c, x, y, w, h, center, mpp);
             Vector2Int P(Vector3 wp) => new Vector2Int(x + w / 2 + Mathf.RoundToInt((wp.x - center.x) / mpp), y + h / 2 - Mathf.RoundToInt((wp.z - center.y) / mpp));
             bool Inside(Vector2Int p) => p.x > x + 1 && p.y > y + 1 && p.x < x + w - 2 && p.y < y + h - 2;
@@ -235,9 +280,14 @@ namespace MadMax.Game
             var t = rig.pixel.Target;
             // the HUD stays at the chosen pixel height even when the world renders at full resolution (vector mode)
             int hh = GameSettings.Current.HudHeight, hw = Mathf.Max(1, Mathf.RoundToInt(hh * t.width / (float)t.height));   // HUD SIZE setting: its own resolution
-            if (canvas == null || canvas.w != hw || canvas.h != hh)
+            // HD HUD / HD MAP: more physical pixels per HUD pixel, up to the screen's own (the layout stays put)
+            var gs = GameSettings.Current;
+            int native = Mathf.Max(1, Screen.height / Mathf.Max(1, hh)), res = 1;
+            if (gs.hdHud) res = Mathf.Min(2, native);
+            if (gs.hdMap && game.Menus && game.Menus.Current == MenuSystem.Page.Map) res = Mathf.Max(res, Mathf.Min(3, native));
+            if (canvas == null || canvas.w != hw || canvas.h != hh || canvas.res != res)
             {
-                canvas = new PixelCanvas(hw, hh);
+                if (canvas == null) canvas = new PixelCanvas(hw, hh, res); else canvas.Resize(hw, hh, res);
                 image.texture = canvas.texture;
             }
             bool hdFont = GameSettings.Current.HDText && MadMax.Rendering.HudTextGraphic.Atlas;
@@ -297,7 +347,6 @@ namespace MadMax.Game
             DrawTemperatureVignette();
             if (!(game.Menus && game.Menus.IsOpen)) DrawSpeech();
             if (game.LearningId != null) DrawLearning();
-            if (game.Build && game.Build.RadialOpen) DrawRadial();
             if (game.RadialOpen) DrawActionRadial();
             if (!car && (rig.mode == ViewMode.ThirdPerson || fps))
             {
@@ -387,7 +436,7 @@ namespace MadMax.Game
                 canvas.Rect(x, y, slot, slot, sel ? new Color32(110, 60, 25, 220) : new Color32(20, 12, 8, 170));
                 canvas.Text(x + 1, y + 1, (i + 1).ToString(), sel ? Amber : Dim, 1, false);
                 if (id == null) continue;
-                canvas.Blit(x + 4, y + 1, 14, Icon(id));
+                canvas.Blit(x + 4, y + 1, 14, Icon(id, canvas.res));
                 if (id == game.LearningId) canvas.Rect(x + 2, y + 13, Mathf.RoundToInt(18 * game.LearningProgress), 1, Green);
                 string name = MadMax.Items.ItemCatalog.Name(id).Replace("VHS: ", "");
                 if (name.Length > 5) name = name.Substring(0, 5);
@@ -470,7 +519,7 @@ namespace MadMax.Game
             }
             foreach (var npc in MadMax.Npc.Npc.All)
                 if (npc && npc.Alive && (npc.transform.position - eye).sqrMagnitude < 350f * 350f)
-                    Tag(npc.transform.position + Vector3.up * 2f, npc.Profile.Name, npc.Hostile ? new Color32(220, 60, 40, 255) : npc.Profile.Vendor ? Green : Text);
+                    Tag(npc.transform.position + Vector3.up * 2f, npc.KnownName, npc.Hostile ? new Color32(220, 60, 40, 255) : npc.Profile.Vendor ? Green : Text);
             foreach (var v in game.AllVehicles)
                 if (v && v != game.Current && (v.transform.position - eye).sqrMagnitude < 350f * 350f && v.aiDriven)
                     Tag(v.transform.position + Vector3.up * 2.5f, v.name.Replace("(Clone)", "").ToUpperInvariant(), Amber);
@@ -617,7 +666,8 @@ namespace MadMax.Game
         static float DeformableTerrainHeight(Vector2 p) { var t = MadMax.World.DeformableTerrain.Instance; return t ? t.Height(p.x, p.y) : 0f; }
 
         /// <summary>Hotbar icon: the item's own voxel mesh (tool, kit furniture) or a small item model.</summary>
-        static Color32[] Icon(string id)
+        /// <param name="res">The canvas' detail (HD HUD renders the icon that much larger).</param>
+        static Color32[] Icon(string id, int res = 1)
         {
             Mesh mesh;
             if (ToolLibrary.Has(id)) mesh = ToolLibrary.MeshFor(id);
@@ -627,7 +677,7 @@ namespace MadMax.Game
                 foreach (var d in MadMax.Building.FurnitureLibrary.All) if (d.kit == id) { mesh = d.mesh; break; }
                 if (!mesh) mesh = MadMax.Items.ItemModels.Get(id);
             }
-            return MadMax.Rendering.IconRenderer.Get(id, mesh, 14, ToolLibrary.Has(id));
+            return MadMax.Rendering.IconRenderer.Get(res > 1 ? id + "@" + res : id, mesh, 14 * res, ToolLibrary.Has(id));
         }
 
         /// <summary>Frost / heat creeping in from the screen edges when the core temperature leaves the safe band.</summary>
@@ -780,47 +830,6 @@ namespace MadMax.Game
             canvas.Text(x + 4, y + 3, label, Text);
             canvas.Rect(x + 4, y + 11, w - 8, 2, new Color32(20, 12, 8, 200));
             canvas.Rect(x + 4, y + 11, Mathf.RoundToInt((w - 8) * game.LearningProgress), 2, Green);
-        }
-
-        /// <summary>Hold-B radial build picker: categories on the inner ring, their pieces on the outer ring.</summary>
-        void DrawRadial()
-        {
-            var b = game.Build;
-            var cats = BuildMode.Categories;
-            int cx = canvas.w / 2, cy = canvas.h / 2;
-            int r1 = Mathf.RoundToInt(canvas.h * 0.13f), r2 = Mathf.Min(canvas.h / 2 - 16, Mathf.RoundToInt(canvas.h * 0.38f));
-            canvas.Rect(0, 0, canvas.w, canvas.h, new Color32(10, 5, 3, 120));
-            for (int i = 0; i < cats.Length; i++)
-            {
-                float a = i * Mathf.PI * 2f / cats.Length;
-                int x = cx + Mathf.RoundToInt(Mathf.Sin(a) * r1), y = cy - Mathf.RoundToInt(Mathf.Cos(a) * r1);
-                string name = cats[i].ToString().ToUpperInvariant();
-                int w = PixelCanvas.TextWidth(name) + 6;
-                bool sel = i == b.RadialCategory;
-                if (sel) canvas.Panel(x - w / 2, y - 5, w, 11); else canvas.Rect(x - w / 2, y - 5, w, 11, new Color32(20, 12, 8, 200));
-                canvas.Text(x - w / 2 + 3, y - 2, name, sel ? Amber : Dim);
-            }
-            var all = MadMax.Building.FurnitureLibrary.InCategory(cats[b.RadialCategory]);
-            int hover = b.RadialHover;
-            for (int i = 0; i < all.Count; i++)
-            {
-                float a = i * Mathf.PI * 2f / all.Count;
-                int x = cx + Mathf.RoundToInt(Mathf.Sin(a) * r2), y = cy - Mathf.RoundToInt(Mathf.Cos(a) * r2 * 0.85f);
-                string name = all[i].name;
-                int w = PixelCanvas.TextWidth(name) + 6;
-                bool sel = i == hover;
-                if (sel) canvas.Panel(x - w / 2, y - 5, w, 11); else canvas.Rect(x - w / 2, y - 5, w, 11, new Color32(20, 12, 8, 190));
-                canvas.Text(x - w / 2 + 3, y - 2, name, b.Affordable(all[i]) ? (sel ? Amber : Text) : Red);
-            }
-            if (hover >= 0 && hover < all.Count)
-            {
-                var d = all[hover];
-                string cost = "";
-                if (d.kit != null) cost = "KIT X" + game.Inventory.GetItem(d.kit);
-                else foreach (var (t, n) in d.cost) cost += b.Cost(n) + " " + ResourceInfo.Name(t) + " ";
-                canvas.Text(cx - PixelCanvas.TextWidth(d.name) / 2, cy - 6, d.name, Amber);
-                canvas.Text(cx - PixelCanvas.TextWidth(cost) / 2, cy + 3, cost, Dim);
-            }
         }
 
         /// <summary>Hold-Tab action wheel: one slice per available action, key hint under each.</summary>
@@ -1065,14 +1074,15 @@ namespace MadMax.Game
             var center = ToMap(focus.position);
             float scale = minimapMetresPerPixel / (2f * mapHalf / mapSize);
             var roads = RoadOverlay();                                                              // the player's own roads
-            for (int j = 0; j < size; j++)
-            for (int i = 0; i < size; i++)
+            int rs = canvas.res, fs = size * rs;                                                  // HD HUD: the minimap at screen detail
+            float fm = minimapMetresPerPixel / rs;
+            for (int j = 0; j < fs; j++)
+            for (int i = 0; i < fs; i++)
             {
-                int mx = Mathf.FloorToInt(center.x + (i - size / 2) * scale);
-                int my = Mathf.FloorToInt(center.y - (j - size / 2) * scale);
-                var c = (mx < 0 || my < 0 || mx >= mapSize || my >= mapSize) ? new Color32(30, 18, 12, 255) : map[my * mapSize + mx];
-                if (roads) c = PlayerRoad(roads, focus.position.x + (i - size / 2) * minimapMetresPerPixel, focus.position.z - (j - size / 2) * minimapMetresPerPixel, c);
-                canvas.Set(x + i, y + j, c);
+                float wx = focus.position.x + (i - fs / 2) * fm, wz = focus.position.z - (j - fs / 2) * fm;
+                var c = MapAt(wx, wz, rs > 1, new Color32(30, 18, 12, 255));
+                if (roads) c = PlayerRoad(roads, wx, wz, c);
+                canvas.SetFine(x * rs + i, y * rs + j, c);
             }
             void Dot(Transform t, Color32 c)
             {
@@ -1202,31 +1212,27 @@ namespace MadMax.Game
             }
         }
 
+        /// <summary>While building: the piece in hand (icon, name, cost against the pack) and what placing it needs.</summary>
         void DrawBuildPanel()
         {
             var b = game.Build;
-            var all = b.Pieces;
-            int w = 130, h = all.Count * 7 + 18, x = 6, y = 42;
+            var d = b.Current;
+            int w = 150, h = 40, x = 6, y = 42;
             canvas.Panel(x, y, w, h);
-            canvas.Text(x + 4, y + 3, "BUILD: " + b.Category.ToString().ToUpperInvariant() + "  < , . >", Amber);
-            for (int i = 0; i < all.Count; i++)
+            var mesh = d.mesh ? d.mesh : WorldItemModels.IconMesh(d.kit ?? "bp_plan", out _);
+            canvas.Blit(x + 4, y + 4, 22, MadMax.Rendering.IconRenderer.Get("piece:" + d.id + "#" + 22 * canvas.res, mesh, 22 * canvas.res));
+            canvas.Text(x + 30, y + 4, d.name, Amber);
+            int cx = x + 30;
+            var col = b.Affordable(d) ? Text : Red;
+            if (d.kit != null) canvas.Text(cx, y + 13, "KIT " + game.Inventory.GetItem(d.kit), col, 1, false);
+            else if (d.link != MadMax.Building.UtilityKind.None) canvas.Text(cx, y + 13, "1 " + ResourceInfo.Name(d.cost[0].type) + "/5M", col, 1, false);
+            else foreach (var (t, n) in d.cost)
             {
-                var d = all[i];
-                int ly = y + 11 + i * 7;
-                bool sel = i == b.Selected;
-                if (sel) canvas.Rect(x + 2, ly - 1, w - 4, 7, new Color32(90, 50, 25, 200));
-                var col = b.Affordable(d) ? (sel ? Text : Dim) : Red;
-                canvas.Text(x + 4, ly, ((i + 1) % 10) + " " + d.name, col);
-                int cx = x + 76;
-                if (d.kit != null) canvas.Text(cx, ly, "KIT " + game.Inventory.GetItem(d.kit), col, 1, false);
-                else if (d.link != MadMax.Building.UtilityKind.None) canvas.Text(cx, ly, "1 " + ResourceInfo.Name(d.cost[0].type) + "/5M", col, 1, false);
-                else foreach (var (t, n) in d.cost)
-                {
-                    canvas.Rect(cx, ly + 1, 3, 3, ResourceInfo.Color(t));
-                    cx += 4 + canvas.Text(cx + 4, ly, n.ToString(), col, 1, false) + 2;
-                }
+                canvas.Rect(cx, y + 14, 3, 3, ResourceInfo.Color(t));
+                cx += 4 + canvas.Text(cx + 4, y + 13, b.Cost(n).ToString(), col, 1, false) + 2;
             }
-            canvas.Text(x + 4, y + h - 7, b.Status ?? "", b.Valid ? Green : Amber);
+            canvas.Text(x + 30, y + 22, Controls.Name(Controls.Act.Build) + " MENU / PUT AWAY", Dim);
+            canvas.Text(x + 4, y + h - 8, b.Status ?? "", b.Valid ? Green : Amber);
         }
 
         static string TalkStation(MadMax.Audio.RadioNetwork net)

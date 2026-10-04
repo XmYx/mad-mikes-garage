@@ -117,6 +117,7 @@ namespace MadMax.Npc
         public List<string> bought = new List<string>();
         public List<int> boughtN = new List<int>();
         public bool dead;
+        public int lost;                              // severed limbs (Appearance.lost bits, Limbs)
 
         public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16, Companion = 32, Surrendered = 64;
         public bool Has(int f) => (flags & f) != 0;

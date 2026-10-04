@@ -48,7 +48,7 @@ namespace MadMax.Building
 
         public string Prompt(MadMax.Game.WastelandGame g)
         {
-            if (patient) return patient.Profile.Name + " RESTS (" + Mathf.RoundToInt(patient.Health / Mathf.Max(1f, patient.MaxHealth) * 100f) + "%)  [T] SEND AWAY";
+            if (patient) return patient.Profile.Name + " RESTS (" + MadMax.Game.Words.Health(patient.Health / Mathf.Max(1f, patient.MaxHealth)) + ")  [T] SEND AWAY";
             if (PlayerLying(g)) return null;
             var who = Candidate(g);
             string s = "[E] LIE DOWN (CLINIC BED" + (MedSupply.Cabinets(transform.position, MedSupply.Reach).Count > 0 ? ", STOCKED)" : ")");

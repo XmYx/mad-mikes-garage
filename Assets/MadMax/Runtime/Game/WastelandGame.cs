@@ -142,7 +142,7 @@ namespace MadMax.Game
             var fx = new GameObject("WorldFx");
             fx.AddComponent<DebrisSystem>().Init(propMaterial);
             pickups = fx.AddComponent<PickupSystem>();
-            pickups.Init(propMaterial, Inventory);
+            pickups.Init(propMaterial);
 
             World.roads.SpawnPoint(out var p, out var dir);
             if (!joining) StoryAnchors.Bind(World);                                               // story places and their clearings before the terrain builds
@@ -599,11 +599,13 @@ namespace MadMax.Game
 
             if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); UpdateWreckStreaming(); return; }
             Menus.Tick();
+            MadMax.Rendering.GraphicsQuality.Tick();
+            UpdateHandcraft(Time.deltaTime);                                                     // personal jobs go on under any page (WastelandGame.Handcraft)
             var settings = GameSettings.Current;
             foreach (var c in cars)
             {
                 if (!c) continue;
-                c.SetManual(settings.manualTransmission && !c.aiDriven);
+                c.SetManual(settings.manualTransmission && !c.aiDriven && (c != Current || HasClutchFoot));   // no left foot: no clutch
                 c.gripMultiplier = c == Current ? Stats.DrivingGrip : 1f;
                 if (c.TryGetComponent<VehicleSystems>(out var vs)) vs.fuelMultiplier = Rules.fuelUse * (c == Current ? Stats.FuelEfficiency : 1f) * (c.TryGetComponent<VehicleTuning>(out var tn) ? tn.FuelFactor : 1f);
             }
@@ -709,6 +711,7 @@ namespace MadMax.Game
             if (!justClosed && Controls.Down(Controls.Act.Inventory)) Menus.Open(MenuSystem.Page.Inventory);
             if (!justClosed && Controls.Down(Controls.Act.Skills)) Menus.Open(MenuSystem.Page.Skills);
             if (!justClosed && Controls.Down(Controls.Act.Health)) Menus.Open(MenuSystem.Page.Health);
+            if (!justClosed && !Current && Controls.Down(Controls.Act.Craft)) Menus.OpenCrafting(null);   // handcraft: anywhere on foot
             if (!justClosed && (Controls.Down(Controls.Act.Map) || (PadSelectTapped && !Current))) Menus.Open(MenuSystem.Page.Map);
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Interaction");
             UpdateInteraction(kb, pad);
@@ -758,12 +761,6 @@ namespace MadMax.Game
                 brake = Mathf.Max(brake, pad.leftTrigger.ReadValue());
                 space |= pad.buttonSouth.isPressed; spaceDown |= pad.buttonSouth.wasPressedThisFrame;
                 shift |= pad.leftStickButton.isPressed;
-            }
-
-            if (pickups)
-            {
-                pickups.collector = Current ? Current.transform : Player.transform;
-                pickups.collectRadius = Current ? 3.2f : 1.8f;
             }
 
             foreach (var c in cars)

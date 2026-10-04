@@ -57,6 +57,8 @@ namespace MadMax.Game.Acceptance
             foreach (var s in SeasonsScenarios.All()) yield return s;
             foreach (var s in UpdateScenarios1002.All()) yield return s;
             foreach (var s in UpdateScenarios1003.All()) yield return s;
+            foreach (var s in UpdateScenarios1004.All()) yield return s;
+            foreach (var s in UpdateScenarios1005.All()) yield return s;
             foreach (var s in LightsScenarios.All()) yield return s;
             foreach (var s in BagsScenarios.All()) yield return s;
             foreach (var s in PeopleScenarios.All()) yield return s;
@@ -65,6 +67,9 @@ namespace MadMax.Game.Acceptance
             foreach (var s in VehicleFixScenarios.All()) yield return s;
             foreach (var s in VehicleStorageScenarios.All()) yield return s;
             foreach (var s in FluidsScenarios.All()) yield return s;
+            foreach (var s in SpillScenarios.All()) yield return s;
+            foreach (var s in EngineAudioScenarios.All()) yield return s;
+            foreach (var s in GraphicsScenarios.All()) yield return s;
             foreach (var s in HDVehicleScenarios.All()) yield return s;
             foreach (var s in HDScenarios.All()) yield return s;
             foreach (var s in HDCharacterScenarios.All()) yield return s;

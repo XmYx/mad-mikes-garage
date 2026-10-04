@@ -31,6 +31,7 @@ namespace MadMax.Building
             var c = Snap(p);
             var s = t.World.Sample(c.x, c.z);
             if (s.roadDist < 2.5f) { why = "ROAD"; return false; }
+            if (Paved(t, c)) { why = "PAVED"; return false; }
             if (t.WaterDepth(c.x, c.z) > 0.05f || s.shore > 0.3f) { why = "WATER"; return false; }
             if (s.feature != 0) { why = "ROCK OR CONCRETE"; return false; }
             if (t.Normal(c.x, c.z).y < 0.93f) { why = "TOO STEEP"; return false; }
@@ -39,6 +40,21 @@ namespace MadMax.Building
             foreach (var col in Physics.OverlapBox(c + Vector3.up * 0.7f, new Vector3(0.9f, 0.6f, 0.9f), Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
                 if (col.GetComponentInParent<Placeable>() || col.GetComponentInParent<MadMax.World.DestructibleVoxels>()) { why = "IN THE WAY"; return false; }
             return true;
+        }
+
+        /// <summary>Any paving (asphalt, concrete, gravel, cobbles, paint, potholes), a paved highway or a structure deck on
+        /// the cell: its centre and four corners (the plough and the hoe only work open, unpaved ground).</summary>
+        static bool Paved(MadMax.World.DeformableTerrain t, Vector3 c)
+        {
+            const float h = Cell * 0.5f - 0.1f;
+            for (int i = 0; i < 5; i++)
+            {
+                float x = c.x + (i == 0 ? 0f : (i & 1) == 0 ? -h : h), z = c.z + (i == 0 ? 0f : i < 3 ? -h : h);
+                if (t.PaveAt(x, z) != 0 || t.HardRoadAt(x, z)) return true;
+                float y = t.Height(x, z), top = y;
+                if (StructureGround.Top(new Vector3(x, y + 0.6f, z), ref top, out _) ) return true;
+            }
+            return false;
         }
 
         /// <summary>Till the cell of <paramref name="p"/> into a field bed (null when it can't be).</summary>

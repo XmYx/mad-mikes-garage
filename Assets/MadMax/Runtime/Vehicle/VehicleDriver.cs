@@ -126,6 +126,8 @@ namespace MadMax.Vehicles
             public bool virt;            // a track road wheel between the sprocket and the idler (no part of its own)
             public Vector3 local;        // virtual road wheels: axle (inner face) in vehicle space
             public Surface surf;
+            public bool popSeen;         // the blowout burst was shown (a loaded flat never bursts)
+            public float flatRun, nextStrip; // metres driven on the flat; next rubber strip
         }
 
         readonly List<Wheel> wheels = new List<Wheel>();
@@ -174,8 +176,11 @@ namespace MadMax.Vehicles
             return true;
         }
 
+        float awakeTime;
+
         void Awake()
         {
+            awakeTime = Time.time;
             rb = GetComponent<Rigidbody>();
             if (!GetComponent<MadMax.Audio.VehicleAudio>()) gameObject.AddComponent<MadMax.Audio.VehicleAudio>();
             chassis = GetComponent<VehicleChassis>();
@@ -434,7 +439,7 @@ namespace MadMax.Vehicles
 
                 Vector3 outward = transform.right * (w.left ? -1f : 1f);
                 Vector3 anchor = Axle(w) + outward * (w.width * 0.5f) + up * (travel - restComp - rideHeight);
-                float rayLen = travel + w.radius * (w.stats && w.stats.Popped ? 0.78f : 1f) + Mathf.Max(0f, w.reachBase - rideHeight);
+                float rayLen = travel + w.radius * (w.stats ? w.stats.RadiusFactor : 1f) + Mathf.Max(0f, w.reachBase - rideHeight);
                 if (up.y < 0.25f) { w.comp = 0; continue; }
                 float gh = terrain.Height(anchor.x, anchor.z);
                 Vector3 deckN = Vector3.up;
@@ -604,9 +609,10 @@ namespace MadMax.Vehicles
                 st.heat = Mathf.Max(0f, st.heat + (scrub * hard * 0.06f - 0.03f) * dt);
                 if (!st.Popped && st.heat > 1f && st.wear > 0.55f) st.Pop();
                 if (!st.Popped && w.part.damage > 0.85f) st.Pop();
-                if (st.Popped && Mathf.Abs(w.vf) > 4f && Random.value < dt * 6f) MadMax.World.Fx.Sparks(w.contact, -w.fwd * 0.3f + Vector3.up, 1, new Color(1f, 0.8f, 0.4f));
+                if (st.Popped && Mathf.Abs(w.vf) > 4f && Random.value < dt * 6f * hard) MadMax.World.Fx.Sparks(w.contact, -w.fwd * 0.3f + Vector3.up, 1, new Color(1f, 0.8f, 0.4f));
             }
             int key = w.GetHashCode();
+            if (st) { FlatTraces(w, st, key, hard, dt); CakeTyre(w, st, spinSlip, hard, dt); }
             float mark = scrub * hard;
             MadMax.World.Fx.Skid(key, w.contact, w.side, w.width, mark > 0.15f ? mark : 0f);
             // tracks in snow, sand and mud (fade in a minute and a half); dust clouds behind on dry loose ground
@@ -632,6 +638,77 @@ namespace MadMax.Vehicles
                 float heatBoost = st ? 1f + st.heat : 1f;
                 MadMax.World.Fx.Smoke(w.contact + Vector3.up * 0.2f, -w.fwd * Mathf.Sign(w.vf + 0.01f) * 1.2f + Vector3.up * 0.6f + Random.insideUnitSphere * 0.4f, (0.5f + scrub) * heatBoost, c);
             }
+        }
+
+        /// <summary>What a blown tyre leaves behind: a burst of rubber at the blowout, then (driven on) a dark rim gouge,
+        /// rubber strips every ~20 m, and after ~400 m the carcass tears off (a rubber pickup) and the wheel runs on the
+        /// bare rim.</summary>
+        void FlatTraces(Wheel w, WheelStats st, int key, float hard, float dt)
+        {
+            if (!st.Popped) { w.popSeen = false; w.flatRun = 0f; MadMax.World.Fx.Skid(key + 2, w.contact, w.side, 0f, 0f); return; }
+            if (!w.popSeen)
+            {
+                w.popSeen = true;
+                if (Time.time - awakeTime > 1.5f)
+                {
+                    MadMax.World.Shards.Drop(w.contact, MadMax.World.Shards.Kind.Rubber);
+                    MadMax.World.Fx.Smoke(w.contact + Vector3.up * 0.3f, Vector3.up * 1.5f + Random.insideUnitSphere, 0.9f, new Color(0.25f, 0.24f, 0.23f, 0.7f), 1.2f);
+                    MadMax.Audio.Sfx.Play("pop", w.contact, 0.8f, 0.7f, 60f, 0.2f);
+                    w.nextStrip = 6f;
+                }
+            }
+            float speed = Mathf.Abs(w.vf);
+            MadMax.World.Fx.Skid(key + 2, w.contact, w.side, w.width * (st.Shredded ? 0.3f : 0.45f), speed > 0.4f ? Mathf.Lerp(0.55f, 0.95f, hard) : 0f);   // the flat / the rim gouges a dark line
+            w.flatRun += speed * dt;
+            if (w.flatRun >= w.nextStrip && !st.Shredded)
+            {
+                w.nextStrip = w.flatRun + Random.Range(14f, 26f);
+                MadMax.World.Shards.Drop(w.contact - w.fwd * Mathf.Sign(w.vf + 0.01f) * 0.6f, MadMax.World.Shards.Kind.Rubber);
+            }
+            if (!st.Shredded && w.flatRun > 400f)
+            {
+                st.wear = 1.5f;
+                if (!MadMax.Net.NetSession.Applying && MadMax.World.PickupSystem.Instance)
+                    MadMax.World.PickupSystem.Instance.Spawn(MadMax.Items.ResourceType.Rubber, 2, w.contact + Vector3.up * 0.5f + w.side * (w.left ? -0.4f : 0.4f), rb.linearVelocity * 0.6f + Vector3.up * 2f + w.side * (w.left ? -2f : 2f));
+                MadMax.World.Fx.Sparks(w.contact, Vector3.up, 6, new Color(1f, 0.8f, 0.4f));
+                MadMax.Audio.Sfx.Play("hit_metal", w.contact, 0.5f, 0.8f, 40f, 0.2f);
+            }
+        }
+
+        /// <summary>Mud on the tyre: picked up in mud and wet soft ground (more while spinning), flung off the tread as
+        /// clods and spray (which also splatter the body, <see cref="VehicleGrime"/>), shed again by distance on dry firm
+        /// ground — fastest on paving; mud tyres (high <see cref="WheelStats.mudGrip"/>) clean themselves quicker.</summary>
+        void CakeTyre(Wheel w, WheelStats st, float spinSlip, float hard, float dt)
+        {
+            float speed = Mathf.Abs(w.vf);
+            float soak = w.surf.mud + w.surf.wet * w.surf.softness * 0.4f;
+            float roll = Mathf.Min(1f, speed / 3f) + spinSlip * 2f;
+            float shed = st.mudGrip > 0.7f ? 1.8f : 1f;
+            if (soak > 0.05f) st.mud = Mathf.Min(1f, st.mud + dt * soak * roll * 0.35f);
+            float dry = (1f - w.surf.wet) * (1f - w.surf.mud) * Mathf.Lerp(0.4f, 1f, hard) * (w.surf.road > 0.5f ? 1.6f : 1f);
+            st.mud = Mathf.Max(0f, st.mud - speed * dt * dry * shed * 0.0016f);
+            if (InWater > 0.15f) st.mud = Mathf.Max(0f, st.mud - dt * 0.15f);
+            // flung off the tread: clods from deep mud, a brown spray while spinning or at speed
+            float fling = (w.surf.mud * 0.7f + st.mud * 0.3f) * Mathf.Clamp01((speed + spinSlip * 12f - 2f) / 10f);
+            if (fling > 0.05f && Random.value < dt * fling * 14f)
+            {
+                var back = -w.fwd * (speed > 0.5f ? Mathf.Sign(w.vf) : Reversing ? -1f : 1f);
+                var top = Axle(w) + Vector3.up * w.radius * 0.6f;
+                var c = new Color(0.27f, 0.19f, 0.12f, 0.75f);
+                MadMax.World.Fx.Smoke(top, back * (2f + speed * 0.25f + spinSlip * 6f) + Vector3.up * 1.6f + Random.insideUnitSphere * 0.6f, 0.25f + fling * 0.3f, c, 0.7f);
+                if (fling > 0.3f) MudClods(top, back * (1.5f + speed * 0.2f + spinSlip * 4f) + Vector3.up * 2.5f);
+            }
+        }
+
+        static readonly System.Collections.Generic.List<MadMax.World.DebrisSystem.Chunk> mudClods = new System.Collections.Generic.List<MadMax.World.DebrisSystem.Chunk>();
+        static void MudClods(Vector3 at, Vector3 impulse)
+        {
+            var ds = MadMax.World.DebrisSystem.Instance;
+            if (!ds) return;
+            mudClods.Clear();
+            for (int i = 0; i < 3; i++)
+                mudClods.Add(new MadMax.World.DebrisSystem.Chunk { position = at + Random.insideUnitSphere * 0.12f, color = i == 0 ? new Color32(58, 40, 26, 255) : i == 1 ? new Color32(72, 50, 32, 255) : new Color32(46, 32, 22, 255) });
+            ds.Emit(mudClods, 0.05f, impulse, 0.5f);
         }
 
         /// <summary>0..1 how deep the vehicle sits in water.</summary>
@@ -689,9 +766,40 @@ namespace MadMax.Vehicles
             }
         }
 
+        /// <summary>Height of the vehicle's origin above level ground when it rests on its springs (each axle one rolling
+        /// radius plus the ride height up): to set a vehicle down without dropping it.</summary>
+        public float RestHeight
+        {
+            get
+            {
+                float sum = 0f; int n = 0;
+                foreach (var w in wheels)
+                {
+                    if (!w.part || w.virt) continue;
+                    sum += w.radius * (w.stats ? w.stats.RadiusFactor : 1f) + Mathf.Max(0f, w.reachBase - rideHeight) + rideHeight - LocalAxle(w).y;
+                    n++;
+                }
+                return n > 0 ? sum / n : 0.5f;
+            }
+        }
+
+        /// <summary>A staged burnout (the title): with the body held kinematic, the rear wheels spin at this road speed
+        /// (m/s) and the engine holds <see cref="showcaseRpm"/>; 0 = off.</summary>
+        [System.NonSerialized] public float showcaseSpin, showcaseRpm;
+
         void LateUpdate()
         {
             ReplicaVisuals();
+            if (showcaseSpin != 0f || showcaseRpm > 0f)
+            {
+                Rpm = showcaseRpm;
+                foreach (var w in wheels)
+                {
+                    if (!w.part) continue;
+                    w.grounded = true; w.comp = restComp;
+                    if (!w.front) w.spin += showcaseSpin / Mathf.Max(0.1f, w.radius) * Time.deltaTime * Mathf.Rad2Deg;
+                }
+            }
             foreach (var w in wheels)
             {
                 if (!w.part || w.virt || w.part.Socket != w.socket) continue;
@@ -699,6 +807,8 @@ namespace MadMax.Vehicles
                 t.localPosition = new Vector3(0f, Mathf.Min((w.grounded ? w.comp : 0f) - restComp - rideHeight, archLift), 0f);
                 float wobble = Mathf.Clamp01(w.part.damage) * 9f * Mathf.Sin(w.spin * Mathf.Deg2Rad);
                 t.localRotation = Quaternion.Euler(0f, (w.front ? steer : 0f) * (w.left ? -1f : 1f), wobble) * Quaternion.Euler(w.spin % 360f, 0f, 0f);
+                float k = w.stats ? w.stats.RadiusFactor : 1f;                                      // flat / bare rim: the wheel sits lower on its axle
+                if (Mathf.Abs(t.localScale.y - k) > 0.001f) t.localScale = new Vector3(t.localScale.x, k, k);
             }
         }
 

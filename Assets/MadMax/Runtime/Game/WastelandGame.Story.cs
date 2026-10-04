@@ -21,6 +21,9 @@ namespace MadMax.Game
         /// <summary>A piece the campaign set up (it doesn't count as the player's own work).</summary>
         public bool IsStoryProp(Placeable p) => p && storyProps.Contains(p.Id);
 
+        /// <summary>A story prop the story wants out of the way (the garage's barricade): it can be dismantled like an own piece.</summary>
+        public bool StoryClearable(Placeable p) => IsStoryProp(p) && p.id == "barricade";
+
         /// <summary>The campaign's objective line for the HUD (null outside a campaign).</summary>
         public string StoryLine => Story.Story.Campaign ? Story.Story.Line : null;
 
@@ -40,14 +43,14 @@ namespace MadMax.Game
             Rest(trailer);
             Rest(SpawnRoadWreck("Hauler", w + q * new Vector3(-5f, 0f, 16f), Quaternion.Euler(0f, wy + 25f, 0f), World.seed ^ 0x52));
 
-            // the stranded car: dependable once its battery lead is back on and it has fuel
+            // the stranded car: some fuel still in it, dependable once its battery lead is back on
             var carPrefab = PrefabFor("Fiat126p") ?? PrefabFor("Trabant");
             if (carPrefab)
             {
                 var cp = StoryAnchors.Get("car"); cp.y = terrain.Height(cp.x, cp.z) + 0.6f;
                 var car = Instantiate(carPrefab, cp, Quaternion.Euler(0f, StoryAnchors.Yaw("car"), 0f)).GetComponent<VehicleDriver>();
                 Register(car, fleet);
-                if (car.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = 0f; sys.disconnected = true; }
+                if (car.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = Mathf.Min(sys.fuelCapacity * 0.4f, 12f); sys.disconnected = true; }
                 if (car.TryGetComponent<VehicleDamage>(out var dmg)) dmg.AddFrameDamage(0.05f, 1f);
             }
             BuildNellsStop();

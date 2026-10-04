@@ -219,6 +219,7 @@ Shader "MadMax/HDLit"
             #pragma multi_compile_fog
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #pragma multi_compile_fragment _ _SCREEN_SPACE_REFLECTION
             #pragma shader_feature_local _TERRAIN
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -422,7 +423,11 @@ Shader "MadMax/HDLit"
                 // sky reflection (chrome, glass, paint): the uniform world colour, Schlick fresnel
                 half nv = saturate(dot(n, v));
                 half3 fr = f0 + (max(half3(smooth, smooth, smooth), f0) - f0) * pow(1.0h - nv, 5.0h);
-                c += fr * SkyFill() * 2.2h * dayF * ao * smooth * _SpecularScale;
+                // screen-space reflections (settings REFLECTIONS) where the ray found something, the sky where it didn't
+                half3 env = SkyFill() * 2.2h * dayF;
+                half4 ssr = GetScreenSpaceReflection(GetNormalizedScreenSpaceUV(i.positionCS), i.positionWS, rough);
+                env = lerp(env, ssr.rgb, saturate(ssr.a));
+                c += fr * env * ao * smooth * _SpecularScale;
                 #if defined(_ADDITIONAL_LIGHTS)
                 InputData inputData = (InputData)0;
                 inputData.positionWS = i.positionWS;
@@ -551,6 +556,7 @@ Shader "MadMax/HDLit"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile _ _WRITE_SMOOTHNESS
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv : TEXCOORD0; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float3 ws : TEXCOORD1; float2 uv : TEXCOORD2; float3 carveWS : TEXCOORD3; };
             Varyings vert (Attributes i)
@@ -568,7 +574,11 @@ Shader "MadMax/HDLit"
                 clip(CutMask(i.ws));
                 CarveClip(i.carveWS, normalize(i.normalWS));
                 ClipOpacity(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).a, i.positionCS.xy);
-                return half4(normalize(i.normalWS), 0);
+                half smooth = 0.0h;
+                #if defined(_WRITE_SMOOTHNESS)
+                smooth = lerp(_Smoothness, SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap, i.uv).a, _MaskStrength);   // SSR reads it from alpha
+                #endif
+                return half4(normalize(i.normalWS), smooth);
             }
             ENDHLSL
         }

@@ -18,16 +18,17 @@ namespace MadMax.Game
         float worldItemTick;
         static readonly CultureInfo ItemsInv = CultureInfo.InvariantCulture;
 
-        partial void ItemsNewGame() => ItemFeed.Clear();
+        partial void ItemsNewGame() { ItemFeed.Clear(); HandQueue.Clear(); }
 
-        partial void ItemsLoad(SaveData d) { ItemFeed.Clear(); LoadWorldItems(d); }
+        partial void ItemsLoad(SaveData d) { ItemFeed.Clear(); LoadWorldItems(d); LoadHandcraft(d); }
 
-        partial void ItemsSave(SaveData d) => SaveWorldItems(d);
+        partial void ItemsSave(SaveData d) { SaveWorldItems(d); SaveHandcraft(d); }
 
         partial void ItemsUpdate()
         {
             HookItemFeed();
             TickWorldItems();
+            TickLootAll();
             TickPlacing();
             DropToolKey();
         }
@@ -174,6 +175,7 @@ namespace MadMax.Game
             if (net && net.IsClient && w.netId != 0) return net.RequestItemTake(w);                // the host hands it over (once)
             using (Inventory.Source("PICKED UP")) GiveToPack(w.key, w.count, w.quality);
             MadMax.Audio.Sfx.Play("pickup", w.transform.position, 0.5f, 1.1f, 20f);
+            StoryLooted(w.transform.position, w.key);
             uint id = w.netId;
             w.count = 0;
             w.gameObject.SetActive(false);
@@ -181,6 +183,37 @@ namespace MadMax.Game
             if (net && id != 0) net.SendItemGone(id);
             return true;
         }
+
+        // ------------------------------------------------------------------ hold [E]: loot everything near
+        public const float LootAllRadius = 3f;
+        bool lootAllArmed;
+        float lootAllHeld, lootAllNext;
+
+        /// <summary>[E] took an item: keep holding the key to take everything else lying within
+        /// <see cref="LootAllRadius"/> (one stack every 0.08 s, nearest first).</summary>
+        public void ArmLootAll() { lootAllArmed = true; lootAllHeld = 0f; }
+
+        void TickLootAll()
+        {
+            if (!lootAllArmed) return;
+            if (Current || !Player || Menus.IsOpen || !(Controls.Held(Controls.Act.Use) || ForceLootAll)) { lootAllArmed = false; return; }
+            lootAllHeld += Time.deltaTime;
+            if (lootAllHeld < 0.35f || Time.time < lootAllNext) return;
+            lootAllNext = Time.time + 0.08f;
+            var me = Player.transform.position;
+            WorldItem best = null; float bd = LootAllRadius * LootAllRadius;
+            foreach (var w in WorldItem.All)
+            {
+                if (!w || w.count <= 0 || w.OnVehicle) continue;
+                float d = (w.transform.position - me).sqrMagnitude;
+                if (d < bd) { bd = d; best = w; }
+            }
+            if (best) PickUpItem(best);
+            else lootAllArmed = false;
+        }
+
+        /// <summary>Automation: hold [E] for the loot-all sweep without a keyboard.</summary>
+        public bool ForceLootAll;
 
         /// <summary>A stack the host granted to this client's [E] (online): into the pack as a pick-up.</summary>
         public void ReceivePickedItem(string key, int count, float quality, Vector3 at)

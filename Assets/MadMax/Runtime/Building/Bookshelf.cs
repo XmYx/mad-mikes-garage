@@ -23,7 +23,7 @@ namespace MadMax.Building
             }
         }
 
-        public string Prompt(MadMax.Game.WastelandGame g) { int v = Volumes; return v + " VOLUME" + (v == 1 ? "" : "S") + " (READING +" + Mathf.RoundToInt(Bonus(v) * 100f) + "%)"; }
+        public string Prompt(MadMax.Game.WastelandGame g) { int v = Volumes; return v + " VOLUME" + (v == 1 ? "" : "S") + (v > 0 ? " (A GOOD PLACE TO READ)" : ""); }
         public void Use(MadMax.Game.WastelandGame g, bool secondary) { }
 
         static float Bonus(int volumes) => Mathf.Min(0.4f, volumes * 0.04f);

@@ -17,7 +17,7 @@ namespace MadMax.Game
         static readonly Step[] Steps =
         {
             new Step { text = "DRIVE 300 M IN ONE OF YOUR CARS", done = "YOU CAN DRIVE", pay = 15 },
-            new Step { text = "TOP UP A TANK: {Service} WITH FUEL IN THE PACK, OR A PUMP", done = "TANK FILLED", pay = 20 },
+            new Step { text = "TOP UP A TANK: POUR A CAN IN ({Service}), OR USE A PUMP", done = "TANK FILLED", pay = 20 },
             new Step { text = "TAKE A PART OFF A WRECK WITH THE WRENCH, MOUNT IT ON A CAR", done = "PARTS SWAP BETWEEN ANY VEHICLES", pay = 30 },
             new Step { text = "TAKE A HAUL FROM A TOWN BOARD AND DELIVER IT", done = "FIRST HAUL PAID", pay = 40 },
             new Step { text = "BUILD A WORKBENCH AND A WALL: {Build} WITH THE CLAW HAMMER", done = "A PLACE OF YOUR OWN", pay = 50 },

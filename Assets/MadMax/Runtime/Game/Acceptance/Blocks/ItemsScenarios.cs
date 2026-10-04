@@ -193,11 +193,17 @@ namespace MadMax.Game.Acceptance
             if (MadMax.World.PickupSystem.Instance)
             {
                 int wood = inv.Get(ResourceType.Wood);
-                MadMax.World.PickupSystem.Instance.Spawn(ResourceType.Wood, 2, g.Player.transform.position + Vector3.up * 0.6f, Vector3.zero);
+                var feet = g.Player.transform.position;
+                MadMax.World.PickupSystem.Instance.Spawn(ResourceType.Wood, 2, feet + Vector3.up * 0.6f, Vector3.zero);
                 c.Fixture("a 2-wood pickup at the player's feet");
-                for (float t = 0f; t < 3f && inv.Get(ResourceType.Wood) == wood; t += Time.deltaTime) yield return null;
+                yield return new WaitForSeconds(1.5f);
+                c.Check(inv.Get(ResourceType.Wood) == wood, "a pickup at the feet is not collected by itself");
+                WorldItem pile = null;
+                foreach (var it in WorldItem.All) if (it && it.key == "res:" + (int)ResourceType.Wood && (it.transform.position - feet).sqrMagnitude < 4f) pile = it;
+                c.Check(pile && pile.GetComponentInChildren<MeshRenderer>(), "the pickup lies there as a visible item");
+                if (pile) g.PickUpItem(pile);
                 var woodRow = ItemFeed.Find(null, ResourceType.Wood, "PICKED UP");
-                c.Check(inv.Get(ResourceType.Wood) == wood + 2 && woodRow != null && woodRow.amount == 2, "an auto-collected pickup shows +2 WOOD, PICKED UP");
+                c.Check(inv.Get(ResourceType.Wood) == wood + 2 && woodRow != null && woodRow.amount == 2, "[E] on the pickup shows +2 WOOD, PICKED UP");
             }
             else c.Note("no pickup system");
 

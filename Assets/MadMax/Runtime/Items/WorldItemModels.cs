@@ -18,6 +18,7 @@ namespace MadMax.Items
             scale = 1f; lie = Quaternion.identity;
             if (key.StartsWith("res:")) return Resource((ResourceType)int.Parse(key.Substring(4)));
             if (key.StartsWith("tool_")) { lie = Quaternion.Euler(90f, 0f, 0f); scale = 0.7f; return MadMax.Game.ToolLibrary.MeshFor(key); }   // held along -Y, at hand scale: lay it down
+            if (MadMax.Game.ProstheticLibrary.Get(key) is MadMax.Game.ProstheticDef pd) { lie = Quaternion.Euler(90f, 0f, 0f); return MadMax.Game.ProstheticLibrary.MeshFor(pd); }   // real size, laid down
             var cat = ItemCatalog.Category(key);
             if (cat == ItemCategory.Kit) return Kit();
             if (cat == ItemCategory.Clothing && MadMax.Game.ClothingLibrary.Get(key) is MadMax.Game.ClothingDef cd && cd.prop != null)
@@ -47,6 +48,7 @@ namespace MadMax.Items
         public static Transform AddVisual(Transform root, string key, Material mat, out Bounds bounds)
         {
             var mesh = For(key, out float scale, out var lie);
+            if (!mesh) { mesh = Kit(); scale = 1f; lie = Quaternion.identity; }                   // never an invisible item: a parcel stands in
             var vis = new GameObject("Visual", typeof(MeshFilter), typeof(MeshRenderer)).transform;
             vis.SetParent(root, false);
             vis.GetComponent<MeshFilter>().sharedMesh = mesh;

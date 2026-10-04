@@ -95,17 +95,45 @@ namespace MadMax.Designs
 
             var neon = new VoxelGrid();
             var pink = Pal.Hex("ff3cc8"); var cyan = Pal.Hex("3cf0ff"); var yellow = Pal.Hex("ffe040"); var green = Pal.Hex("60ff60");
-            Stamp(neon, "MAD MIKE'S", 1, 1, -Width("MAD MIKE'S", 1) / 2, 60, 0.15f, (y, z, r) => pink);
-            Stamp(neon, "GARAGE", 2, 1, -Width("GARAGE", 2) / 2, 38, 0.15f, (y, z, r) => cyan);
+            Stamp(neon, "MAD MIKE'S", 1, 1, -Width("MAD MIKE'S", 1) / 2 - 1, MikesY, 0.15f, (y, z, r) => pink);
+            Stamp(neon, "GARAGE", 2, 1, -Width("GARAGE", 2) / 2 - 2, GarageY, 0.15f, (y, z, r) => cyan);
             for (int x = -46; x <= 46; x++) { neon.Set(x, 32, 0, Pal.Solid(yellow)); neon.Set(x, 72, 0, Pal.Solid(yellow)); }
             for (int y = 32; y <= 72; y++) { neon.Set(-46, y, 0, Pal.Solid(yellow)); neon.Set(46, y, 0, Pal.Solid(yellow)); }
-            Stamp(neon, "OPEN", 1, 1, 30, 34, 0f, (y, z, r) => green);
-            // wrench icon
-            for (int i = -6; i <= 6; i++) neon.Set(-36 + i, 52 + i, 0, Pal.Solid(yellow));
-            foreach (var o in new[] { new Vector2Int(-43, 45), new Vector2Int(-29, 59) }) { neon.Set(o.x - 1, o.y, 0, Pal.Solid(yellow)); neon.Set(o.x + 1, o.y, 0, Pal.Solid(yellow)); neon.Set(o.x, o.y - 1, 0, Pal.Solid(yellow)); neon.Set(o.x, o.y + 1, 0, Pal.Solid(yellow)); }
+            Stamp(neon, "OPEN", 1, 1, OpenX, BottomY - 3, 0f, (y, z, r) => green);
+            foreach (var stroke in Wrench())                                                       // the wrench, outlined in neon
+                for (int i = 0; i + 1 < stroke.Length; i++)
+                    for (float t = 0f; t <= 1f; t += 0.1f) { var q = Vector2.Lerp(stroke[i], stroke[i + 1], t); neon.Set(Mathf.RoundToInt(q.x), Mathf.RoundToInt(q.y), 0, Pal.Solid(yellow)); }
             return (VoxelMesher.Build(frame, "NeonSignFrame"), VoxelMesher.Build(neon, "NeonSignTubes"));
         }
     
+
+        // sign layout (voxels, board inside y 32..72): MAD MIKE'S on top, GARAGE in the middle, the wrench and OPEN on the
+        // bottom row, apart from each other and from the letters
+        const int MikesY = 63, GarageY = 44, BottomY = 37, OpenX = 14;
+
+        /// <summary>The neon wrench as tube strokes (voxel units): an open-jaw head on the left (C opening outward), a
+        /// tapered double-line handle, a ring end with an inner ring on the right.</summary>
+        static List<Vector2[]> Wrench()
+        {
+            const float cx = -27f, cy = BottomY;
+            var l = new List<Vector2[]>();
+            Vector2[] Arc(Vector2 c, float r, float a0, float a1, int n)
+            {
+                var pts = new Vector2[n + 1];
+                for (int i = 0; i <= n; i++) { float a = Mathf.Lerp(a0, a1, i / (float)n) * Mathf.Deg2Rad; pts[i] = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r; }
+                return pts;
+            }
+            var jaw = new Vector2(cx - 10f, cy);
+            l.Add(Arc(jaw, 3.6f, 215f, 505f, 14));                                                 // the jaw: open towards the left
+            l.Add(new[] { jaw + new Vector2(-3.6f * Mathf.Cos(35f * Mathf.Deg2Rad), 3.6f * Mathf.Sin(35f * Mathf.Deg2Rad)), jaw + new Vector2(-1.4f, 1.3f) });   // inner jaw faces
+            l.Add(new[] { jaw + new Vector2(-3.6f * Mathf.Cos(35f * Mathf.Deg2Rad), -3.6f * Mathf.Sin(35f * Mathf.Deg2Rad)), jaw + new Vector2(-1.4f, -1.3f) });
+            l.Add(new[] { new Vector2(cx - 6f, cy + 1.8f), new Vector2(cx + 7f, cy + 1.3f) });          // handle, tapering to the ring
+            l.Add(new[] { new Vector2(cx - 6f, cy - 1.8f), new Vector2(cx + 7f, cy - 1.3f) });
+            var ring = new Vector2(cx + 10f, cy);
+            l.Add(Arc(ring, 3.2f, 0f, 360f, 16));
+            l.Add(Arc(ring, 1.5f, 0f, 360f, 10));
+            return l;
+        }
 
         // ------------------------------------------------------------------ HD (HD pack on)
         const float S = VoxelMesher.DefaultSize;
@@ -194,14 +222,20 @@ namespace MadMax.Designs
                     cx += (ch == '\'' ? 3 : 6) * px;
                 }
             }
-            Tubes("MAD MIKE'S", 1, -Width("MAD MIKE'S", 1) / 2, 60, 0.15f, pink);
-            Tubes("GARAGE", 2, -Width("GARAGE", 2) / 2, 38, 0.15f, cyan);
-            Tubes("OPEN", 1, 30, 34, 0f, green);
+            Tubes("MAD MIKE'S", 1, -Width("MAD MIKE'S", 1) / 2 - 1, MikesY, 0.15f, pink);
+            Tubes("GARAGE", 2, -Width("GARAGE", 2) / 2 - 2, GarageY, 0.15f, cyan);
+            Tubes("OPEN", 1, OpenX, BottomY - 3, 0f, green);
             float r0 = 0.45f * S;
             n.Tube(new Vector3(-46, 32, 0) * S, new Vector3(46, 32, 0) * S, r0, r0, yellow, 6); n.Tube(new Vector3(-46, 72, 0) * S, new Vector3(46, 72, 0) * S, r0, r0, yellow, 6);
             n.Tube(new Vector3(-46, 32, 0) * S, new Vector3(-46, 72, 0) * S, r0, r0, yellow, 6); n.Tube(new Vector3(46, 32, 0) * S, new Vector3(46, 72, 0) * S, r0, r0, yellow, 6);
-            n.Tube(new Vector3(-42, 46, 0) * S, new Vector3(-30, 58, 0) * S, r0, r0, yellow, 6);
-            foreach (var o in new[] { new Vector3(-43, 45, 0), new Vector3(-29, 59, 0) }) n.Ellipsoid(o * S, Vector3.one * 1.3f * S, yellow, 8, 5);
+            float rw = 0.36f * S;                                                                 // the wrench: thinner tube, beads at the joints
+            foreach (var stroke in Wrench())
+                for (int i = 0; i + 1 < stroke.Length; i++)
+                {
+                    Vector3 a = new Vector3(stroke[i].x, stroke[i].y, 0f) * S, e = new Vector3(stroke[i + 1].x, stroke[i + 1].y, 0f) * S;
+                    n.Tube(a, e, rw, rw, yellow, 6);
+                    n.Ellipsoid(a, Vector3.one * rw * 1.05f, yellow, 6, 4);
+                }
             return (f.ToMesh("NeonSignFrameHD"), n.ToMesh("NeonSignTubesHD"));
         }
     }

@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MadMax.RPG
 {
     public enum Attr { Strength, Endurance, Agility, Intelligence, Perception, Charisma }
-    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming, Speech, Athletics }
+    public enum Skill { Driving, Mechanics, Salvaging, Construction, Crafting, Demolition, Melee, Firearms, Survival, Farming, Speech, Athletics, Hotwiring }   // append-only (saved by index)
 
     /// <summary>A base trait picked at character creation. Positive traits cost points, negative ones refund them.</summary>
     public class TraitDef
@@ -31,6 +31,7 @@ namespace MadMax.RPG
             var t = T("gearhead", "GEARHEAD", 3, "MECHANICS STARTS AT 2, LEARNS FASTER"); t.startLevel[Skill.Mechanics] = 2; t.learn[Skill.Mechanics] = 1.5f; l.Add(t);
             t = T("scavenger", "SCAVENGER", 2, "SALVAGING +1, MORE SCRAP"); t.startLevel[Skill.Salvaging] = 1; t.learn[Skill.Salvaging] = 1.4f; t.attr[(int)Attr.Perception] = 1; l.Add(t);
             t = T("leadfoot", "LEAD FOOT", 2, "DRIVING STARTS AT 2"); t.startLevel[Skill.Driving] = 2; t.learn[Skill.Driving] = 1.3f; l.Add(t);
+            t = T("carthief", "CAR THIEF", 2, "HOTWIRING STARTS AT 4: CARS WITHOUT KEYS START FOR YOU"); t.startLevel[Skill.Hotwiring] = 4; t.learn[Skill.Hotwiring] = 1.4f; l.Add(t);
             t = T("brawler", "BRAWLER", 2, "MELEE +1, STRENGTH +1"); t.startLevel[Skill.Melee] = 1; t.attr[(int)Attr.Strength] = 1; l.Add(t);
             t = T("bookworm", "BOOKWORM", 2, "INTELLIGENCE +1, READS FASTER"); t.attr[(int)Attr.Intelligence] = 1; l.Add(t);
             t = T("tough", "TOUGH", 3, "ENDURANCE +2"); t.attr[(int)Attr.Endurance] = 2; l.Add(t);
@@ -88,11 +89,11 @@ namespace MadMax.RPG
         [NonSerialized] public float learningSpeed = 1f;            // game rule
         public static event Action<string> Notice;                   // "MECHANICS 3", "STRENGTH 6"
 
-        public const int SkillCount = 12, AttrCount = 6, MaxLevel = 10;
-        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING", "SPEECH", "ATHLETICS" };
+        public const int SkillCount = 13, AttrCount = 6, MaxLevel = 10;
+        public static readonly string[] SkillNames = { "DRIVING", "MECHANICS", "SALVAGING", "CONSTRUCTION", "CRAFTING", "DEMOLITION", "MELEE", "FIREARMS", "SURVIVAL", "FARMING", "SPEECH", "ATHLETICS", "HOTWIRING" };
         public static readonly string[] AttrNames = { "STRENGTH", "ENDURANCE", "AGILITY", "INTELLIGENCE", "PERCEPTION", "CHARISMA" };
         // which attribute grows alongside each skill
-        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance, Attr.Charisma, Attr.Agility };
+        static readonly Attr[] SkillAttr = { Attr.Agility, Attr.Intelligence, Attr.Perception, Attr.Strength, Attr.Intelligence, Attr.Strength, Attr.Strength, Attr.Perception, Attr.Endurance, Attr.Endurance, Attr.Charisma, Attr.Agility, Attr.Agility };   // one per Skill (append with the enum)
 
         public static float XpForLevel(int level) => 40f * level * level;
         public int Level(Skill s) => Mathf.Min(MaxLevel, Mathf.FloorToInt(Mathf.Sqrt(skillXp[(int)s] / 40f)));

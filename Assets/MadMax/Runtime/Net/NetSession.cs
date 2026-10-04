@@ -22,7 +22,8 @@ namespace MadMax.Net
         PlaceState, Searched, VehicleSpawn, FireIgnite, Throw, Terraform,
         ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks,
         ItemSpawn, ItemMove, ItemTake, ItemGone, ItemGrant, WorkPose,                     // protocol 4 (NetSession.Items)
-        VehicleStore                                                                       // vehicle compartments (NetSession.Storage)
+        VehicleStore,                                                                      // vehicle compartments (NetSession.Storage)
+        Spill                                                                              // protocol 5: ground spills (NetSession.Spills)
     }
 
     /// <summary>
@@ -37,7 +38,7 @@ namespace MadMax.Net
     public partial class NetSession : MonoBehaviour
     {
         public static NetSession Instance { get; private set; }
-        public const int ProtocolVersion = 4;
+        public const int ProtocolVersion = 5;
         public const ushort DefaultPort = 7777;
         public const ushort HostPlayerId = 1;
 
@@ -641,6 +642,7 @@ namespace MadMax.Net
                 case Msg.WorldState when IsClient: ReadWorldState(r); break;
                 case Msg.VehicleLooks: ReadVehicleLooks(r, peer); break;
                 case Msg.VehicleStore: ReadVehicleStore(r, peer); break;
+                case Msg.Spill: ReadSpill(r, peer); break;
                 case Msg.ItemSpawn:
                 case Msg.ItemMove:
                 case Msg.ItemTake:

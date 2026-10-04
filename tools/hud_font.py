@@ -40,7 +40,11 @@ def main():
         else:
             kx = k
         sub = g.crop((bb[0], 40, bb[2], 40 + int(cap_h * 1.25)))
-        sw, sh = max(1, int(round(w * kx))), max(1, int(round(sub.height * k)))
+        ky = k
+        if ch.isalpha() and bb[3] > 40 + cap_h + 2:            # J, Q: a descender would fall out of the cell, so fit the whole letter
+            sub = g.crop((bb[0], 40, bb[2], bb[3]))
+            ky = (CH - 6) / sub.height
+        sw, sh = max(1, int(round(w * kx))), max(1, int(round(sub.height * ky)))
         sub = sub.resize((sw, sh), Image.LANCZOS)
         x0 = (i % PER_ROW) * CW + (CW - sw) // 2
         y0 = (i // PER_ROW) * CH + 3

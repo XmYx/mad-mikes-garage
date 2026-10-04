@@ -100,6 +100,7 @@ namespace MadMax.Game.Acceptance
             c.Fixture("a workbench in front of the player");
             yield return SurvivalKit.GameSeconds(0.3f);
             yield return SurvivalKit.Use(g, bench, false, w);
+            if (!w.ok) c.Note("in focus instead: " + (g.Focused is Component fc && fc ? fc.name : "nothing") + "; prompt '" + g.Prompt + "'");
             c.Check(w.ok && m.Current == MenuSystem.Page.Crafting, "[E] at the workbench opens crafting");
             c.Check(m.Labels().Count > 0, $"with recipes listed ({m.Labels().Count})");
             yield return Tap(UnityEngine.InputSystem.Key.Escape);

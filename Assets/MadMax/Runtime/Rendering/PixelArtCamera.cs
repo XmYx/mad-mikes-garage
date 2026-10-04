@@ -12,6 +12,8 @@ namespace MadMax.Rendering
         [Min(32)] public int pixelHeight = 270;
         [Tooltip("Snap the camera to whole texels to stop pixel crawl while it moves (orthographic only).")]
         public bool snapToTexels = true;
+        /// <summary>MSAA samples of the render target (1 = off; full-resolution rendering only, set by the graphics settings).</summary>
+        public int msaa = 1;
 
         [Tooltip("Optional post pass applied to the low-res image (e.g. tilt-shift). Null = none.")]
         public Material postMaterial;
@@ -111,21 +113,22 @@ namespace MadMax.Rendering
             float aspect = displayCam && displayCam.pixelHeight > 0 ? displayCam.pixelWidth / (float)displayCam.pixelHeight : 16f / 9f;
             int h = pixelHeight;
             int w = Mathf.Max(1, Mathf.RoundToInt(h * aspect));
-            if (!Target || Target.width != w || Target.height != h)
+            int samples = Mathf.ClosestPowerOfTwo(Mathf.Clamp(msaa, 1, 8));
+            if (!Target || Target.width != w || Target.height != h || Target.antiAliasing != samples)
             {
                 if (Target) { cam.targetTexture = null; Target.Release(); DestroyImmediate(Target); }
                 Target = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32)
                 {
                     name = "PixelArtTarget",
                     filterMode = FilterMode.Point,
-                    antiAliasing = 1,
+                    antiAliasing = samples,
                     useMipMap = false,
                     hideFlags = HideFlags.HideAndDontSave
                 };
                 Target.Create();
             }
             cam.targetTexture = Target;
-            cam.allowMSAA = false;
+            cam.allowMSAA = samples > 1;
             if (image) image.texture = Output;
 
             if (snapToTexels && cam.orthographic && Application.isPlaying) Snap();

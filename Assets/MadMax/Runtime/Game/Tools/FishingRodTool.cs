@@ -72,7 +72,7 @@ namespace MadMax.Game
             Status = newHole ? "CUTTING A HOLE IN THE ICE" : iceHole ? "DROPPING THE LINE" : "CASTING";
             MadMax.Audio.Sfx.Play(newHole ? "dig" : "click", castFrom, 0.4f, newHole ? 1.4f : 0.6f, 10f);
             string best = FishLibrary.InSeason(pool, Weather.Season);
-            if (best.Length > 0) MadMax.Game.Hints.Show("fish_season" + Weather.Season, Weather.SeasonNames[Weather.Season & 3] + ": " + best + " ARE BITING");
+            if (best.Length > 0) MadMax.Game.Hints.Show("fish_season" + Weather.Season, Weather.SeasonNames[Weather.Season & 3] + ": WHAT BITES CHANGES WITH THE SEASON - TRY OTHER BAIT AND WATERS");
         }
 
         void Update()

@@ -85,7 +85,7 @@ namespace MadMax.Game
         /// <summary>Whether a context menu may open now (<paramref name="rmb"/>: by RMB, which aiming tools keep).</summary>
         bool ContextFree(bool rmb)
         {
-            if (Boarding || RadialOpen || (Build && Build.RadialOpen) || dying || (Vitals && Vitals.Dead)) return false;
+            if (Boarding || RadialOpen || dying || (Vitals && Vitals.Dead)) return false;
             if (Current) return true;
             if (Player.Ragdolled || (Build && Build.Active) || PlacingItem) return false;
             if (Player.Tool is FishingRodTool rod && rod.Busy) return false;
@@ -469,7 +469,7 @@ namespace MadMax.Game
         void PartOptions(ContextTarget t, List<ContextOption> into)
         {
             if (!(t.target is VehiclePart p) || !p || Current) return;
-            string name = p.partId.Replace('_', ' ').ToUpperInvariant() + (p.damage > 0.05f ? " " + Mathf.RoundToInt((1f - Mathf.Clamp01(p.damage)) * 100f) + "%" : "");
+            string name = p.partId.Replace('_', ' ').ToUpperInvariant() + (p.damage > 0.05f ? " (" + Words.Condition(1f - Mathf.Clamp01(p.damage)) + ")" : "");
             string hands = Player.Carried ? "YOUR HANDS ARE FULL" : null;
             if (p.Socket)
             {
@@ -482,7 +482,7 @@ namespace MadMax.Game
         void PieceOptions(ContextTarget t, List<ContextOption> into)
         {
             var pl = t.target ? t.target.GetComponentInParent<Placeable>() : null;
-            if (!pl || Current || !OwnsPiece(pl) || IsStoryProp(pl) || !Build) return;
+            if (!pl || Current || !OwnsPiece(pl) || (IsStoryProp(pl) && !StoryClearable(pl)) || !Build) return;
             var def = FurnitureLibrary.Get(pl.id);
             if (def == null) return;
             string hammer = Inventory.GetItem(ItemIds.ClawHammer) > 0 ? null : "NEEDS A CLAW HAMMER";

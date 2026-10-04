@@ -52,7 +52,7 @@ namespace MadMax.Building
             if (n == 0) return "SURGERY TABLE: NO FRAGMENTS OR DEEP WOUNDS";
             var need = Missing(g);
             if (need != null) return "SURGERY TABLE: NEEDS " + need;
-            return "[E] OPERATE (" + n + " WOUND" + (n == 1 ? "" : "S") + ", " + Mathf.RoundToInt(ChanceFor(g) * 100f) + "% EACH)";
+            return "[E] OPERATE (" + n + " WOUND" + (n == 1 ? "" : "S") + ", " + MadMax.Game.Words.Odds(ChanceFor(g)) + ")";
         }
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)

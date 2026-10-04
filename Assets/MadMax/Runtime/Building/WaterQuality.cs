@@ -17,6 +17,8 @@ namespace MadMax.Building
         public const float OilLimit = 0.3f;
         /// <summary>A latrine with anything in its pit, or a trough, this close fouls a well.</summary>
         public const float SewageReach = 12f;
+        /// <summary>Fuel (20 L+) or chemicals (10 L+) soaked into the ground this close foul a well (<see cref="Spills"/>).</summary>
+        public const float SpillReach = 15f;
 
         /// <summary>The worst thing in a taint set, as the test kit and taps say it.</summary>
         public static string Word(WaterTaint t)
@@ -63,9 +65,13 @@ namespace MadMax.Building
             {
                 if (t.BiomeAt(p.x, p.z) == Biome.Nuclear) { taint |= WaterTaint.Toxic; cause = "FALLOUT IN THE GROUND"; }
                 float oil = t.World.OilAt(p.x, p.z);
-                if (oil > OilLimit) { taint |= WaterTaint.Oil; cause ??= "OIL IN THE GROUND (FIELD " + Mathf.RoundToInt(oil * 100f) + "%)"; }
+                if (oil > OilLimit) { taint |= WaterTaint.Oil; cause ??= "OIL IN THE GROUND"; }
                 if (t.World.ContinentNoise(p.x, p.z) < 0.515f) { taint |= WaterTaint.Salt; cause ??= "THE SEA SEEPS IN THIS CLOSE TO THE SHORE"; }
             }
+            // fuel, oil or chemicals poured or leaked into the ground nearby
+            Spills.SoakedNear(p, SpillReach, out float fuelIn, out float toxicIn);
+            if (fuelIn >= 20f) { taint |= WaterTaint.Oil; cause ??= "FUEL SOAKED INTO THE GROUND NEARBY"; }
+            if (toxicIn >= 10f) { taint |= WaterTaint.Toxic; cause ??= "CHEMICALS SPILLED NEARBY"; }
             float best = SewageReach;
             string near = null;
             foreach (var pl in Placeable.All)

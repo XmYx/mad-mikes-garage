@@ -1024,7 +1024,7 @@ namespace MadMax.Animals
             {
                 if (!Def.tameable || town >= 0 || state == State.Attack || state == State.Stalk) return null;
                 var food = Treat(g);
-                return food != null ? "[E] OFFER " + ItemCatalog.Name(food) + " (TRUST " + Mathf.RoundToInt(trust * 100f) + "%)" : Def.name + " - IT MIGHT TAKE " + ItemCatalog.Name(Def.likes[0]);
+                return food != null ? "[E] OFFER " + ItemCatalog.Name(food) + " (" + MadMax.Game.Words.Trust(trust) + ")" : Def.name + " - IT MIGHT TAKE " + ItemCatalog.Name(Def.likes[0]);
             }
             if (Def.rideable && Adult)
             {
@@ -1062,7 +1062,7 @@ namespace MadMax.Animals
                 g.Stats.Practice(Skill.Farming, 2f);
                 Say(0);
                 if (trust >= 1f) Tame(g);
-                else g.Toast("THE " + Def.name + " TAKES IT (TRUST " + Mathf.RoundToInt(trust * 100f) + "%)");
+                else g.Toast("THE " + Def.name + " TAKES IT (" + MadMax.Game.Words.Trust(trust) + ")");
                 return;
             }
             if (Def.rideable && Adult)

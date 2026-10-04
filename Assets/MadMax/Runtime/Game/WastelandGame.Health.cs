@@ -21,6 +21,7 @@ namespace MadMax.Game
             int before = Stats.injuries.Count;
             int kind = KindOf(cause);
             InjuryRules.Apply(Stats.injuries, amount, cause, injuryRnd, kind < 0 ? null : (System.Func<BodyZone, float>)(z => Protection(z, kind)), z => Deflected(z, amount));
+            LimbsAfterInjury(amount, cause, before);                                                // mangled or torn off (WastelandGame.Limbs)
             // clothes take the damage too: a crash or fire everything, a hit what covers the wound
             if (cause == "CRASH") TearClothes(null, amount / 150f);
             else if (cause == "BURNED") TearClothes(null, amount / 40f);
@@ -116,8 +117,8 @@ namespace MadMax.Game
         /// <summary>How much an injury hampers its limb, 0..1 (fractures most; splints and healing help).</summary>
         static float Hamper(Injury i) => (i.type switch
         {
-            Wound.Fracture => i.splinted ? 0.55f : 0.95f, Wound.DeepWound => 0.55f, Wound.Laceration => 0.3f, Wound.Burn => 0.25f, Wound.Bruise => 0.12f, _ => 0.08f
-        }) * Mathf.Clamp01(i.type == Wound.Fracture ? 0.5f + i.severity * 0.5f : i.severity);
+            Wound.Fracture => i.splinted ? 0.55f : 0.95f, Wound.Mangled => i.splinted ? 0.8f : 1f, Wound.Stump => 0.5f, Wound.DeepWound => 0.55f, Wound.Laceration => 0.3f, Wound.Burn => 0.25f, Wound.Bruise => 0.12f, _ => 0.08f
+        }) * Mathf.Clamp01(i.type == Wound.Fracture || i.type == Wound.Mangled ? 0.5f + i.severity * 0.5f : i.severity);
 
         float Worst(params BodyZone[] zones)
         {
@@ -127,10 +128,10 @@ namespace MadMax.Game
         }
 
         /// <summary>Per-side limp (legs, feet) and arm impairment (arms, hands), 0..1: drive the gait and the actions.</summary>
-        public float LimpL => Worst(BodyZone.LegL, BodyZone.FootL);
-        public float LimpR => Worst(BodyZone.LegR, BodyZone.FootR);
-        public float ArmHurtL => Worst(BodyZone.ArmL, BodyZone.HandL);
-        public float ArmHurtR => Worst(BodyZone.ArmR, BodyZone.HandR);
+        public float LimpL => Mathf.Max(Worst(BodyZone.LegL, BodyZone.FootL), LegLoss(true));        // + a lost leg (WastelandGame.Limbs)
+        public float LimpR => Mathf.Max(Worst(BodyZone.LegR, BodyZone.FootR), LegLoss(false));
+        public float ArmHurtL => Mathf.Max(Worst(BodyZone.ArmL, BodyZone.HandL), ArmLoss(true));
+        public float ArmHurtR => Mathf.Max(Worst(BodyZone.ArmR, BodyZone.HandR), ArmLoss(false));
         public float HeadDaze => Worst(BodyZone.Head);
         /// <summary>No running on a badly hurt leg, no jumping on a broken one.</summary>
         public bool CanRunInjured => Mathf.Max(LimpL, LimpR) < 0.5f && BackHurt < 0.3f;   // + a strained back (WastelandGame.Bags)
@@ -153,7 +154,7 @@ namespace MadMax.Game
                     m *= i.type == Wound.Fracture ? (i.splinted ? 0.7f : 0.45f) : 1f - 0.15f * i.severity;
                 }
                 if (Stats.bodyTemp < 35f) m *= 0.75f;
-                return m * BagSpeed;                                                                // a bad back, luggage in hand
+                return m * BagSpeed * LimbSpeed;                                                                // a bad back, luggage in hand
             }
         }
 
@@ -174,7 +175,7 @@ namespace MadMax.Game
         {
             if (inj == null) return;
             if (inj.type == Wound.Strain) { TreatBack(inj); return; }
-            if (inj.type == Wound.Fracture && !inj.splinted)
+            if (inj.type == Wound.Mangled && inj.bandaged && !inj.splinted || inj.type == Wound.Fracture && !inj.splinted)
             {
                 if (Inventory.TakeItem("med_splint")) { inj.splinted = true; Toast("SPLINT APPLIED"); Stats.Practice(Skill.Survival, 4f); }
                 else Toast("NEED A SPLINT (WOOD + CLOTH)");

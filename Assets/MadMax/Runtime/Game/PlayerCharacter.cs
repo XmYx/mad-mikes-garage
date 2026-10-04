@@ -124,7 +124,7 @@ namespace MadMax.Game
 
         void AttachTool(HandTool tool)
         {
-            tool.transform.SetParent(Rig.RightHand, false);
+            tool.transform.SetParent(Rig.ToolHand(tool.id), false);
             tool.transform.localPosition = new Vector3(0f, -0.055f, 0.01f);
             tool.transform.localRotation = Quaternion.identity;
             tool.transform.localScale = Vector3.one * 0.7f;       // world-scale tool meshes next to the finer character voxels
@@ -136,7 +136,8 @@ namespace MadMax.Game
         {
             if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled || AutoWalk.HasValue) return;
             var g = WastelandGame.Instance;
-            if (g && Tool.TwoHanded && g.ArmBroken) { g.Toast("BROKEN ARM: CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
+            if (g && !g.CanUse(Tool.id)) { g.Toast("NO HAND TO USE THE " + Tool.toolName + " WITH"); return; }
+            if (g && Tool.TwoHanded && g.ArmBroken && g.BuiltInTool(Tool.id) == 0) { g.Toast((g.ArmLoss(true) > 0.5f || g.ArmLoss(false) > 0.5f ? "ONE GOOD HAND" : "BROKEN ARM") + ": CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
             swingT = 0f;
             struck = false;

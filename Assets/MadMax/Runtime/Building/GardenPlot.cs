@@ -206,11 +206,11 @@ namespace MadMax.Building
         public string Prompt(MadMax.Game.WastelandGame g)
         {
             var def = FoodLibrary.Crop(crop);
-            string soilNote = "  SOIL " + Mathf.RoundToInt(fertility * 100) + "%";
+            string soilNote = "  " + MadMax.Game.Words.Soil(fertility);
             if (def == null) return (g.FirstSeed(false) != null ? "[E] PLANT " + FoodLibrary.SeedName(g.FirstSeed(false)) : "PLOT: NEED SEEDS") + soilNote + (weeds > 0.3f ? "  [T] PULL WEEDS" : "");
             if (Dead) return "DEAD " + def.name + "  [E] CLEAR";
             if (Ripe) return "[E] HARVEST " + def.name + soilNote;
-            string s = def.name + " " + Mathf.RoundToInt(growth * 100) + "%" + (water <= 0f ? " DRY" : "") + (health < 0.6f ? " WILTING" : "") + (weeds > 0.4f ? " WEEDY" : "")
+            string s = def.name + " " + MadMax.Game.Words.Growth(growth) + (water <= 0f ? " DRY" : "") + (health < 0.6f ? " WILTING" : "") + (weeds > 0.4f ? " WEEDY" : "")
                      + (def.dark && roof != 2 ? " (NEEDS DARK)" : "") + (roof == 1 ? " GREENHOUSE" : "");
             if (water < 0.5f && (g.Inventory.Get(ResourceType.Water) > 0 || g.Inventory.Get(ResourceType.DirtyWater) > 0)) s += "  [E] WATER";
             if (weeds > 0.3f) s += "  [T] PULL WEEDS";
@@ -232,7 +232,7 @@ namespace MadMax.Building
                 else if (fertility < 0.9f && g.Inventory.TakeItem(ItemIds.Fertilizer))
                 {
                     fertility = Mathf.Min(1f, fertility + 0.5f); fertilizer = 1f;
-                    g.Toast("FERTILISED: SOIL " + Mathf.RoundToInt(fertility * 100) + "%");
+                    g.Toast("FERTILISED: " + MadMax.Game.Words.Soil(fertility));
                     GetComponent<Placeable>()?.Dirty();
                 }
                 return;

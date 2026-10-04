@@ -124,7 +124,7 @@ namespace MadMax.Game
                 Add(b, Controls.Act.BuildUpgrade, "UPGRADE", Grp.Build); Add(b, Controls.Act.BuildRepair, "REPAIR", Grp.Build);
                 Add(b, Controls.Act.BuildPrevCategory, "PREV CATEGORY", Grp.Build); Add(b, Controls.Act.BuildNextCategory, "NEXT CATEGORY", Grp.Build);
                 Add(b, Controls.Act.BuildPrevPiece, "PREV PIECE", Grp.Build); Add(b, Controls.Act.BuildNextPiece, "NEXT PIECE", Grp.Build);
-                Add(b, Controls.Act.Build, "LEAVE BUILD MODE", Grp.Build);
+                Add(b, Controls.Act.Build, "PUT AWAY (HOLD: BUILD MENU)", Grp.Build);
                 MoveKeys(b, "WALK");
             }
             else if (car && car.GetComponent<FlightModel>())
@@ -167,7 +167,7 @@ namespace MadMax.Game
                 Add(b, Controls.Act.Jump, "JUMP / CLIMB", Grp.Move); Add(b, Controls.Act.Run, "RUN", Grp.Move); Add(b, Controls.Act.Crouch, "CROUCH / SLIDE", Grp.Move);
                 Add(b, Controls.Act.Use, "USE / TAKE / TALK", Grp.Action); Add(b, Controls.Act.Second, "SECOND ACTION", Grp.Action);
                 Add(b, Controls.Act.Drop, "DROP PART / TOOL", Grp.Action); Add(b, Controls.Act.Enter, "GET IN / RIDE", Grp.Action);
-                Add(b, Controls.Act.Build, "BUILD", Grp.Build); Add(b, Controls.Act.Reload, "RELOAD / RESEARCH", Grp.Action);
+                Add(b, Controls.Act.Build, "BUILD MENU", Grp.Build); Add(b, Controls.Act.Reload, "RELOAD / RESEARCH", Grp.Action);
                 Add(b, Controls.Act.Hitch, "HITCH", Grp.Action); Add(b, Controls.Act.Service, "SERVICE", Grp.Action);
                 Add(b, Controls.Act.Siphon, "SIPHON", Grp.Action); Add(b, Controls.Act.Armour, "WELD ARMOUR", Grp.Action);
                 for (int i = 0; i < 8; i++) Add(b, Key.Digit1 + i, "HOTBAR 1-8", Grp.Action);

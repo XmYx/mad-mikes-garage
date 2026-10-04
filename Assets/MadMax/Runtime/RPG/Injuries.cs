@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MadMax.RPG
 {
-    public enum Wound { Bruise, Scratch, Laceration, DeepWound, Fracture, Burn, Strain }   // append only (Strain: a back given out under a load)
+    public enum Wound { Bruise, Scratch, Laceration, DeepWound, Fracture, Burn, Strain, Mangled, Stump }   // append only (Strain: a back given out under a load; Mangled: a limb hanging on, Stump: where one came off, Limbs)
     public enum BodyZone { Head, Torso, ArmL, ArmR, HandL, HandR, LegL, LegR, FootL, FootR }
 
     /// <summary>One injury on one body zone. Bleeding wounds need a bandage, fractures a splint; dirty or
@@ -22,20 +22,20 @@ namespace MadMax.RPG
         public float bandageAge;             // seconds since the bandage went on (dirty after 10 min)
         public float infection;              // 0..1
 
-        public bool Bleeding => !bandaged && (type == Wound.Laceration || type == Wound.DeepWound || (type == Wound.Scratch && severity > 0.6f));
-        public float BleedRate => !Bleeding ? 0f : type == Wound.DeepWound ? 0.45f : type == Wound.Laceration ? 0.2f : 0.05f;
+        public bool Bleeding => !bandaged && (type == Wound.Laceration || type == Wound.DeepWound || type == Wound.Mangled || (type == Wound.Stump && severity > 0.3f) || (type == Wound.Scratch && severity > 0.6f));
+        public float BleedRate => !Bleeding ? 0f : type == Wound.Stump ? 1.1f * severity : type == Wound.DeepWound || type == Wound.Mangled ? 0.45f : type == Wound.Laceration ? 0.2f : 0.05f;
         public bool BandageDirty => bandaged && bandageAge > 600f;
         /// <summary>Broken skin: can bleed, be bandaged, get infected (not bruises, fractures or a strained back).</summary>
         public bool Open => type != Wound.Bruise && type != Wound.Fracture && type != Wound.Strain;
 
         public static readonly string[] ZoneNames = { "HEAD", "TORSO", "LEFT ARM", "RIGHT ARM", "LEFT HAND", "RIGHT HAND", "LEFT LEG", "RIGHT LEG", "LEFT FOOT", "RIGHT FOOT" };
-        public static readonly string[] WoundNames = { "BRUISE", "SCRATCH", "LACERATION", "DEEP WOUND", "FRACTURE", "BURN", "STRAINED BACK" };
+        public static readonly string[] WoundNames = { "BRUISE", "SCRATCH", "LACERATION", "DEEP WOUND", "FRACTURE", "BURN", "STRAINED BACK", "MANGLED", "STUMP" };
 
         /// <summary>How far a wound with <see cref="shrapnel"/> in it can heal (severity never drops below this).</summary>
         public const float ShrapnelFloor = 0.45f;
 
         /// <summary>Minutes to heal fully when properly treated.</summary>
-        public float HealMinutes => type switch { Wound.Bruise => 3f, Wound.Scratch => 5f, Wound.Laceration => 14f, Wound.DeepWound => 28f, Wound.Fracture => 40f, Wound.Strain => 20f, _ => 18f };
+        public float HealMinutes => type switch { Wound.Bruise => 3f, Wound.Scratch => 5f, Wound.Laceration => 14f, Wound.DeepWound => 28f, Wound.Fracture => 40f, Wound.Strain => 20f, Wound.Mangled => 90f, Wound.Stump => 50f, _ => 18f };
 
         public string Status
         {
@@ -46,9 +46,10 @@ namespace MadMax.RPG
                 if (bandaged) s.Add(BandageDirty ? "DIRTY BANDAGE" : "BANDAGED");
                 if (splinted) s.Add("SPLINTED");
                 if (shrapnel) s.Add("SHRAPNEL");
-                if (type == Wound.Fracture && !splinted) s.Add("NEEDS SPLINT");
-                if (infection > 0.05f) s.Add("INFECTED " + Mathf.RoundToInt(infection * 100) + "%");
-                return s.Count == 0 ? Mathf.RoundToInt((1f - severity) * 100) + "% HEALED" : string.Join(" ", s);
+                if ((type == Wound.Fracture || type == Wound.Mangled) && !splinted) s.Add("NEEDS SPLINT");
+                if (type == Wound.Mangled) s.Add("HANGING ON");
+                if (infection > 0.05f) s.Add(infection > 0.5f ? "BADLY INFECTED" : "INFECTED");
+                return s.Count == 0 ? (severity < 0.25f ? "NEARLY HEALED" : severity < 0.6f ? "HEALING" : "FRESH") : string.Join(" ", s);
             }
         }
 
@@ -63,7 +64,7 @@ namespace MadMax.RPG
             else if (shrapnel) infection = Mathf.Min(1f, infection + dt / 3600f);             // a lodged fragment festers under any dressing
             else infection = Mathf.Max(0f, infection - dt / 600f);
             if (infection > 0.5f) loss += (infection - 0.5f) * 0.3f * dt;
-            bool canHeal = type != Wound.Fracture || splinted;
+            bool canHeal = (type != Wound.Fracture || splinted) && (type != Wound.Mangled || (splinted && bandaged));
             float rate = canHeal ? (bandaged || type == Wound.Bruise || type == Wound.Scratch || type == Wound.Strain ? 1f : 0.35f) : 0f;
             rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f);
             severity = Mathf.Max(shrapnel ? ShrapnelFloor : 0f, severity - dt * rate / (HealMinutes * 60f));

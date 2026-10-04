@@ -1387,3 +1387,65 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
   and sell the catch of the season at their stall — the bite tables visible in town life.
 - [ ] **Seasonal wreck salvage**: winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
   are stripped fastest — scale `ScavengedShare` by season and road traffic.
+
+## Fixes and features (2026-10-04)
+- [x] **Engine fire burns the car out**: `VehicleBurn` (90–180 s to a charred, undriveable wreck; 35 % tank explosion
+  with fuel aboard; smoulders; 12 % of wrecks spawn charred).
+- [x] **Ignition keys and hotwiring**: `VehicleIgnition` (key in / glovebox / lost on wrecks; key items), hotwire by
+  holding Service in the seat — anyone, badly; skill `Hotwiring`, trait CAR THIEF, book.
+- [x] **Blown tyres leave traces**: rubber burst, rim gouge line, rubber strips, carcass tears off into a bare rim.
+- [x] **Explicit looting**: no auto pickup (debris and carving yields too); [E] one, hold [E] for all within 3 m; every
+  item has a visible model; the A1 satchel lies by the wreck.
+- [x] **Mud on tyres**: picked up in mud, flung as clods, shed on dry firm ground, washed off fording.
+- [x] **Plough only unpaved ground**.
+- [x] **Limbs**: mangled (hanging on) and severed limbs for the player and NPCs; amputation with a blade (clean at a
+  surgery table); effects on hands, gait, speed, climbing, clutch.
+- [x] **Prosthetics**: 12 pieces (hooks, claw, carved and machinist's hands, blade / torch / shotgun mount arms,
+  hydraulic arm, peg, strut, spring blade, wooden foot); crafted, looted; fitted on healed stumps.
+
+### Suggestions
+- [ ] **Extinguisher item**: a fire extinguisher (and sand from the shovel) to beat a vehicle fire before the tank roll.
+- [ ] **Key rings on NPC drivers**: convoy drivers carry their car's key (loot it off the body) instead of leaving it in.
+- [ ] **HD prosthetic meshes**: a Blender group for the twelve pieces (they render as 4 cm voxel props today).
+- [ ] **Crutch tool**: a one-legged player hops at 30 %; a crutch (two-handed, no tools) could lift that to 55 %.
+- [ ] **Prosthetics at the clinic vendor**: medical traders stock hooks and pegs; surgeons fit them for scrap.
+
+## Interface pass (2026-10-05)
+- [x] **No spoilers in player text**: condition / odds / growth / trust in words, fuel blends by smell, symptoms not
+  diagnoses, strangers unnamed until met, no hint where a key is.
+- [x] **Catalogue menus**: crafting and building with categories on the left, 3D icons in a scrolling grid, a hover
+  panel (what it does, what it takes, how long).
+- [x] **HD HUD / HD MAP settings**.
+- [x] **HD text in editor play mode** (missing CanvasRenderer).
+
+### Suggestions
+- [ ] **Descriptions for every build piece** (`FurnitureDef.desc`): the panel reads most from the piece's id today.
+- [ ] **survival.loop** still grants loose fuel and presses G: update it to the can-based refuel (2026-10-02 fluids).
+- [x] **Search box** in the catalogues, labelled cells sorted A–Z, filter chips (known / can make / can build), unknown recipes greyed, hover-only panel.
+- [x] **HANDCRAFT** on foot (N): simple raw-material recipes without a bench, slower, queue of 4, saved.
+
+## Fluids in the open (2026-10-06)
+- [x] Ground spills: soak to soil capacity (asphalt 0), then pools that run downhill, fill holes, drain to lakes
+- [x] Evaporation by liquid (oil never, water 1, petrol 12×), temperature, sun/shade, humidity, wind, rain; freezing
+- [x] Pour stream from any container (trails), scooping puddles, store / tap ends in the container radial
+- [x] Makeshift pool, clay pond, storage drum, pond liner, standpipe tap, transfer pump, one-way pipes
+- [x] Burning fuel pools, water douses, mud from soaked water, slick oil/ice, well taint from soaked fuel, beds drink, vehicle leaks drip
+- [ ] Spills on structure floors and vehicle decks (they land on the terrain below today)
+- [ ] Fuel / oil pipe networks (pipes carry water only; other liquids move by container, drain or drum tap)
+- [ ] Rain filling unlined dug holes (only existing pools, liners and open stores catch rain)
+- [x] `survival.loop` refuel step goes through the can radial; A1 pays Nell's fuel in her can (story start had no container)
+
+## Engine sound (2026-10-06)
+- [x] Engine specs (cylinders, firing angles, cycle, fuel, displacement, valvetrain, aspiration, cooling, idle by size)
+- [x] Event-driven synth: exhaust pulses, headers, pipe, muffler, tailpipe; intake; valvetrain, bearings, slap, diesel clatter, ping, accessories, forced induction
+- [x] Starter with compression rhythm, cough, catch flare, coast-down; wear, oil, misfire, cold, fuel blend, exhaust leak and muffler damage modelled proportionally
+- [ ] Per-cylinder exhaust part damage positions (a leak at the manifold vs the tailpipe sound alike today)
+- [ ] Gearbox whine / clutch / driveline clunks (not engine sources)
+
+## Graphics options (2026-10-06)
+- [x] Anti-aliasing (FXAA, SMAA, TAA, MSAA 2/4/8x), upscaling (STP, FSR 1, DLSS 4 on Windows/NVIDIA) with render scale
+- [x] Shadow quality (5 levels), ambient occlusion (3 levels), screen-space reflections (HDLit), bloom levels, motion blur, anisotropic filtering
+- [ ] DLSS runtime test on a Windows machine with an NVIDIA card (Linux has no NGX runtime; the path is compile-checked only at the Windows build)
+- [ ] SSR on water (needs a DepthNormals pass on the transparent water shader) and in the orthographic views (URP SSR skips orthographic cameras)
+- [ ] GTAO ambient occlusion (needs URP's `MODERN_SSAO` define)
+

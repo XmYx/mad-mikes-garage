@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// Keyboard (W/S, A/D, Enter, Esc), gamepad (d-pad, A, B) and mouse (hover, click, wheel) all work.</summary>
     public partial class MenuSystem : MonoBehaviour
     {
-        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots, Context, Respawn }
+        public enum Page { None, Main, Pause, Settings, Crafting, Character, Join, NewGame, Creation, Inventory, Skills, Research, Container, Health, Talk, Trade, Repair, Salvage, Armour, Tuning, Board, Paint, Map, Controls, Journal, Slots, Context, Respawn, Build }
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
@@ -44,11 +44,16 @@ namespace MadMax.Game
             public string loot;                           // loot window: item id or "res:N" of the row
             public int pane;                              // loot window: 0 = the pack, 1 = the storage
             public RectInt rect;
+            public string iconKey;                        // catalogue pages: icon cache key and its mesh
+            public Func<Mesh> iconMesh;
+            public bool diagonal;
+            public FurnitureDef piece;                    // build page
+            public bool known = true;                     // crafting: the recipe is learned
         }
 
         WastelandGame game;
         readonly List<Item> items = new List<Item>();
-        static readonly string[] SettingsTabs = { "GAMEPLAY", "MOUSE & CAMERA", "GRAPHICS", "AUDIO", "INTERFACE" };
+        static readonly string[] SettingsTabs = { "GAMEPLAY", "MOUSE & CAMERA", "GRAPHICS", "AUDIO", "INTERFACE", "EFFECTS" };
         bool slotsSave;
         Vector2 mapCenter; float mapMpp = 4f; Vector2Int mapMouse; Vector3 mapUnderMouse; string mapHover;
         bool mapDrag; Vector2 mapDragFrom; float mapDragMoved;
@@ -60,8 +65,6 @@ namespace MadMax.Game
         int cursor, category, scroll;
         Page settingsFrom;
         CraftingStation station;
-        int craftDetailScroll;
-        string craftDetailRecipe;
         Vector2 lastMouse;
 
         static readonly Color32 Text = MadMax.Voxel.Pal.Ink, Dim = MadMax.Voxel.Pal.MutedInk, Amber = MadMax.Voxel.Pal.Accent,
@@ -117,11 +120,13 @@ namespace MadMax.Game
         }
 
         string StationType => station ? station.type : "workbench";
+        /// <summary>The recipe is on this crafting page: the station's own, or (no station: HANDCRAFT) the hand-made ones.</summary>
+        bool Offered(Recipe r) => station ? r.station == StationType : r.hand;
 
         List<RecipeCategory> StationCategories()
         {
             var l = new List<RecipeCategory>();
-            foreach (var r in RecipeLibrary.All) if (r.station == StationType && !l.Contains(r.category)) l.Add(r.category);
+            foreach (var r in RecipeLibrary.All) if (Offered(r) && !l.Contains(r.category)) l.Add(r.category);
             l.Sort();
             return l;
         }
@@ -210,7 +215,7 @@ namespace MadMax.Game
         {
             var z = (MadMax.Vehicles.ArmorZone)i;
             var cur = a.mat[i]; var plan = (MadMax.Vehicles.ArmorMat)armourPlan[i];
-            string now = cur == MadMax.Vehicles.ArmorMat.None ? "BARE" : MadMax.Vehicles.VehicleArmor.MatNames[(int)cur] + " " + Mathf.RoundToInt(a.condition[i] * 100f) + "%";
+            string now = cur == MadMax.Vehicles.ArmorMat.None ? "BARE" : MadMax.Vehicles.VehicleArmor.MatNames[(int)cur] + " " + Words.Condition(a.condition[i]);
             if (a.Voxels(z) == 0) return "N/A";
             if (plan == MadMax.Vehicles.ArmorMat.None) return now + (cur == MadMax.Vehicles.ArmorMat.None ? "" : "  > STRIP");
             float share = plan == cur ? 1f - a.condition[i] : 1f;
@@ -350,9 +355,9 @@ namespace MadMax.Game
                         Opt("DITHER", () => s.dither ? "ON" : "OFF", d => s.dither = !s.dither);
                         Opt("LIGHT DETAIL", () => GameSettings.LightNames[s.lightDetail], d => s.lightDetail = Mathf.Clamp(s.lightDetail + d, 0, 2));
                         Opt("OUTLINE", () => s.outline == 0 ? "OFF" : s.outline + " PX", d => s.outline = Mathf.Clamp(s.outline + d, 0, 2));
-                        Opt("SHADOWS", () => new[] { "OFF", "LOW", "HIGH" }[s.shadows], d => s.shadows = Mathf.Clamp(s.shadows + d, 0, 2));
+                        Opt("SHADOWS", () => MadMax.Rendering.GraphicsQuality.ShadowNames[Mathf.Clamp(s.shadows, 0, 4)], d => s.shadows = Mathf.Clamp(s.shadows + d, 0, 4));
                         Opt("HORIZON CURVE", () => s.flatWorld ? "OFF" : "ON", d => s.flatWorld = !s.flatWorld);
-                        Opt("BLOOM", () => s.bloom ? "ON" : "OFF", d => s.bloom = !s.bloom);
+                        Opt("BLOOM", () => MadMax.Rendering.GraphicsQuality.BloomNames[Mathf.Clamp(s.bloomLevel, 0, 2)], d => s.bloomLevel = Mathf.Clamp(s.bloomLevel + d, 0, 2));
                         Opt("BRIGHTNESS", () => Mathf.RoundToInt(s.brightness * 100) + "%", d => s.brightness = Mathf.Clamp(s.brightness + d * 0.1f, 0.5f, 1.8f));
                         Opt("DETAIL / LOD", () => GameSettings.LodNames[s.lod], d => s.lod = Mathf.Clamp(s.lod + d, 0, 3));
                         Opt("RESOLUTION", () => s.ResolutionName, d => { int n = GameSettings.Resolutions.Length; s.resolutionIndex = n == 0 ? -1 : ((s.resolutionIndex < 0 ? n - 1 : s.resolutionIndex) + d + n) % n; });
@@ -372,10 +377,24 @@ namespace MadMax.Game
                         Opt("RADIO CAPTIONS", () => s.radioCaptions ? "ON" : "OFF", d => s.radioCaptions = !s.radioCaptions);
                         Opt("SPEECH BUBBLES", () => s.voiceCaptions ? "ON" : "OFF", d => s.voiceCaptions = !s.voiceCaptions);
                     }
+                    else if (settingsTab == 5)
+                    {
+                        // full-resolution effects (RENDER STYLE: VECTOR); the pixel-art look keeps hard texels
+                        string Full(string v) => s.vector ? v : v + " (VECTOR ONLY)";
+                        Opt("ANTI-ALIASING", () => Full(MadMax.Rendering.GraphicsQuality.AntiAliasNames[Mathf.Clamp(s.antiAliasing, 0, 6)]), d => s.antiAliasing = (s.antiAliasing + d + 7) % 7);
+                        Opt("UPSCALING", () => Full(s.upscaler == 3 && !MadMax.Rendering.GraphicsQuality.DlssAvailable ? "DLSS (NOT AVAILABLE: STP)" : MadMax.Rendering.GraphicsQuality.UpscalerNames[Mathf.Clamp(s.upscaler, 0, 3)]), d => s.upscaler = (s.upscaler + d + 4) % 4);
+                        Opt("RENDER SCALE", () => s.upscaler == 0 ? "100% (NATIVE)" : Mathf.RoundToInt(MadMax.Rendering.GraphicsQuality.RenderScales[Mathf.Clamp(s.renderScale, 0, 5)] * 100f) + "%", d => s.renderScale = Mathf.Clamp(s.renderScale + d, 0, MadMax.Rendering.GraphicsQuality.RenderScales.Length - 1));
+                        Opt("AMBIENT OCCLUSION", () => MadMax.Rendering.GraphicsQuality.AoNames[Mathf.Clamp(s.ambientOcclusion, 0, 3)], d => s.ambientOcclusion = Mathf.Clamp(s.ambientOcclusion + d, 0, 3));
+                        Opt("REFLECTIONS", () => Full(MadMax.Rendering.GraphicsQuality.ReflectionNames[Mathf.Clamp(s.reflections, 0, 2)]), d => s.reflections = Mathf.Clamp(s.reflections + d, 0, 2));
+                        Opt("MOTION BLUR", () => Full(s.motionBlur ? "ON" : "OFF"), d => s.motionBlur = !s.motionBlur);
+                        Opt("TEXTURE FILTERING", () => MadMax.Rendering.GraphicsQuality.FilterNames[Mathf.Clamp(s.textureFilter, 0, 2)], d => s.textureFilter = Mathf.Clamp(s.textureFilter + d, 0, 2));
+                    }
                     else
                     {
                         Opt("HUD SIZE", () => s.hudScale <= 0 ? "WITH PIXEL SIZE" : GameSettings.PixelHeights[s.hudScale - 1] + " LINES", d => s.hudScale = Mathf.Clamp(s.hudScale - d, 0, GameSettings.PixelHeights.Length));
-                        Opt("HUD FONT", () => s.hudFont == 1 ? "PIXEL" : s.hudFont == 2 ? "HD" : "AUTO (HD WITH FULL RES)", d => s.hudFont = (s.hudFont + d + 3) % 3);
+                        Opt("HD HUD", () => s.hdHud ? "ON (SHARP ICONS AND TEXT)" : "OFF (PIXEL ART)", d => s.hdHud = !s.hdHud);
+                        Opt("HD MAP", () => s.hdMap ? "ON (SCREEN DETAIL)" : "OFF (PIXEL ART)", d => s.hdMap = !s.hdMap);
+                        Opt("HUD FONT", () => s.hudFont == 1 ? "PIXEL" : s.hudFont == 2 ? "HD" : "AUTO (HD WITH FULL RES OR HD HUD)", d => s.hudFont = (s.hudFont + d + 3) % 3);
                         Opt("COLOUR-BLIND HUD", () => s.colourBlind ? "ON (BLUE / ORANGE)" : "OFF", d => s.colourBlind = !s.colourBlind);
                         Opt("HINTS", () => s.hints ? "ON" : "OFF", d => s.hints = !s.hints);
                         Add("SHOW ALL HINTS AGAIN", () => { Hints.Reset(); game.Toast("HINTS RESET"); });
@@ -544,6 +563,7 @@ namespace MadMax.Game
                 case Page.Inventory:
                 {
                     var inv = game.Inventory;
+                    if (!game.Current) items.Add(new Item { label = "HANDCRAFT  [" + Controls.Name(Controls.Act.Craft) + "]", confirm = () => OpenCrafting(null), hint = "MAKE SIMPLE THINGS BY HAND, ANYWHERE: TORCHES, BANDAGES, SPEARS..." });
                     foreach (MadMax.Items.ItemCategory cat2 in System.Enum.GetValues(typeof(MadMax.Items.ItemCategory)))
                     {
                         bool header = false;
@@ -603,6 +623,7 @@ namespace MadMax.Game
                     break;
                 }
                 case Page.Container: BuildLoot(); break;                                    // the loot window (MenuSystem.Loot)
+                case Page.Build: BuildBuildPage(); break;                                   // the build catalogue (MenuSystem.Catalogue)
                 case Page.Respawn: BuildRespawn(); break;
                 case Page.Health:
                 {
@@ -613,6 +634,13 @@ namespace MadMax.Game
                         items.Add(new Item { label = MadMax.RPG.Injury.ZoneNames[(int)inj.zone] + ": " + MadMax.RPG.Injury.WoundNames[(int)inj.type], value = () => i2.Status, confirm = () => { game.Treat(i2); Rebuild(); }, hint = "ENTER TREAT (SPLINT / DISINFECT / BANDAGE)" });
                     }
                     if (st.injuries.Count == 0) items.Add(new Item { label = "NO INJURIES", enabled = () => false });
+                    items.Add(new Item { label = "- LIMBS -", enabled = () => false });
+                    foreach (var lz in Limbs.All)
+                    {
+                        var z2 = lz;
+                        items.Add(new Item { label = MadMax.RPG.Injury.ZoneNames[(int)lz], value = () => game.LimbStatus(z2), confirm = () => { game.LimbAction(z2); Rebuild(); },
+                            hint = "ENTER: FIT A PROSTHETIC FROM THE PACK / TAKE IT OFF; ON A LIMB: CUT IT OFF WITH A BLADE (TWICE TO CONFIRM; CLEAN AT A SURGERY TABLE)" });
+                    }
                     items.Add(new Item { label = "LOAD ON THE BACK", value = () => game.LoadLine, enabled = () => false, hint = "OVER THE COMFORTABLE LOAD THE BACK STRAINS (RUNNING, JUMPING, CLIMBING, ONE-SIDED BAGS MORE); REST, SLEEP OR A BACK BRACE EASE IT" });
                     break;
                 }
@@ -815,7 +843,7 @@ namespace MadMax.Game
                         items.Add(new Item
                         {
                             label = cd.name + (game.Wearing(gid) ? " (WORN)" : ""),
-                            value = () => Mathf.RoundToInt(game.GarmentCondition(gid) * 100f) + "%" + (game.GarmentCondition(gid) < 0.999f ? "  " + game.MendCost(gid) + " " + ResourceInfo.Name(game.MendWith(gid)) : ""),
+                            value = () => Words.Condition(game.GarmentCondition(gid)) + (game.GarmentCondition(gid) < 0.999f ? "  " + game.MendCost(gid) + " " + ResourceInfo.Name(game.MendWith(gid)) : ""),
                             enabled = () => game.GarmentCondition(gid) < 0.999f,
                             confirm = () => { game.Mend(gid); Rebuild(); },
                             hint = "ENTER MEND (ARMOUR TAKES ITS OWN MATERIAL)"
@@ -836,7 +864,7 @@ namespace MadMax.Game
                         items.Add(new Item
                         {
                             label = ItemCatalog.Name(tid),
-                            value = () => { var (t, n) = game.RepairCost(tid); return Mathf.RoundToInt(game.Condition(tid) * 100f) + "%" + (game.Condition(tid) < 0.999f ? "  " + n + " " + ResourceInfo.Name(t) : ""); },
+                            value = () => { var (t, n) = game.RepairCost(tid); return Words.Condition(game.Condition(tid)) + (game.Condition(tid) < 0.999f ? "  " + n + " " + ResourceInfo.Name(t) : ""); },
                             enabled = () => game.Condition(tid) < 0.999f,
                             confirm = () => { game.RepairTool(tid); Rebuild(); },
                             hint = "ENTER REPAIR WITH THE MATERIAL SHOWN"
@@ -920,18 +948,7 @@ namespace MadMax.Game
                     }
                     Add("BACK", () => Open(Page.Crafting));
                     break;
-                case Page.Crafting:
-                    var cats = StationCategories();
-                    category = Mathf.Clamp(category, 0, Mathf.Max(0, cats.Count - 1));
-                    var cat = cats.Count > 0 ? cats[category] : RecipeCategory.Tools;
-                    foreach (var r in RecipeLibrary.All)
-                    {
-                        if (r.category != cat || r.station != StationType) continue;
-                        var rec = r;
-                        bool known = game.Stats.Knows(RecipeLibrary.KnowledgeFor(r));
-                        items.Add(new Item { label = known ? r.name : r.name + " ?", recipe = r, confirm = () => game.Craft(rec, station), enabled = () => known && game.CanCraft(rec, station) });
-                    }
-                    break;
+                case Page.Crafting: BuildCraftPage(); break;                                 // the catalogue (MenuSystem.Catalogue)
             }
             cursor = Mathf.Clamp(cursor, 0, Mathf.Max(0, items.Count - 1));
         }
@@ -1041,6 +1058,7 @@ namespace MadMax.Game
             }
             if (PopupTick(kb, mouse, pad, esc)) return;                                         // a context menu over the page (MenuSystem.Context)
             if (RowContextTick(kb, mouse, pad)) return;
+            if (IsCatalogue && searchFocus) { SearchTick(kb, esc); return; }                    // typing into the catalogue search (MenuSystem.Catalogue)
             if (esc || (pad != null && pad.buttonEast.wasPressedThisFrame)) { if (Current == Page.Join) Open(Page.Main); else Back(); return; }
             if ((Current == Page.Talk || Current == Page.Trade) && (!talkNpc || !talkNpc.Alive || Vector3.Distance(talkNpc.transform.position, game.Current ? game.Current.transform.position : game.Player.transform.position) > (game.Current ? 40f : 6f))) { Close(); return; }
             if (items.Count > 0 && items[cursor].text != null)
@@ -1056,16 +1074,14 @@ namespace MadMax.Game
             if (Current == Page.Journal && kb != null && kb.tabKey.wasPressedThisFrame) { Open(Page.Map); return; }
             if ((Current == Page.Map || Current == Page.Journal) && Controls.Down(Controls.Act.Map)) { Close(); return; }
             if (Current == Page.Crafting && ((kb != null && kb.eKey.wasPressedThisFrame) || (kb != null && kb.tabKey.wasPressedThisFrame))) { Close(); return; }
-            if (Current == Page.Crafting && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
-            if (Current == Page.Crafting && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
-            if (Current == Page.Crafting && kb != null && kb.yKey.wasPressedThisFrame) { Open(Page.Salvage); return; }
-            if (Current == Page.Crafting && kb != null)
-            {
-                if (kb.pageDownKey.wasPressedThisFrame) craftDetailScroll++;
-                if (kb.pageUpKey.wasPressedThisFrame) craftDetailScroll = Mathf.Max(0, craftDetailScroll - 1);
-            }
-            if (Current == Page.Crafting && kb != null && kb.xKey.wasPressedThisFrame) { game.CancelLastJob(station); return; }
-            if ((Current == Page.Inventory && kb != null && kb.iKey.wasPressedThisFrame) || (Current == Page.Skills && kb != null && kb.pKey.wasPressedThisFrame) || (Current == Page.Health && kb != null && kb.oKey.wasPressedThisFrame)) { Close(); return; }
+            if (Current == Page.Crafting && station && kb != null && kb.rKey.wasPressedThisFrame) { Open(Page.Research); return; }
+            if (Current == Page.Crafting && station && kb != null && kb.tKey.wasPressedThisFrame) { Open(Page.Repair); return; }
+            if (Current == Page.Crafting && station && kb != null && kb.yKey.wasPressedThisFrame) { Open(Page.Salvage); return; }
+            if (Current == Page.Crafting && !station && Controls.Down(Controls.Act.Craft)) { Close(); return; }   // the handcraft key closes its page
+            if (Current == Page.Build && (Controls.Down(Controls.Act.Build) || (pad != null && pad.dpad.left.wasPressedThisFrame))) { Close(); return; }
+            if (IsCatalogue && CatalogueTick(kb, mouse, pad)) return;
+            if (Current == Page.Crafting && kb != null && kb.xKey.wasPressedThisFrame) { if (station) game.CancelLastJob(station); else game.CancelLastHandJob(); return; }
+            if ((Current == Page.Inventory && Controls.Down(Controls.Act.Inventory)) || (Current == Page.Skills && Controls.Down(Controls.Act.Skills)) || (Current == Page.Health && Controls.Down(Controls.Act.Health))) { Close(); return; }   // the (rebindable) key that opened it
             if (Current == Page.Inventory && kb != null && items.Count > 0 && items[cursor].id != null)
                 for (int i = 0; i < WastelandGame.HotbarSize; i++) if (kb[Key.Digit1 + i].wasPressedThisFrame) game.AssignHotbar(i, items[cursor].id);
             if (Current == Page.Inventory && InventoryDropKeys(pad)) return;
@@ -1088,7 +1104,8 @@ namespace MadMax.Game
                 if (pad.dpad.right.wasPressedThisFrame) dx = 1;
                 ok |= pad.buttonSouth.wasPressedThisFrame;
             }
-            if (items.Count > 0) cursor = (cursor + dy + items.Count) % items.Count;
+            if (IsCatalogue) { if (dx != 0 || dy != 0) CatalogueMove(dx, dy); dx = 0; }        // the grid: left / right a cell, up / down a row
+            else if (items.Count > 0) cursor = (cursor + dy + items.Count) % items.Count;
             if (dy != 0 || dx != 0) MadMax.Audio.Sfx.Play2D("click", 0.5f);
             else if (ok) MadMax.Audio.Sfx.Play2D("menu", 0.6f);
 
@@ -1106,17 +1123,8 @@ namespace MadMax.Game
                         cursor = i;
                         if (mouse.leftButton.wasPressedThisFrame) { if (items[i].adjust != null) dx = p.x > items[i].rect.center.x ? 1 : -1; else ok = true; }
                     }
-                float wheel = mouse.scroll.ReadValue().y;
-                if (Current == Page.Crafting && Mathf.Abs(wheel) > 0.01f && items.Count > 0) cursor = Mathf.Clamp(cursor - (int)Mathf.Sign(wheel), 0, items.Count - 1);
             }
 
-            if (Current == Page.Crafting && dx != 0)
-            {
-                { int n = Mathf.Max(1, StationCategories().Count); category = (category + dx + n) % n; }
-                cursor = 0;
-                Rebuild();
-                return;
-            }
             if (items.Count == 0) return;
             var it = items[cursor];
             if (dx != 0 && it.adjust != null) it.adjust(dx);
@@ -1204,6 +1212,7 @@ namespace MadMax.Game
             {
                 case Page.Main: DrawMain(c); break;
                 case Page.Crafting: DrawCrafting(c); break;
+                case Page.Build: DrawBuildPage(c); break;
                 case Page.Character: DrawList(c, mirror ? "MIRROR" : "OUTFIT", 200); break;
                 case Page.NewGame: DrawList(c, hostNew ? "NEW HOSTED GAME" : "NEW GAME", 240); break;
                 case Page.Inventory: DrawList(c, "INVENTORY   " + game.CarriedWeight.ToString("0.0") + "/" + game.Stats.CarryCapacity.ToString("0") + " KG" + (game.CarriedWeight > game.Stats.CarryCapacity ? "  OVERLOADED" : ""), 250); DrawHint(c); break;
@@ -1461,93 +1470,5 @@ namespace MadMax.Game
             return text.Length <= chars ? text : text.Substring(0, Mathf.Max(0, chars - 2)) + "..";
         }
 
-        void DrawCrafting(PixelCanvas c)
-        {
-            int w = Mathf.Min(c.w - 12, 450), h = Mathf.Min(c.h - 38, 244);
-            int x = (c.w - w) / 2, y = Mathf.Max(6, (c.h - h) / 2 - 5);
-            int split = x + w * 43 / 100, dx = split + 9, dw = x + w - dx - 8;
-            c.Panel(x, y, w, h);
-            c.Text(x + 8, y + 7, station ? station.title : "HANDCRAFT", Amber);
-            string source = station ? "PACK + STORAGE WITHIN 5 M" : "FROM YOUR PACK";
-            c.Text(x + 8, y + 17, source, Dim);
-            var cats = StationCategories();
-            string cat = cats.Count > 0 ? cats[Mathf.Clamp(category, 0, cats.Count - 1)].ToString().ToUpperInvariant() : "RECIPES";
-            c.Rect(x + 1, y + 27, w - 2, 14, Hi);
-            c.Text(x + 8, y + 31, "< " + cat + " >", Amber);
-            c.Text(split + 9, y + 31, "RECIPE / MATERIALS", Text);
-            c.Line(split, y + 42, split, y + h - 48, MadMax.Voxel.Pal.PanelEdge);
-            int lx = x + 8, ly = y + 48, listW = split - lx - 6, lh = 12;
-            int visible = Mathf.Max(1, (h - 99) / lh);
-            if (cursor < scroll) scroll = cursor;
-            if (cursor >= scroll + visible) scroll = cursor - visible + 1;
-            for (int i = 0; i < items.Count; i++)
-            {
-                var it = items[i];
-                if (i < scroll || i >= scroll + visible) { it.rect = new RectInt(-99, -99, 0, 0); continue; }
-                int iy = ly + (i - scroll) * lh;
-                it.rect = new RectInt(lx - 3, iy - 3, listW + 5, lh);
-                bool sel = i == cursor, ready = Enabled(it);
-                if (sel) { c.Rect(lx - 3, iy - 3, listW + 5, lh, Hi); c.Rect(lx - 3, iy - 3, 2, lh, Amber); }
-                c.Text(lx + 2, iy, FitCraft(it.label, listW - 4), ready ? Text : Dim);
-            }
-            if (items.Count > 0)
-            {
-                var r = items[cursor].recipe;
-                if (craftDetailRecipe != r.id) { craftDetailRecipe = r.id; craftDetailScroll = 0; }
-                int ry = ly;
-                c.Text(dx, ry, FitCraft(r.name, dw), Amber); ry += 10;
-                var lines = Wrap(r.description ?? "", dw);
-                for (int i = 0; i < lines.Count && i < 2; i++) { c.Text(dx, ry, FitCraft(lines[i], dw), Dim); ry += 8; }
-                ry += 4;
-                c.Text(dx, ry, "MATERIAL", Dim);
-                c.Text(dx + dw - PixelCanvas.TextWidth("HAVE / NEED"), ry, "HAVE / NEED", Dim); ry += 9;
-                int limit = y + h - 77, hidden = 0, inputIndex = 0;
-                int inputCount = r.items.Length + (r.fuel != ResourceType.None ? 1 : 0);
-                foreach (var input in r.resources) if (input.type != ResourceType.None) inputCount++;
-                int capacity = Mathf.Max(1, (limit - ry) / 9 + 1);
-                craftDetailScroll = Mathf.Clamp(craftDetailScroll, 0, Mathf.Max(0, inputCount - capacity));
-                void Ingredient(string name, int have, int need)
-                {
-                    if (inputIndex++ < craftDetailScroll) return;
-                    if (ry > limit) { hidden++; return; }
-                    string count = have + " / " + need;
-                    c.Text(dx, ry, FitCraft(name, dw - PixelCanvas.TextWidth(count) - 8), have >= need ? Text : Red);
-                    c.Text(dx + dw - PixelCanvas.TextWidth(count), ry, count, have >= need ? Green : Red);
-                    ry += 9;
-                }
-                foreach (var (t, n) in r.resources) if (t != ResourceType.None) Ingredient(ResourceInfo.Name(t), PoolRes(t), RecipeLibrary.Amount(n));
-                foreach (var (id, n) in r.items) Ingredient(ItemIds.Name(id), PoolItem(id), n);
-                if (r.fuel != ResourceType.None)
-                {
-                    var fuel = game.CraftFuel(r, station);
-                    Ingredient("FUEL " + ResourceInfo.Name(fuel), PoolRes(fuel), r.fuelAmount);
-                }
-                if (hidden > 0 || craftDetailScroll > 0) c.Text(dx, y + h - 68, FitCraft("PGUP/PGDN: MORE MATERIALS", dw), Dim);
-                string blocked = game.CraftBlockReason(r, station);
-                c.Text(dx, y + h - 57, FitCraft(blocked ?? "[ENTER] MAKE - " + Mathf.CeilToInt(RecipeLibrary.Seconds(r) / game.CraftSpeed(r)) + " S", dw), blocked == null ? Green : Amber);
-            }
-            else c.Text(dx, ly, "NO RECIPES IN THIS CATEGORY", Dim);
-            // A fixed queue footer stays on screen even with eight jobs and long recipe names.
-            int qy = y + h - 44;
-            c.Line(x + 7, qy, x + w - 8, qy, MadMax.Voxel.Pal.PanelEdge);
-            string status = "READY WHEN YOU ARE";
-            float progress = 0f;
-            if (station && station.Current != null)
-            {
-                var job = station.Current;
-                var recipe = RecipeLibrary.Get(job.recipe);
-                progress = Mathf.Clamp01(job.progress);
-                int seconds = recipe != null ? Mathf.CeilToInt((1f - progress) * RecipeLibrary.Seconds(recipe) / Mathf.Max(0.01f, job.speed)) : 0;
-                status = (station.Powered ? "MAKING " : "PAUSED - NO POWER: ") + (recipe != null ? recipe.name : "...")
-                    + "  " + Mathf.RoundToInt(progress * 100f) + "% / " + seconds + " S  [" + station.queue.Count + "/8]";
-            }
-            else if (station && station.TrayCount > 0) status = "FINISHED GOODS IN THE TRAY - COLLECT OUTSIDE THIS MENU";
-            c.Text(x + 8, qy + 5, FitCraft(status, w - 16), Amber);
-            c.Rect(x + 8, qy + 14, w - 16, 3, Hi);
-            c.Rect(x + 8, qy + 14, Mathf.RoundToInt((w - 16) * progress), 3, Green);
-            c.Text(x + 8, qy + 23, FitCraft("JOBS KEEP WORKING WHILE YOU EXPLORE", w - 16), Dim);
-            c.Text(x + 8, qy + 33, FitCraft("A/D CATEGORY   W/S SELECT   ENTER MAKE   ESC LEAVE", w - 16), Text);
-            c.Text(x + 4, y + h + 5, FitCraft("R RESEARCH   T REPAIR   Y SALVAGE   X CANCEL LAST", w - 8), Dim);
-        }
     }
 }

@@ -22,6 +22,9 @@ namespace MadMax.Game
         public static float SpaceFade { get; private set; }
         /// <summary>The pre-rendered intro already played in the boot scene: start straight at the live finale (menu).</summary>
         public static bool SkipToFinale;
+        /// <summary>The live finale has been on screen for a few frames (the boot film's last frame can fade into it).</summary>
+        public static bool FinaleLive => Instance && Instance.finale && Instance.finaleFrames > 3;
+        int finaleFrames;
 
         // a scene reload (new game, load) destroys the sequence without Finish(): never leave the HUD hidden
         void OnDestroy() { if (Instance == this) { Playing = false; Instance = null; OnMoon = false; SpaceFade = 0f; } }
@@ -37,7 +40,8 @@ namespace MadMax.Game
         Renderer neon;
         Material neonMat, logoMat;
         Light pinkLight, cyanLight;
-        Vector3 start, dir, side, stage, carSpot;
+        Vector3 start, dir, side, stage, carSpot, restPos;
+        float handOff;
         public const float FinaleAt = 15f;
         /// <summary>The boot film is this sequence recorded for 26 s: it ends 11 s into the finale.</summary>
         public const float FilmEndsAt = 26f;
@@ -114,7 +118,7 @@ namespace MadMax.Game
             t += Time.deltaTime;
             var kb = Keyboard.current;
             if (!finale && (SkipToFinale || t > FinaleAt || (t > 0.5f && kb != null && kb.anyKey.wasPressedThisFrame))) StartFinale();
-            if (!finale) Shots(); else Finale();
+            if (!finale) Shots(); else { Finale(); finaleFrames++; }
         }
 
         void LateUpdate()
@@ -216,6 +220,7 @@ namespace MadMax.Game
         void StartFinale()
         {
             finale = true;
+            finaleFrames = 0;
             t = FinaleAt;
             BuildMoon();
             var faceCam = -side;                                            // the sign faces back towards the camera
@@ -240,9 +245,12 @@ namespace MadMax.Game
             if (car)
             {
                 car.Body.linearVelocity = Vector3.zero; car.Body.angularVelocity = Vector3.zero;
-                car.Body.position = carSpot; car.Body.rotation = Quaternion.LookRotation(dir);          // side-on to the camera
-                car.transform.SetPositionAndRotation(carSpot, Quaternion.LookRotation(dir));
-                car.Body.isKinematic = false;
+                // side-on to the camera, set down on its springs (held kinematic: the burnout is staged)
+                restPos = moonSet.transform.TransformPoint(new Vector3(0f, 0f, -6.5f)) + Vector3.up * car.RestHeight;
+                car.Body.linearVelocity = Vector3.zero; car.Body.angularVelocity = Vector3.zero;
+                car.Body.isKinematic = true;
+                car.Body.position = restPos; car.Body.rotation = Quaternion.LookRotation(dir);
+                car.transform.SetPositionAndRotation(restPos, Quaternion.LookRotation(dir));
             }
             var key = new GameObject("KeyLight").AddComponent<Light>();                    // warm fill on the car from the camera side
             key.transform.SetParent(sign.transform, true);
@@ -255,7 +263,23 @@ namespace MadMax.Game
             logo.GetComponent<MeshRenderer>().sharedMaterial = logoMat;
             logo.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             logo.transform.localScale = Vector3.zero;
-            if (SkipToFinale) { t = FilmEndsAt; if (logo) logo.transform.localScale = Vector3.one * 0.62f; }   // continue exactly where the film stopped
+            if (SkipToFinale)
+            {
+                // continue exactly where the film stopped: logo up, neon steady, the burnout's plume already hanging there
+                t = FilmEndsAt; handOff = Time.time + 1.5f;
+                if (logo) logo.transform.localScale = Vector3.one * 0.62f;
+                if (car)
+                {
+                    var back = -car.transform.forward;
+                    var rear = car.transform.TransformPoint(new Vector3(0f, 0.25f, -1.5f));
+                    for (int i = 0; i < 60; i++)
+                    {
+                        float along = Random.Range(0f, 6f);
+                        Fx.Smoke(rear + back * along + Vector3.up * Random.Range(0.2f, 1.2f + along * 0.25f) + car.transform.right * Random.Range(-1f, 1f),
+                            back * Random.Range(1f, 2.5f) + Vector3.up * Random.Range(0.3f, 0.9f), Random.Range(1.2f, 2.4f), new Color(0.78f, 0.76f, 0.73f, 0.5f), Random.Range(1.2f, 2.6f));
+                    }
+                }
+            }
             if (!IntroRecorder.Recording) game.Menus.Open(MenuSystem.Page.Main);
         }
 
@@ -348,10 +372,14 @@ namespace MadMax.Game
         public void Restart()
         {
             t = 0f; finale = false;
+            SkipToFinale = false;                                          // the whole film, flyover included (the dev "no intro" start sets it)
             if (sign) Destroy(sign); if (logo) Destroy(logo);
             ClearMoon();
+            Playing = false;                                               // closing the menu must not end the title (MenuSystem.Close)
             game.Menus.Close();
+            Weather.Raining = false;                                       // every take under the same clear sky
             Playing = true; Instance = this;
+            if (car) { car.showcaseSpin = 0f; car.showcaseRpm = 0f; car.Body.isKinematic = false; }
             if (car) { var pos = Ground(start + dir * RoadAhead() + side * 1.5f) + Vector3.up * 0.8f; car.Body.position = pos; car.Body.rotation = Quaternion.LookRotation(dir); car.Body.linearVelocity = Vector3.zero; car.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(dir)); }
             DayNight.SetHours(16.5f);
         }
@@ -376,20 +404,32 @@ namespace MadMax.Game
             var pos = carSpot + back + dir * (2.5f + Mathf.Sin(ft * 0.15f) * 1.2f) + Vector3.up * 1.4f;
             ct.SetPositionAndRotation(pos, Quaternion.LookRotation(target - pos));
             // neon: stutter on, then hum with the odd flicker
-            bool lit = ft > 1.2f ? Mathf.PerlinNoise(t * 7f, 3.3f) > 0.07f : (Mathf.Repeat(ft * 9f, 1f) > 0.55f && ft > 0.3f);
+            bool lit = Time.time < handOff || (ft > 1.2f ? Mathf.PerlinNoise(t * 7f, 3.3f) > 0.07f : (Mathf.Repeat(ft * 9f, 1f) > 0.55f && ft > 0.3f));   // steady through the film hand-off
             if (neon) neon.enabled = lit;
             if (pinkLight) pinkLight.enabled = lit;
             if (cyanLight) cyanLight.enabled = lit;
             // burnout: throttle + brake (line lock); no air to burn, so grey regolith dust and sparks off the rims
             if (car)
             {
-                Drive(1f, 1f, false);
-                if (Vector3.Distance(car.transform.position, carSpot) > 1.5f) { car.Body.position = Vector3.Lerp(car.Body.position, carSpot, 0.1f); }
+                // a staged burnout: the body held still on the stage with a little squat and shake, the rear wheels
+                // spinning flat out, the engine on the limiter (a physical one fights its own brakes and judders)
+                car.throttleInput = 1f; car.brakeInput = 0f; car.handbrake = true; car.steerInput = 0f;
+                float rev = Mathf.Clamp01((ft - 0.4f) / 1.2f);
+                car.showcaseSpin = 34f * rev;
+                car.showcaseRpm = Mathf.Lerp(900f, 6200f + Mathf.PerlinNoise(t * 3f, 1.7f) * 500f, rev);
+                float shake = rev * 0.35f;
+                var baseRot = Quaternion.LookRotation(dir);
+                var rock = Quaternion.Euler(-1.2f * rev + (Mathf.PerlinNoise(t * 9f, 0.3f) - 0.5f) * shake, 0f, (Mathf.PerlinNoise(t * 7f, 4.1f) - 0.5f) * shake * 1.6f);
+                car.transform.SetPositionAndRotation(restPos - Vector3.up * 0.04f * rev, baseRot * rock);
+                car.Body.position = car.transform.position; car.Body.rotation = car.transform.rotation;
                 var rear = car.transform.TransformPoint(new Vector3(0f, 0.25f, -1.5f));
                 for (int s = -1; s <= 1; s += 2)
                 {
                     var wheel = rear + car.transform.right * s * 0.8f;
                     if (Random.value < 0.4f) Fx.Smoke(wheel, -car.transform.forward * 3.4f + Vector3.up * 0.5f + Random.insideUnitSphere * 0.6f, Random.Range(0.5f, 1.1f), new Color(0.6f, 0.58f, 0.55f, 0.7f), 1.4f);   // dust sprays low and settles
+                    if (Random.value < 0.85f * rev) Fx.Smoke(wheel - car.transform.forward * 0.3f + Random.insideUnitSphere * 0.25f,   // the plume: billows off the spinning tyres
+                        -car.transform.forward * Random.Range(3f, 6f) + Vector3.up * Random.Range(0.6f, 1.6f) + Random.insideUnitSphere * 0.8f,
+                        Random.Range(1.1f, 2.2f), new Color(0.78f, 0.76f, 0.73f, 0.55f), Random.Range(1.8f, 2.8f));
                     if (ft > 2.5f && Random.value < 0.3f) Fx.Sparks(wheel, -car.transform.forward + Vector3.up * 1.5f, 3, new Color(1f, 0.8f, 0.45f));
                     else if (Random.value < 0.2f) Fx.Sparks(wheel, -car.transform.forward + Vector3.up, 2, new Color(1f, 0.75f, 0.35f));
                 }
@@ -410,6 +450,7 @@ namespace MadMax.Game
         {
             if (!Playing) return;
             Playing = false; Instance = null;
+            if (car) { car.showcaseSpin = 0f; car.showcaseRpm = 0f; }
             if (car && DeformableTerrain.Instance) DeformableTerrain.Instance.extraFoci.Remove(car.transform);
             if (car) Destroy(car.gameObject);
             if (sign) Destroy(sign);

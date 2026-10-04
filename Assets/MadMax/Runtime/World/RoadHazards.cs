@@ -21,6 +21,7 @@ namespace MadMax.World
         /// <summary>Hazard under a point (wheel contact), if any.</summary>
         public static bool At(Vector3 p, out Kind kind)
         {
+            if (Spills.Instance && Spills.Slick(p)) { kind = Kind.Oil; return true; }                // spilled oil, fuel or ice
             foreach (var h in patches)
             {
                 float dx = p.x - h.pos.x, dz = p.z - h.pos.z;

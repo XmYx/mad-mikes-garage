@@ -59,7 +59,7 @@ namespace MadMax.Game
         {
             bool active = Enabled && game.Player && !game.Menus.IsOpen && !TitleSequence.Playing;
             if (!active) { foreach (var t in targets) if (t.hidden) Show(t, true); return; }
-            if ((rescan -= Time.deltaTime) <= 0f) { rescan = 1.5f; Rescan(); }
+            if ((rescan -= Time.deltaTime) <= 0f) { rescan = 1.5f; Rescan(); KeepPlayerShown(); }
             if (targets.Count == 0) return;
             var eye = EyePosition();
             int budget = Mathf.Min(targets.Count, 40);
@@ -132,10 +132,27 @@ namespace MadMax.Game
             return c is MeshCollider;                                                             // terrain chunk
         }
 
-        static void Show(Target t, bool on)
+        void Show(Target t, bool on)
         {
             t.hidden = !on;
-            foreach (var r in t.renderers) if (r) r.forceRenderingOff = !on || MadMax.Rendering.HDVisual.IsHost(r);   // voxel meshes under an HD model stay dark
+            var me = game && game.Player ? game.Player.transform : null;
+            foreach (var r in t.renderers)
+            {
+                if (!r || (me && r.transform.IsChildOf(me))) continue;                              // the player riding in or on it stays shown
+                r.forceRenderingOff = !on || MadMax.Rendering.HDVisual.IsHost(r);                 // voxel meshes under an HD model stay dark
+            }
         }
+
+        /// <summary>A vehicle's renderer list is taken once; if the player sat in it then (a passenger seat, the roof, a
+        /// ride perch, boarding), hiding the vehicle later hid the player's body too. Undo any such leftover.</summary>
+        void KeepPlayerShown()
+        {
+            if (!game.Player) return;
+            game.Player.GetComponentsInChildren(true, playerRenderers);
+            foreach (var r in playerRenderers) if (r && r.forceRenderingOff && !MadMax.Rendering.HDVisual.IsHost(r)) r.forceRenderingOff = false;
+            playerRenderers.Clear();
+        }
+
+        readonly List<Renderer> playerRenderers = new List<Renderer>();
     }
 }

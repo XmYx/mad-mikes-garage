@@ -14,8 +14,16 @@ namespace MadMax.Game
         public bool manualTransmission;
         public int pixelHeightIndex = 2;  // 270 lines: the HD asset sheets' pixel density (a sedan ~115 px wide at the default iso zoom)
         public int outline = 1;          // 0 off, 1 = 1 px, 2 = 2 px
-        public int shadows = 2;          // 0 off, 1 low, 2 high
-        public bool bloom = true;
+        public int shadows = 3;          // 0 off, 1 low, 2 medium, 3 high, 4 ultra (GraphicsQuality.ShadowNames)
+        public bool bloom = true;        // (format 3 and older; see bloomLevel)
+        public int bloomLevel = 1;       // 0 off, 1 soft, 2 strong
+        public int antiAliasing = 2;     // GraphicsQuality.AntiAliasNames (full resolution only): off, FXAA, SMAA, TAA, MSAA 2/4/8x
+        public int upscaler;             // GraphicsQuality.UpscalerNames: native, STP, FSR 1, DLSS (Windows + NVIDIA)
+        public int renderScale = 5;      // index into GraphicsQuality.RenderScales (100 %)
+        public int ambientOcclusion = 2; // off, low, medium, high (GTAO)
+        public int reflections = 1;      // sky only, screen space, screen space high (HD surfaces, full resolution)
+        public bool motionBlur;
+        public int textureFilter = 2;    // bilinear, anisotropic 4x, 16x
         public float brightness = 1f;
         public int lod = 1;              // 0 low, 1 medium, 2 high, 3 ultra
         public int resolutionIndex = -1; // -1 = current
@@ -27,7 +35,7 @@ namespace MadMax.Game
         public bool lineOfSight = true;  // hide objects the character cannot see
         public bool intro = true;        // boot film + flyover; off = straight to the neon sign and menu
         public int version;              // settings format (see Load migration)
-        const int CurrentVersion = 3;
+        const int CurrentVersion = 4;
         public float radioVolume = 0.8f; // master gain for all radios
         public float sfxVolume = 1f;     // sound effects
         public bool blood = true;        // blood bursts and stains on injuries
@@ -55,7 +63,9 @@ namespace MadMax.Game
         public bool hints = true;        // context hints (the first times you meet something)
         public int hudFont;              // 0 auto (HD text with full-resolution rendering), 1 pixel font, 2 HD text
         /// <summary>HUD and menu text drawn smooth (HudTextGraphic) instead of the 3x5 pixel font.</summary>
-        public bool HDText => hudFont == 2 || (hudFont == 0 && vector);
+        public bool HDText => hudFont == 2 || (hudFont == 0 && (vector || hdHud));
+        public bool hdHud;               // HD HUD: icons, gauges and text at screen detail (the layout stays the pixel HUD's)
+        public bool hdMap = true;        // HD MAP: the world map page at screen detail, smooth terrain colours
         public int autosaveMinutes = 10; // 0 off
         // audio
         public float ambientVolume = 1f;
@@ -79,7 +89,6 @@ namespace MadMax.Game
         public static readonly int[] PixelHeights = { 180, 240, 270, 320, 360, 480, 540 };
         public static readonly string[] LodNames = { "LOW", "MEDIUM", "HIGH", "ULTRA" };
         static readonly float[] LodRadius = { 48f, 72f, 96f, 128f };
-        static readonly float[] ShadowDistance = { 0f, 80f, 190f };
 
         const string Key = "madmax.settings";
         static GameSettings current;
@@ -93,7 +102,14 @@ namespace MadMax.Game
             // v2: the intro became a pre-rendered boot film; old "intro off" choices predate it, so they reset once
             if (s.version < 2) { s.intro = true; s.version = 2; s.Save(); }
             // v3: HD assets - the default pixel size follows the asset sheets (270 lines); the HUD keeps its old 320 lines
-            if (s.version < 3) { if (s.pixelHeightIndex == 3 && s.hudScale == 0) { s.pixelHeightIndex = 2; s.hudScale = 4; } s.version = CurrentVersion; s.Save(); }
+            if (s.version < 3) { if (s.pixelHeightIndex == 3 && s.hudScale == 0) { s.pixelHeightIndex = 2; s.hudScale = 4; } s.version = 3; s.Save(); }
+            if (s.version < 4)
+            {
+                // graphics options: three shadow levels became five, bloom an intensity; the effects start at their defaults
+                s.shadows = s.shadows >= 2 ? 3 : s.shadows; s.bloomLevel = s.bloom ? 1 : 0;
+                s.antiAliasing = 2; s.renderScale = 5; s.ambientOcclusion = 2; s.reflections = 1; s.textureFilter = 2;
+                s.version = CurrentVersion; s.Save();
+            }
             return s;
         }
 
@@ -127,7 +143,6 @@ namespace MadMax.Game
             }
         }
 
-        static Volume volume;
 
         public void Apply(WastelandGame game)
         {
@@ -148,12 +163,9 @@ namespace MadMax.Game
 
             if (game && game.sun)
             {
-                game.sun.shadows = shadows == 0 ? LightShadows.None : LightShadows.Hard;
                 game.sun.shadowBias = 0.6f;          // stable, acne-free voxel shadows
                 game.sun.shadowNormalBias = 1.2f;
             }
-            if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)
-                urp.shadowDistance = Mathf.Min(ShadowDistance[Mathf.Clamp(shadows, 0, 2)], 60f + ViewRadius * 1.5f);
 
             if (rig)
             {
@@ -161,21 +173,9 @@ namespace MadMax.Game
                 rig.thirdFov = Mathf.Clamp(fovThird, 35f, 90f);
                 rig.fogEnd = ViewRadius - 4f;
                 rig.fogStart = rig.fogEnd * 0.55f;
-                var cam = rig.pixel.GetComponent<Camera>();
-                var data = cam.GetUniversalAdditionalCameraData();
-                data.renderPostProcessing = bloom;
-                if (!volume)
-                {
-                    volume = new GameObject("PostFX").AddComponent<Volume>();
-                    volume.isGlobal = true;
-                    volume.profile = ScriptableObject.CreateInstance<VolumeProfile>();
-                    var b = volume.profile.Add<Bloom>(true);
-                    b.intensity.Override(0.9f);
-                    b.threshold.Override(0.9f);
-                    b.scatter.Override(0.55f);
-                }
-                volume.enabled = bloom;
             }
+            // anti-aliasing, upscaling, shadows, ambient occlusion, reflections, bloom, motion blur, filtering
+            MadMax.Rendering.GraphicsQuality.Apply(this, rig && rig.pixel ? rig.pixel.GetComponent<Camera>() : null, rig ? rig.pixel : null, game ? game.sun : null);
             if (DeformableTerrain.Instance) DeformableTerrain.Instance.SetViewRadius(ViewRadius);
 
             QualitySettings.vSyncCount = vsync ? 1 : 0;

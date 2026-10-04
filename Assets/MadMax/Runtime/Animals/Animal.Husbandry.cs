@@ -65,7 +65,7 @@ namespace MadMax.Animals
             get
             {
                 int pct = Mathf.RoundToInt(Mathf.Clamp01(health / Def.health) * 100f);
-                return bleed > 0.01f ? "BLEEDING, " + pct + "%" : limp > 0.05f ? "LAME, " + pct + "%" : sick > 0.05f ? "SICK, " + pct + "%" : pct + "%";
+                return bleed > 0.01f ? "BLEEDING" : limp > 0.05f ? "LAME" : sick > 0.05f ? "SICK" : MadMax.Game.Words.Health(pct / 100f);
             }
         }
 
@@ -165,7 +165,7 @@ namespace MadMax.Animals
                 var med = MedFor(g);
                 if (med != null) return "[E] TREAT THE " + Label + " WITH " + ItemCatalog.Name(med) + " (" + Condition + ")" + TPrompt;
             }
-            if (Shearable && g.Inventory.GetItem(Shears) > 0) return "[E] SHEAR THE " + Label + " (WOOL " + Mathf.RoundToInt(wool * 100f) + "%)" + TPrompt;
+            if (Shearable && g.Inventory.GetItem(Shears) > 0) return "[E] SHEAR THE " + Label + " (FLEECE " + MadMax.Game.Words.Growth(wool) + ")" + TPrompt;
             return null;
         }
 
@@ -224,7 +224,7 @@ namespace MadMax.Animals
             if (!Alive || WoolYield == 0) return false;
             if (town >= 0) { g.Toast("A VILLAGER'S " + Def.name + " - NOT YOURS TO SHEAR"); return false; }
             if (!owned && trust < 0.5f) { g.Toast("IT WON'T STAND STILL FOR THE SHEARS"); return false; }
-            if (wool < 0.5f) { g.Toast("THE FLEECE IS STILL SHORT (" + Mathf.RoundToInt(wool * 100f) + "%)"); return false; }
+            if (wool < 0.5f) { g.Toast("THE FLEECE IS STILL SHORT"); return false; }
             int n = Mathf.Max(1, Mathf.RoundToInt(WoolYield * wool * Size * (0.85f + g.Stats.Level(Skill.Farming) * 0.05f) * GameRules.Current.yield));
             g.Inventory.Add(ResourceType.Wool, n);
             wool = 0f;

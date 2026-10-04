@@ -47,6 +47,7 @@ namespace MadMax.Game.Acceptance
             // ---- a story topic on the Talk page plays on the speaker and stops with the page
             // A1 in order: the satchel, then Nell's stop (her topic is offered once the stop is reached)
             yield return H.Walk(c, "satchel", 1.5f);
+            H.TakeSatchel(c);
             yield return H.Until(() => MadMax.Story.Story.StepDone("A1", "things"), 4f);
             yield return H.Walk(c, "nell", 4f);
             yield return H.Until(() => g.CastBody("nell") != null && MadMax.Story.Story.StepDone("A1", "stop"), 6f);

@@ -220,6 +220,8 @@ namespace MadMax.Game
                 Prompt = Current.GetComponent<InteriorSpace>() ? "[F] STAND UP" : "[F] EXIT";
                 var tow = TowTargetFor(Current, out var towText);
                 if (towText != null) Prompt += "   " + towText;
+                string wire = HotwireInteraction(Current);
+                if (wire != null) Prompt += "   " + wire;
                 if (F && !Boarding) ExitAnimated();
                 else if (J) DoTow(Current, tow);
                 return;
@@ -295,6 +297,46 @@ namespace MadMax.Game
             string fluidText = FluidInteraction(G, K);
             string armourText = ArmourInteraction(Controls.Down(Controls.Act.Armour) && !Build.Active);
             Prompt = Join(partText, enterText, towPrompt, fluidText, armourText);
+        }
+
+        float hotwireT;
+        /// <summary>Automation: hold the service key for the hotwire without a keyboard.</summary>
+        public bool ForceHotwire;
+
+        /// <summary>In the seat of a vehicle that won't start without its key: hold the service key to hotwire it (a
+        /// timed job: anyone can, slowly and badly; Hotwiring makes it quick and sure). A failure blows a fuse (a short
+        /// wait), may bite with a shock, and makes noise.</summary>
+        string HotwireInteraction(VehicleDriver v)
+        {
+            if (!v || !v.TryGetComponent<VehicleIgnition>(out var ign) || ign.CanStart(Inventory)) { hotwireT = 0f; return null; }
+            string key = Controls.Name(Controls.Act.Service);
+            if (Time.time < ign.blownUntil) { hotwireT = 0f; return "FUSE BLOWN: WAIT " + Mathf.CeilToInt(ign.blownUntil - Time.time) + " S"; }
+            int level = Stats.Level(MadMax.RPG.Skill.Hotwiring);
+            float need = ign.HotwireSeconds(level);
+            if (!(Controls.Held(Controls.Act.Service) || ForceHotwire) || Menus.IsOpen) { hotwireT = 0f; return "NO KEY  [HOLD " + key + "] TRY THE WIRES"; }
+            hotwireT += Time.deltaTime;
+            if (Random.value < Time.deltaTime * 3f) MadMax.Audio.Sfx.Play("ratchet", v.transform.position + Vector3.up, 0.25f, Random.Range(1.6f, 2.2f), 8f, 0.3f);
+            if (hotwireT < need) return "HOTWIRING... " + Mathf.RoundToInt(hotwireT / need * 100f) + "%";
+            hotwireT = 0f;
+            if (Random.value < ign.HotwireChance(level))
+            {
+                ign.hotwired = true;
+                Stats.Practice(MadMax.RPG.Skill.Hotwiring, 6f);
+                MadMax.World.Fx.Sparks(v.transform.position + Vector3.up * 0.8f, Vector3.up, 4, new Color(0.7f, 0.85f, 1f));
+                Toast("HOTWIRED: THE DASH LIGHTS UP");
+                if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.Crank();
+            }
+            else
+            {
+                ign.blownUntil = Time.time + 8f;
+                Stats.Practice(MadMax.RPG.Skill.Hotwiring, 3f);
+                MadMax.World.Fx.Sparks(v.transform.position + Vector3.up * 0.8f, Vector3.up, 8, new Color(0.7f, 0.85f, 1f));
+                MadMax.Audio.Sfx.Play("pop", v.transform.position + Vector3.up, 0.5f, 1.8f, 30f);
+                if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.Noise(v.transform.position, 30f);
+                if (Random.value < 0.3f) { Injure(3f, "BURNED"); Toast("ZAP! WRONG WIRES: A SHOCK AND A BLOWN FUSE"); }
+                else Toast("WRONG WIRES: A BLOWN FUSE");
+            }
+            return null;
         }
 
         static string Join(params string[] parts)

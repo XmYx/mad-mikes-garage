@@ -47,6 +47,32 @@ namespace MadMax.Items
 
         public FluidMix Clone() { var m = new FluidMix(); m.CopyFrom(this); return m; }
 
+        /// <summary>Evaporate from <paramref name="litres"/> of this blend: each component loses
+        /// <paramref name="k"/> × rate(component) × its share (volatile parts go first, oils stay). Returns the litres left.</summary>
+        public float Evaporate(float litres, float k, System.Func<ResourceType, float> rate)
+        {
+            if (Empty || litres <= 0f || k <= 0f) return litres;
+            float left = 0f;
+            for (int i = 1; i < f.Length; i++)
+            {
+                if (f[i] <= 0f) continue;
+                float have = f[i] * litres;
+                have = Mathf.Max(0f, have - k * rate((ResourceType)i) * f[i]);
+                f[i] = have; left += have;
+            }
+            if (left <= 1e-5f) { Clear(); return 0f; }
+            for (int i = 1; i < f.Length; i++) f[i] /= left;
+            Version++;
+            return left;
+        }
+
+        /// <summary>Turn the share of <paramref name="from"/> into <paramref name="to"/> (clean water picked up off the ground is dirty).</summary>
+        public void Swap(ResourceType from, ResourceType to)
+        {
+            if (Empty || f[(int)from] <= 0f || from == to) return;
+            f[(int)to] += f[(int)from]; f[(int)from] = 0f; Version++;
+        }
+
         /// <summary>Pour <paramref name="addLitres"/> of <paramref name="add"/> into <paramref name="haveLitres"/> of this.</summary>
         public void Blend(float haveLitres, FluidMix add, float addLitres)
         {
@@ -131,8 +157,23 @@ namespace MadMax.Items
             return true;
         }
 
-        /// <summary>Short HUD name: "DIESEL", "E85", "2-STROKE MIX 4%", "DIESEL 85% PETROL 15%"; "EMPTY".</summary>
+        /// <summary>What the character can tell by smell and colour (the HUD name): "DIESEL", "2-STROKE MIX", "PETROL
+        /// (SMELLS OFF)" for a little of something else, "DIESEL (MIXED)" for a real blend; "EMPTY". The shares are
+        /// <see cref="Assay"/> (tests, debugging).</summary>
         public string Label()
+        {
+            if (Empty) return "EMPTY";
+            var main = Main;
+            if (IsPure) return ResourceInfo.Name(main);
+            float fu = this[ResourceType.Fuel], et = this[ResourceType.Ethanol], oil = this[ResourceType.Oil];
+            if (fu + oil > 0.98f && oil > 0.005f && oil <= 0.1f) return "2-STROKE MIX";
+            if (fu + et > 0.98f && et < 0.15f) return ResourceInfo.Name(ResourceType.Fuel);
+            float rest = 1f - this[main];
+            return ResourceInfo.Name(main) + (rest > 0.15f ? " (MIXED)" : " (SMELLS OFF)");
+        }
+
+        /// <summary>The exact blend: "DIESEL", "E85", "2-STROKE MIX 4%", "DIESEL 85% PETROL 15%"; "EMPTY".</summary>
+        public string Assay()
         {
             if (Empty) return "EMPTY";
             var main = Main;

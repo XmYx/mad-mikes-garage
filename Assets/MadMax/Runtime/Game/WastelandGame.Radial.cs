@@ -36,7 +36,7 @@ namespace MadMax.Game
             TabTapped = false; PadSelectTapped = false;
             var pad = Gamepad.current;
             if (UpdateFluidChoice(kb, mouse, pad)) return;                                   // a container's siphon / pour choice (WastelandGame.Fluids)
-            if (Menus.IsOpen || TitleSequence.Playing || (Build && Build.RadialOpen)) { CloseRadial(); padHeld = -1f; return; }
+            if (Menus.IsOpen || TitleSequence.Playing) { CloseRadial(); padHeld = -1f; return; }
             // gamepad: hold Select for the wheel, aim with the right stick, release to run
             if (pad != null)
             {

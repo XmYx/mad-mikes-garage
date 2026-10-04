@@ -36,7 +36,8 @@ namespace MadMax.Game
                 col.a = a;
                 var dim = Dim; dim.a = a;
                 canvas.Rect(x - 2 + dx, y - 1, w + 2, ItemFeedRow, new Color32(8, 10, 10, (byte)(140 * (1f - gone))));
-                r.icon ??= ItemFeedIconFor(r);
+                int isz = ItemFeedIcon * canvas.res;
+                if (r.icon == null || r.icon.Length != isz * isz) r.icon = ItemFeedIconFor(r, canvas.res);   // HD HUD: icons at screen detail
                 canvas.Blit(x + dx, y, ItemFeedIcon, r.icon);
                 canvas.Text(x + dx + ItemFeedIcon + 3, y + 2, r.text, col);
                 if (r.source != null) canvas.Text(x + dx + ItemFeedIcon + 3 + tw + 5, y + 2, r.source, dim);
@@ -44,11 +45,11 @@ namespace MadMax.Game
             }
         }
 
-        static Color32[] ItemFeedIconFor(ItemFeed.Row r)
+        static Color32[] ItemFeedIconFor(ItemFeed.Row r, int res)
         {
             string key = r.Key;
             var mesh = WorldItemModels.IconMesh(key, out bool diagonal);
-            return IconRenderer.Get("feed:" + key, mesh, ItemFeedIcon, diagonal);
+            return IconRenderer.Get("feed:" + key + (res > 1 ? "@" + res : ""), mesh, ItemFeedIcon * res, diagonal);
         }
 
         /// <summary>Height of the lower-left prompt list this frame (same layout as HudKeys.DrawPromptList).</summary>

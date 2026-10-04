@@ -12,6 +12,19 @@ namespace MadMax.Vehicles
         [Range(0.3f, 0.9f)] public float peakAt = 0.6f;
 
         VehiclePart part;
+        EngineSpec spec;
+
+        /// <summary>What the engine is mechanically (cylinders, cycle, displacement...; <see cref="EngineSpec"/>).</summary>
+        public EngineSpec Spec
+        {
+            get
+            {
+                if (spec == null) { if (!part) part = GetComponent<VehiclePart>(); spec = EngineSpec.For(part ? part.partId : null, maxTorque, maxRpm); }
+                return spec;
+            }
+        }
+
+        void Awake() { idleRpm = Spec.idleRpm; }                                                      // big engines idle low, small ones high
 
         public float TorqueAt(float rpm)
         {

@@ -117,6 +117,7 @@ namespace MadMax.Building
             MadMax.Net.NetSession.Instance?.SendPlaceBroken(this);
             var def = FurnitureLibrary.Get(id);
             if (TryGetComponent<Container>(out var box)) box.Spill();
+            if (TryGetComponent<FluidStore>(out var store)) store.SpillAll();
             if (TryGetComponent<UtilityNode>(out var un)) un.Unlink();
             if (def != null && PickupSystem.Instance)
                 foreach (var (type, amount) in def.cost)

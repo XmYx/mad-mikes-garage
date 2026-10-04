@@ -200,7 +200,9 @@ namespace MadMax.Net
             string tun = v.TryGetComponent<VehicleTuning>(out var t) ? t.SaveState() : "";
             string paint = v.TryGetComponent<VehiclePaint>(out var p) ? p.SaveState() : "";
             int grime = v.TryGetComponent<VehicleGrime>(out var g) ? Mathf.RoundToInt(g.dirt * 10f) : 0;
-            return arm + "\u001f" + tun + "\u001f" + paint + "\u001f" + grime;
+            var tyres = new System.Text.StringBuilder();
+            foreach (var ws in v.GetComponentsInChildren<WheelStats>()) tyres.Append((char)('0' + Mathf.RoundToInt(Mathf.Clamp01(ws.mud) * 9f)));
+            return arm + "\u001f" + tun + "\u001f" + paint + "\u001f" + grime + "\u001f" + tyres + "\u001f" + VehicleBurn.LooksOf(v);
         }
 
         /// <summary>Whoever simulates a vehicle sends its looks when they changed (server relays).</summary>
@@ -233,6 +235,12 @@ namespace MadMax.Net
                 if (parts.Length > 1 && parts[1].Length > 0 && v.TryGetComponent<VehicleTuning>(out var t)) t.LoadState(parts[1]);
                 if (parts.Length > 2 && parts[2].Length > 0) VehiclePaint.Of(v).LoadState(parts[2]);
                 if (parts.Length > 3 && int.TryParse(parts[3], out int grime) && v.TryGetComponent<VehicleGrime>(out var g)) g.dirt = grime / 10f;
+                if (parts.Length > 4)
+                {
+                    var ws = v.GetComponentsInChildren<WheelStats>();
+                    for (int i = 0; i < ws.Length && i < parts[4].Length; i++) ws[i].mud = (parts[4][i] - '0') / 9f;
+                }
+                if (parts.Length > 5) VehicleBurn.ApplyLooks(v, parts[5]);
             }
             finally { Applying = false; }
             sentLooks[id] = looks;

@@ -141,7 +141,7 @@ namespace MadMax.Game
                     cargo = v.TryGetComponent<Container>(out var cg) ? cg.SaveState() : null
                 };
                 foreach (var s in v.GetComponent<VehicleChassis>().Sockets)
-                    vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, state = s.Current ? s.Current.SaveState() : null, q = s.Current ? s.Current.quality + 1 : 0, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f });
+                    vs.sockets.Add(new SocketSave { socket = s.name, part = s.Current ? s.Current.partId : null, state = s.Current ? s.Current.SaveState() : null, q = s.Current ? s.Current.quality + 1 : 0, damage = s.Current ? s.Current.damage : 0f, wear = s.Current && s.Current.TryGetComponent<WheelStats>(out var ws) ? ws.wear : 0f, mud = s.Current && s.Current.TryGetComponent<WheelStats>(out var wm) ? wm.mud : 0f });
                 if (v.TryGetComponent<VehicleSystems>(out var sys)) { vs.fuel = sys.fuel; vs.oil = sys.oil; vs.coolant = sys.coolant; vs.additive = sys.additive; vs.tank = (int)sys.tankKind; vs.disconnected = sys.disconnected; vs.fluids = sys.FluidState(); }
                 if (v.TryGetComponent<MadMax.Story.StoryTag>(out var stag)) vs.storyTag = stag.key;
                 if (v.TryGetComponent<VehicleDamage>(out var dmg)) { vs.frame = dmg.FrameDamage; vs.salvage = dmg.salvagePool; }
@@ -150,6 +150,8 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehiclePaint>(out var vp)) vs.paint = vp.SaveState();
                 if (v.TryGetComponent<VehicleSystems>(out var mt)) vs.service = mt.MaintenanceState();
                 if (v.TryGetComponent<VehicleBreakables>(out var wr)) vs.wear = wr.SaveState();
+                if (v.TryGetComponent<VehicleBurn>(out var vb)) vs.burn = vb.SaveState();
+                if (v.TryGetComponent<VehicleIgnition>(out var vi)) vs.ignition = vi.SaveState();
                 if (v.TryGetComponent<VehicleStorage>(out var vst)) vs.storage = vst.SaveState();
                 foreach (var dm in v.GetComponentsInChildren<DeformableMesh>())
                 {
@@ -225,6 +227,11 @@ namespace MadMax.Game
             }
         }
 
+        /// <summary>The part prefab of an id (icons, crafting).</summary>
+        public GameObject PartPrefab(string id) => id != null && partLookup.TryGetValue(id, out var p) ? p : null;
+        /// <summary>The vehicle prefab of a design (icons, crafting).</summary>
+        public GameObject VehiclePrefab(string design) => PrefabFor(design);
+
         GameObject PrefabFor(string design)
         {
             foreach (var p in vehiclePrefabs) if (p.name == design) return p;
@@ -261,12 +268,12 @@ namespace MadMax.Game
                 {
                     var saved = vs.sockets.Find(x => x.socket == s.name);
                     if (saved == null) continue;
-                    if (s.Current && s.Current.partId == saved.part) { s.Current.damage = saved.damage; s.Current.LoadState(saved.state); if (saved.q > 0) s.Current.quality = saved.q - 1; if (s.Current.TryGetComponent<WheelStats>(out var ws0)) ws0.wear = saved.wear; continue; }
+                    if (s.Current && s.Current.partId == saved.part) { s.Current.damage = saved.damage; s.Current.LoadState(saved.state); if (saved.q > 0) s.Current.quality = saved.q - 1; if (s.Current.TryGetComponent<WheelStats>(out var ws0)) { ws0.wear = saved.wear; ws0.mud = saved.mud; } continue; }
                     var old = s.Detach(false);
                     if (old) Destroy(old.gameObject);
                     if (string.IsNullOrEmpty(saved.part)) continue;
                     var part = SpawnPart(saved.part, s.transform.position, s.transform.rotation);
-                    if (part) { s.Attach(part); part.damage = saved.damage; part.LoadState(saved.state); if (saved.q > 0) part.quality = saved.q - 1; if (part.TryGetComponent<WheelStats>(out var ws1)) ws1.wear = saved.wear; }
+                    if (part) { s.Attach(part); part.damage = saved.damage; part.LoadState(saved.state); if (saved.q > 0) part.quality = saved.q - 1; if (part.TryGetComponent<WheelStats>(out var ws1)) { ws1.wear = saved.wear; ws1.mud = saved.mud; } }
                 }
                 if (go.TryGetComponent<VehicleSystems>(out var sys)) { sys.fuel = vs.fuel; sys.oil = vs.oil; sys.coolant = vs.coolant; sys.additive = vs.additive; sys.tankKind = (ResourceType)vs.tank; sys.disconnected = vs.disconnected; sys.LoadFluidState(vs.fluids); }
                 if (!string.IsNullOrEmpty(vs.storyTag)) MadMax.Story.StoryTag.Set(go, vs.storyTag);
@@ -287,6 +294,8 @@ namespace MadMax.Game
                         dm.LoadState(dent.Substring(cut + 1));
                     }
                 if (!string.IsNullOrEmpty(vs.wear) && go.TryGetComponent<VehicleBreakables>(out var wear)) wear.LoadState(vs.wear);
+                if (!string.IsNullOrEmpty(vs.burn)) VehicleBurn.ApplyLooks(go.GetComponent<VehicleDriver>(), vs.burn);
+                if (!string.IsNullOrEmpty(vs.ignition) && go.TryGetComponent<VehicleIgnition>(out var ign)) ign.LoadState(vs.ignition);
                 if (go.TryGetComponent<VehicleStorage>(out var vst)) vst.LoadState(vs.storage);
                 if (vs.fourWheel != v.FourWheelDrive) v.ToggleFourWheelDrive();
                 v.diffLocked = vs.diffLocked;

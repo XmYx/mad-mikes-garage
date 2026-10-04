@@ -90,7 +90,7 @@ namespace MadMax.Game
             Stats.Practice(Skill.Crafting, 2f);
             MadMax.Audio.Sfx.Play2D("scratch", 0.5f, 1.4f);
             var d = ClothingLibrary.Get(defId);
-            Toast("MENDED " + (d != null ? d.name : defId) + " (" + Mathf.RoundToInt(GarmentCondition(defId) * 100f) + "%)");
+            Toast("MENDED " + (d != null ? d.name : defId) + " (" + Words.Condition(GarmentCondition(defId)) + ")");
             if (Wearing(defId)) Player.RebuildBody();
             return true;
         }
@@ -126,7 +126,7 @@ namespace MadMax.Game
         {
             if (!Player || Vitals == null || Vitals.Dead) return;
             var s = Stats;
-            s.carryBonus = CarryBonus;
+            s.carryBonus = CarryBonus + LimbCarry;
             UpdateArmourNoise(dt);
             // ---- wetness: rain and snow soak you outdoors, swimming at once; shelter, warmth and heat dry you
             bool exposed = Weather.Raining && !Sheltered && !Current;

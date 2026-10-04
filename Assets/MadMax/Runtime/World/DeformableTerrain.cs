@@ -271,7 +271,17 @@ namespace MadMax.World
         public Surface SurfaceAt(float x, float z)
         {
             var ch = Locate(Mathf.RoundToInt(x / Cell), Mathf.RoundToInt(z / Cell), out int k);
-            return MakeSurface(ch, k);
+            var s = MakeSurface(ch, k);
+            float spill = SpillWet != null ? SpillWet(x, z) : 0f;
+            if (spill > 0f && ch.pave[k] == 0 && !(ch.paved[k] && ch.road[k] > 0.4f))
+            {
+                // poured water soaks the soil to mud (frozen: it sets instead)
+                float add = spill * (Weather.Temperature < 0f ? 0.2f : 1f);
+                s.wet = Mathf.Max(s.wet, add);
+                s.mud = Mathf.Max(s.mud, add * (1f - ch.road[k] * 0.5f));
+                s.softness = Mathf.Max(s.softness, 0.1f + 0.9f * add);
+            }
+            return s;
         }
 
         static Surface MakeSurface(Chunk ch, int k)

@@ -430,7 +430,9 @@ namespace MadMax.Game
             {
                 var c = new Vector2((k & 1) != 0 ? b.max.x + 0.55f : b.min.x - 0.55f, (k & 2) != 0 ? b.max.z + 0.55f : b.min.z - 0.55f);
                 if ((c - a).sqrMagnitude < 0.04f || SegmentHitsBox(a, c, vMin, vMax)) continue;       // standing on it / behind the body
-                float cost = (c - a).magnitude + (s - c).magnitude;
+                // a corner whose way on still crosses the body only if no corner has a clear one (else the walk
+                // swings between the near corner and the far one without ever arriving)
+                float cost = (c - a).magnitude + (s - c).magnitude + (SegmentHitsBox(c, s, vMin, vMax) ? 1000f : 0f);
                 if (cost < best) { best = cost; goal = c; found = true; }
             }
             return found;

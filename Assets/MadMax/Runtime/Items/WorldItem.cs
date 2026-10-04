@@ -42,15 +42,28 @@ namespace MadMax.Items
         void OnDisable() { All.Remove(this); SetNear(false); }
 
         /// <summary>A new object for <paramref name="count"/> of <paramref name="key"/> at <paramref name="pos"/> (its lowest
-        /// point). With a <paramref name="vehicle"/> it is parented there without a rigidbody.</summary>
-        public static WorldItem Create(string key, int count, float quality, Material mat, Vector3 pos, Quaternion rot, Transform vehicle = null)
+        /// point). With a <paramref name="vehicle"/> it is parented there without a rigidbody.
+        /// <paramref name="visual"/> replaces the catalogue model (loose debris: a scrap sheet, a plank) and is drawn with
+        /// <paramref name="mat"/> as is.</summary>
+        public static WorldItem Create(string key, int count, float quality, Material mat, Vector3 pos, Quaternion rot, Transform vehicle = null, Mesh visual = null)
         {
             var go = new GameObject("Item " + key);
             go.transform.SetPositionAndRotation(pos, rot);
             var w = go.AddComponent<WorldItem>();
             w.key = key; w.count = Mathf.Max(1, count); w.quality = quality;
             w.Resource = key.StartsWith("res:") && int.TryParse(key.Substring(4), out int r) ? (ResourceType)r : ResourceType.None;
-            WorldItemModels.AddVisual(go.transform, key, mat, out var b);
+            Bounds b;
+            if (visual)
+            {
+                var vis = new GameObject("Visual", typeof(MeshFilter), typeof(MeshRenderer)).transform;
+                vis.SetParent(go.transform, false);
+                vis.GetComponent<MeshFilter>().sharedMesh = visual;
+                vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                var mb = visual.bounds;
+                vis.localPosition = new Vector3(-mb.center.x, -mb.min.y, -mb.center.z);
+                b = new Bounds(new Vector3(0f, mb.size.y * 0.5f, 0f), mb.size);
+            }
+            else WorldItemModels.AddVisual(go.transform, key, mat, out b);
             w.Box = go.AddComponent<BoxCollider>();
             w.Box.center = b.center;
             w.Box.size = Vector3.Max(b.size, Vector3.one * 0.06f);
@@ -74,7 +87,7 @@ namespace MadMax.Items
             string name = IsResource ? ResourceInfo.Name(Resource) : ItemCatalog.Name(key);
             string make = quality >= 0f && !IsResource ? " (" + WastelandGame.QualityNames[Mathf.Clamp(Mathf.RoundToInt(quality), 0, 2)] + ")" : "";
             Label = IsResource ? count + (ResourceInfo.IsFluid(Resource) ? "L " : " ") + name : (count > 1 ? count + " " : "") + name + make;
-            prompt = "[E] PICK UP " + Label + (!IsResource && MadMax.Game.BagLibrary.IsBag(key) ? "  [" + Controls.Name(Controls.Act.Second) + "] LOOK INSIDE" : "");   // a bag on the ground can be looted
+            prompt = "[E] PICK UP " + Label + " (HOLD: ALL NEAR)" + (!IsResource && MadMax.Game.BagLibrary.IsBag(key) ? "  [" + Controls.Name(Controls.Act.Second) + "] LOOK INSIDE" : "");   // a bag on the ground can be looted
             if (Body) Body.mass = Mathf.Clamp(Weight, 0.2f, 8f);                                     // light: a car never notices it
             gameObject.name = "Item " + Label;
         }
@@ -95,7 +108,7 @@ namespace MadMax.Items
 
         public void Use(WastelandGame g, bool secondary)
         {
-            if (!secondary) g.PickUpItem(this);
+            if (!secondary) { g.PickUpItem(this); g.ArmLootAll(); }
             else if (!IsResource && MadMax.Game.BagLibrary.IsBag(key)) g.OpenGroundBag(this);
         }
     }

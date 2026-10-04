@@ -46,11 +46,11 @@ namespace MadMax.Game
                 else Hints.Show("drive", K(Controls.Act.Forward) + "/" + K(Controls.Act.Back) + " THROTTLE / BRAKE  " + K(Controls.Act.Jump) + " HANDBRAKE  " + K(Controls.Act.Enter) + " EXIT  " + K(Controls.Act.View) + " CAMERA");
                 if (MadMax.World.DayNight.Darkness > 0.5f && car.TryGetComponent<VehicleLights>(out var vl) && !vl.On) Hints.Show("lights", K(Controls.Act.Lights) + " HEADLIGHTS");
                 if (car.TryGetComponent<VehicleSystems>(out var sys) && sys.fuelCapacity > 0f && sys.FuelFraction < 0.15f)
-                    Hints.Show("fuel", "LOW FUEL: " + K(Controls.Act.Service) + " FILLS FROM YOUR PACK (OUTSIDE)  " + K(Controls.Act.Siphon) + " SIPHONS ANOTHER VEHICLE");
+                    Hints.Show("fuel", "LOW FUEL: " + K(Controls.Act.Service) + " POURS FROM A CAN (OUTSIDE)  " + K(Controls.Act.Siphon) + " SIPHONS INTO ONE");
                 return;
             }
             if (Player.Sitting && Player.SeatedOn && Player.SeatedOn.ride != null) { Hints.Show("horse", K(Controls.Act.Forward) + " TROT  " + K(Controls.Act.Run) + " GALLOP  " + K(Controls.Act.Jump) + " JUMP  " + K(Controls.Act.Enter) + " DISMOUNT"); return; }
-            if (Build && Build.Active) { Hints.Show("build", "LMB PLACE  " + K(Controls.Act.BuildRotate) + " ROTATE  " + K(Controls.Act.BuildDismantle) + " DISMANTLE  " + K(Controls.Act.BuildPrevCategory) + " " + K(Controls.Act.BuildNextCategory) + " CATEGORY  HOLD " + K(Controls.Act.Build) + ": WHEEL"); return; }
+            if (Build && Build.Active) { Hints.Show("build", "LMB PLACE  " + K(Controls.Act.BuildRotate) + " ROTATE  " + K(Controls.Act.BuildDismantle) + " DISMANTLE  " + K(Controls.Act.BuildPrevCategory) + " " + K(Controls.Act.BuildNextCategory) + " CATEGORY  " + K(Controls.Act.Build) + " BUILD MENU / PUT AWAY"); return; }
             if (Player.Tool is FishingRodTool) { Hints.Show("fish", "LMB CAST  CLICK WHEN IT BITES  HOLD LMB TO REEL"); return; }
             if (Player.Tool is RangedTool) { Hints.Show("gun", "RMB AIM  LMB FIRE  " + K(Controls.Act.Reload) + " RELOAD"); return; }
             if (Hints.Show("walk", K(Controls.Act.Forward) + K(Controls.Act.Left) + K(Controls.Act.Back) + K(Controls.Act.Right) + " WALK  " + K(Controls.Act.Run) + " RUN  " + K(Controls.Act.Jump) + " JUMP / CLIMB  " + K(Controls.Act.Help) + " ALL KEYS")) return;

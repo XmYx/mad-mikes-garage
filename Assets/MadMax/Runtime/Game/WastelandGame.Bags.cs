@@ -499,6 +499,7 @@ namespace MadMax.Game
             }
             groundItem = w; groundBox = c;
             LoadGroundBag();
+            StoryLooted(w.transform.position);
             Menus.OpenContainer(c);
         }
 

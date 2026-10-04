@@ -19,6 +19,9 @@ namespace MadMax.Rendering
             return px;
         }
 
+        /// <summary>Already rendered (the HD one or the voxel one): drawing it costs nothing this frame.</summary>
+        public static bool Cached(string key, int size) => cache.ContainsKey(key) || HDIcons.Ready(key, size);
+
         public static void Invalidate() { cache.Clear(); HDIcons.Invalidate(); }
 
         static Color32[] Render(Mesh mesh, int size, bool diagonal)

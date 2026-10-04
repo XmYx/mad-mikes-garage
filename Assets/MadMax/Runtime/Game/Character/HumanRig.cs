@@ -105,7 +105,7 @@ namespace MadMax.Game
         }
 
         public Transform Eye { get; private set; }
-        public Transform RightHand => bones.TryGetValue(BodyPart.HandR, out var t) ? t : transform;
+        public Transform RightHand => bones.TryGetValue(BoneGone(BodyPart.HandR) && !BoneGone(BodyPart.HandL) ? BodyPart.HandL : BodyPart.HandR, out var t) ? t : transform;   // one hand left: it takes over
         public Transform Head => bones[BodyPart.Head];
 
         public void Rebuild()
@@ -153,6 +153,7 @@ namespace MadMax.Game
 
         void FinishRebuild()
         {
+            ApplyLimbs();
             Eye = new GameObject("DriverEye").transform;
             Eye.SetParent(bones[BodyPart.Head], false);
             Eye.localPosition = new Vector3(0, 0.195f * appearance.height, 0.1f);

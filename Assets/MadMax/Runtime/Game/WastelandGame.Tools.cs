@@ -84,10 +84,10 @@ namespace MadMax.Game
             if (!worst || worst.damage < 0.02f) { Toast("NOTHING TO FIX"); return false; }
             if (DeferRepairKit(v, worst)) return false;                                      // patched at the part first; the kit is used then (WastelandGame.Anim)
             worst.damage = Mathf.Max(0f, worst.damage - 0.3f - Stats.Level(Skill.Mechanics) * 0.02f);
-            if (worst.TryGetComponent<WheelStats>(out var ws) && ws.Popped) ws.wear = 0.8f;       // patched, not new
+            if (worst.TryGetComponent<WheelStats>(out var ws) && ws.Popped && !ws.Shredded) ws.wear = 0.8f;   // patched, not new (a bare rim needs a new wheel)
             Stats.Practice(Skill.Mechanics, 5f);
             MadMax.Audio.Sfx.Play("ratchet", v.transform.position, 0.8f);
-            Toast("PATCHED " + worst.partId.Replace('_', ' ').ToUpperInvariant() + " (" + Mathf.RoundToInt((1f - worst.damage) * 100f) + "%)");
+            Toast("PATCHED " + worst.partId.Replace('_', ' ').ToUpperInvariant() + " (" + Words.Condition(1f - worst.damage) + ")");
             return true;
         }
 

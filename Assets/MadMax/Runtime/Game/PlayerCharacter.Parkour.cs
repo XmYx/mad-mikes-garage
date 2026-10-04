@@ -96,6 +96,8 @@ namespace MadMax.Game
                 }
             }
             if (!standable || !Room(onTop.point)) return false;
+            var gl = WastelandGame.Instance;
+            if (gl && !gl.CanClimb) { gl.Toast("CAN'T PULL UP WITHOUT TWO GRIPPING ARMS"); return false; }   // a lost hand with no climbing prosthetic
             // mantle: hands on the edge, pull up level with it, press over onto the top
             climbTop = top.point.y;
             var hang = face.point - fwd * 0.32f;

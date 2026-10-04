@@ -18,7 +18,7 @@ namespace MadMax.Npc
     /// base and fight whatever threatens the player. Talk with [E], trade with [T]. Takes hits through
     /// <see cref="IDamageable"/>, gets run over by fast vehicles, dies into a searchable body; killing peaceful folk
     /// (or someone who surrendered) costs reputation.</summary>
-    public class Npc : MonoBehaviour, IInteractable, IDamageable
+    public partial class Npc : MonoBehaviour, IInteractable, IDamageable
     {
         public static readonly List<Npc> All = new List<Npc>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
@@ -98,6 +98,7 @@ namespace MadMax.Npc
             n.rig = go.AddComponent<HumanRig>();
             n.rig.material = mat; n.rig.shareMeshes = true; n.rig.noStrands = true;
             n.rig.appearance = p.look.Clone();
+            n.rig.appearance.lost = n.State.lost;                                               // limbs lost in an earlier fight (Npc.Limbs)
             n.rig.outfit.AddRange(p.outfit);
             n.rig.Rebuild();
             n.anim = new HumanAnimator(n.rig);
@@ -293,6 +294,7 @@ namespace MadMax.Npc
             if (Time.time < chatUntil && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Gather) && !seated) { move = Vector3.zero; speed = 0f; faceTarget = chatAt; faceUntil = chatUntil; }   // chatting with a neighbour
             if (mode != Mode.Fight && mode != Mode.Surrender && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
             if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
+            if (rig.appearance.lost != 0) speed *= LimbPace;                                   // hopping on one leg, crawling on none
 
             float moved = 0f;
             if (seated) SitAtFire();
@@ -803,6 +805,7 @@ namespace MadMax.Npc
             var pp = g.Player.transform.position;
             if (Vector3.Distance(pp, transform.position) > 2f || Vector3.Dot(Flat(pp - transform.position).normalized, transform.forward) < 0.3f) { MadMax.Audio.Sfx.Play("punch", hitAt, 0.3f, 0.7f); return; }
             if (boutStrike != null) { boutStrike(this); MadMax.Audio.Sfx.Play("punch", pp + Vector3.up, 0.6f, 1.1f); return; }   // a supervised bout scores it
+            g.HitBladed = Limbs.Bladed(Profile.tool);
             g.Vitals.Hurt(Random.Range(7f, 13f) * power, "MELEE");
             BloodStains.Splash(pp, 0.4f);
             MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", pp + Vector3.up, 0.8f);
@@ -943,6 +946,7 @@ namespace MadMax.Npc
             if (armour > 0.25f) MadMax.Audio.Sfx.Play("hit_metal", point, 0.5f, 1.2f);
             float dmg = power * 28f * (1f - 0.7f * armour);
             health -= dmg;
+            TryDismember(point, dmg, source);
             lastBlow = direction.normalized * Mathf.Clamp(power * 90f, 30f, 400f);
             lastHurt = Time.time;
             BloodStains.Splash(transform.position, Mathf.Clamp01(dmg / 40f));
@@ -1074,12 +1078,22 @@ namespace MadMax.Npc
 
         // ------------------------------------------------------------------ talk / trade
 
+        /// <summary>The name once you have met (talked to them, or they ride with you); until then what you see of them.</summary>
+        public string KnownName => State.Has(NpcSave.Met) || companion ? Profile.Name : Stranger;
+
+        string Stranger => Profile.role switch
+        {
+            NpcRole.Shopkeeper => "THE SHOPKEEPER", NpcRole.Stallkeeper => "THE STALLHOLDER", NpcRole.Trader => "A TRADER",
+            NpcRole.Raider => "A RAIDER", NpcRole.RaiderBoss => "THE GANG'S BOSS", NpcRole.Leader => "THE TOWN'S HEAD",
+            NpcRole.Packer => "A PACKER", NpcRole.Resident => "A LOCAL", _ => "A STRANGER"
+        };
+
         public string Prompt(WastelandGame g)
         {
             if (mode == Mode.Dead || !Available) return null;
-            if (Surrendered) return "[E] " + Profile.Name + " (SURRENDERED)";
-            if (Hostile && !Profile.Raider) return Profile.Name + " WANTS YOU DEAD";
-            string s = "[E] " + (Profile.Raider ? "PARLEY WITH " : companion ? "ORDERS FOR " : "TALK TO ") + Profile.Name;
+            if (Surrendered) return "[E] " + KnownName + " (SURRENDERED)";
+            if (Hostile && !Profile.Raider) return KnownName + " WANTS YOU DEAD";
+            string s = "[E] " + (Profile.Raider ? "PARLEY WITH " : companion ? "ORDERS FOR " : "TALK TO ") + KnownName;
             if (companion) s += "  [T] THEIR PACK";
             else if (Profile.Vendor && !Hostile && State.disposition > -40) s += Closed ? "  (CLOSED TILL 7:00)" : "  [T] TRADE";
             return s;

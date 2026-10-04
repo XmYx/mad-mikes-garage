@@ -28,7 +28,7 @@ namespace MadMax.Game
             g.Stats.Practice(Skill.Survival, 0.6f);
             g.WearTool(id, 0.004f);
             if (flakes > 0) { g.Toast("A FLAKE OF GOLD IN THE PAN: +1 GOLD ORE"); MadMax.Audio.Sfx.Play2D("ding", 0.4f, 1.4f); }
-            else g.Toast((rich < 0.2f ? "BARE GRAVEL: HARDLY A SPECK HERE" : rich < 0.6f ? "A FEW SPECKS OF COLOUR" : "GOOD COLOUR IN THE PAN") + "  (VIAL " + Mathf.RoundToInt(g.GoldFines * 100f) + "%)");
+            else g.Toast((rich < 0.2f ? "BARE GRAVEL: HARDLY A SPECK HERE" : rich < 0.6f ? "A FEW SPECKS OF COLOUR" : "GOOD COLOUR IN THE PAN") + "  (THE VIAL: " + Words.Amount(g.GoldFines) + ")");
         }
     }
 }

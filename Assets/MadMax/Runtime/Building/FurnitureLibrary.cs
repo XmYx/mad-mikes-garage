@@ -26,6 +26,7 @@ namespace MadMax.Building
         public Vector4 deck;             // drivable top: half width, half length, top at the back / front edge (m, local)
         public int plan = -1;            // structure plan pseudo piece: index into StructurePlans (-2 = the capture tool)
         public float voxel = VoxelMesher.DefaultSize;   // big coarse pieces (the hangar) use larger voxels
+        public string desc;              // what it is for (build menu); null = read from what it is (FurnitureLibrary.Describe)
     }
 
     /// <summary>Placeable furniture and building pieces. Origin = mounting point on the surface, +Y = away from the
@@ -183,6 +184,7 @@ namespace MadMax.Building
             defs.AddRange(DefencePieces());
             defs.AddRange(SeasonsPieces());
             defs.AddRange(LightsPieces());
+            defs.AddRange(FluidsPieces());
             Upgrades();
         }
 

@@ -49,7 +49,7 @@ namespace MadMax.Game
             foreach (var kv in rig.bones)
             {
                 var t = kv.Value;
-                if (!t) continue;
+                if (!t || rig.BoneGone(kv.Key)) continue;                                        // a lost limb has no body
                 rest[t] = (t.localPosition, t.localRotation);
                 var sp = For(kv.Key, rig.appearance);
                 var rb = t.gameObject.AddComponent<Rigidbody>();

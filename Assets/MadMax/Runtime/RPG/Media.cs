@@ -45,6 +45,7 @@ namespace MadMax.RPG
             B("book_gunsmith", "GUNSMITH'S NOTES", Skill.Firearms, 150, 25, "k_firearms"),
             B("book_builder", "BUILDER'S HANDBOOK", Skill.Construction, 150, 25, "k_walls", "k_electric"),
             B("book_scrapper", "THE SCRAPPER'S BIBLE", Skill.Salvaging, 150, 25),
+            B("book_hotwiring", "IGNITION SYSTEMS (DOG-EARED)", Skill.Hotwiring, 160, 25),
             B("book_chemistry", "HOME CHEMISTRY", Skill.Crafting, 140, 30, "k_coolant", "k_molotov"),
             B("vhs_driving", "VHS: DRIVING SCHOOL", Skill.Driving, 200, 30, "k_drifting"),
             B("vhs_survival", "VHS: DESERT SURVIVAL", Skill.Survival, 200, 30),

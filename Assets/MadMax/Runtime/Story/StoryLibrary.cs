@@ -64,12 +64,11 @@ namespace MadMax.Story
         {
             // ---- A1: the opening (Playable)
             var a1 = Q("A1", Arc.A, "SOMEONE LEFT THE RADIO ON", "nell",
-                "Crawl out of the convoy wreck, reach Nell's roadside stop, earn fuel by fixing her rain collector, then get the stranded car running or walk to the first town.",
+                "Crawl out of the convoy wreck, reach Nell's roadside stop, earn fuel by fixing her rain collector, then get the stranded car running (a loose battery lead) or walk to the first town.",
                 null, "story_start", "cast", "water", "driving");
             a1.build = Build.Playable;
             a1.hook = "A VOICE ON THE RADIO COUNTED THE CONVOY. IT STOPPED AT YOUR CALLSIGN: KEEP THE LIGHT ON.";
-            Step(a1, "things", "SEARCH THE WRECK FOR YOUR THINGS", "satchel").When(Goal.Reach, "satchel", 2.6f)
-                .Pays(r => { r.items.Add((ItemIds.Wrench, 1)); r.items.Add(("tool_knife", 1)); r.items.Add((ItemIds.Canteen, 1)); r.items.Add(("food_can", 1)); r.items.Add(("med_bandage", 1)); r.items.Add(("misc_delivery_chit", 1)); r.resources.Add((ResourceType.Water, 1)); });
+            Step(a1, "things", "SEARCH THE WRECK FOR YOUR THINGS: TAKE YOUR SATCHEL", "satchel").When(Goal.Event, "looted:satchel");   // the satchel lies there (Game/StoryQuests/A1)
             Step(a1, "stop", "FOLLOW THE SMOKE TO THE ROADSIDE STOP", "nell").When(Goal.Reach, "nell", 9f);
             Step(a1, "nell", "TALK TO NELL MERCER", "nell").Says("nell", "a1_arrive", "I CRAWLED OUT OF A WRECKED CONVOY UP THE ROAD.",
                     "NELL MERCER. HEARD THE CRASH TWO NIGHTS BACK AND FIGURED NOBODY WALKED AWAY. WATER'S IN THE BARREL. MY RAIN COLLECTOR'S CRACKED: " +
@@ -78,8 +77,8 @@ namespace MadMax.Story
             Step(a1, "collector", "PATCH NELL'S RAIN COLLECTOR: [B] WITH THE CLAW HAMMER, AIM AT IT, R TO REPAIR (OR BUILD A NEW ONE)", "nell")
                 .When(Goal.Event, "repaired:rain_collector", label: "REPAIR THE OLD ONE")
                 .When(Goal.Build, "rain_collector", 12f, "BUILD A NEW ONE")
-                .Pays(r => { r.resources.Add((ResourceType.Fuel, 8)); r.resources.Add((ResourceType.Water, 3)); r.training.Add((Skill.Construction, 4f)); });
-            Step(a1, "move", "GET MOVING: THE STRANDED CAR NEEDS ITS BATTERY LEAD ([G] WITH A WRENCH) AND FUEL, OR WALK TO THE FIRST TOWN", "car")
+                .Pays(r => { r.cans.Add((FluidContainers.FuelCan, ResourceType.Fuel, 8f)); r.resources.Add((ResourceType.Water, 3)); r.training.Add((Skill.Construction, 4f)); });   // Nell's can, fuel in it
+            Step(a1, "move", "GET MOVING: THE STRANDED CAR NEEDS ITS BATTERY LEAD ([G] WITH A WRENCH), OR WALK TO THE FIRST TOWN", "car")
                 .When(Goal.Drive, "fleet", 150f, "DRIVE THE CAR 150 M")
                 .When(Goal.Reach, "town1", 70f, "REACH THE TOWN");
             Step(a1, "badge", "OPTIONAL: FIND YOUR CONVOY BADGE IN THE WRECK", "badge").When(Goal.Reach, "badge", 2.4f).Optional()
@@ -164,7 +163,7 @@ namespace MadMax.Story
             b1.offerSay = "ANYWHERE AROUND HERE A MECHANIC COULD WORK?";
             b1.offerReply = "THERE'S A GARAGE AT THE BEND. MIKE'S NAME IS STILL ON THE SIGN; MIKE ISN'T. CLEAR THE DOOR, GET ONE BENCH WORKING AND IT'S YOURS. I'LL TELL ANYONE WHO ASKS.";
             Step(b1, "look", "LOOK OVER THE OLD GARAGE AT THE BEND", "garage").When(Goal.Reach, "garage", 10f);
-            Step(b1, "clear", "CLEAR THE BLOCKED DOORWAY: BREAK THE BARRICADE, OR DISMANTLE IT IN BUILD MODE (X)", "garage").When(Goal.Event, "removed_story:barricade");
+            Step(b1, "clear", "CLEAR THE BLOCKED DOORWAY: BREAK THE BARRICADE, OR DISMANTLE IT (RMB ON IT, CLAW HAMMER)", "garage").When(Goal.Event, "removed_story:barricade");
             Step(b1, "bench", "RESTORE ONE WORK AREA: BUILD A WORKBENCH INSIDE", "garage").When(Goal.Build, "workbench", 9f)
                 .Pays(r => { r.resources.Add((ResourceType.Scrap, 12)); r.training.Add((Skill.Construction, 5f)); });
             Step(b1, "claim", "PLANT A CLAIM FLAG TO MAKE IT YOURS", "garage").When(Goal.Build, "claim_flag", 30f);

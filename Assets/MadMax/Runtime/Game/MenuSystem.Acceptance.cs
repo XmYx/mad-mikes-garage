@@ -42,6 +42,30 @@ namespace MadMax.Game
             return false;
         }
 
+        /// <summary>Catalogue pages (crafting, build): switch to category <paramref name="i"/> as a click on it would.</summary>
+        public void PickCategory(int i) { if (IsCatalogue) SetCatalogueCategory(i); }
+
+        /// <summary>Catalogue pages: cells laid out on screen in the last draw (inside the canvas) and the grid's columns.</summary>
+        public int VisibleCells(out int columns)
+        {
+            columns = gridCols;
+            var canvas = PixelHud.Canvas;
+            int n = 0;
+            foreach (var it in items) if (it.rect.width > 0 && canvas != null && it.rect.xMax <= canvas.w && it.rect.yMax <= canvas.h && it.rect.x >= 0 && it.rect.y >= 0) n++;
+            return n;
+        }
+
+        /// <summary>Catalogue pages: the panel lines of the selected cell (what the hover panel shows).</summary>
+        public List<string> TipLines()
+        {
+            var l = new List<string>();
+            if (cursor < 0 || cursor >= items.Count) return l;
+            var it = items[cursor];
+            var lines = it.recipe != null ? RecipeTip(it.recipe, it.known) : it.piece != null ? PieceTip(it.piece) : null;
+            if (lines != null) foreach (var (t, _) in lines) if (t != null) l.Add(t);
+            return l;
+        }
+
         /// <summary>What the person in an open conversation just said (null when no conversation is open).</summary>
         public string TalkLine => (Current == Page.Talk || Current == Page.Trade) && talk != null ? talk.line : null;
     }

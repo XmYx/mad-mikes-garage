@@ -5,10 +5,17 @@ using UnityEngine;
 
 namespace MadMax.Rendering
 {
-    /// <summary>CPU pixel buffer with a 3x5 bitmap font. Coordinates are top-left origin. Used for the HUD and dashboards.</summary>
+    /// <summary>CPU pixel buffer with a 3x5 bitmap font. Coordinates are top-left origin, in logical pixels
+    /// (<see cref="w"/> x <see cref="h"/>). Used for the HUD and dashboards. With <see cref="res"/> &gt; 1 (HD HUD / HD
+    /// MAP) the buffer holds res x res physical pixels per logical one: shapes and the pixel font look the same, while
+    /// icons and maps can fill the finer pixels (<see cref="Blit"/> with a res-times larger icon, <see cref="SetFine"/>).</summary>
     public class PixelCanvas
     {
         public int w, h;
+        /// <summary>Physical pixels per logical pixel (1 = the pixel-art HUD).</summary>
+        public int res = 1;
+        /// <summary>Physical size of the buffer and texture.</summary>
+        public int pw, ph;
         public Color32[] px;
         public Texture2D texture;
 
@@ -18,14 +25,15 @@ namespace MadMax.Rendering
         /// opaque rect over half a run hides it, as it would cover the pixels.</summary>
         public List<TextRun> runs;
 
-        public PixelCanvas(int width, int height) { Resize(width, height); }
+        public PixelCanvas(int width, int height, int resolution = 1) { Resize(width, height, resolution); }
 
-        public void Resize(int width, int height)
+        public void Resize(int width, int height, int resolution = 1)
         {
-            w = width; h = height;
-            px = new Color32[w * h];
+            w = width; h = height; res = Mathf.Max(1, resolution);
+            pw = w * res; ph = h * res;
+            px = new Color32[pw * ph];
             if (texture) UnityEngine.Object.Destroy(texture);
-            texture = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PixelCanvas" };
+            texture = new Texture2D(pw, ph, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PixelCanvas" };
         }
 
         public void Clear(Color32 c) { Array.Fill(px, c); runs?.Clear(); }
@@ -35,17 +43,58 @@ namespace MadMax.Rendering
         public void Set(int x, int y, Color32 c)
         {
             if (x < 0 || y < 0 || x >= w || y >= h) return;
-            int i = (h - 1 - y) * w + x;
+            if (res == 1) { Put((h - 1 - y) * w + x, c); return; }
+            for (int j = 0; j < res; j++)
+            {
+                int row = (ph - 1 - (y * res + j)) * pw + x * res;
+                for (int i = 0; i < res; i++) Put(row + i, c);
+            }
+        }
+
+        /// <summary>One physical pixel (fine detail on an HD canvas; the same as <see cref="Set"/> at res 1).</summary>
+        public void SetFine(int fx, int fy, Color32 c)
+        {
+            if (fx < 0 || fy < 0 || fx >= pw || fy >= ph) return;
+            Put((ph - 1 - fy) * pw + fx, c);
+        }
+
+        void Put(int i, Color32 c)
+        {
             if (c.a == 255) { px[i] = c; return; }
             var d = px[i];
             float a = c.a / 255f;
             px[i] = new Color32((byte)(d.r + (c.r - d.r) * a), (byte)(d.g + (c.g - d.g) * a), (byte)(d.b + (c.b - d.b) * a), (byte)Mathf.Max(d.a, c.a));
         }
 
-        /// <summary>Draw an icon (rows bottom-up, alpha-tested) with its top-left corner at x, y.</summary>
-        public void Blit(int x, int y, int size, Color32[] src)
+        /// <summary>Draw an icon (rows bottom-up, alpha-tested) <paramref name="size"/> logical pixels square with its
+        /// top-left corner at x, y. An icon rendered at size x <see cref="res"/> fills the physical pixels one to one
+        /// (sharp on an HD canvas); one at size is drawn in blocks.</summary>
+        public void Blit(int x, int y, int size, Color32[] src) => Blit(x, y, size, src, false);
+
+        /// <summary><see cref="Blit(int,int,int,Color32[])"/>, <paramref name="grey"/>: drained of colour and dimmed (not
+        /// available yet).</summary>
+        public void Blit(int x, int y, int size, Color32[] src, bool grey)
         {
             if (src == null) return;
+            if (grey)
+            {
+                var g = new Color32[src.Length];
+                for (int i = 0; i < src.Length; i++) { var c = src[i]; byte l = (byte)((c.r * 30 + c.g * 59 + c.b * 11) / 100 * 0.55f); g[i] = new Color32(l, l, l, c.a); }
+                src = g;
+            }
+            int n = Mathf.RoundToInt(Mathf.Sqrt(src.Length));
+            if (n == size * res && res > 1)
+            {
+                int ox = x * res, oy = y * res;
+                for (int j = 0; j < n; j++)
+                for (int i = 0; i < n; i++)
+                {
+                    var c = src[(n - 1 - j) * n + i];
+                    if (c.a > 128) SetFine(ox + i, oy + j, c);
+                }
+                return;
+            }
+            if (n != size) return;
             for (int j = 0; j < size; j++)
             for (int i = 0; i < size; i++)
             {

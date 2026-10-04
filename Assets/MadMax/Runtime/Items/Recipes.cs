@@ -22,6 +22,7 @@ namespace MadMax.Items
         public float seconds = 2f;
         public string knowledge;         // must be learned (book, tape or research) before crafting
         public string station = "workbench";   // crafting station type that offers it
+        public bool hand;                // also made by hand, anywhere (HANDCRAFT menu; RecipeLibrary.Handmade)
         public ResourceType fuel;        // burnt per craft at fire stations (None = no fuel)
         public int fuelAmount;
     }
@@ -40,7 +41,8 @@ namespace MadMax.Items
 
         static readonly Dictionary<string, string> extraNames = new Dictionary<string, string>
         {
-            { "bp_aviation", "BLUEPRINT: FLYING MACHINES" }, { "use_saddle", "SADDLE" }, { "animal_chick", "CHICK" }, { "animal_kid", "GOAT KID" }, { "animal_calf", "CALF" }, { "animal_piglet", "PIGLET" }, { "animal_puppy", "PUPPY" },
+            { "bp_aviation", "BLUEPRINT: FLYING MACHINES" }, { "bp_prosthetics", "BLUEPRINT: PROSTHETICS" },
+            { "limb_arm", "SEVERED FOREARM" }, { "limb_hand", "SEVERED HAND" }, { "limb_leg", "SEVERED LOWER LEG" }, { "limb_foot", "SEVERED FOOT" }, { "use_saddle", "SADDLE" }, { "animal_chick", "CHICK" }, { "animal_kid", "GOAT KID" }, { "animal_calf", "CALF" }, { "animal_piglet", "PIGLET" }, { "animal_puppy", "PUPPY" },
             { "misc_bone", "BONE" }, { "misc_feather", "FEATHER" }, { "trophy_tusks", "BOAR TUSKS" }, { "trophy_horns", "ANTELOPE HORNS" }, { "trophy_pelt", "WOLF PELT" },
             { "dye_red", "RED DYE" }, { "dye_blue", "BLUE DYE" }, { "dye_green", "GREEN DYE" }, { "dye_yellow", "YELLOW DYE" }, { "dye_black", "BLACK DYE" }, { "dye_white", "WHITE DYE" },
             { "bp_weapon_mg", "BLUEPRINT: ROOF MG" }, { "bp_weapon_flamer", "BLUEPRINT: FLAMETHROWER" }, { "bp_weapon_harpoon", "BLUEPRINT: HARPOON LAUNCHER" },
@@ -85,11 +87,14 @@ namespace MadMax.Items
             if (id == Fertilizer) return "FERTILIZER";
             if (id == Pills) return "PILLS";
             if (id == Paper) return "PAPER";
+            if (IsCarKey(id)) { int a = id.IndexOf('_'), b = id.LastIndexOf('_'); return (b > a ? id.Substring(a + 1, b - a - 1).ToUpperInvariant() + " " : "") + "KEY"; }
             int us = id.IndexOf('_');
             return (us >= 0 ? id.Substring(us + 1) : id).Replace('_', ' ').ToUpperInvariant();
         }
 
         public static bool IsTool(string id) => id.StartsWith("tool_");
+        /// <summary>A vehicle's ignition key: "key_&lt;design&gt;_&lt;id&gt;" (<see cref="MadMax.Vehicles.VehicleIgnition"/>).</summary>
+        public static bool IsCarKey(string id) => id != null && id.StartsWith("key_");
     }
 
     public static partial class RecipeLibrary
@@ -253,6 +258,7 @@ namespace MadMax.Items
             list.AddRange(HusbandryRecipes());
             list.AddRange(UtilitiesRecipes());
             list.AddRange(MedMineRecipes());
+            list.AddRange(ProstheticRecipes());
             list.AddRange(DefenceRecipes());
             list.AddRange(SeasonsRecipes());
             list.AddRange(LightsRecipes());
@@ -261,6 +267,7 @@ namespace MadMax.Items
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {
+                r.hand = Handmade(r);
                 if (r.category == RecipeCategory.Clothing && (r.station == null || r.station == "workbench")) r.station = "sewing";   // clothes at the sewing table (leather goods: the leather bench)
                 // firearms and their ammunition at the gunsmith bench (melee and caltrops stay at the workbench)
                 if (r.category == RecipeCategory.Weapons && r.output != null && (r.output == ItemIds.Shotgun || (r.output.StartsWith("ammo_") && r.output != "ammo_caltrops"))) r.station = "gunsmith";
@@ -270,6 +277,28 @@ namespace MadMax.Items
 
         static Recipe Res(string id, string name, RecipeCategory c, string station, ResourceType output, int amount, string desc, params (ResourceType, int)[] res) =>
             new Recipe { id = id, name = name, category = c, station = station, kind = OutputKind.Resource, outputResource = output, amount = amount, description = desc, resources = res };
+        /// <summary>Raw stuff a person can work with bare hands and a knife: wood, cloth, stone, hide, rubber, thread,
+        /// leather, a little rope of plant fibre.</summary>
+        static readonly ResourceType[] HandMaterials = { ResourceType.Wood, ResourceType.Cloth, ResourceType.Stone, ResourceType.Hide, ResourceType.Rubber, ResourceType.Thread, ResourceType.Leather };
+
+        /// <summary>Made by hand, anywhere: recipes with no station, and simple workbench items — no fuel, no parts, no
+        /// knowledge to learn, a handful (≤ 6) of hand-workable materials (no metal).</summary>
+        static bool Handmade(Recipe r)
+        {
+            if (r.category == RecipeCategory.Clothing) return r.id == "bag_craftpack";            // garments are sewn (the stick-frame pack is the one made by hand)
+            if (r.station == null) return true;
+            if (r.station != "workbench" || r.kind != OutputKind.Item || r.fuel != ResourceType.None || r.items.Length > 0) return false;
+            if (string.IsNullOrEmpty(r.output) || r.output.StartsWith("kit_") || r.output.StartsWith("bp_") || !string.IsNullOrEmpty(KnowledgeFor(r))) return false;
+            int total = 0;
+            foreach (var (t, n) in r.resources)
+            {
+                if (t == ResourceType.None) continue;
+                if (System.Array.IndexOf(HandMaterials, t) < 0) return false;
+                total += n;
+            }
+            return total > 0 && total <= 6;
+        }
+
         static Recipe Itm(string id, string name, RecipeCategory c, string station, string output, int amount, string desc, (string, int)[] items, params (ResourceType, int)[] res) =>
             new Recipe { id = id, name = name, category = c, station = station, kind = OutputKind.Item, output = output, amount = amount, description = desc, items = items ?? new (string, int)[0], resources = res };
 

@@ -75,6 +75,11 @@ namespace MadMax.Items
                     else if (id == ItemIds.Sponge) { g.Box(-3, 0, -2, 3, 3, 2, Pal.Solid(Pal.Hex("e8c848"))); g.Box(-3, 3, -2, 3, 3, 2, Pal.Solid(Pal.Hex("5aa050"))); g.Set(-1, 1, 2, Pal.Solid(Pal.Hex("b89830"))); g.Set(2, 2, 2, Pal.Solid(Pal.Hex("b89830"))); }
                     else if (id == ItemIds.Pills) { g.CylY(0, 0, 1.6f, 0, 4, Pal.Solid(Pal.Cream[3])); g.Box(-1, 5, -1, 1, 5, 1, Pal.Solid(Pal.TailR)); }
                     else if (id == ItemIds.Fertilizer) { g.Box(-3, 0, -2, 3, 5, 2, Pal.Ramp(Pal.Sand, 1)); g.Box(-1, 3, 3, 1, 4, 3, Pal.Solid(Pal.Hex("46862c"))); }
+                    else if (ItemIds.IsCarKey(id))
+                    {
+                        g.Box(-1, 0, 0, 1, 2, 0, Pal.Ramp(Pal.Black, 1)); g.Set(0, 1, 0, Pal.Solid(Pal.Black[0]));                      // the bow
+                        g.Box(0, 3, 0, 0, 7, 0, Pal.Ramp(Pal.Chrome, 3)); g.Set(1, 5, 0, Pal.Solid(Pal.Chrome[2])); g.Set(1, 7, 0, Pal.Solid(Pal.Chrome[2]));   // the blade, cut
+                    }
                     else if (id.StartsWith("bp_"))
                     {
                         g.CylX(0, 0, 1.6f, -4, 4, p => p.x % 3 == 0 ? Pal.Cream[4] : Pal.Navy[2]);                       // rolled blueprint

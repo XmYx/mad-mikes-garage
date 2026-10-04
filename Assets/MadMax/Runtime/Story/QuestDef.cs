@@ -62,7 +62,9 @@ namespace MadMax.Story
         public string flag;         // a world flag set on payment ("car_owned", ...)
         public readonly List<(string item, int n)> take = new List<(string, int)>();   // handed over by the player
         public readonly List<string> evidence = new List<string>();                     // evidence records (Story.Evidence)
-        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null && take.Count == 0 && evidence.Count == 0;
+        /// <summary>Liquid handed over in its container (liquids only move in containers): container id, liquid, litres.</summary>
+        public readonly List<(string can, MadMax.Items.ResourceType type, float litres)> cans = new List<(string, MadMax.Items.ResourceType, float)>();
+        public bool Empty => scrap == 0 && items.Count == 0 && resources.Count == 0 && training.Count == 0 && flag == null && take.Count == 0 && evidence.Count == 0 && cans.Count == 0;
     }
 
     public class QuestDef

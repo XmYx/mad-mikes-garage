@@ -33,6 +33,7 @@ namespace MadMax.Building
             if (dirty) { Rebuild(); dirty = false; }
             foreach (var net in powerNets) SolvePower(net, step);
             foreach (var net in waterNets) SolveWater(net, step);
+            OneWayFlow(step);
             UpdateLines();
         }
 
@@ -202,6 +203,58 @@ namespace MadMax.Building
             }
         }
 
+        /// <summary>L/s a one-way pipe carries.</summary>
+        public const float OneWayFlowRate = 1.5f;
+        static readonly Dictionary<uint, UtilityNode> byIdTmp = new Dictionary<uint, UtilityNode>();
+
+        /// <summary>One-way pipes (check valves) between separate networks: water runs from the net at the piece the
+        /// pipe starts from to the net at its end, never back; downhill by itself (the start port no lower than the
+        /// end), uphill only when the start net is pumped (a powered pump, well or transfer pump on it).</summary>
+        static void OneWayFlow(float dt)
+        {
+            byIdTmp.Clear();
+            bool any = false;
+            foreach (var n in UtilityNode.All)
+            {
+                if (!n) continue;
+                byIdTmp[n.Id] = n;
+                foreach (var l in n.links) if (l.kind == (UtilityKind.Water | UtilityKind.OneWay)) any = true;
+            }
+            if (!any) return;
+            foreach (var a in UtilityNode.All)
+            {
+                if (!a || (a.cut & UtilityKind.Water) != 0) continue;
+                foreach (var l in a.links)
+                {
+                    if (l.kind != (UtilityKind.Water | UtilityKind.OneWay) || !byIdTmp.TryGetValue(l.id, out var b) || !b || (b.cut & UtilityKind.Water) != 0) continue;
+                    if (a.waterNet == b.waterNet && a.waterNet >= 0) continue;
+                    if (a.PortWorld.y < b.PortWorld.y - 0.1f && !Pumped(a)) continue;
+                    float have = NetWater(a, out float cleanShare), room = NetCapacity(b) - NetWater(b, out _);
+                    float move = Mathf.Min(OneWayFlowRate * dt, Mathf.Min(have, room));
+                    if (move <= 0.001f) continue;
+                    var taint = WaterQuality.TaintOf(a);
+                    float got = Draw(a, move, out _);
+                    float cleanPart = Mathf.Min(got, have * cleanShare);
+                    b.clean += cleanPart; b.dirty += got - cleanPart;
+                    if (got - cleanPart > 0.001f) b.taint |= taint;
+                    a.flowed += got;
+                }
+            }
+        }
+
+        /// <summary>A powered pump pressurises the node's water network.</summary>
+        static bool Pumped(UtilityNode node)
+        {
+            if (node.waterNet < 0 || node.waterNet >= waterNets.Count) return false;
+            foreach (var n in waterNets[node.waterNet])
+            {
+                if (!n || !n.Powered) continue;
+                if (n.TryGetComponent<TransferPump>(out var tp) && tp.mode != TransferPump.Mode.Off) return true;
+                if (n.TryGetComponent<WaterSource>(out var ws) && (ws.mode == WaterSource.Mode.Pump || ws.mode == WaterSource.Mode.Well)) return true;
+            }
+            return false;
+        }
+
         /// <summary>Litres the node's water network can hold.</summary>
         public static float NetCapacity(UtilityNode node)
         {
@@ -258,9 +311,10 @@ namespace MadMax.Building
                         lr = new GameObject(l.kind == UtilityKind.Power ? "Cable" : "Pipe").AddComponent<LineRenderer>();
                         lr.transform.SetParent(root, false);
                         lr.sharedMaterial = lineMat;
-                        lr.positionCount = l.kind == UtilityKind.Power ? 9 : 2;
+                        bool oneWay = (l.kind & UtilityKind.OneWay) != 0;
+                        lr.positionCount = l.kind == UtilityKind.Power ? 9 : oneWay ? 7 : 2;
                         lr.widthMultiplier = l.kind == UtilityKind.Power ? 0.035f : 0.09f;
-                        var c = l.kind == UtilityKind.Power ? new Color(0.08f, 0.07f, 0.07f, 1f) : new Color(0.45f, 0.47f, 0.5f, 1f);
+                        var c = l.kind == UtilityKind.Power ? new Color(0.08f, 0.07f, 0.07f, 1f) : oneWay ? new Color(0.6f, 0.4f, 0.24f, 1f) : new Color(0.45f, 0.47f, 0.5f, 1f);
                         lr.startColor = lr.endColor = c;
                         lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                         lines[key] = lr;
@@ -270,6 +324,15 @@ namespace MadMax.Building
                     {
                         float sag = Vector3.Distance(a, b) * 0.06f;
                         for (int i = 0; i < 9; i++) { float t = i / 8f; lr.SetPosition(i, Vector3.Lerp(a, b, t) + Vector3.down * sag * 4f * t * (1f - t)); }
+                    }
+                    else if ((l.kind & UtilityKind.OneWay) != 0)
+                    {
+                        // a copper pipe with an arrowhead at its middle pointing the way the water runs
+                        var dir = (b - a).normalized;
+                        var side = Vector3.Cross(dir, Vector3.up).normalized * 0.16f;
+                        var mid = Vector3.Lerp(a, b, 0.5f);
+                        lr.SetPosition(0, a); lr.SetPosition(1, mid); lr.SetPosition(2, mid - dir * 0.25f + side);
+                        lr.SetPosition(3, mid); lr.SetPosition(4, mid - dir * 0.25f - side); lr.SetPosition(5, mid); lr.SetPosition(6, b);
                     }
                     else { lr.SetPosition(0, a); lr.SetPosition(1, b); }
                 }

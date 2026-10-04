@@ -104,6 +104,25 @@ namespace MadMax.Vehicles
 
         public float Level(FluidSystem s) => s == FluidSystem.Fuel ? fuel : s == FluidSystem.Oil ? oil : coolant;
         public float Capacity(FluidSystem s) => s == FluidSystem.Fuel ? fuelCapacity : s == FluidSystem.Oil ? (oilInFuel ? 0f : oilCapacity) : (usesCoolant ? coolantCapacity : 0f);
+        float dripOil, dripCoolant, dripFuel, dripAt;
+
+        /// <summary>Leaked litres collect and land under the car as a spill every second or so (<see cref="Spills"/>):
+        /// an oil stain under a parked car, a trail of coolant, a fuel puddle that can catch.</summary>
+        void Drip(float oilLost, float coolantLost, float fuelLost, float dt)
+        {
+            dripOil += Mathf.Max(0f, oilLost); dripCoolant += Mathf.Max(0f, coolantLost); dripFuel += Mathf.Max(0f, fuelLost);
+            if ((dripAt -= dt) > 0f) return;
+            dripAt = 1f;
+            if (dripOil + dripCoolant + dripFuel < 0.02f || driver.Body && driver.Body.isKinematic) return;
+            var at = transform.position;
+            var t = DeformableTerrain.Instance;
+            if (t) at.y = t.Height(at.x, at.z);
+            if (dripOil > 0.01f) Spills.Pour(at + transform.forward * 1f, oilMix.Empty ? new FluidMix(ResourceType.Oil) : oilMix, dripOil);
+            if (dripCoolant > 0.01f) Spills.Pour(at + transform.forward * 1.6f, coolantMix.Empty ? new FluidMix(ResourceType.Coolant) : coolantMix, dripCoolant);
+            if (dripFuel > 0.01f) Spills.Pour(at - transform.forward * 0.8f, fuelMix.Empty ? new FluidMix(FuelKind) : fuelMix, dripFuel);
+            dripOil = dripCoolant = dripFuel = 0f;
+        }
+
         public FluidMix MixOf(FluidSystem s) => s == FluidSystem.Fuel ? fuelMix : s == FluidSystem.Oil ? oilMix : coolantMix;
         /// <summary>The blend in a system, the system's own fluid while unknown.</summary>
         public FluidMix EffectiveMix(FluidSystem s) => s == FluidSystem.Fuel ? EffectiveFuelMix : MixOf(s).Empty ? new FluidMix(s == FluidSystem.Oil ? ResourceType.Oil : ResourceType.Coolant) : MixOf(s);
@@ -176,8 +195,12 @@ namespace MadMax.Vehicles
         /// <summary>The engine is running (started and not stalled).</summary>
         public bool Started { get; private set; }
         public bool Cranking => Time.time < crankUntil;
-        float crankUntil = -1f, nextCrank;
+        float crankUntil = -1f, nextCrank, crankFrom;
         bool crankCatches;
+        /// <summary>The crank under way will catch (the engine sound coughs into life towards its end).</summary>
+        public bool CrankCatches => crankCatches;
+        /// <summary>0..1 through the crank under way.</summary>
+        public float CrankProgress => Cranking ? Mathf.InverseLerp(crankFrom, crankUntil, Time.time) : 0f;
         /// <summary>Raised when a crank ends: true = it caught.</summary>
         public event System.Action<bool> CrankResult;
 
@@ -225,13 +248,24 @@ namespace MadMax.Vehicles
             if (disconnected)
             {
                 nextCrank = Time.time + 2f;
-                if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NOTHING. NOT EVEN A CLICK: A BATTERY LEAD HANGS LOOSE (" + MadMax.Game.Controls.Name(MadMax.Game.Controls.Act.Service) + " WITH A WRENCH)");
+                if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NOTHING. NOT EVEN A CLICK: LOOK UNDER THE HOOD (" + MadMax.Game.Controls.Name(MadMax.Game.Controls.Act.Service) + " WITH A WRENCH)");
                 return;
+            }
+            if (driver.Occupied && !driver.aiDriven && TryGetComponent<VehicleIgnition>(out var ign))
+            {
+                var game = MadMax.Game.WastelandGame.Instance;
+                if (game && game.Current == driver && !ign.CanStart(game.Inventory))
+                {
+                    nextCrank = Time.time + 2f;
+                    game.Toast("NO KEY IN THE IGNITION: FIND ONE, OR HOLD " + MadMax.Game.Controls.Name(MadMax.Game.Controls.Act.Service) + " TO TRY THE WIRES");
+                    return;
+                }
             }
             if (noAir) { if (driver.Occupied) MadMax.Game.WastelandGame.Instance?.Toast("NO AIR FOR THE DIESEL: SURFACE TO RUN IT"); nextCrank = Time.time + 2f; return; }
             var ep = driver.Engine.GetComponent<VehiclePart>();
             if (ep && ep.partId == "engine_pedals") { Started = true; return; }
-            crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f);
+            crankFrom = Time.time;
+            crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f) * (FuelKind == ResourceType.Diesel ? 1.4f : 1f);   // diesels turn over longer
             nextCrank = crankUntil + 0.6f;
             crankCatches = fuel > 0f && !WrongFuel && !Frozen && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
             if (WrongFuel && ep) ep.damage = Mathf.Min(1f, ep.damage + Blend.crankWear);                        // churning a bad blend
@@ -307,9 +341,9 @@ namespace MadMax.Vehicles
                 if (!crankCatches && driver.Occupied && !driver.aiDriven)
                 {
                     var eng = driver.Engine ? driver.Engine.GetComponent<VehiclePart>() : null;
-                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "BAD FUEL (" + fuelMix.Label() + "): SIPHON IT" : Frozen ? "THE COOLANT IS FROZEN: WARM IT, OR DRAIN THE WATER" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
-                               : UsesPlugs && plugs < 0.3f ? "WORN PLUGS: TRY AGAIN, OR REPLACE THEM" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
-                               : "IT DIDN'T CATCH: TRY AGAIN (ENGINE " + Mathf.RoundToInt(StartChance * 100f) + "%)";
+                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "IT COUGHS AND DIES: SOMETHING'S WRONG WITH THE FUEL" : Frozen ? "FROZEN UP: WARM IT FIRST" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
+                               : UsesPlugs && plugs < 0.3f ? "IT SPUTTERS AND DIES: TRY AGAIN" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
+                               : "IT DIDN'T CATCH: TRY AGAIN";
                     MadMax.Game.WastelandGame.Instance?.Toast(why);
                 }
             }
@@ -318,7 +352,8 @@ namespace MadMax.Vehicles
             float engineDamage = ep ? ep.damage : 0f;
             float speed = Mathf.Abs(driver.ForwardSpeed);
 
-            // leaks happen whether or not the engine runs
+            // leaks happen whether or not the engine runs (and what leaks lands on the ground)
+            float oil0 = oil, coolant0 = coolant, fuel0 = fuel;
             if (ep && !oilInFuel && engineDamage > 0.4f) { oil = Mathf.Max(0f, oil - (engineDamage - 0.4f) * 0.01f * dt); f |= Fault.OilLeak; }
             // the radiator holds the coolant: missing = it pours out, damaged = it leaks and cools worse
             VehiclePart radiator = null;
@@ -329,6 +364,7 @@ namespace MadMax.Vehicles
                 else if (radiator && radiator.damage > 0.2f) { coolant = Mathf.Max(0f, coolant - (radiator.damage - 0.2f) * 0.05f * dt); f |= Fault.CoolantLeak; }
             }
             if (damage && damage.FrameDamage > 0.5f && fuel > 0f) { fuel = Mathf.Max(0f, fuel - (damage.FrameDamage - 0.5f) * 0.02f * dt); f |= Fault.FuelLeak; }
+            Drip(oil0 - oil, coolant0 - coolant, fuel0 - fuel, dt);
 
             if (fuel < 0.05f) fuelMix.Clear();
             else if (fuelMix.Empty && engine) fuelMix.Set(FuelKind);                      // factory fill matches the engine
@@ -616,6 +652,9 @@ namespace MadMax.Vehicles
         }
 
         MadMax.World.Fire fire;
+        VehicleBurn burnState;
+        VehiclePart[] burnParts;
+        float partScan;
         float heatSoak;
 
         /// <summary>External heat (a fire next to or under the vehicle).</summary>
@@ -634,8 +673,11 @@ namespace MadMax.Vehicles
             if (!fire) return;
             f |= Fault.OnFire;
             if (fuel > 0f) { fuel = Mathf.Max(0f, fuel - 0.4f * dt); fire.fuel = Mathf.Max(fire.fuel, 5f); }
-            foreach (var p in GetComponentsInChildren<VehiclePart>()) p.damage = Mathf.Min(1f, p.damage + 0.004f * dt);
+            if ((partScan -= dt) <= 0f || burnParts == null) { partScan = 2f; burnParts = GetComponentsInChildren<VehiclePart>(); }
+            foreach (var p in burnParts) if (p) p.damage = Mathf.Min(1f, p.damage + 0.004f * dt);
             Temperature += 3f * dt;
+            if (!burnState && !TryGetComponent(out burnState)) burnState = gameObject.AddComponent<VehicleBurn>();
+            burnState.Feed(dt, ref fuel, fire);
         }
 
         public string FaultText()
@@ -643,8 +685,8 @@ namespace MadMax.Vehicles
             var f = Faults;
             if ((f & Fault.OnFire) != 0) return "ON FIRE!";
             if ((f & Fault.Flooded) != 0) return "ENGINE FLOODED";
-            if ((f & Fault.WrongFuel) != 0) return "BAD FUEL: " + fuelMix.Label() + " WON'T RUN: SIPHON IT (K)";
-            if ((f & Fault.Frozen) != 0) return "COOLANT FROZEN (" + Mathf.RoundToInt(FreezePoint) + " C): DRAIN THE WATER";
+            if ((f & Fault.WrongFuel) != 0) return "WON'T RUN ON WHAT'S IN THE TANK";
+            if ((f & Fault.Frozen) != 0) return "FROZEN UP";
             if ((f & Fault.NoEngine) != 0) return "NO ENGINE";
             if ((f & Fault.Seized) != 0) return "ENGINE SEIZED";
             if ((f & Fault.NoFuel) != 0) return "OUT OF FUEL";
@@ -659,12 +701,12 @@ namespace MadMax.Vehicles
             if ((f & Fault.LowFuel) != 0) return "LOW FUEL";
             if ((f & Fault.LowOil) != 0) return "LOW OIL";
             if ((f & Fault.LowCoolant) != 0) return "LOW COOLANT";
-            if ((f & Fault.RoughFuel) != 0) return "RUNNING ROUGH: " + fuelMix.Label();
-            if ((f & Fault.BadOil) != 0) return "OIL CONTAMINATED: " + oilMix.Label();
-            if ((f & Fault.BadCoolant) != 0) return "COOLANT FOULED: " + coolantMix.Label();
-            if ((f & Fault.Misfire) != 0) return "MISFIRING: WORN SPARK PLUGS";
-            if ((f & Fault.Clogged) != 0) return "AIR FILTER CLOGGED";
-            if ((f & Fault.ServiceDue) != 0) return "OIL CHANGE DUE";
+            if ((f & Fault.RoughFuel) != 0) return "RUNNING ROUGH";
+            if ((f & Fault.BadOil) != 0) return "OIL LOOKS MILKY";
+            if ((f & Fault.BadCoolant) != 0) return "COOLANT LOOKS MURKY";
+            if ((f & Fault.Misfire) != 0) return "MISFIRING";
+            if ((f & Fault.Clogged) != 0) return "SPLUTTERS UNDER LOAD";
+            if ((f & Fault.ServiceDue) != 0) return "DUE A SERVICE";
             return null;
         }
 
