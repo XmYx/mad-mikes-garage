@@ -92,6 +92,7 @@ namespace MadMax.Game
         public List<string> discovered = new List<string>(), journal = new List<string>(), townNews = new List<string>();
         public bool hasWaypoint; public Vector3 waypoint;
         public List<Vector4> roadWrecks = new List<Vector4>();    // skirmish wrecks: position + day left (negative: found)
+        public List<string> scavHauls = new List<string>();       // what wreck scavengers stripped and sell (Trade.Hauls)
         public List<Vector3> newsPins = new List<Vector3>();      // wreck sites marked from the road news
         public List<WastelandGame.StashSave> stashes = new List<WastelandGame.StashSave>();
         public List<MovedSave> moved = new List<MovedSave>();            // crates and other loose props pushed around
@@ -102,6 +103,7 @@ namespace MadMax.Game
         public List<string> lastEngine = new List<string>();            // LastEngine flags
         public List<string> story = new List<string>();                 // campaign state (MadMax.Story.Story.Save)
         public List<uint> storyProps = new List<uint>();
+        public List<string> heardOf = new List<string>();               // story givers heard of in rumours (pinned)
         // depth blocks (WastelandGame.Blocks): each block's own saved state
         public List<string> blockItems = new List<string>();
         public List<string> handcraft = new List<string>();      // personal handcraft jobs: "recipe id|progress|cost mult"

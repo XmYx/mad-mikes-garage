@@ -76,6 +76,17 @@ namespace MadMax.Npc
             enabled = false;
         }
 
+        /// <summary>The driver is back behind the wheel (after <see cref="Release"/>, e.g. a beaten engine fire).</summary>
+        public void Retake()
+        {
+            if (!v) return;
+            v.handbrake = false;
+            v.aiDriven = true;
+            v.bakedDriver = true;
+            v.Occupied = true;
+            enabled = true;
+        }
+
         /// <summary>Start on the path at the point nearest to the vehicle.</summary>
         public void SetPath(List<Vector3> pts, int direction)
         {

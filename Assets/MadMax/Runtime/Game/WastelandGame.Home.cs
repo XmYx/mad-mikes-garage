@@ -138,6 +138,17 @@ namespace MadMax.Game
         /// <summary>Share of what the wreck still had that is gone after <paramref name="age"/> days.</summary>
         public static float ScavengedShare(float age) => Mathf.Clamp01((age - ScavengeFrom) / (ScavengeDone - ScavengeFrom)) * 0.85f;
 
+        /// <summary>How fast others get to a wreck by season (0 summer … 3 spring): summer roads are busy, nobody
+        /// travels in winter, autumn and spring in between.</summary>
+        public static float SeasonPace(int season) => season switch { 0 => 1.35f, 2 => 0.4f, _ => 0.85f };
+
+        /// <summary><see cref="ScavengedShare(float)"/> on the season's clock: the wreck ages faster for scavengers in
+        /// summer and hardly at all in winter.</summary>
+        public static float ScavengedShare(float age, int season) => ScavengedShare(ScavengeFrom + Mathf.Max(0f, age - ScavengeFrom) * SeasonPace(season));
+
+        /// <summary>Winter: the tank is frozen solid with the wreck (nobody drains it).</summary>
+        public static bool FuelFrozen(int season) => season == 2;
+
         void UpdateRoadWrecks()
         {
             if (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient) return;
@@ -150,18 +161,19 @@ namespace MadMax.Game
                 string scav = ScavengerId(at);
                 if (Found(w))                                                                       // found: the scavenger stays a day
                 {
-                    if (DayNight.TotalDays > FoundMark - w.w + 1f) { RoadWrecks.RemoveAt(i); if (dir) dir.Scavengers.Remove(scav); }
+                    if (DayNight.TotalDays > FoundMark - w.w + 1f) { RoadWrecks.RemoveAt(i); if (dir) dir.Scavengers.Remove(scav); MadMax.Npc.Trade.Hauls.Remove(scav); }
                     continue;
                 }
                 float age = DayNight.TotalDays - w.w;
                 if (age > 12f) { RoadWrecks.RemoveAt(i); continue; }
                 if (Flat(at - me) > 90f) continue;
                 RoadWrecks[i] = new Vector4(w.x, w.y, w.z, FoundMark - DayNight.TotalDays);
-                int taken = Scavenge(at, age, Mathf.RoundToInt(w.x * 31f + w.z * 7f));
-                if (age >= ScavengeFrom && age < ScavengeDone && dir)
+                bool onSite = age >= ScavengeFrom && age < ScavengeFrom + (ScavengeDone - ScavengeFrom) / SeasonPace(MadMax.World.Weather.Season) && dir;
+                int taken = Scavenge(at, age, Mathf.RoundToInt(w.x * 31f + w.z * 7f), onSite ? scav : null);
+                if (onSite)
                 {
                     dir.Scavengers[scav] = at + new Vector3(3f, 0f, 2f);
-                    Toast("SOMEONE IS ALREADY PICKING AT THE WRECK");
+                    Toast(MadMax.Npc.Trade.HaulCount(scav) > 0 ? "SOMEONE IS ALREADY PICKING AT THE WRECK - THEY MIGHT SELL WHAT THEY TOOK" : "SOMEONE IS ALREADY PICKING AT THE WRECK");
                 }
                 else if (taken > 0) Toast("SCAVENGERS GOT HERE FIRST - THE WRECK IS PICKED OVER");
                 if (taken > 0) Journal.Add("NEWS", "THE WRECK AT " + Mathf.RoundToInt(w.x) + "," + Mathf.RoundToInt(w.z) + " WAS PICKED OVER (" + taken + " PARTS GONE)");
@@ -171,10 +183,13 @@ namespace MadMax.Game
         public static string ScavengerId(Vector3 at) => "scav:" + Mathf.RoundToInt(at.x) + "," + Mathf.RoundToInt(at.z);
 
         /// <summary>Strip the wreck nearest <paramref name="at"/> by its age: mounted and loose parts, its storage and
-        /// fuel. Returns the parts taken.</summary>
-        public int Scavenge(Vector3 at, float age, int seed)
+        /// fuel, paced by the season (<see cref="ScavengedShare(float, int)"/>). With a <paramref name="haul"/> id the
+        /// scavenger still on site keeps what was taken as trade stock (<c>Trade.Hauls</c>); otherwise it is gone.
+        /// Returns the parts taken.</summary>
+        public int Scavenge(Vector3 at, float age, int seed, string haul = null)
         {
-            float share = ScavengedShare(age);
+            int season = MadMax.World.Weather.Season;
+            float share = ScavengedShare(age, season);
             if (share <= 0f) return 0;
             VehicleDriver v = null; float bd = 12f;
             foreach (var x in wrecks) if (x) { float d = Flat(x.transform.position - at); if (d < bd) { bd = d; v = x; } }
@@ -186,11 +201,11 @@ namespace MadMax.Game
                     var part = s.Current;
                     if (!part) continue;
                     float k = part.category == PartCategory.Engine ? share * 0.6f : share;           // engines are heavy work
-                    if (rnd.NextDouble() < k) { var p = s.Detach(false); if (p) { Destroy(p.gameObject); taken++; } }
+                    if (rnd.NextDouble() < k) { var p = s.Detach(false); if (p) { Keep(haul, "part:" + p.partId, 1); Destroy(p.gameObject); taken++; } }
                 }
             var loose = new List<VehiclePart>();
             foreach (var p in VehiclePart.Registry) if (p && !p.IsMounted && Flat(p.transform.position - at) < 10f) loose.Add(p);
-            foreach (var p in loose) if (rnd.NextDouble() < share) { Destroy(p.gameObject); taken++; }
+            foreach (var p in loose) if (rnd.NextDouble() < share) { Keep(haul, "part:" + p.partId, 1); Destroy(p.gameObject); taken++; }
             if (v)
             {
                 var storage = VehicleStorage.For(v);
@@ -200,22 +215,39 @@ namespace MadMax.Game
                         if (!c || !c.container) continue;
                         var inv = c.container.inventory;
                         var res = inv.ResourceArray;
-                        for (int r = 0; r < res.Length; r++) res[r] = Mathf.FloorToInt(res[r] * (1f - share));
+                        for (int r = 0; r < res.Length; r++) { int left = Mathf.FloorToInt(res[r] * (1f - share)); Keep(haul, "res:" + r, res[r] - left); res[r] = left; }
                         var items = new List<KeyValuePair<string, int>>();
-                        foreach (var kv in inv.Items) { int n = Mathf.FloorToInt(kv.Value * (1f - share)); if (n > 0) items.Add(new KeyValuePair<string, int>(kv.Key, n)); }
+                        foreach (var kv in inv.Items) { int n = Mathf.FloorToInt(kv.Value * (1f - share)); Keep(haul, kv.Key, kv.Value - n); if (n > 0) items.Add(new KeyValuePair<string, int>(kv.Key, n)); }
                         inv.Restore(res, items);
                     }
-                if (v.TryGetComponent<VehicleSystems>(out var sys)) sys.fuel *= 1f - share;
+                if (!FuelFrozen(season) && v.TryGetComponent<VehicleSystems>(out var sys))
+                {
+                    float gone = sys.fuel * share;
+                    sys.fuel -= gone;
+                    if (sys.tankKind != ResourceType.None) Keep(haul, "res:" + (int)sys.tankKind, Mathf.FloorToInt(gone));
+                }
             }
             return taken;
         }
 
-        void SaveHome(SaveData d) => d.roadWrecks = new List<Vector4>(RoadWrecks);
+        /// <summary>A stripped good goes to the scavenger's haul when one is on site (keys and story items never).</summary>
+        static void Keep(string haul, string id, int n)
+        {
+            if (haul == null || n <= 0 || ItemIds.IsCarKey(id) || id == "res:" + (int)ResourceType.Scrap) return;   // scrap is their money
+            MadMax.Npc.Trade.AddHaul(haul, id, n);
+        }
+
+        void SaveHome(SaveData d)
+        {
+            d.roadWrecks = new List<Vector4>(RoadWrecks);
+            d.scavHauls = MadMax.Npc.Trade.SaveHauls();
+        }
 
         void LoadHome(SaveData d)
         {
             RoadWrecks.Clear();
             if (d.roadWrecks != null) RoadWrecks.AddRange(d.roadWrecks);
+            MadMax.Npc.Trade.LoadHauls(d.scavHauls);
         }
     }
 }

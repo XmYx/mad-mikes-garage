@@ -254,6 +254,7 @@ namespace MadMax.Npc
 
             bool sieging = raiding && !foe && (dPlayer > 22f || g.Vitals.Dead);
             if (sieging) Siege(dt, ref move, ref speed);
+            else if (fireTarget && !foe && FireTick(me, dt, ref move, ref speed)) { }
             else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
             else switch (mode)
             {

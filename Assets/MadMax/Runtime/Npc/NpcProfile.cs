@@ -29,7 +29,8 @@ namespace MadMax.Npc
         {
             NpcRole.Shopkeeper or NpcRole.Stallkeeper or NpcRole.Trader or NpcRole.Packer => NpcLore.TradeName(kind),
             NpcRole.Leader => "TOWN BOSS",
-            NpcRole.Raider => gang, NpcRole.RaiderBoss => gang + " BOSS", NpcRole.Resident => "LOCAL", _ => "WANDERER"
+            NpcRole.Raider => gang, NpcRole.RaiderBoss => gang + " BOSS", NpcRole.Resident => "LOCAL",
+            NpcRole.Wanderer when kind != null => NpcLore.TradeName(kind), _ => "WANDERER"
         };
         public bool Vendor => kind != null;
         public bool Raider => role == NpcRole.Raider || role == NpcRole.RaiderBoss;

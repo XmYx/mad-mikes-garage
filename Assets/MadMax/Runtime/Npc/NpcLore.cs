@@ -37,7 +37,7 @@ namespace MadMax.Npc
         {
             ("fuel", "GUZZOLINE", "FUEL TRADER"), ("parts", "GEARMONGER", "PARTS DEALER"), ("scrap", "JUNK BARON", "SCRAP DEALER"),
             ("food", "CHOW WAGON", "COOK"), ("salvage", "SALVAGE BROKER", "SALVAGER"), ("build", "BUILDER'S YARD", "YARD BOSS"),
-            ("pack", "PACK MULE GOODS", "PACK TRADER")
+            ("pack", "PACK MULE GOODS", "PACK TRADER"), ("scavenger", "PICKINGS", "SCAVENGER")
         };
 
         public static string TradeTitle(string kind) { foreach (var t in Trades) if (t.id == kind) return t.title; return "TRADER"; }

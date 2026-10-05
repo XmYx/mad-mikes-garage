@@ -187,6 +187,7 @@ namespace MadMax.Npc
                     break;
             }
             BailOut(g);
+            FireWatch(g);
         }
 
         AiDriver Leader() { foreach (var c in cars) if (c && c.enabled) return c; return null; }
@@ -265,7 +266,7 @@ namespace MadMax.Npc
             if (lead) travel = Project(lead.transform.position, lead.transform.forward);
             foreach (var c in cars) if (c) UnityEngine.Object.Destroy(c.gameObject);
             foreach (var w in walkers) if (w && w.Alive) UnityEngine.Object.Destroy(w.gameObject);
-            cars.Clear(); walkers.Clear(); Boss = null;
+            cars.Clear(); walkers.Clear(); fighting.Clear(); Boss = null;
             if (phase != Phase.Gone) phase = Phase.Travel;
         }
 
@@ -273,7 +274,7 @@ namespace MadMax.Npc
         {
             foreach (var c in cars) if (c) UnityEngine.Object.Destroy(c.gameObject);
             foreach (var w in walkers) if (w) UnityEngine.Object.Destroy(w.gameObject);
-            cars.Clear(); walkers.Clear();
+            cars.Clear(); walkers.Clear(); fighting.Clear();
         }
 
         Npc Walker(WastelandGame g, int crewIndex, Vector3 near, bool aggro, AiDriver from = null)
@@ -534,6 +535,52 @@ namespace MadMax.Npc
                 var w = Walker(g, crewIndex, c.transform.position - c.transform.right * 2f, raiders && !truce, c);
                 if (!raiders) w.Scare(20f);
                 else if (phase != Phase.Attack && !truce) Attack(g);
+            }
+        }
+
+        // ------------------------------------------------------------------ engine fires
+
+        /// <summary>Most trader cars and half the raiders' carry an extinguisher (deterministic per crew member).</summary>
+        public static bool CarriesExtinguisher(NpcProfile p, bool raiders) => ((p.seed & 0x7fffffff) % 10) < (raiders ? 5 : 8);
+        public const int CrewBursts = 8;
+        /// <summary>Cars whose driver is out fighting its engine fire → the driver.</summary>
+        public readonly Dictionary<AiDriver, Npc> fighting = new Dictionary<AiDriver, Npc>();
+
+        /// <summary>A convoy car whose engine catches pulls up and the driver climbs out: with a bottle and a fire not
+        /// yet past saving they beat it and drive on; otherwise they get clear and the car is left to burn (it can be
+        /// put out and taken by anyone; the key goes with the driver).</summary>
+        void FireWatch(WastelandGame g)
+        {
+            for (int i = 0; i < cars.Count; i++)
+            {
+                var c = cars[i];
+                if (!c || !c.Vehicle) continue;
+                int ci = Mathf.Min(i, crew.Count - 1);
+                if (fighting.TryGetValue(c, out var w))
+                {
+                    if (w && w.Alive && w.fireTarget) continue;                                 // still at it
+                    fighting.Remove(c);
+                    if (w && w.Alive && w.fireOutcome > 0 && !c.Disabled && g.Current != c.Vehicle && !w.Hostile)
+                    {
+                        ReturnKey(w); walkers.Remove(w); UnityEngine.Object.Destroy(w.gameObject);   // back behind the wheel
+                        c.Retake();
+                        var lead = Leader();
+                        if (lead == c || !lead) c.SetPath(route, c.dir);
+                        else { c.goal = phase == Phase.Attack ? AiDriver.Goal.Chase : AiDriver.Goal.Follow; c.leader = lead; }
+                        MadMax.Audio.Sfx.Play("car_door", c.transform.position, 0.6f);
+                    }
+                    continue;
+                }
+                if (!c.enabled || !c.Vehicle.TryGetComponent<VehicleSystems>(out var vs) || !vs.Burning) continue;
+                if (NpcRegistry.IsDead(crew[ci].id) || walkers.Exists(x => x && x.Profile.id == crew[ci].id)) continue;
+                var burn = c.Vehicle.GetComponent<VehicleBurn>();
+                bool bottle = CarriesExtinguisher(crew[ci], raiders) && !(burn && burn.burn >= 0.5f);
+                c.Release();
+                bool fight = raiders && phase == Phase.Attack && Time.time >= truceUntil;
+                var n = Walker(g, ci, c.transform.position - c.transform.right * 2f, fight && !bottle, c);
+                if (bottle) { n.FightFire(vs, CrewBursts); fighting[c] = n; }
+                else if (!fight) n.Scare(20f);
+                MadMax.Audio.Sfx.Play("car_door", c.transform.position, 0.6f);
             }
         }
 

@@ -195,6 +195,7 @@ namespace MadMax.Npc
             { "pack", new[] { "food_", "crop_", "med_", "cloth_", "misc_", "trophy_", "res:6", "res:31", "res:32" } },
             { "salvage", new[] { "book_", "vhs_", "med_", "tool_", "ammo_", "cloth_", "misc_", "throw_", "pros_" } },
             { "build", new[] { "res:2", "res:3", "res:10", "res:11", "res:12", "res:13", "res:24", "res:26", "res:27" } },
+            { ScavengerKind, new[] { "res:4", "res:5", "res:20", "res:21", "res:23", "tool_", "ammo_", "food_", "drink_" } },
         };
 
         public static bool Buys(string kind, string id)
@@ -212,6 +213,7 @@ namespace MadMax.Npc
         public static List<Offer> Stock(NpcProfile p, NpcSave s, float bargain)
         {
             var list = new List<Offer>();
+            if (p.kind == ScavengerKind) { HaulStock(p, list, bargain); return list; }          // only what they stripped
             if (p.kind == null || !sells.TryGetValue(p.kind, out var l)) return list;
             int day = MadMax.World.DayNight.Day;
             var r = new System.Random(p.seed * 31 + day * 977);
@@ -264,6 +266,7 @@ namespace MadMax.Npc
             g.Inventory.TrySpend(ResourceType.Scrap, cost - chits * ChitValue);
             Market.Bought(Town, o.id, n);
             vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
+            if (vendor.Profile.kind == ScavengerKind) TakeFromHaul(vendor.Profile, o.id, n);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);
             NpcVoice.Say(vendor, "sell");
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 0.5f * n);

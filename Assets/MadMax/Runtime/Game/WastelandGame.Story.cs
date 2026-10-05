@@ -422,6 +422,7 @@ namespace MadMax.Game
         {
             d.story = Story.Story.Save();
             d.storyProps = new List<uint>(storyProps);
+            d.heardOf = new List<string>(HeardOf);
         }
 
         void LoadStory(SaveData d)
@@ -429,6 +430,8 @@ namespace MadMax.Game
             Story.Story.Load(d.story);
             storyProps.Clear();
             if (d.storyProps != null) foreach (var id in d.storyProps) storyProps.Add(id);
+            HeardOf.Clear();
+            if (d.heardOf != null) foreach (var k in d.heardOf) HeardOf.Add(k);
             if (World != null) StoryAnchors.Bind(World);
         }
 
@@ -454,6 +457,7 @@ namespace MadMax.Game
                     offerSeen.Add(m.Value.key);
                     var at = StoryAnchors.Get(m.Value.anchor);
                     if (CastMet(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.name, pos = at, color = offer });
+                    else if (HeardOf.Contains(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.title, pos = at, color = offer });   // heard of in town talk
                     else offerStrangers.Add(new KeyValuePair<float, Pin>(Flat(at - me), new Pin { label = "? " + m.Value.title, pos = at, color = offer }));
                 }
                 var s = Story.Story.Current(q);
@@ -461,6 +465,44 @@ namespace MadMax.Game
             }
             offerStrangers.Sort((a, b) => a.Key.CompareTo(b.Key));
             for (int i = 0; i < offerStrangers.Count && i < StoryOfferStrangers; i++) into.Add(offerStrangers[i].Value);
+        }
+
+        /// <summary>Story givers the player has heard of in rumours (cast keys): pinned like met ones. Saved.</summary>
+        public readonly HashSet<string> HeardOf = new HashSet<string>();
+        public const float GiverRumourReach = 4000f;
+
+        /// <summary>Town talk about a stranger with work on offer that the map doesn't show yet (beyond the
+        /// <see cref="StoryOfferStrangers"/> nearest): the nearest one to <paramref name="at"/> is now heard of and
+        /// pinned. Null when there is nobody left to tell of.</summary>
+        public string GiverRumour(Vector3 at)
+        {
+            if (World == null) return null;
+            var shown = new List<KeyValuePair<float, string>>();
+            var cands = new List<StoryCast.Member>();
+            var me = FocusPos;
+            foreach (var q in StoryLibrary.All)
+            {
+                if (!Story.Story.Runs(q) || Story.Story.StateOf(q.id) != Story.Story.State.Open || q.giver == null) continue;
+                var m = StoryCast.Find(q.giver);
+                if (m == null || m.Value.anchor == null || !StoryAnchors.Has(m.Value.anchor)) continue;
+                if (CastMet(m.Value.key) || HeardOf.Contains(m.Value.key) || cands.Exists(c => c.key == m.Value.key)) continue;
+                cands.Add(m.Value);
+                shown.Add(new KeyValuePair<float, string>(Flat(StoryAnchors.Get(m.Value.anchor) - me), m.Value.key));
+            }
+            shown.Sort((a, b) => a.Key.CompareTo(b.Key));
+            StoryCast.Member? best = null; float bd = GiverRumourReach;
+            foreach (var m in cands)
+            {
+                int rank = shown.FindIndex(e => e.Value == m.key);
+                if (rank < StoryOfferStrangers) continue;                                        // already on the map
+                float d = Flat(StoryAnchors.Get(m.anchor) - at);
+                if (d < bd) { bd = d; best = m; }
+            }
+            if (best == null) return null;
+            var b = best.Value;
+            HeardOf.Add(b.key);
+            var p = StoryAnchors.Get(b.anchor);
+            return "THERE'S A " + b.title + " " + MadMax.Npc.NpcLore.Compass(p.x - at.x, p.z - at.z) + ", " + MadMax.Npc.NpcLore.Distance(bd) + ", LOOKING FOR A HAND.";
         }
 
         /// <summary>The player has spoken with this cast member.</summary>

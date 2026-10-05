@@ -41,7 +41,7 @@ namespace MadMax.Game
             else if (hit > 0) g.Toast("SMOTHERED THE FLAMES");
         }
 
-        static void Spray(Vector3 from, Vector3 dir)
+        public static void Spray(Vector3 from, Vector3 dir)
         {
             for (int i = 0; i < 18; i++)
             {

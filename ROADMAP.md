@@ -1377,7 +1377,7 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 ### Suggestions (tie the experience together)
 - [x] **Journal job list is flooded**: on day 1 the journal lists ~40 `? NAME` story-cast pins (every authored person
   as a job) before the player's real jobs — group them under one STORY line per quest, or show only quests in progress.
-- [ ] **Scavengers you can deal with**: the wreck scavenger offers what they stripped for trade (the removed parts go
+- [x] **Scavengers you can deal with** (2026-10-05, the trade half: what they strip is their stock — `Trade.Hauls`, under the usual price, saved; scenario `towns.scavenger_trade`. Fighting for it when hostile is still open): the wreck scavenger offers what they stripped for trade (the removed parts go
   into their stock instead of vanishing), or fights for it if the player is hostile — the late arrival becomes a choice.
 - [x] **Home frequency needs a radio**: the calls reach the journal always but the radio only when one is on; a cheap
   handheld radio item (`tool_radio`) in the starting kit would make the base's voice part of every trip.
@@ -1385,7 +1385,7 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
   lists the pieces (and their repair cost), on PANTRY opens the cooking stations that would save the rotting food.
 - [ ] **Fishermen at the lakes**: village residents by a lake fish at dawn (Gather mode at the shore with a rod visual)
   and sell the catch of the season at their stall — the bite tables visible in town life.
-- [ ] **Seasonal wreck salvage**: winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
+- [x] **Seasonal wreck salvage** (2026-10-05: `SeasonPace` summer 1.35 / winter 0.4 scales `ScavengedShare` and the scavenger's window, winter tanks stay frozen and full; scenario `towns.wreck_seasons`. Road traffic is still open): winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
   are stripped fastest — scale `ScavengedShare` by season and road traffic.
 
 ## Fixes and features (2026-10-04)
@@ -1463,15 +1463,36 @@ ui.no_spoilers. `survival.loop` is flaky: once the Sedan sat at 2000 rpm in gear
 then passed on the re-run — look at the launch assists on wet ground.
 
 ### Suggestions (tie the experience together)
-- [ ] **The car as a kit**: a glovebox / boot checklist (extinguisher, first-aid kit, spare key, tyre patch, flares)
+- [x] **The car as a kit** (2026-10-05: `TripKit` under the LOOT panel of an opened vehicle — in the car / in the pack / none, hint `trip_kit`; scenario `ui.trip_kit`. A FIRST STEPS step is still open): a glovebox / boot checklist (extinguisher, first-aid kit, spare key, tyre patch, flares)
   shown on the vehicle's LOOT panel and as a FIRST STEPS tip — every trip starts with deciding what rides along.
-- [ ] **NPC drivers fight fires too**: convoy cars carry an extinguisher; a driver whose engine catches climbs out and
+- [x] **NPC drivers fight fires too** (2026-10-05: `Convoy.FireWatch` + `Npc.FightFire`; 8/10 trader and 5/10 raider cars carry a bottle, the driver beats the fire and drives on, or gets clear past saving; scenario `npc.fire_fight`): convoy cars carry an extinguisher; a driver whose engine catches climbs out and
   beats it (or abandons the car when it's past saving) — raider molotovs become a fight over a car, not a coin toss.
 - [ ] **Spare keys and locksmiths**: a key blank + the original at a workbench cuts a copy (companions can take a fleet
   car); town mechanics sell a key for a found car whose key is lost, for scrap and a day's wait.
 - [ ] **Walkie-talkie orders**: a companion carrying a handheld radio takes orders from any distance (come, hold, bring
   the car) through the radio keys — the radio as the tool that keeps a crew together.
-- [ ] **Rumours reveal givers**: unmet story givers beyond the nearest three are heard of in town talk (`Dialogue`
+- [x] **Rumours reveal givers** (2026-10-05: `WastelandGame.GiverRumour` in town talk, `HeardOf` pinned and saved; scenario `talk.giver_rumours`): unmet story givers beyond the nearest three are heard of in town talk (`Dialogue`
   rumours: "THE RELAY WOMAN OUT EAST NEEDS A HAND") and only then pinned — the journal grows by talking to people.
 - [ ] **Recovery arc for a broken leg**: a splinted fracture heals over days; the crutch, rest in a bed and the clinic
   speed it; until then driving a manual is out (clutch foot) — the injury becomes a few days of play, not a number.
+
+## Scheduled update (2026-10-05)
+Done this pass (ticked above): wreck scavengers sell what they stripped, wrecks age with the season (winter tanks
+frozen and kept), convoy drivers fight their own engine fires, town talk tells of story givers beyond the three nearest
+strangers, the trip kit under the LOOT panel. Scenarios in `Acceptance/Blocks/ScheduledScenarios1005.cs`.
+
+### Suggestions (tie the experience together)
+- [ ] **The kit pays off on the road**: when an emergency starts (engine fire, flat, a bleeding wound) the prompt names
+  where the remedy is ("EXTINGUISHER IN THE TRUNK - [LOOT]", "JACK UNDER THE SEAT") or that it was left at home — the
+  trip-kit checklist turns into a decision the player feels.
+- [ ] **Companions with a bottle**: a companion riding along with an extinguisher in their pack climbs out and beats the
+  player's engine fire (the same `Npc.FightFire`), and a companion medic uses the first-aid kit from the car.
+- [ ] **Scavengers haul to market**: an unbought haul leaves with the scavenger and turns up in the nearest town's
+  salvage stock a day later (named "OFF A WRECK ON THE ROAD") — parts travel through the economy instead of vanishing.
+- [ ] **Frozen fuel thaws**: a winter wreck's tank can't be siphoned until thawed (a gas torch, a fire beside it or
+  spring) — the season shows up at the can, not only in the share.
+- [ ] **Rumours need trust**: town talk tells of givers only to someone the town likes (faction rank / disposition),
+  strangers get vaguer directions ("SOMEWHERE EAST") that pin a search circle, not a point.
+- [ ] **Fire spreads to the convoy**: a burning car parked in formation heats its neighbours (`VehicleSystems.Heat` from
+  `Fire` within 3 m), so a molotov on a halted convoy can chain — and drivers pull their cars apart first.
+

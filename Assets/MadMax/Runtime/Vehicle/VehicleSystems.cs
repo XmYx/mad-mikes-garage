@@ -682,6 +682,8 @@ namespace MadMax.Vehicles
         public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); }
 
         public bool Burning => fire;
+        /// <summary>Where the flames are (the engine bay while burning).</summary>
+        public Vector3 FirePos => fire ? fire.transform.position : transform.position;
 
         void UpdateFire(float dt, Vector3 enginePos, ref Fault f)
         {

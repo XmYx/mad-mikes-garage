@@ -89,6 +89,30 @@ namespace MadMax.Game
             Refresh();
             int n = LootSide.FindAll(src => src.box && src.box.GetComponentInParent<VehicleDriver>() == v).Count;
             g.Toast(n > 0 ? "OPENED " + n + " STORAGE" + (n > 1 ? "S" : "") + " ON " + WastelandGame.Name(v) : "NO STORAGE OF " + WastelandGame.Name(v) + " IN REACH: GO ROUND TO IT");
+            if (n > 0) Hints.Show("trip_kit", "TRIP KIT: WHAT RIDES ALONG IS LISTED UNDER THE LOOT PANEL - DRAG GEAR INTO THE CAR BEFORE A LONG DRIVE");
+        }
+
+        readonly List<TripKit.Line> kit = new List<TripKit.Line>();
+        /// <summary>Checklist rows drawn under the LOOT panel for <see cref="OpenedVehicle"/> (tests read it).</summary>
+        public IReadOnlyList<TripKit.Line> KitLines => kit;
+
+        void DrawKit(PixelCanvas c)
+        {
+            if (!OpenedVehicle || loot.closed || loot.collapsed) { kit.Clear(); return; }
+            int inCar = TripKit.Check(OpenedVehicle, g.Inventory, kit);
+            int h = 11 + kit.Count * 8;
+            int x = loot.rect.x, y = loot.rect.yMax + 2;
+            if (y + h > c.h) y = Mathf.Max(0, loot.rect.y - h - 2);
+            c.Panel(x, y, PanelW, h);
+            c.Text(x + 3, y + 2, "TRIP KIT  " + inCar + "/" + kit.Count + " IN THE CAR", Amber, 1, false);
+            for (int i = 0; i < kit.Count; i++)
+            {
+                var l = kit[i];
+                int ry = y + 11 + i * 8;
+                c.Text(x + 7, ry, (l.where == TripKit.Where.Car ? "+ " : l.where == TripKit.Where.Pack ? "~ " : "- ") + l.label, l.where == TripKit.Where.Car ? Text : Dim, 1, false);
+                string w = l.where == TripKit.Where.Car ? "IN" : l.where == TripKit.Where.Pack ? "PACK" : "NONE";
+                c.Text(x + PanelW - 3 - PixelCanvas.TextWidth(w), ry, w, l.where == TripKit.Where.Missing ? Dim : Amber, 1, false);
+            }
         }
 
         /// <summary>The nearest vehicle with a storage within reach of the player, or null.</summary>
@@ -347,6 +371,7 @@ namespace MadMax.Game
             if (you.pos.x < 0) you.pos = new Vector2Int(Mathf.Max(0, c.w - 2 * PanelW - 12), 112);
             DrawPanel(c, loot, 1, LootSide.Count == 0 ? "LOOT  -" : "LOOT  " + LootSide.Count + " IN REACH", LootSide.Count == 0 ? "NOTHING IN REACH" : null);
             DrawPanel(c, you, 0, "YOU  " + g.CarriedWeight.ToString("0.0") + "/" + g.Stats.CarryCapacity.ToString("0") + " KG", null);
+            DrawKit(c);
             if (draggingItem && pressRow != null)
             {
                 string d = pressRow.label + " X" + Count(pressRow);
