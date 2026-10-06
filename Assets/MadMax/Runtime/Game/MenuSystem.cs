@@ -894,7 +894,7 @@ namespace MadMax.Game
                         bool fluid = o.id.StartsWith("res:") && ResourceInfo.IsFluid((ResourceType)int.Parse(o.id.Substring(4)));
                         items.Add(new Item
                         {
-                            label = MadMax.Npc.Trade.Name(o.id), value = () => "X" + offer.count + (fluid ? "L" : "") + "  " + offer.price + " SCRAP",
+                            label = MadMax.Npc.Trade.Name(o.id) + (o.note != null ? " (" + o.note + ")" : ""), value = () => "X" + offer.count + (fluid ? "L" : "") + "  " + offer.price + " SCRAP",
                             confirm = () => { MadMax.Npc.Trade.Buy(game, npc, offer, 1); Rebuild(); },
                             adjust = d => { MadMax.Npc.Trade.Buy(game, npc, offer, d > 0 ? 10 : 5); Rebuild(); },
                             enabled = () => inv.Get(ResourceType.Scrap) + (p.kind == "fuel" ? inv.GetItem(MadMax.Npc.Contracts.Chit) * MadMax.Npc.Trade.ChitValue : 0) >= offer.price, hint = "ENTER BUY 1   A BUY 5   D BUY 10"

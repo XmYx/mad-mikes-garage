@@ -153,6 +153,7 @@ namespace MadMax.Game
                 sys.fuel = plan.cold ? 0f : sys.fuelCapacity * (float)rnd.NextDouble() * 0.35f;
                 sys.oil = sys.oilCapacity * (float)rnd.NextDouble() * 0.8f;
                 sys.coolant = sys.coolantCapacity * (float)rnd.NextDouble() * 0.8f;
+                if (FuelFrozen(MadMax.World.Weather.Season) && MadMax.World.Weather.Temperature < 0f) sys.IceTank();
             }
             v.Body.isKinematic = true;
         }

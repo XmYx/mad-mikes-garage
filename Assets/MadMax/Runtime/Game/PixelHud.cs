@@ -240,6 +240,19 @@ namespace MadMax.Game
             foreach (var pin in pins)
             {
                 var pp = P(pin.pos);
+                if (pin.radius > 0f)                                                                // heard of vaguely: a dotted search circle
+                {
+                    int pr = Mathf.Max(3, Mathf.RoundToInt(pin.radius / mpp));
+                    int steps = Mathf.Clamp(pr * 3, 12, 180);
+                    for (int k = 0; k < steps; k += 2)
+                    {
+                        float ang = k * Mathf.PI * 2f / steps;
+                        var q = new Vector2Int(pp.x + Mathf.RoundToInt(Mathf.Cos(ang) * pr), pp.y + Mathf.RoundToInt(Mathf.Sin(ang) * pr));
+                        if (Inside(q)) c.Set(q.x, q.y, pin.color);
+                    }
+                    if (hovered == null && (mouse - pp).sqrMagnitude <= pr * pr) hovered = pin.label;   // nearer markers still win
+                    continue;
+                }
                 if (!Inside(pp)) continue;
                 c.Set(pp.x, pp.y - 2, pin.color); c.Rect(pp.x - 1, pp.y - 1, 3, 1, pin.color); c.Rect(pp.x - 2, pp.y, 5, 1, pin.color); c.Rect(pp.x - 1, pp.y + 1, 3, 1, pin.color); c.Set(pp.x, pp.y + 2, pin.color);
                 Hover(pp, pin.label);

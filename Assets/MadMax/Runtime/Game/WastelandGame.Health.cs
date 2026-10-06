@@ -29,10 +29,24 @@ namespace MadMax.Game
             if (Stats.injuries.Count > before)
             {
                 var inj = Stats.injuries[Stats.injuries.Count - 1];
-                Toast(Injury.WoundNames[(int)inj.type] + ": " + Injury.ZoneNames[(int)inj.zone] + (inj.Bleeding ? " (BLEEDING)" : "") + "  [O] HEALTH");
+                string wound = Injury.WoundNames[(int)inj.type] + ": " + Injury.ZoneNames[(int)inj.zone];
+                var kitCar = Current ? Current : NearestFleet(10f);
+                if (inj.Bleeding && (kitCar || TripKit.Locate(TripKit.Need.Bleeding, null, Inventory, out _) == TripKit.Where.Missing))
+                    TripKit.Alarm(this, TripKit.Need.Bleeding, kitCar, wound + " (BLEEDING) -");   // where the dressings are
+                else Toast(wound + (inj.Bleeding ? " (BLEEDING)" : "") + "  [O] HEALTH");
                 if (cause != "BURNED") MadMax.World.BloodStains.Splash(Player.transform.position, amount / 40f);
                 if (cause != "BURNED" && inj.Bleeding && Player.Rig) Player.Rig.Bleed(WoundPoint(inj.zone), Mathf.Clamp(amount / 30f, 0.6f, 1.6f));
             }
+        }
+
+        /// <summary>The player's nearest fleet vehicle within <paramref name="reach"/> metres (the car they came in).</summary>
+        VehicleDriver NearestFleet(float reach)
+        {
+            VehicleDriver best = null;
+            if (!Player) return null;
+            var p = Player.transform.position;
+            foreach (var f in Fleet) if (f) { float d = Vector3.Distance(f.transform.position, p); if (d < reach) { reach = d; best = f; } }
+            return best;
         }
 
         /// <summary>A point on the player's body in a wound zone (for the blood splat).</summary>

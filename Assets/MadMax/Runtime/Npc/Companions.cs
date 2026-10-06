@@ -25,7 +25,7 @@ namespace MadMax.Npc
     {
         public static readonly List<Npc> Live = new List<Npc>();
         static List<CompanionSave> pending;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; borrowed.Clear(); LastFireFighter = null; }
 
         public const int HireScrap = 80;
 
@@ -98,6 +98,7 @@ namespace MadMax.Npc
         public static void Tick(WastelandGame g)
         {
             Prune();
+            FireDrill(g);
             if (pending == null || !g.Player || !DeformableTerrainReady()) return;
             var list = pending; pending = null;
             foreach (var s in list)
@@ -117,6 +118,66 @@ namespace MadMax.Npc
                 if (s.vehicle >= 0 && s.vehicle < g.Fleet.Count && g.Fleet[s.vehicle]) n.TakeWheel(g.Fleet[s.vehicle]);
             }
         }
+
+        // ------------------------------------------------------------------ engine fires
+
+        public const string Extinguisher = "tool_extinguisher";
+        /// <summary>A companion this close to a burning fleet car goes for it.</summary>
+        public const float FireReach = 30f;
+        /// <summary>Companion → the compartment whose extinguisher they took (it goes back when the fight ends).</summary>
+        static readonly Dictionary<Npc, MadMax.Building.Container> borrowed = new Dictionary<Npc, MadMax.Building.Container>();
+
+        /// <summary>A fleet car's engine catches with a companion near: the nearest one with a bottle (their own, or the
+        /// one riding in the car's compartments) climbs out and beats it (<see cref="Npc.FightFire"/>); a borrowed bottle
+        /// goes back where it was. The trip kit pays off without the player leaving the seat.</summary>
+        static void FireDrill(WastelandGame g)
+        {
+            if (borrowed.Count > 0)
+            {
+                List<Npc> back = null;
+                foreach (var kv in borrowed) if (!kv.Key || !kv.Key.fireTarget) (back ??= new List<Npc>()).Add(kv.Key);
+                if (back != null)
+                    foreach (var n in back)
+                    {
+                        var box = borrowed[n];
+                        borrowed.Remove(n);
+                        if (box) box.inventory.AddItem(Extinguisher);                               // put back (also if they fell: the bottle lies with the car)
+                    }
+            }
+            if (Live.Count == 0) return;
+            foreach (var v in g.Fleet)
+            {
+                if (!v || !v.TryGetComponent<VehicleSystems>(out var vs) || !vs.Burning || Mathf.Abs(v.ForwardSpeed) > 3f) continue;
+                bool taken = false;
+                foreach (var n in Live) if (n && n.fireTarget == vs) taken = true;
+                if (taken) continue;
+                Npc best = null; float bd = FireReach;
+                foreach (var n in Live)
+                {
+                    if (!n || !n.Alive || n.fireTarget || n.Hostile || n.Surrendered) continue;
+                    float d = Vector3.Distance(n.transform.position, v.transform.position);
+                    if (d < bd) { bd = d; best = n; }
+                }
+                if (!best) continue;
+                MadMax.Building.Container from = null;
+                if (!(best.pack && best.pack.inventory.GetItem(Extinguisher) > 0))
+                {
+                    var storage = VehicleStorage.For(v);
+                    if (storage) foreach (var c in storage.compartments) if (c && c.container && c.container.inventory.GetItem(Extinguisher) > 0) { from = c.container; break; }
+                    if (!from) continue;                                                            // no bottle anywhere: nothing to fight it with
+                    from.inventory.TakeItem(Extinguisher);
+                    borrowed[best] = from;
+                }
+                if (best.Driving) best.LeaveWheel();
+                best.Unboard();
+                best.FightFire(vs, MadMax.Game.ExtinguisherTool.Bursts);
+                LastFireFighter = best;
+                g.Toast(best.KnownName + (from ? " GRABS THE EXTINGUISHER FROM THE " + from.title : " GOES FOR THE FIRE WITH THEIR EXTINGUISHER"));
+            }
+        }
+
+        /// <summary>The last companion sent to an engine fire (tests).</summary>
+        public static Npc LastFireFighter;
 
         static int IndexOf(IReadOnlyList<VehicleDriver> list, VehicleDriver v) { for (int i = 0; i < list.Count; i++) if (list[i] == v) return i; return -1; }
 

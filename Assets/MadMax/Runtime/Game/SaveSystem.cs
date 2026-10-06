@@ -31,6 +31,7 @@ namespace MadMax.Game
         public string wear;                // VehicleBreakables: broken glass and lamps, scraped paint
         public string burn;                // VehicleBurn: "burn[,c charred][,x exploded][,r tank rolled]"
         public string ignition;            // VehicleIgnition: "where,hotwired,id" (null = key in the ignition)
+        public bool iced;                  // VehicleSystems.tankIced (a winter wreck's tank, until thawed)
         public string storage;             // VehicleStorage compartments (trunk, glovebox, back seat...)
         public string fluids;              // VehicleSystems blends: fuel tank, sump, coolant (null = pure, from tank)
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
@@ -104,6 +105,7 @@ namespace MadMax.Game
         public List<string> story = new List<string>();                 // campaign state (MadMax.Story.Story.Save)
         public List<uint> storyProps = new List<uint>();
         public List<string> heardOf = new List<string>();               // story givers heard of in rumours (pinned)
+        public List<string> heardVague = new List<string>();            // story givers heard of only vaguely (search circle)
         // depth blocks (WastelandGame.Blocks): each block's own saved state
         public List<string> blockItems = new List<string>();
         public List<string> handcraft = new List<string>();      // personal handcraft jobs: "recipe id|progress|cost mult"

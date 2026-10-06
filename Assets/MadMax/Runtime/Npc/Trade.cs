@@ -12,7 +12,12 @@ namespace MadMax.Npc
     /// count against it until the next day. Goods: item ids, <c>res:N</c> resources, <c>part:key</c> vehicle parts.</summary>
     public static partial class Trade
     {
-        public struct Offer { public string id; public int count, price; }
+        public struct Offer
+        {
+            public string id; public int count, price;
+            /// <summary>Where the goods came from, shown beside the line (null = the vendor's own stock).</summary>
+            public string note;
+        }
 
         static Dictionary<string, PartDesign> parts;
         static PartDesign Part(string key)
@@ -214,6 +219,7 @@ namespace MadMax.Npc
         {
             var list = new List<Offer>();
             if (p.kind == ScavengerKind) { HaulStock(p, list, bargain); return list; }          // only what they stripped
+            if (p.kind == "salvage") MarketHaulStock(list, bargain);                             // what scavengers brought in off the road
             if (p.kind == null || !sells.TryGetValue(p.kind, out var l)) return list;
             int day = MadMax.World.DayNight.Day;
             var r = new System.Random(p.seed * 31 + day * 977);
@@ -265,7 +271,8 @@ namespace MadMax.Npc
             if (chits > 0) g.Inventory.TakeItem(Contracts.Chit, chits);
             g.Inventory.TrySpend(ResourceType.Scrap, cost - chits * ChitValue);
             Market.Bought(Town, o.id, n);
-            vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
+            if (o.note == MarketHaulNote) TakeFromMarketHaul(o.id, n);                           // off a wreck: gone for good, the daily stock untouched
+            else vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
             if (vendor.Profile.kind == ScavengerKind) TakeFromHaul(vendor.Profile, o.id, n);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);
             NpcVoice.Say(vendor, "sell");

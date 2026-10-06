@@ -70,9 +70,17 @@ namespace MadMax.Game
             }
             base.Strike(user);
             var at = tip ? tip.position : transform.position;
-            foreach (var c in Physics.OverlapSphere(at, 0.35f, ~0, QueryTriggerInteraction.Ignore))
+            foreach (var c in Physics.OverlapSphere(at, 0.6f, ~0, QueryTriggerInteraction.Ignore))
             {
                 if (c.transform.IsChildOf(user.transform)) continue;
+                var vs = c.GetComponentInParent<MadMax.Vehicles.VehicleSystems>();
+                if (vs && vs.tankIced)                                                    // warming a frozen wreck tank
+                {
+                    if (vs.Thaw(kind == Kind.GasTorch ? 0.34f : 0.2f)) game?.Toast("THE ICE IN THE TANK GIVES: IT CAN BE SIPHONED");
+                    else if (game && user == game.Player) game.Toast(vs.ThawProgress < 0.5f ? "THAWING THE TANK: STILL FROZEN SOLID" : "THAWING THE TANK: STARTING TO GIVE");
+                    break;
+                }
+                if (Vector3.Distance(c.ClosestPoint(at), at) > 0.35f) continue;
                 var go = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
                 if (Fire.Flammable(go)) { Fire.Ignite(c.ClosestPoint(at), go.transform, 12f, 0.5f); break; }
             }

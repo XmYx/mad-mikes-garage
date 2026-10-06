@@ -1482,17 +1482,40 @@ frozen and kept), convoy drivers fight their own engine fires, town talk tells o
 strangers, the trip kit under the LOOT panel. Scenarios in `Acceptance/Blocks/ScheduledScenarios1005.cs`.
 
 ### Suggestions (tie the experience together)
-- [ ] **The kit pays off on the road**: when an emergency starts (engine fire, flat, a bleeding wound) the prompt names
+- [x] **The kit pays off on the road** (2026-10-06: `TripKit.Alarm/Prompt` — engine fire, blowout and a bleeding wound name the pack or the compartment holding the extinguisher / jack / dressings, or that none came along; scenario `ui.kit_alarm`): when an emergency starts (engine fire, flat, a bleeding wound) the prompt names
   where the remedy is ("EXTINGUISHER IN THE TRUNK - [LOOT]", "JACK UNDER THE SEAT") or that it was left at home — the
   trip-kit checklist turns into a decision the player feels.
-- [ ] **Companions with a bottle**: a companion riding along with an extinguisher in their pack climbs out and beats the
+- [x] **Companions with a bottle** (2026-10-06, the fire half: `Companions.FireDrill` — the nearest companion within 30 m takes their own bottle or the one in the burning fleet car's compartment, climbs out, beats it and puts it back; scenario `npc.companion_fire`. The medic half is still open): a companion riding along with an extinguisher in their pack climbs out and beats the
   player's engine fire (the same `Npc.FightFire`), and a companion medic uses the first-aid kit from the car.
-- [ ] **Scavengers haul to market**: an unbought haul leaves with the scavenger and turns up in the nearest town's
+- [x] **Scavengers haul to market** (2026-10-06: `Trade.HaulToMarket` / `MarketHauls` — on the nearest town's salvage stalls from the next day, marked OFF A WRECK, under the usual price, bought off the haul; saved with the hauls; scenario `towns.haul_market`): an unbought haul leaves with the scavenger and turns up in the nearest town's
   salvage stock a day later (named "OFF A WRECK ON THE ROAD") — parts travel through the economy instead of vanishing.
-- [ ] **Frozen fuel thaws**: a winter wreck's tank can't be siphoned until thawed (a gas torch, a fire beside it or
+- [x] **Frozen fuel thaws** (2026-10-06: `VehicleSystems.tankIced` on winter wrecks — no siphon, no start until warmed by fire heat, a torch on the tank or air above freezing; saved `VehicleSave.iced`; scenario `vehicle.frozen_tank`): a winter wreck's tank can't be siphoned until thawed (a gas torch, a fire beside it or
   spring) — the season shows up at the can, not only in the share.
-- [ ] **Rumours need trust**: town talk tells of givers only to someone the town likes (faction rank / disposition),
+- [x] **Rumours need trust** (2026-10-06: below disposition 20 and without a friendly faction the teller gives a direction only — `HeardVague`, a dotted search circle off the real spot on the map; a trusted teller sharpens it to a pin; saved; scenario `talk.vague_rumours`): town talk tells of givers only to someone the town likes (faction rank / disposition),
   strangers get vaguer directions ("SOMEWHERE EAST") that pin a search circle, not a point.
-- [ ] **Fire spreads to the convoy**: a burning car parked in formation heats its neighbours (`VehicleSystems.Heat` from
+- [x] **Fire spreads to the convoy** (2026-10-06: `VehicleSystems.SpreadFire` heats vehicles within 3 m of the flames — nose to tail a car catches in ~15 s; `Convoy.ClearOfFire` drives the cars within 9 m of a burning one out of reach in a halted column; scenario `vehicle.fire_spread`): a burning car parked in formation heats its neighbours (`VehicleSystems.Heat` from
   `Fire` within 3 m), so a molotov on a halted convoy can chain — and drivers pull their cars apart first.
+
+## Scheduled update (2026-10-06)
+Done this pass (ticked above): frozen winter-wreck tanks that must be thawed, strangers' rumours as search circles
+(trusted tellers give the point), engine fires spreading to parked neighbours and halted columns pulling apart, the
+trip kit named in emergencies, companions beating fleet-car fires with the car's own bottle, unbought scavenger hauls
+carried to the nearest town's salvage stalls. A new game now also clears the trade hauls (statics outlived the scene
+reload). Scenarios in `Acceptance/Blocks/ScheduledScenarios1006.cs`.
+
+### Suggestions (tie the experience together)
+- [ ] **A fire is a scene, not a number**: a burning car in town draws residents with buckets and bottles (the same
+  `Npc.FightFire`), the town remembers who saved it (disposition) and who started it (molotov source) — fire becomes a
+  social event.
+- [ ] **Companion medic**: a companion with a first-aid kit (their pack or the car's glovebox) dresses the player's
+  bleeding wound when the fight is over, and splints a broken leg — the other half of "companions with a bottle".
+- [ ] **Search circles shrink by asking**: each further rumour about a vague giver (even untrusted) halves the circle
+  around the real place; binoculars from a rise inside the circle reveal the camp — finding people becomes a small
+  exploration loop.
+- [ ] **Market memory of the road**: salvage stalls that sell a haul OFF A WRECK name where it came from; buying back
+  your own stolen part (a part id once mounted on a fleet car) costs half — the economy remembers the player.
+- [ ] **Winter starts**: iced tanks and frozen coolant both block a start; a block heater piece at home (power) and a
+  heater kit for the trip (burns fuel) keep a fleet car ready on cold mornings — winter planning becomes a garage job.
+- [ ] **Burned-out wrecks as landmarks**: a charred car left on a road becomes a map landmark ("BURNED-OUT COUPE")
+  and a scavenger-free wreck for a week (nobody wants it) — consequences of fights stay visible on the map.
 

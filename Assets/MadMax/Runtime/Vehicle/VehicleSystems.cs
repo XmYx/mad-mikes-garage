@@ -267,7 +267,7 @@ namespace MadMax.Vehicles
             crankFrom = Time.time;
             crankUntil = Time.time + UnityEngine.Random.Range(0.7f, 1.5f) * (FuelKind == ResourceType.Diesel ? 1.4f : 1f);   // diesels turn over longer
             nextCrank = crankUntil + 0.6f;
-            crankCatches = fuel > 0f && !WrongFuel && !Frozen && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
+            crankCatches = fuel > 0f && !tankIced && !WrongFuel && !Frozen && !(ep && ep.damage >= 1f) && UnityEngine.Random.value < StartChance;
             if (WrongFuel && ep) ep.damage = Mathf.Min(1f, ep.damage + Blend.crankWear);                        // churning a bad blend
         }
 
@@ -341,12 +341,13 @@ namespace MadMax.Vehicles
                 if (!crankCatches && driver.Occupied && !driver.aiDriven)
                 {
                     var eng = driver.Engine ? driver.Engine.GetComponent<VehiclePart>() : null;
-                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : WrongFuel ? "IT COUGHS AND DIES: SOMETHING'S WRONG WITH THE FUEL" : Frozen ? "FROZEN UP: WARM IT FIRST" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
+                    string why = fuel <= 0f ? "NO FUEL IN THE TANK" : tankIced ? "THE FUEL LINE IS ICED: THAW THE TANK FIRST" : WrongFuel ? "IT COUGHS AND DIES: SOMETHING'S WRONG WITH THE FUEL" : Frozen ? "FROZEN UP: WARM IT FIRST" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
                                : UsesPlugs && plugs < 0.3f ? "IT SPUTTERS AND DIES: TRY AGAIN" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
                                : "IT DIDN'T CATCH: TRY AGAIN";
                     MadMax.Game.WastelandGame.Instance?.Toast(why);
                 }
             }
+            if (tankIced && MadMax.World.Weather.Temperature > 1f) Thaw(dt / AirThawSeconds);
             var f = Fault.None;
             var ep = engine ? engine.GetComponent<VehiclePart>() : null;
             float engineDamage = ep ? ep.damage : 0f;
@@ -679,11 +680,66 @@ namespace MadMax.Vehicles
         }
 
         /// <summary>External heat (a fire next to or under the vehicle).</summary>
-        public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); }
+        public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); Thaw(amount * 1.5f); }
+
+        /// <summary>The tank and lines of a wreck that sat out the winter are iced: nothing siphons out and the engine
+        /// won't catch until it is thawed (a fire beside it, a gas torch on the tank, air above freezing). Saved.</summary>
+        [System.NonSerialized] public bool tankIced;
+        float thaw;
+        public const float ThawNeeded = 1f;
+        /// <summary>Seconds of above-freezing air that thaw an iced tank by themselves.</summary>
+        public const float AirThawSeconds = 240f;
+
+        public void IceTank() { if (fuel > 0.05f) { tankIced = true; thaw = 0f; } }
+
+        /// <summary>Warm an iced tank; true when this warmth made it give.</summary>
+        public bool Thaw(float amount)
+        {
+            if (!tankIced || amount <= 0f) return false;
+            thaw += amount;
+            if (thaw < ThawNeeded) return false;
+            tankIced = false; thaw = 0f;
+            return true;
+        }
+
+        /// <summary>0 frozen solid .. 1 thawed.</summary>
+        public float ThawProgress => tankIced ? Mathf.Clamp01(thaw / ThawNeeded) : 1f;
 
         public bool Burning => fire;
         /// <summary>Where the flames are (the engine bay while burning).</summary>
         public Vector3 FirePos => fire ? fire.transform.position : transform.position;
+
+        /// <summary>Every vehicle with systems (a burning one heats its neighbours).</summary>
+        public static readonly System.Collections.Generic.List<VehicleSystems> All = new System.Collections.Generic.List<VehicleSystems>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetAll() => All.Clear();
+        void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDisable() => All.Remove(this);
+
+        /// <summary>How far an engine fire heats the next vehicle (metres from the flames to its bounds) and how hard at
+        /// contact, per second (a car ignites at 2 soaked heat that cools by 0.2 a second): a fire that has taken hold
+        /// catches a car parked alongside within ~10–30 s; a car's width away it never does.</summary>
+        public const float SpreadReach = 3f, SpreadHeat = 0.8f;
+        float spreadT;
+
+        /// <summary>Heat the vehicles parked within <see cref="SpreadReach"/> of the flames (authority only).</summary>
+        void SpreadFire(float dt)
+        {
+            if ((spreadT -= dt) > 0f) return;
+            spreadT = 0.5f;
+            var net = MadMax.Net.NetSession.Instance;
+            if (net && net.IsClient) return;
+            var at = FirePos;
+            float k = 0.5f + (burnState ? burnState.burn : 0f);
+            foreach (var o in All)
+            {
+                if (!o || o == this || !o.driver || !o.driver.Body) continue;
+                float d = Vector3.Distance(o.driver.Body.ClosestPointOnBounds(at), at);
+                if (d < SpreadReach) o.Heat(SpreadHeat * (1f - d / SpreadReach) * k * 0.5f);
+            }
+        }
+
+        /// <summary>Neighbour heat per second at <paramref name="distance"/> metres from a fire at <paramref name="burn"/> (tests).</summary>
+        public static float SpreadRate(float distance, float burn) => distance >= SpreadReach ? 0f : SpreadHeat * (1f - distance / SpreadReach) * (0.5f + burn);
 
         void UpdateFire(float dt, Vector3 enginePos, ref Fault f)
         {
@@ -693,7 +749,12 @@ namespace MadMax.Vehicles
             foam = Mathf.Max(0f, foam - dt * 0.08f);
             // ignition: cooked engine, ruptured fuel system on a wreck, or outside heat (not while the powder is fresh)
             if (!fire && Time.time >= smotheredUntil && (Temperature > CriticalLimit + 15f || (frame > 0.85f && fuel > 1f && UnityEngine.Random.value < dt * 0.05f) || heatSoak > 2f))
+            {
                 fire = MadMax.World.Fire.Ignite(enginePos + Vector3.up * 0.3f, transform, 25f + fuel * 0.5f, 0.7f);
+                var g = MadMax.Game.WastelandGame.Instance;
+                if (fire && g && g.Player && (g.Current == driver || (!g.Current && g.InFleet(driver) && Vector3.Distance(g.Player.transform.position, transform.position) < 15f)))
+                    MadMax.Game.TripKit.Alarm(g, MadMax.Game.TripKit.Need.Fire, driver, "ENGINE FIRE!");   // where the extinguisher is
+            }
             if (!fire) return;
             f |= Fault.OnFire;
             if (fuel > 0f) { fuel = Mathf.Max(0f, fuel - 0.4f * dt); fire.fuel = Mathf.Max(fire.fuel, 5f); }
@@ -702,6 +763,7 @@ namespace MadMax.Vehicles
             Temperature += 3f * dt;
             if (!burnState && !TryGetComponent(out burnState)) burnState = gameObject.AddComponent<VehicleBurn>();
             burnState.Feed(dt, ref fuel, fire);
+            SpreadFire(dt);
         }
 
         public string FaultText()

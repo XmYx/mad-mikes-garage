@@ -260,6 +260,9 @@ namespace MadMax.Game
         sealed class TankEnd : FluidEnd
         {
             public VehicleSystems sys;
+            /// <summary>A winter wreck's fuel tank, frozen until thawed (<see cref="VehicleSystems.tankIced"/>).</summary>
+            public bool Iced => system == VehicleSystems.FluidSystem.Fuel && sys.tankIced;
+            public override string Refuse(FluidMix mix) => Iced ? IcedNote : null;
             public override float Available => sys.Level(system);
             public override float Room => Mathf.Max(0f, sys.Capacity(system) - sys.Level(system));
             public override FluidMix Mix => sys.EffectiveMix(system);
@@ -491,8 +494,10 @@ namespace MadMax.Game
             {
                 float room = def.litres - can.litres;
                 if (room < 0.05f) { Toast(def.name + " IS FULL: " + can.mix.Label()); return; }
+                bool iced = false;
                 foreach (var e in ends)
                 {
+                    if (e is TankEnd ie && ie.Iced && e.Available >= 0.05f) { iced = true; continue; }
                     if (e.Available < 0.05f || (e is PackEnd && e.Available < 1f)) continue;
                     var m = e.Mix;
                     if (!can.Empty && m.MainFamily != can.mix.MainFamily) continue;                 // one kind of liquid per container
@@ -503,6 +508,7 @@ namespace MadMax.Game
                     var a = new RadialAction { label = Short(e.name), detail = m.Label() + " +" + Litres(n), run = () => Transfer(end, true) };
                     (m.MainFamily == def.meant ? first : rest).Add(a);
                 }
+                if (iced && first.Count + rest.Count == 0) { Toast(IcedNote); return; }
             }
             else
             {
@@ -532,6 +538,9 @@ namespace MadMax.Game
             RadialHint = (siphon ? "FILL THE " : "POUR THE ") + def.name + ": MOUSE + CLICK OR [" + Controls.Name(siphon ? Controls.Act.Siphon : Controls.Act.Service) + "], RMB CANCELS";
             RadialBlocksLook = true;
         }
+
+        /// <summary>Why nothing comes out of (or goes into) a frozen wreck tank.</summary>
+        public const string IcedNote = "THE TANK IS FROZEN SOLID: THAW IT WITH A FIRE OR A GAS TORCH";
 
         static string Short(string s) => s.Length > 22 ? s.Substring(0, 22) : s;
         static string Litres(float l) => l.ToString(l < 10f ? "0.#" : "0", CultureInfo.InvariantCulture) + " L";
@@ -639,6 +648,7 @@ namespace MadMax.Game
                 float room = def.litres - can.litres;
                 if (room < 0.01f) { LastTransferNote = def.name + " IS FULL"; Toast(LastTransferNote); return; }
                 if (!can.Empty && end.Mix.MainFamily != can.mix.MainFamily) { LastTransferNote = "WON'T MIX " + end.Mix.Label() + " INTO " + can.mix.Label(); Toast(LastTransferNote); return; }
+                if (end is TankEnd ie && ie.Iced) { LastTransferNote = IcedNote; Toast(IcedNote); return; }
                 var drawn = new FluidMix();
                 float got = end.Draw(Mathf.Min(room, end.Available), drawn);
                 if (got <= 0f) { LastTransferNote = end.name + " IS DRY"; Toast(LastTransferNote); return; }

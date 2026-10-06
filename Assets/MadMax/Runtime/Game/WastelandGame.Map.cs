@@ -16,7 +16,12 @@ namespace MadMax.Game
         /// <summary>The waypoint route along the roads (focus → … → waypoint).</summary>
         public readonly List<Vector3> Route = new List<Vector3>();
 
-        public struct Pin { public string label; public Vector3 pos; public Color32 color; }
+        public struct Pin
+        {
+            public string label; public Vector3 pos; public Color32 color;
+            /// <summary>A search circle (metres) instead of a point: somewhere around <see cref="pos"/>.</summary>
+            public float radius;
+        }
 
         /// <summary>Wreck sites marked from the road news on a board (saved); a pin clears when the player gets there.</summary>
         public readonly List<Vector3> NewsPins = new List<Vector3>();

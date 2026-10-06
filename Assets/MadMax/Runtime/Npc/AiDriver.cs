@@ -87,6 +87,9 @@ namespace MadMax.Npc
             enabled = true;
         }
 
+        /// <summary>A hand-set one-way path starts afresh (not yet arrived).</summary>
+        public void ClearArrived() => Arrived = false;
+
         /// <summary>Start on the path at the point nearest to the vehicle.</summary>
         public void SetPath(List<Vector3> pts, int direction)
         {

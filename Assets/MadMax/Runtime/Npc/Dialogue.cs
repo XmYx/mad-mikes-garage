@@ -382,11 +382,16 @@ namespace MadMax.Npc
             }
             int i0 = ((P.seed & 0xffff) + Day) % facts.Count;
             line = facts[i0] + (facts.Count > 1 && S.disposition >= 20 ? " " + facts[(i0 + 1) % facts.Count] : "");
-            if (S.disposition >= -5 && !P.Raider && g.GiverRumour(at) is string giver) line = giver + " " + line;   // word of someone with work
+            if (S.disposition >= -5 && !P.Raider && g.GiverRumour(at, TrustsWithWay) is string giver) line = giver + " " + line;   // word of someone with work
             MadMax.Game.Journal.Add("RUMOUR", P.Name + ": " + line);
             g.Stats.Practice(Skill.Speech, 0.5f);
             Hub(false);
         }
+
+        /// <summary>Gives the way to a story giver (a point) rather than a direction: someone who likes the player or
+        /// whose people do.</summary>
+        bool TrustsWithWay => S.disposition >= TrustForWay || Factions.Friendly(Factions.Of(npc));
+        public const int TrustForWay = 20;
 
         void Haggle()
         {

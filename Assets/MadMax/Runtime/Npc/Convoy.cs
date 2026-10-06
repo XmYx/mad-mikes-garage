@@ -266,7 +266,7 @@ namespace MadMax.Npc
             if (lead) travel = Project(lead.transform.position, lead.transform.forward);
             foreach (var c in cars) if (c) UnityEngine.Object.Destroy(c.gameObject);
             foreach (var w in walkers) if (w && w.Alive) UnityEngine.Object.Destroy(w.gameObject);
-            cars.Clear(); walkers.Clear(); fighting.Clear(); Boss = null;
+            cars.Clear(); walkers.Clear(); fighting.Clear(); clearing.Clear(); Boss = null;
             if (phase != Phase.Gone) phase = Phase.Travel;
         }
 
@@ -274,7 +274,7 @@ namespace MadMax.Npc
         {
             foreach (var c in cars) if (c) UnityEngine.Object.Destroy(c.gameObject);
             foreach (var w in walkers) if (w) UnityEngine.Object.Destroy(w.gameObject);
-            cars.Clear(); walkers.Clear(); fighting.Clear();
+            cars.Clear(); walkers.Clear(); fighting.Clear(); clearing.Clear();
         }
 
         Npc Walker(WastelandGame g, int crewIndex, Vector3 near, bool aggro, AiDriver from = null)
@@ -551,6 +551,7 @@ namespace MadMax.Npc
         /// put out and taken by anyone; the key goes with the driver).</summary>
         void FireWatch(WastelandGame g)
         {
+            ClearOfFire(g);
             for (int i = 0; i < cars.Count; i++)
             {
                 var c = cars[i];
@@ -581,6 +582,57 @@ namespace MadMax.Npc
                 if (bottle) { n.FightFire(vs, CrewBursts); fighting[c] = n; }
                 else if (!fight) n.Scare(20f);
                 MadMax.Audio.Sfx.Play("car_door", c.transform.position, 0.6f);
+            }
+        }
+
+        /// <summary>Cars backing away from a burning one in the column (→ when they started).</summary>
+        public readonly Dictionary<AiDriver, float> clearing = new Dictionary<AiDriver, float>();
+        /// <summary>Convoy cars this close to a burning one drive off before the heat (<see cref="VehicleSystems.SpreadReach"/>) gets them.</summary>
+        public const float ClearOf = 9f, ClearTo = 16f;
+
+        /// <summary>A car burning in a halted column: the cars near it pull away (a one-way hop out of reach) and rejoin
+        /// once the fire is out or after half a minute. Not while attacking (they are moving anyway).</summary>
+        void ClearOfFire(WastelandGame g)
+        {
+            if (clearing.Count > 0)
+            {
+                bool anyFire = false;
+                foreach (var c in cars) if (c && c.Vehicle && c.Vehicle.TryGetComponent<VehicleSystems>(out var b) && b.Burning) anyFire = true;
+                List<AiDriver> done = null;
+                foreach (var kv in clearing)
+                    if (!kv.Key || !kv.Key.enabled || ((!anyFire || Time.time - kv.Value > 30f) && kv.Key.Arrived)) (done ??= new List<AiDriver>()).Add(kv.Key);
+                if (done != null)
+                    foreach (var c in done)
+                    {
+                        clearing.Remove(c);
+                        if (!c || !c.enabled) continue;
+                        var lead = Leader();
+                        bool halted = phase == Phase.Stopped || phase == Phase.Confront || phase == Phase.Parley;
+                        if (lead == c) { if (halted) c.goal = AiDriver.Goal.Park; else c.SetPath(route, c.dir); }
+                        else { c.goal = AiDriver.Goal.Follow; c.leader = lead; }
+                    }
+            }
+            if (phase == Phase.Attack) return;
+            foreach (var burning in cars)
+            {
+                if (!burning || !burning.Vehicle || !burning.Vehicle.TryGetComponent<VehicleSystems>(out var vs) || !vs.Burning) continue;
+                var at = vs.FirePos;
+                foreach (var c in cars)
+                {
+                    if (!c || c == burning || !c.enabled || clearing.ContainsKey(c) || fighting.ContainsKey(c)) continue;
+                    var p = c.transform.position;
+                    if (Flat(p - at).magnitude > ClearOf) continue;
+                    var away = Flat(c.transform.forward);                                          // ahead or beside: drive on
+                    if (Vector3.Dot(Flat(p - at), away) < -0.5f) away = -away;                     // behind it: back off
+                    var to = p + away.normalized * ClearTo;
+                    var t = DeformableTerrain.Instance;
+                    if (t) to.y = t.HeightNoLoad(to.x, to.z);
+                    c.path = new List<Vector3> { p, to };
+                    c.index = 1; c.dir = 1; c.goal = AiDriver.Goal.Path; c.oneWay = true;
+                    c.ClearArrived();
+                    clearing[c] = Time.time;
+                    if (g && g.Player && Flat(g.Player.transform.position - p).magnitude < 60f) MadMax.Audio.Sfx.Play("horn", p, 0.6f, 1.1f, 80f, 2f);
+                }
             }
         }
 

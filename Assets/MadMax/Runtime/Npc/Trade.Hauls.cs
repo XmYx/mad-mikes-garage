@@ -13,8 +13,65 @@ namespace MadMax.Npc
         /// <summary>Scavengers want rid of their haul before someone comes asking: under the usual markup.</summary>
         public const float HaulDiscount = 0.75f;
 
+        /// <summary>Unbought hauls carried to market: settlement index → goods, sold by the town's salvage vendors from
+        /// <see cref="MarketHaulDay"/> on, under the usual price (<see cref="HaulDiscount"/>) until bought out. Saved.</summary>
+        public static readonly Dictionary<int, Dictionary<string, int>> MarketHauls = new Dictionary<int, Dictionary<string, int>>();
+        /// <summary>Settlement index → the day the haul reaches the stalls.</summary>
+        public static readonly Dictionary<int, int> MarketHaulDay = new Dictionary<int, int>();
+        public const string MarketHaulNote = "OFF A WRECK";
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetHauls() => Hauls.Clear();
+        static void ResetHauls() { Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear(); }
+
+        /// <summary>The scavenger leaves the wreck with what nobody bought: it reaches <paramref name="town"/>'s salvage
+        /// stalls a day later. Returns the goods carried.</summary>
+        public static int HaulToMarket(string scavenger, MadMax.World.Settlement town)
+        {
+            if (!Hauls.TryGetValue(scavenger, out var h)) return 0;
+            Hauls.Remove(scavenger);
+            if (town == null) return 0;
+            int n = 0;
+            if (!MarketHauls.TryGetValue(town.index, out var m)) MarketHauls[town.index] = m = new Dictionary<string, int>();
+            foreach (var kv in h) { if (kv.Value <= 0) continue; m[kv.Key] = (m.TryGetValue(kv.Key, out int had) ? had : 0) + kv.Value; n += kv.Value; }
+            int arrive = MadMax.World.DayNight.Day + 1;
+            if (!MarketHaulDay.TryGetValue(town.index, out int day) || day <= MadMax.World.DayNight.Day) MarketHaulDay[town.index] = arrive;   // a haul already on the stalls waits for the new one
+            if (n == 0) { MarketHauls.Remove(town.index); MarketHaulDay.Remove(town.index); }
+            return n;
+        }
+
+        /// <summary>Goods off wrecks on the stalls of <paramref name="town"/> today (0 before they arrive).</summary>
+        public static int MarketHaulCount(MadMax.World.Settlement town)
+        {
+            if (town == null || !MarketHauls.TryGetValue(town.index, out var m) || MarketHaulDay[town.index] > MadMax.World.DayNight.Day) return 0;
+            int n = 0;
+            foreach (var kv in m) n += kv.Value;
+            return n;
+        }
+
+        static void MarketHaulStock(List<Offer> into, float bargain)
+        {
+            if (Town == null || MarketHaulCount(Town) == 0) return;
+            foreach (var kv in MarketHauls[Town.index])
+                if (kv.Value > 0) into.Add(new Offer { id = kv.Key, count = kv.Value, price = Mathf.Max(1, Mathf.RoundToInt(BuyPrice(kv.Key, bargain) * HaulDiscount)), note = MarketHaulNote });
+        }
+
+        static void TakeFromMarketHaul(string id, int n)
+        {
+            if (Town == null || !MarketHauls.TryGetValue(Town.index, out var m) || !m.TryGetValue(id, out int had)) return;
+            if (had - n > 0) m[id] = had - n; else m.Remove(id);
+            if (m.Count == 0) { MarketHauls.Remove(Town.index); MarketHaulDay.Remove(Town.index); }
+        }
+
+        /// <summary>Save lines "@town|day|id=n|…" (market hauls), appended to the scavenger hauls.</summary>
+        static void SaveMarketHauls(List<string> l)
+        {
+            foreach (var kv in MarketHauls)
+            {
+                var sb = new System.Text.StringBuilder("@").Append(kv.Key).Append('|').Append(MarketHaulDay.TryGetValue(kv.Key, out int d) ? d : 0);
+                foreach (var e in kv.Value) sb.Append('|').Append(e.Key).Append('=').Append(e.Value);
+                l.Add(sb.ToString());
+            }
+        }
 
         public static void AddHaul(string scavenger, string id, int n)
         {
@@ -54,16 +111,29 @@ namespace MadMax.Npc
                 foreach (var e in kv.Value) sb.Append('|').Append(e.Key).Append('=').Append(e.Value);
                 l.Add(sb.ToString());
             }
+            SaveMarketHauls(l);
             return l;
         }
 
         public static void LoadHauls(List<string> lines)
         {
-            Hauls.Clear();
+            Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear();
             if (lines == null) return;
             foreach (var line in lines)
             {
                 var f = line.Split('|');
+                if (line.StartsWith("@"))                                                         // a haul carried to market
+                {
+                    if (f.Length < 2 || !int.TryParse(f[0].Substring(1), out int town) || !int.TryParse(f[1], out int day)) continue;
+                    var m = new Dictionary<string, int>();
+                    for (int i = 2; i < f.Length; i++)
+                    {
+                        int eq = f[i].LastIndexOf('=');
+                        if (eq > 0 && int.TryParse(f[i].Substring(eq + 1), out int n) && n > 0) m[f[i].Substring(0, eq)] = n;
+                    }
+                    if (m.Count > 0) { MarketHauls[town] = m; MarketHaulDay[town] = day; }
+                    continue;
+                }
                 for (int i = 1; i < f.Length; i++)
                 {
                     int eq = f[i].LastIndexOf('=');

@@ -45,6 +45,60 @@ namespace MadMax.Game
             return inCar;
         }
 
+        // ------------------------------------------------------------------ emergencies on the road
+
+        /// <summary>Emergencies the kit answers.</summary>
+        public enum Need { Fire, Flat, Bleeding }
+
+        static string[] Remedy(Need n) => n switch
+        {
+            Need.Fire => new[] { "tool_extinguisher" },
+            Need.Flat => new[] { "tool_jack" },
+            _ => new[] { "med_firstaid", "med_bandage" },
+        };
+
+        static string RemedyName(Need n) => n == Need.Fire ? "EXTINGUISHER" : n == Need.Flat ? "JACK" : "DRESSINGS";
+
+        /// <summary>Where the remedy for <paramref name="need"/> is: in the pack first (to hand), then the compartment of
+        /// <paramref name="v"/> that holds it (<paramref name="box"/> = its title), else missing.</summary>
+        public static Where Locate(Need need, VehicleDriver v, Inventory pack, out string box)
+        {
+            box = null;
+            var ids = Remedy(need);
+            if (pack != null && Has(pack, ids, null)) return Where.Pack;
+            var s = v ? VehicleStorage.For(v) : null;
+            if (s) foreach (var c in s.compartments)
+                    if (c && c.container && Has(c.container.inventory, ids, null)) { box = c.container.title; return Where.Car; }
+            return Where.Missing;
+        }
+
+        /// <summary>The line that names where the remedy is ("EXTINGUISHER IN THE TRUNK - [L] LOOT") or that it
+        /// didn't come along.</summary>
+        public static string Prompt(Need need, VehicleDriver v, Inventory pack)
+        {
+            var w = Locate(need, v, pack, out string box);
+            string what = RemedyName(need);
+            if (w == Where.Pack) return what + " IN YOUR PACK" + (need == Need.Fire ? " - GET OUT AND SPRAY THE ENGINE" : need == Need.Flat ? " - SWAP THE WHEEL" : " - [" + Controls.Name(Controls.Act.Health) + "] HEALTH");
+            if (w == Where.Car) return what + (box.StartsWith("BEHIND") ? " " : " IN THE ") + box + " - [" + Controls.Name(Controls.Act.Loot) + "] OPEN IT";
+            return need == Need.Fire ? "NO EXTINGUISHER ABOARD - GET CLEAR OF THE CAR"
+                 : need == Need.Flat ? "NO JACK ABOARD - LIMP ON THE RIM OR WALK"
+                 : "NOTHING TO DRESS IT WITH ABOARD";
+        }
+
+        /// <summary>Last emergency line shown (tests).</summary>
+        public static string LastAlarm;
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetAlarm() => LastAlarm = null;
+
+        /// <summary>An emergency started on or by <paramref name="v"/>: the toast names the remedy's place, prefixed by
+        /// <paramref name="what"/> ("ENGINE FIRE!").</summary>
+        public static void Alarm(WastelandGame g, Need need, VehicleDriver v, string what)
+        {
+            if (!g) return;
+            LastAlarm = what + " " + Prompt(need, v, g.Inventory);
+            g.Toast(LastAlarm);
+        }
+
         static bool InCar(VehicleStorage s, string[] ids, string key)
         {
             if (!s) return false;

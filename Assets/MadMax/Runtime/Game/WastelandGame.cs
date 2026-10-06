@@ -55,6 +55,7 @@ namespace MadMax.Game
         /// <summary>All driveable vehicles (fleet + wrecks).</summary>
         public IReadOnlyList<VehicleDriver> Cars => cars;
         public IReadOnlyList<VehicleDriver> Fleet => fleet;
+        public bool InFleet(VehicleDriver v) => v && fleet.Contains(v);
         public IReadOnlyList<VehicleDriver> Trailers => trailers;
         public IReadOnlyList<VehicleDriver> Wrecks => wrecks;
         public IReadOnlyList<VehicleDriver> AllVehicles => vehicles;
@@ -205,7 +206,7 @@ namespace MadMax.Game
                 SpawnWrecks(p);
                 UnityEngine.Profiling.Profiler.EndSample();
                 BlocksNewGame();
-                Journal.Load(null); MadMax.Npc.TownNews.Load(null);     // statics outlive the scene reload
+                Journal.Load(null); MadMax.Npc.TownNews.Load(null); MadMax.Npc.Trade.LoadHauls(null);     // statics outlive the scene reload
                 if (Rules.story) StoryNewGame();
                 else
                 {
@@ -261,7 +262,7 @@ namespace MadMax.Game
         void OnTyrePop(WheelStats w)
         {
             if (!this || !w) return;
-            if (Current && w.transform.IsChildOf(Current.transform)) { Toast("TYRE BLOWOUT!"); if (cameraRig) cameraRig.Shake(5f); }
+            if (Current && w.transform.IsChildOf(Current.transform)) { TripKit.Alarm(this, TripKit.Need.Flat, Current, "TYRE BLOWOUT!"); if (cameraRig) cameraRig.Shake(5f); }
         }
 
         void GiveStartingKit(int kit)

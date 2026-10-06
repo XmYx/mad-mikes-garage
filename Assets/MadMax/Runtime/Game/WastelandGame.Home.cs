@@ -161,7 +161,7 @@ namespace MadMax.Game
                 string scav = ScavengerId(at);
                 if (Found(w))                                                                       // found: the scavenger stays a day
                 {
-                    if (DayNight.TotalDays > FoundMark - w.w + 1f) { RoadWrecks.RemoveAt(i); if (dir) dir.Scavengers.Remove(scav); MadMax.Npc.Trade.Hauls.Remove(scav); }
+                    if (DayNight.TotalDays > FoundMark - w.w + 1f) { RoadWrecks.RemoveAt(i); if (dir) dir.Scavengers.Remove(scav); HaulOff(scav, at); }
                     continue;
                 }
                 float age = DayNight.TotalDays - w.w;
@@ -178,6 +178,17 @@ namespace MadMax.Game
                 else if (taken > 0) Toast("SCAVENGERS GOT HERE FIRST - THE WRECK IS PICKED OVER");
                 if (taken > 0) Journal.Add("NEWS", "THE WRECK AT " + Mathf.RoundToInt(w.x) + "," + Mathf.RoundToInt(w.z) + " WAS PICKED OVER (" + taken + " PARTS GONE)");
             }
+        }
+
+        /// <summary>The scavenger leaves with what nobody bought: it turns up on the salvage stalls of the town nearest
+        /// the wreck the next day (<c>Trade.HaulToMarket</c>), and the news goes round.</summary>
+        public int HaulOff(string scav, Vector3 at)
+        {
+            MadMax.World.Settlement town = null; float td = float.MaxValue;
+            if (World != null) foreach (var st in World.settlements) { float d = Vector2.Distance(st.pos, new Vector2(at.x, at.z)); if (d < td) { td = d; town = st; } }
+            int n = MadMax.Npc.Trade.HaulToMarket(scav, town);
+            if (n > 0 && town != null) Journal.Add("NEWS", "SALVAGE OFF THE WRECK AT " + Mathf.RoundToInt(at.x) + "," + Mathf.RoundToInt(at.z) + " IS GOING TO " + MadMax.Npc.Market.TownName(town) + " MARKET");
+            return n;
         }
 
         public static string ScavengerId(Vector3 at) => "scav:" + Mathf.RoundToInt(at.x) + "," + Mathf.RoundToInt(at.z);
@@ -220,7 +231,8 @@ namespace MadMax.Game
                         foreach (var kv in inv.Items) { int n = Mathf.FloorToInt(kv.Value * (1f - share)); Keep(haul, kv.Key, kv.Value - n); if (n > 0) items.Add(new KeyValuePair<string, int>(kv.Key, n)); }
                         inv.Restore(res, items);
                     }
-                if (!FuelFrozen(season) && v.TryGetComponent<VehicleSystems>(out var sys))
+                if (FuelFrozen(season) && v.TryGetComponent<VehicleSystems>(out var ice)) ice.IceTank();
+                else if (v.TryGetComponent<VehicleSystems>(out var sys))
                 {
                     float gone = sys.fuel * share;
                     sys.fuel -= gone;
