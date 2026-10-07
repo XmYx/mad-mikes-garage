@@ -255,6 +255,7 @@ namespace MadMax.Npc
             bool sieging = raiding && !foe && (dPlayer > 22f || g.Vitals.Dead);
             if (sieging) Siege(dt, ref move, ref speed);
             else if (fireTarget && !foe && FireTick(me, dt, ref move, ref speed)) { }
+            else if (tending && !foe && TendTick(me, dt, ref move, ref speed)) { }
             else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
             else switch (mode)
             {
@@ -755,6 +756,10 @@ namespace MadMax.Npc
 
         /// <summary>A car breaker's raid: the nearest unattended vehicle within the claim, fuel siphoned and bodywork
         /// smashed. False when there is none left worth it.</summary>
+        int breakerBlows;
+        /// <summary>Every this many blows a car breaker unbolts a part and walks off with it.</summary>
+        public const int BreakerStealEvery = 4;
+
         bool SiegeCar(float dt, ref Vector3 move, ref float speed)
         {
             var g = WastelandGame.Instance;
@@ -778,6 +783,7 @@ namespace MadMax.Npc
             if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleSystems>(out var sys)) sys.fuel = Mathf.Max(0f, sys.fuel - 3f);
             if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleDamage>(out var dmg)) dmg.ApplyHit(cp, transform.forward, Profile.role == NpcRole.RaiderBoss ? 2f : 1f, 0.3f, gameObject);
             MadMax.Audio.Sfx.Play("hit_metal", cp, 0.8f);
+            if (++breakerBlows % BreakerStealEvery == 0) g.BreakerSteals(siegeCar, raidAt);     // a part off it, to be sold on in town
             return true;
         }
 

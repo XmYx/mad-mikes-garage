@@ -1467,7 +1467,7 @@ then passed on the re-run — look at the launch assists on wet ground.
   shown on the vehicle's LOOT panel and as a FIRST STEPS tip — every trip starts with deciding what rides along.
 - [x] **NPC drivers fight fires too** (2026-10-05: `Convoy.FireWatch` + `Npc.FightFire`; 8/10 trader and 5/10 raider cars carry a bottle, the driver beats the fire and drives on, or gets clear past saving; scenario `npc.fire_fight`): convoy cars carry an extinguisher; a driver whose engine catches climbs out and
   beats it (or abandons the car when it's past saving) — raider molotovs become a fight over a car, not a coin toss.
-- [ ] **Spare keys and locksmiths**: a key blank + the original at a workbench cuts a copy (companions can take a fleet
+- [x] **Spare keys and locksmiths** (2026-10-07: `misc_key_blank` (workbench) + using a car key at a workbench cuts a spare (`CutSpareKey`); parts vendors cut a key for a vehicle with a lost key brought within 40 m — 40 scrap, collect it from them the next day (`Dialogue.Keys`, `KeyOrders`, saved); scenario `vehicle.spare_keys`. Companions taking a fleet car by its key is still open): a key blank + the original at a workbench cuts a copy (companions can take a fleet
   car); town mechanics sell a key for a found car whose key is lost, for scrap and a day's wait.
 - [ ] **Walkie-talkie orders**: a companion carrying a handheld radio takes orders from any distance (come, hold, bring
   the car) through the radio keys — the radio as the tool that keeps a crew together.
@@ -1507,15 +1507,38 @@ reload). Scenarios in `Acceptance/Blocks/ScheduledScenarios1006.cs`.
 - [ ] **A fire is a scene, not a number**: a burning car in town draws residents with buckets and bottles (the same
   `Npc.FightFire`), the town remembers who saved it (disposition) and who started it (molotov source) — fire becomes a
   social event.
-- [ ] **Companion medic**: a companion with a first-aid kit (their pack or the car's glovebox) dresses the player's
+- [x] **Companion medic** (2026-10-07: `Companions.MedicDrill` + `Npc.Tend` — 6 s after the last hit, with no companion fighting, the nearest one with a first-aid kit (their pack or a fleet car compartment within 20 m) or bandages/splints walks over and treats bleeding wounds and fractures; scenario `npc.companion_medic`): a companion with a first-aid kit (their pack or the car's glovebox) dresses the player's
   bleeding wound when the fight is over, and splints a broken leg — the other half of "companions with a bottle".
-- [ ] **Search circles shrink by asking**: each further rumour about a vague giver (even untrusted) halves the circle
+- [x] **Search circles shrink by asking** (2026-10-07: each new untrusted teller halves the circle (`VagueAsks`, saved as "key|n"; the same teller twice doesn't count) down to 60 m; binoculars from inside the circle, facing the camp within 260 m (further from higher ground), pin it (`SpotCamp`); scenario `talk.search_shrink`): each further rumour about a vague giver (even untrusted) halves the circle
   around the real place; binoculars from a rise inside the circle reveal the camp — finding people becomes a small
   exploration loop.
-- [ ] **Market memory of the road**: salvage stalls that sell a haul OFF A WRECK name where it came from; buying back
+- [x] **Market memory of the road** (2026-10-07: `Trade.HaulNote` — "OFF A WRECK A SHORT DRIVE NORTH" from where the haul was stripped (`MarketHaulFrom`, saved); car breakers on a raid unbolt a part every 4th blow (`BreakerSteals`), it reaches the nearest salvage stall next day marked STOLEN FROM YOU at half price (`Trade.Stolen`, saved); scenario `towns.haul_memory`): salvage stalls that sell a haul OFF A WRECK name where it came from; buying back
   your own stolen part (a part id once mounted on a fleet car) costs half — the economy remembers the player.
-- [ ] **Winter starts**: iced tanks and frozen coolant both block a start; a block heater piece at home (power) and a
+- [x] **Winter starts** (2026-10-07, the home half: piece `block_heater` (`BlockHeater`, 400 W while a cold vehicle stands within 5 m) keeps coolant from freezing, holds the engine near 50 °C and thaws an iced tank in about a minute (`VehicleSystems.KeepWarm`); scenario `vehicle.block_heater`. The fuel-burning trip heater kit is still open): iced tanks and frozen coolant both block a start; a block heater piece at home (power) and a
   heater kit for the trip (burns fuel) keep a fleet car ready on cold mornings — winter planning becomes a garage job.
-- [ ] **Burned-out wrecks as landmarks**: a charred car left on a road becomes a map landmark ("BURNED-OUT COUPE")
+- [x] **Burned-out wrecks as landmarks** (2026-10-07: `VehicleBurn.Char` → `NoteBurnedOut`: a "BURNED-OUT <CAR>" map pin and journal line for a week, scavengers skip it (`BurnedNear`), saved `SaveData.burnedOut`; scenario `map.burned_landmark`): a charred car left on a road becomes a map landmark ("BURNED-OUT COUPE")
   and a scavenger-free wreck for a week (nobody wants it) — consequences of fights stay visible on the map.
 
+## Scheduled update (2026-10-07)
+Done this pass (ticked above): search circles that shrink with each new teller and binoculars that find the camp,
+salvage stalls that say where a haul was stripped and sell the player's own stolen parts back at half (car breakers
+now walk off with parts), burned-out wrecks as week-long landmarks nobody scavenges, the companion medic, spare keys
+cut at a workbench and keys for lost ones ordered from town mechanics, the engine block heater. Scenarios in
+`Acceptance/Blocks/ScheduledScenarios1007.cs` — all six pass in a Linux player build, plus the 2026-10-04..06 scheduled
+scenarios, vehicle.burnout, vehicle.keys, body.crutch and story.first_hour. The runs were headless (`-batchmode -nographics`):
+the GPU was nearly full from other processes and the windowed player hung during the new-game load (a build from
+2026-10-04 hung the same way), so this pass has no screenshots.
+
+### Suggestions (tie the experience together)
+- [ ] **A trip heater for the road**: a fuel-burning engine heater kit carried in the trunk (the other half of winter
+  starts) — ten minutes beside a frozen car and a litre of fuel, so a winter trip needs fuel planned for the morning.
+- [ ] **Companions drive on their own key**: a companion handed a spare key (`misc_key_blank` copy) can take a fleet
+  car without the player — fetch the second car from home, follow in convoy, bring the car to the player's waypoint.
+- [ ] **Stolen parts leave a trail**: a part STOLEN FROM YOU names the raid in the stall note and the seller's gang;
+  asking the vendor who sold it (CHA) points at the car breakers' camp — buying back or taking back.
+- [ ] **Burned-out wrecks tell what happened**: walking up to a burned landmark gives one line of the story (whose
+  car, which gang, how long ago) from the town news; the town nearest mourns or cheers it (faction shift).
+- [ ] **Patched up, not healed**: a companion's dressing is rougher than the player's own care (bandage soils sooner,
+  splint at 0.8 effect) unless the companion has the Survival trade — who rides along starts to matter for skills.
+- [ ] **Finding people by sight**: the binocular spotting works for anything heard of — wrecks in the news, rumoured
+  caches, raider camps — a "LOOK FOR" list in the journal fed by rumours and ticked off through the glasses.

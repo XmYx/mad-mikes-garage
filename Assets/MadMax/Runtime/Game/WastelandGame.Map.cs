@@ -67,6 +67,7 @@ namespace MadMax.Game
             mapCheck = Time.time + 1f;
             UpdateHomeRadio();
             UpdateRoadWrecks();
+            UpdateRoadside();
             var at = FocusPos;
             // towns entered, sites walked into or seen from the air
             foreach (var st in World.settlements)
@@ -121,6 +122,7 @@ namespace MadMax.Game
                 if (target != null) into.Add(new Pin { label = MadMax.Npc.TownQuests.Title(stage), pos = new Vector3(target.pos.x, 0f, target.pos.y), color = new Color32(150, 220, 120, 255) });
             }
             foreach (var p in NewsPins) into.Add(new Pin { label = "WRECK (NEWS)", pos = p, color = new Color32(200, 170, 130, 255) });
+            BurnedPins(into);
             LastEngine.Pins(into);
             StoryPins(into);
         }

@@ -332,7 +332,7 @@ namespace MadMax.Game.Acceptance
             Trade.Town = town; Trade.Seller = Faction.None;
             var stock = Trade.Stock(p, vendor.State, 0f);
             c.Note(string.Join(", ", stock.Select(o => o.id + " x" + o.count + " @" + o.price + (o.note != null ? " " + o.note : ""))));
-            var line = stock.FirstOrDefault(o => o.note == Trade.MarketHaulNote && o.id == "med_bandage");
+            var line = stock.FirstOrDefault(o => Trade.IsHaulNote(o.note) && o.id == "med_bandage");
             if (!c.Check(line.id != null && line.count == 3, "the salvage vendor sells the bandages off the wreck")) { Object.Destroy(vendor.gameObject); yield break; }
             c.Check(line.price <= Trade.BuyPrice(line.id, 0f), $"at no more than the usual price ({line.price} vs {Trade.BuyPrice(line.id, 0f)})");
             var saved = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(new SaveData { scavHauls = Trade.SaveHauls() }));

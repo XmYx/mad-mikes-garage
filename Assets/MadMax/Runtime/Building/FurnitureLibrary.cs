@@ -185,6 +185,7 @@ namespace MadMax.Building
             defs.AddRange(SeasonsPieces());
             defs.AddRange(LightsPieces());
             defs.AddRange(FluidsPieces());
+            defs.AddRange(WinterPieces());
             Upgrades();
         }
 

@@ -168,7 +168,7 @@ namespace MadMax.Game
                 if (age > 12f) { RoadWrecks.RemoveAt(i); continue; }
                 if (Flat(at - me) > 90f) continue;
                 RoadWrecks[i] = new Vector4(w.x, w.y, w.z, FoundMark - DayNight.TotalDays);
-                bool onSite = age >= ScavengeFrom && age < ScavengeFrom + (ScavengeDone - ScavengeFrom) / SeasonPace(MadMax.World.Weather.Season) && dir;
+                bool onSite = !BurnedNear(at) && age >= ScavengeFrom && age < ScavengeFrom + (ScavengeDone - ScavengeFrom) / SeasonPace(MadMax.World.Weather.Season) && dir;
                 int taken = Scavenge(at, age, Mathf.RoundToInt(w.x * 31f + w.z * 7f), onSite ? scav : null);
                 if (onSite)
                 {
@@ -186,7 +186,7 @@ namespace MadMax.Game
         {
             MadMax.World.Settlement town = null; float td = float.MaxValue;
             if (World != null) foreach (var st in World.settlements) { float d = Vector2.Distance(st.pos, new Vector2(at.x, at.z)); if (d < td) { td = d; town = st; } }
-            int n = MadMax.Npc.Trade.HaulToMarket(scav, town);
+            int n = MadMax.Npc.Trade.HaulToMarket(scav, town, at);
             if (n > 0 && town != null) Journal.Add("NEWS", "SALVAGE OFF THE WRECK AT " + Mathf.RoundToInt(at.x) + "," + Mathf.RoundToInt(at.z) + " IS GOING TO " + MadMax.Npc.Market.TownName(town) + " MARKET");
             return n;
         }
@@ -204,6 +204,7 @@ namespace MadMax.Game
             if (share <= 0f) return 0;
             VehicleDriver v = null; float bd = 12f;
             foreach (var x in wrecks) if (x) { float d = Flat(x.transform.position - at); if (d < bd) { bd = d; v = x; } }
+            if (v && BurnedNear(v.transform.position)) return 0;                                    // burned out this week: nobody wants it
             var rnd = new System.Random(seed);
             int taken = 0;
             if (v && v.TryGetComponent<VehicleChassis>(out var chassis))
@@ -253,6 +254,7 @@ namespace MadMax.Game
         {
             d.roadWrecks = new List<Vector4>(RoadWrecks);
             d.scavHauls = MadMax.Npc.Trade.SaveHauls();
+            SaveRoadside(d);
         }
 
         void LoadHome(SaveData d)
@@ -260,6 +262,7 @@ namespace MadMax.Game
             RoadWrecks.Clear();
             if (d.roadWrecks != null) RoadWrecks.AddRange(d.roadWrecks);
             MadMax.Npc.Trade.LoadHauls(d.scavHauls);
+            LoadRoadside(d);
         }
     }
 }

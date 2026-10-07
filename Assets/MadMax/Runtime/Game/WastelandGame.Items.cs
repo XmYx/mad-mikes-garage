@@ -122,6 +122,7 @@ namespace MadMax.Game
                 case ItemCategory.Clothing: Menus.Open(MenuSystem.Page.Character); break;
                 case ItemCategory.Other:
                     if (id.StartsWith("animal_")) MadMax.Animals.AnimalDirector.Instance?.Release(this, id);                // a chick, kid, calf, piglet or pup
+                    else if (ItemIds.IsCarKey(id)) CutSpareKey(id);                                                      // at a workbench with a blank
                     break;
             }
         }

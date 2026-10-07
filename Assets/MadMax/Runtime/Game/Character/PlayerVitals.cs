@@ -13,6 +13,8 @@ namespace MadMax.Game
         public float Stamina => stats.stamina;
         public bool Exhausted { get; private set; }
         public bool Dead => stats.health <= 0f;
+        /// <summary>Seconds since the player was last hurt.</summary>
+        public float SinceHurt => Time.time - lastHurt;
 
         float lastSpend, lastHurt;
         PlayerCharacter player;

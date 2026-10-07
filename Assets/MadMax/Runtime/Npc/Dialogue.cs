@@ -196,6 +196,7 @@ namespace MadMax.Npc
             else if (S.jobState == 1) Add("ABOUT THAT ERRAND...", TurnIn);
             SeasonChoreChoice();                                                                // residents' seasonal chores (Dialogue.Seasons)
             PantryChoice();
+            KeyChoice();                                                                        // mechanics cut keys for lost ones (Dialogue.Keys)
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);
@@ -382,7 +383,7 @@ namespace MadMax.Npc
             }
             int i0 = ((P.seed & 0xffff) + Day) % facts.Count;
             line = facts[i0] + (facts.Count > 1 && S.disposition >= 20 ? " " + facts[(i0 + 1) % facts.Count] : "");
-            if (S.disposition >= -5 && !P.Raider && g.GiverRumour(at, TrustsWithWay) is string giver) line = giver + " " + line;   // word of someone with work
+            if (S.disposition >= -5 && !P.Raider && g.GiverRumour(at, TrustsWithWay, P.id) is string giver) line = giver + " " + line;   // word of someone with work
             MadMax.Game.Journal.Add("RUMOUR", P.Name + ": " + line);
             g.Stats.Practice(Skill.Speech, 0.5f);
             Hub(false);

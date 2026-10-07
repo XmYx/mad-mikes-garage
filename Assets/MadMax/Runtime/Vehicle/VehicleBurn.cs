@@ -114,6 +114,7 @@ namespace MadMax.Vehicles
             var game = MadMax.Game.WastelandGame.Instance;
             if (!live || !game) return;
             if (game.Current == driver) game.Exit();
+            game.NoteBurnedOut(driver);
             if (System.Linq.Enumerable.Contains(game.Fleet, driver))
             {
                 string n = MadMax.Game.WastelandGame.Name(driver);

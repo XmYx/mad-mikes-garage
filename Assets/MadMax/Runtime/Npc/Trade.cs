@@ -271,7 +271,7 @@ namespace MadMax.Npc
             if (chits > 0) g.Inventory.TakeItem(Contracts.Chit, chits);
             g.Inventory.TrySpend(ResourceType.Scrap, cost - chits * ChitValue);
             Market.Bought(Town, o.id, n);
-            if (o.note == MarketHaulNote) TakeFromMarketHaul(o.id, n);                           // off a wreck: gone for good, the daily stock untouched
+            if (IsHaulNote(o.note)) TakeFromMarketHaul(o.id, n);                           // off a wreck: gone for good, the daily stock untouched
             else vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
             if (vendor.Profile.kind == ScavengerKind) TakeFromHaul(vendor.Profile, o.id, n);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);

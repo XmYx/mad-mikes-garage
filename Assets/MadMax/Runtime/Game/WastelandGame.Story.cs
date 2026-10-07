@@ -423,7 +423,8 @@ namespace MadMax.Game
             d.story = Story.Story.Save();
             d.storyProps = new List<uint>(storyProps);
             d.heardOf = new List<string>(HeardOf);
-            d.heardVague = new List<string>(HeardVague);
+            d.heardVague = new List<string>();
+            foreach (var k in HeardVague) d.heardVague.Add(VagueAsks.TryGetValue(k, out int n) && n > 1 ? k + "|" + n : k);
         }
 
         void LoadStory(SaveData d)
@@ -433,8 +434,15 @@ namespace MadMax.Game
             if (d.storyProps != null) foreach (var id in d.storyProps) storyProps.Add(id);
             HeardOf.Clear();
             if (d.heardOf != null) foreach (var k in d.heardOf) HeardOf.Add(k);
-            HeardVague.Clear();
-            if (d.heardVague != null) foreach (var k in d.heardVague) HeardVague.Add(k);
+            HeardVague.Clear(); VagueAsks.Clear(); vagueTellers.Clear();
+            if (d.heardVague != null)
+                foreach (var e in d.heardVague)
+                {
+                    int bar = e.IndexOf('|');
+                    string k = bar < 0 ? e : e.Substring(0, bar);
+                    HeardVague.Add(k);
+                    if (bar > 0 && int.TryParse(e.Substring(bar + 1), out int n) && n > 1) VagueAsks[k] = n;
+                }
             if (World != null) StoryAnchors.Bind(World);
         }
 
@@ -461,7 +469,7 @@ namespace MadMax.Game
                     var at = StoryAnchors.Get(m.Value.anchor);
                     if (CastMet(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.name, pos = at, color = offer });
                     else if (HeardOf.Contains(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.title, pos = at, color = offer });   // heard of in town talk
-                    else if (HeardVague.Contains(m.Value.key)) into.Add(new Pin { label = "? " + m.Value.title + " (SOMEWHERE HERE)", pos = VagueCentre(m.Value.key, at), color = offer, radius = VagueRadius });
+                    else if (HeardVague.Contains(m.Value.key)) { float r = VagueRadiusOf(m.Value.key); into.Add(new Pin { label = "? " + m.Value.title + " (SOMEWHERE HERE)", pos = VagueCentre(m.Value.key, at, r), color = offer, radius = r }); }
                     else offerStrangers.Add(new KeyValuePair<float, Pin>(Flat(at - me), new Pin { label = "? " + m.Value.title, pos = at, color = offer }));
                 }
                 var s = Story.Story.Current(q);
@@ -478,15 +486,30 @@ namespace MadMax.Game
         /// <summary>Givers only heard of vaguely (told by someone who doesn't trust the player): a search circle on the
         /// map, not a point. Saved.</summary>
         public readonly HashSet<string> HeardVague = new HashSet<string>();
-        public const float VagueRadius = 450f;
+        public const float VagueRadius = 450f, VagueMinRadius = 60f;
+        /// <summary>How many different people have told of a vague giver (1 = the first telling). Saved with
+        /// <see cref="HeardVague"/> as "key|n".</summary>
+        public readonly Dictionary<string, int> VagueAsks = new Dictionary<string, int>();
+        /// <summary>Who told of which vague giver this session: the same teller twice doesn't narrow it.</summary>
+        readonly Dictionary<string, HashSet<string>> vagueTellers = new Dictionary<string, HashSet<string>>();
 
-        /// <summary>The centre of a vague giver's search circle: off the real spot by a fixed amount per giver, so the
-        /// circle holds the place without pointing at it.</summary>
-        public static Vector3 VagueCentre(string key, Vector3 real)
+        /// <summary>The search circle around a vague giver: halved by each further telling, down to
+        /// <see cref="VagueMinRadius"/>.</summary>
+        public float VagueRadiusOf(string key)
+        {
+            int n = VagueAsks.TryGetValue(key, out int a) ? Mathf.Max(1, a) : 1;
+            return Mathf.Max(VagueMinRadius, VagueRadius / (1 << Mathf.Min(n - 1, 8)));
+        }
+
+        /// <summary>The centre of a vague giver's search circle: off the real spot by a fixed share of the circle per
+        /// giver, so it holds the place without pointing at it (the offset shrinks with the circle).</summary>
+        public static Vector3 VagueCentre(string key, Vector3 real) => VagueCentre(key, real, VagueRadius);
+
+        public static Vector3 VagueCentre(string key, Vector3 real, float radius)
         {
             uint h = 2166136261u;
             foreach (char ch in key) h = (h ^ ch) * 16777619u;
-            float a = (h % 3600) * 0.1f * Mathf.Deg2Rad, r = VagueRadius * (0.25f + (h / 3600 % 100) * 0.0045f);
+            float a = (h % 3600) * 0.1f * Mathf.Deg2Rad, r = radius * (0.25f + (h / 3600 % 100) * 0.0045f);
             return real + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
         }
 
@@ -495,7 +518,7 @@ namespace MadMax.Game
         /// pinned. Someone who <paramref name="trusts"/> the player gives the way (a point on the map, and sharpens a
         /// vague one heard before); anyone else only a direction (<see cref="HeardVague"/>, a search circle). Null when
         /// there is nobody left to tell of.</summary>
-        public string GiverRumour(Vector3 at, bool trusts = true)
+        public string GiverRumour(Vector3 at, bool trusts = true, string teller = null)
         {
             if (World == null) return null;
             var shown = new List<KeyValuePair<float, string>>();
@@ -506,7 +529,7 @@ namespace MadMax.Game
                 if (!Story.Story.Runs(q) || Story.Story.StateOf(q.id) != Story.Story.State.Open || q.giver == null) continue;
                 var m = StoryCast.Find(q.giver);
                 if (m == null || m.Value.anchor == null || !StoryAnchors.Has(m.Value.anchor)) continue;
-                if (CastMet(m.Value.key) || HeardOf.Contains(m.Value.key) || (!trusts && HeardVague.Contains(m.Value.key)) || cands.Exists(c => c.key == m.Value.key)) continue;
+                if (CastMet(m.Value.key) || HeardOf.Contains(m.Value.key) || cands.Exists(c => c.key == m.Value.key)) continue;
                 cands.Add(m.Value);
                 shown.Add(new KeyValuePair<float, string>(Flat(StoryAnchors.Get(m.Value.anchor) - me), m.Value.key));
             }
@@ -515,7 +538,7 @@ namespace MadMax.Game
             foreach (var m in cands)
             {
                 int rank = shown.FindIndex(e => e.Value == m.key);
-                if (rank < StoryOfferStrangers) continue;                                        // already on the map
+                if (rank < StoryOfferStrangers && !HeardVague.Contains(m.key)) continue;         // already on the map
                 float d = Flat(StoryAnchors.Get(m.anchor) - at);
                 if (d < bd) { bd = d; best = m; }
             }
@@ -524,10 +547,18 @@ namespace MadMax.Game
             var p = StoryAnchors.Get(b.anchor);
             if (!trusts)
             {
+                if (HeardVague.Contains(b.key))                                                  // heard before: another telling narrows the circle
+                {
+                    if (!vagueTellers.TryGetValue(b.key, out var told)) vagueTellers[b.key] = told = new HashSet<string>();
+                    if (teller == null || told.Add(teller)) VagueAsks[b.key] = (VagueAsks.TryGetValue(b.key, out int n) ? Mathf.Max(1, n) : 1) + 1;
+                    return "THAT " + b.title + "? " + (VagueRadiusOf(b.key) <= VagueMinRadius ? "CAMPS RIGHT BY THERE, I'M TOLD - LOOK FOR THE SMOKE." : "SOMEWHERE " + MadMax.Npc.NpcLore.Compass(p.x - at.x, p.z - at.z) + ", NEARER THAN FOLK SAY.");
+                }
                 HeardVague.Add(b.key);
+                VagueAsks[b.key] = 1;
+                if (teller != null) { if (!vagueTellers.TryGetValue(b.key, out var told)) vagueTellers[b.key] = told = new HashSet<string>(); told.Add(teller); }
                 return "THEY SAY A " + b.title + " IS LOOKING FOR A HAND, SOMEWHERE " + MadMax.Npc.NpcLore.Compass(p.x - at.x, p.z - at.z) + ". THAT'S ALL I KNOW.";
             }
-            HeardVague.Remove(b.key);
+            HeardVague.Remove(b.key); VagueAsks.Remove(b.key);
             HeardOf.Add(b.key);
             return "THERE'S A " + b.title + " " + MadMax.Npc.NpcLore.Compass(p.x - at.x, p.z - at.z) + ", " + MadMax.Npc.NpcLore.Distance(bd) + ", LOOKING FOR A HAND.";
         }

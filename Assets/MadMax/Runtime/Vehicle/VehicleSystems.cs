@@ -272,7 +272,20 @@ namespace MadMax.Vehicles
         }
 
         /// <summary>The cooling system's blend is frozen (parked below its freezing point): no start until it thaws.</summary>
-        public bool Frozen => usesCoolant && coolant > 0.5f && !Started && MadMax.World.Weather.Temperature < FreezePoint;
+        public bool Frozen => usesCoolant && coolant > 0.5f && !Started && MadMax.World.Weather.Temperature < FreezePoint && !BlockWarm;
+
+        /// <summary>Plugged into a powered block heater (<c>Building.BlockHeater</c>) until this time.</summary>
+        [System.NonSerialized] public float blockWarmUntil = -1f;
+        public bool BlockWarm => Time.time < blockWarmUntil;
+
+        /// <summary>A block heater's step: the coolant can't freeze, the engine is held near 50 °C (so it starts like a
+        /// warm one) and an iced tank thaws in about a minute.</summary>
+        public void KeepWarm(float dt)
+        {
+            blockWarmUntil = Time.time + 2f;
+            if (!Started && Temperature < 50f) SetTemperature(Mathf.MoveTowards(Temperature, 50f, 0.5f * dt));
+            if (tankIced) Thaw(dt / 60f);
+        }
 
         /// <summary>Running without a crank (the title film's car, a vehicle handed over already running).</summary>
         public void ForceStart() { Started = true; crankUntil = -1f; }
