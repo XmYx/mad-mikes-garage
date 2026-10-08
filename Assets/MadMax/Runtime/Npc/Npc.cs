@@ -783,7 +783,7 @@ namespace MadMax.Npc
             if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleSystems>(out var sys)) sys.fuel = Mathf.Max(0f, sys.fuel - 3f);
             if (siegeCar.TryGetComponent<MadMax.Vehicles.VehicleDamage>(out var dmg)) dmg.ApplyHit(cp, transform.forward, Profile.role == NpcRole.RaiderBoss ? 2f : 1f, 0.3f, gameObject);
             MadMax.Audio.Sfx.Play("hit_metal", cp, 0.8f);
-            if (++breakerBlows % BreakerStealEvery == 0) g.BreakerSteals(siegeCar, raidAt);     // a part off it, to be sold on in town
+            if (++breakerBlows % BreakerStealEvery == 0) g.BreakerSteals(siegeCar, raidAt, Profile.gang);     // a part off it, to be sold on in town
             return true;
         }
 

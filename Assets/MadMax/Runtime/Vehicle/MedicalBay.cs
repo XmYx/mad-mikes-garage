@@ -26,8 +26,8 @@ namespace MadMax.Vehicles
             bool treated = false;
             foreach (var inj in s.injuries)
             {
-                if (inj.Bleeding && inside > 3f) { inj.bandaged = true; inj.bandageAge = 0f; treated = true; }
-                if (inj.type == Wound.Fracture && !inj.splinted && inside > 6f) { inj.splinted = true; treated = true; }
+                if (inj.Bleeding && inside > 3f) { inj.bandaged = true; inj.bandageAge = 0f; inj.rough = false; treated = true; }
+                if (inj.type == Wound.Fracture && !inj.splinted && inside > 6f) { inj.splinted = true; inj.rough = false; treated = true; }
                 if (inj.infection > 0f) inj.infection = Mathf.Max(0f, inj.infection - dt * 0.02f * healRate);
                 if (inside > 2f) inj.severity = Mathf.Max(0f, inj.severity - dt * (healRate - 1f) / (inj.HealMinutes * 60f));
             }

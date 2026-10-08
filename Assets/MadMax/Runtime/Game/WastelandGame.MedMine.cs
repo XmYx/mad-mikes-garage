@@ -71,11 +71,11 @@ namespace MadMax.Game
             foreach (var inj in Stats.injuries)
             {
                 bool did = false;
-                if (inj.type == Wound.Fracture && !inj.splinted) { inj.splinted = true; did = true; }
+                if (inj.type == Wound.Fracture && (!inj.splinted || inj.rough)) { inj.splinted = true; inj.rough = false; did = true; }
                 if (MedOpenWound(inj))
                 {
                     if (!inj.disinfected) { inj.disinfected = true; inj.infection = Mathf.Max(0f, inj.infection - 0.6f); did = true; }
-                    if (!inj.bandaged || inj.BandageDirty) { inj.bandaged = true; inj.bandageAge = 0f; did = true; }
+                    if (!inj.bandaged || inj.BandageDirty || inj.rough) { inj.bandaged = true; inj.bandageAge = 0f; inj.rough = false; did = true; }
                 }
                 if (did) n++;
             }

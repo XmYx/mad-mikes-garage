@@ -328,6 +328,7 @@ namespace MadMax.Game
                 if (UseBlueprint(id)) Inventory.TakeItem(id);
                 return;
             }
+            if (id == TripHeater) { StartTripHeater(); return; }
             if (id == "use_sewing_kit")
             {
                 if (UseSewingKit()) Inventory.TakeItem(id);

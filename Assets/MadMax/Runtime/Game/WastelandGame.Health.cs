@@ -189,9 +189,9 @@ namespace MadMax.Game
         {
             if (inj == null) return;
             if (inj.type == Wound.Strain) { TreatBack(inj); return; }
-            if (inj.type == Wound.Mangled && inj.bandaged && !inj.splinted || inj.type == Wound.Fracture && !inj.splinted)
+            if (inj.type == Wound.Mangled && inj.bandaged && (!inj.splinted || inj.rough) || inj.type == Wound.Fracture && (!inj.splinted || inj.rough))   // a rough splint can be reset
             {
-                if (Inventory.TakeItem("med_splint")) { inj.splinted = true; Toast("SPLINT APPLIED"); Stats.Practice(Skill.Survival, 4f); }
+                if (Inventory.TakeItem("med_splint")) { inj.splinted = true; inj.rough = false; Toast("SPLINT APPLIED"); Stats.Practice(Skill.Survival, 4f); }
                 else Toast("NEED A SPLINT (WOOD + CLOTH)");
                 return;
             }
@@ -200,9 +200,9 @@ namespace MadMax.Game
                 inj.disinfected = true; inj.infection = Mathf.Max(0f, inj.infection - 0.5f); Toast("DISINFECTED"); Stats.Practice(Skill.Survival, 2f);
                 return;
             }
-            if (inj.type != Wound.Bruise && (!inj.bandaged || inj.BandageDirty))
+            if (inj.type != Wound.Bruise && (!inj.bandaged || inj.BandageDirty || inj.rough))
             {
-                if (Inventory.TakeItem("med_bandage")) { inj.bandaged = true; inj.bandageAge = 0f; Toast(inj.BandageDirty ? "BANDAGE CHANGED" : "BANDAGED"); Stats.Practice(Skill.Survival, 2f); }
+                if (Inventory.TakeItem("med_bandage")) { bool change = inj.bandaged; inj.bandaged = true; inj.bandageAge = 0f; inj.rough = false; Toast(change ? "BANDAGE CHANGED" : "BANDAGED"); Stats.Practice(Skill.Survival, 2f); }
                 else if (Inventory.Get(ResourceType.Cloth) >= 1 && Inventory.TrySpend(ResourceType.Cloth, 1)) { inj.bandaged = true; inj.bandageAge = 300f; Toast("RIPPED CLOTH BANDAGE"); }
                 else Toast("NEED BANDAGES OR CLOTH");
                 return;

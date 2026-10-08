@@ -40,6 +40,7 @@ namespace MadMax.Npc
             if (id == "tool_extinguisher") return 28f;
             if (id == "tool_radio") return 30f;
             if (id == "tool_crutch") return 8f;
+            if (id == MadMax.Game.WastelandGame.TripHeater) return 26f;
             if (id.StartsWith("pros_")) return MadMax.Game.ProstheticLibrary.Get(id) is MadMax.Game.ProstheticDef pd ? (pd.tool != null ? 70f : pd.climbs || pd.carry > 0f ? 45f : 22f) : 20f;
             if (id.StartsWith("tool_")) return id == "tool_bolt_rifle" ? 120f : id == "tool_revolver" ? 90f : id == "tool_crossbow" ? 60f : id == "tool_pipe_pistol" ? 45f : id == "tool_flare_gun" ? 35f : id == "tool_bow" || id == "tool_leaf_blade" ? 30f : id.Contains("shotgun") ? 70f : id.Contains("gas_torch") || id.Contains("cutter") ? 45f : id.Contains("wrench") ? 30f : id.Contains("lantern") ? 18f : id.Contains("torch") ? 6f : 22f;
             if (id == Contracts.Chit) return ChitValue;
@@ -166,6 +167,7 @@ namespace MadMax.Npc
                 { "food", new[] { ("food_jerky", 2, 6), ("food_pickles", 1, 5), ("food_meat_salted", 1, 4), ("food_can", 2, 6), ("food_dried_fruit", 1, 4), ("food_sauerkraut", 0, 3), ("food_jar_tomato", 0, 3), ("food_sausage", 0, 2) } },
                 { "pack", new[] { ("food_jerky", 1, 4), ("res:2", 10, 30), ("food_dried_fruit", 0, 3) } },
                 { "fuel", new[] { ("res:2", 20, 60), ("res:" + (int)ResourceType.Charcoal, 5, 20) } },
+                { "parts", new[] { (MadMax.Game.WastelandGame.TripHeater, 0, 2) } },
                 { "build", new[] { ("res:2", 30, 90) } },
             },
             new Dictionary<string, (string, int, int)[]>

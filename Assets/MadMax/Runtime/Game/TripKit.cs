@@ -22,6 +22,7 @@ namespace MadMax.Game
             ("JACK", new[] { "tool_jack" }),
             ("FLARES", new[] { "ammo_flare", "tool_flare_gun" }),
             ("FUEL CAN", new[] { FluidContainers.JerryCan, FluidContainers.FuelCan }),
+            ("TRIP HEATER", new[] { WastelandGame.TripHeater }),                              // listed only in the cold
         };
 
         public static int Count => Entries.Length;
@@ -36,6 +37,7 @@ namespace MadMax.Game
             foreach (var (label, ids) in Entries)
             {
                 if (ids == null && key == null) continue;                                     // keyless (bicycles, carts)
+                if (label == "TRIP HEATER" && MadMax.World.Weather.Temperature >= MadMax.Building.BlockHeater.ColdBelow) continue;
                 var w = Where.Missing;
                 if (InCar(storage, ids, key)) w = Where.Car;
                 else if (pack != null && Has(pack, ids, key)) w = Where.Pack;

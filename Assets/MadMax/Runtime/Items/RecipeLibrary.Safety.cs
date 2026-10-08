@@ -16,6 +16,8 @@ namespace MadMax.Items
                 "MUSIC ON FOOT, AND THE HOME FREQUENCY EVEN IN THE PACK", null, (ResourceType.Copper, 2), (ResourceType.Scrap, 3), (ResourceType.Glass, 1));
             yield return Itm("key_blank", "KEY BLANK", RecipeCategory.Supplies, "workbench", "misc_key_blank", 2,
                 "USE A CAR KEY AT A WORKBENCH WITH A BLANK: A SPARE FOR THE GLOVEBOX OR A COMPANION", null, (ResourceType.Copper, 1), (ResourceType.Scrap, 1));
+            yield return Itm("trip_heater", "TRIP HEATER", RecipeCategory.Tools, "workbench", "use_trip_heater", 1,
+                "A LITRE OF FUEL BURNED UNDER A FROZEN ENGINE: IT STARTS IN THE COLD, AND AN ICED TANK THAWS", null, (ResourceType.Iron, 2), (ResourceType.Copper, 1), (ResourceType.Scrap, 2));
         }
     }
 }

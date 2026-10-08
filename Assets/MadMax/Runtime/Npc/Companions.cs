@@ -187,6 +187,16 @@ namespace MadMax.Npc
         public const float MedicReach = 30f, QuietSeconds = 6f;
         static float medicNext;
 
+        /// <summary>A companion with the knack for wounds (a nurse by origin, or the half-a-book medic): their dressings
+        /// are as good as the player's own. Anyone else leaves <see cref="MadMax.RPG.Injury.rough"/> dressings.</summary>
+        public static bool Patches(NpcProfile p)
+        {
+            if (p == null) return false;
+            string o = p.origin >= 0 && p.origin < NpcLore.Origin.Length ? NpcLore.Origin[p.origin] : "";
+            string s = p.secret >= 0 && p.secret < NpcLore.Secret.Length ? NpcLore.Secret[p.secret] : "";
+            return o.Contains("NURSE") || o.Contains("MEDIC") || s.Contains("MEDIC");
+        }
+
         /// <summary>What a companion could treat the player with: a first-aid kit in their pack, else one in the
         /// compartments of a fleet car within 20 m (<paramref name="from"/>), else bandages / a splint in their pack.</summary>
         public static bool MedicSupplies(WastelandGame g, Npc n, out MadMax.Building.Container from)
@@ -216,6 +226,7 @@ namespace MadMax.Npc
             {
                 if (!n || !n.Alive || n.fireTarget || n.Hostile || n.Surrendered || n.Driving) continue;
                 float d = Vector3.Distance(n.transform.position, g.Player.transform.position);
+                if (Patches(n.Profile)) d -= 12f;                                                       // the one who knows how comes first
                 if (d >= bd || !MedicSupplies(g, n, out var from)) continue;
                 bd = d; best = n; bestFrom = from;
             }

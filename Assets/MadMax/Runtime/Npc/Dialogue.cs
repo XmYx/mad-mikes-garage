@@ -197,6 +197,7 @@ namespace MadMax.Npc
             SeasonChoreChoice();                                                                // residents' seasonal chores (Dialogue.Seasons)
             PantryChoice();
             KeyChoice();                                                                        // mechanics cut keys for lost ones (Dialogue.Keys)
+            StolenTrail();                                                                      // salvagers name who sold them the player's part
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);

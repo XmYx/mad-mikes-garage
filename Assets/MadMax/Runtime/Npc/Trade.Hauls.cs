@@ -25,9 +25,12 @@ namespace MadMax.Npc
         /// they turn up on a stall the player buys them back at <see cref="BuyBackFactor"/>. Saved with the hauls.</summary>
         public static readonly Dictionary<string, int> Stolen = new Dictionary<string, int>();
         public const float BuyBackFactor = 0.5f;
+        /// <summary>Who took each stolen part ("part:key" → gang), for the trail the salvage vendor can point along
+        /// (<c>Dialogue.StolenTrail</c>). Saved with the hauls.</summary>
+        public static readonly Dictionary<string, string> StolenBy = new Dictionary<string, string>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetHauls() { Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear(); MarketHaulFrom.Clear(); Stolen.Clear(); }
+        static void ResetHauls() { Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear(); MarketHaulFrom.Clear(); Stolen.Clear(); StolenBy.Clear(); }
 
         /// <summary>The stall line's note for goods off a wreck: where it was, from the town ("OFF A WRECK A SHORT
         /// DRIVE NORTH").</summary>
@@ -38,14 +41,24 @@ namespace MadMax.Npc
             return MarketHaulNote + " " + (d.magnitude < 150f ? "NEAR TOWN" : NpcLore.Distance(d.magnitude) + " " + NpcLore.Compass(d.x, d.y));
         }
 
+        /// <summary>A part of the player's on <paramref name="town"/>'s stalls today whose thieves are known (null = none).</summary>
+        public static string StolenOnStall(MadMax.World.Settlement town)
+        {
+            if (town == null || !MarketHauls.TryGetValue(town.index, out var m)) return null;
+            if (MarketHaulDay.TryGetValue(town.index, out int day) && day > MadMax.World.DayNight.Day) return null;
+            foreach (var kv in m) if (kv.Value > 0 && Stolen.ContainsKey(kv.Key) && StolenBy.ContainsKey(kv.Key)) return kv.Key;
+            return null;
+        }
+
         public static bool IsHaulNote(string note) => note != null && (note.StartsWith(MarketHaulNote) || note == StolenNote);
 
         /// <summary>A part taken off one of the player's vehicles goes to <paramref name="town"/>'s salvage stalls
         /// tomorrow, marked as theirs.</summary>
-        public static void AddStolen(MadMax.World.Settlement town, string id, Vector3 from)
+        public static void AddStolen(MadMax.World.Settlement town, string id, Vector3 from, string gang = null)
         {
             if (town == null || string.IsNullOrEmpty(id)) return;
             Stolen[id] = (Stolen.TryGetValue(id, out int had) ? had : 0) + 1;
+            if (!string.IsNullOrEmpty(gang)) StolenBy[id] = gang;
             if (!MarketHauls.TryGetValue(town.index, out var m)) MarketHauls[town.index] = m = new Dictionary<string, int>();
             m[id] = (m.TryGetValue(id, out int n) ? n : 0) + 1;
             if (!MarketHaulDay.TryGetValue(town.index, out int day) || day <= MadMax.World.DayNight.Day) MarketHaulDay[town.index] = MadMax.World.DayNight.Day + 1;
@@ -94,7 +107,7 @@ namespace MadMax.Npc
         {
             if (Town == null || !MarketHauls.TryGetValue(Town.index, out var m) || !m.TryGetValue(id, out int had)) return;
             if (had - n > 0) m[id] = had - n; else m.Remove(id);
-            if (Stolen.TryGetValue(id, out int st)) { if (st - n > 0) Stolen[id] = st - n; else Stolen.Remove(id); }
+            if (Stolen.TryGetValue(id, out int st)) { if (st - n > 0) Stolen[id] = st - n; else { Stolen.Remove(id); StolenBy.Remove(id); } }
             if (m.Count == 0) { MarketHauls.Remove(Town.index); MarketHaulDay.Remove(Town.index); MarketHaulFrom.Remove(Town.index); }
         }
 
@@ -112,6 +125,12 @@ namespace MadMax.Npc
             {
                 var sb = new System.Text.StringBuilder("!");
                 foreach (var e in Stolen) sb.Append('|').Append(e.Key).Append('=').Append(e.Value);
+                l.Add(sb.ToString());
+            }
+            if (StolenBy.Count > 0)
+            {
+                var sb = new System.Text.StringBuilder("?");
+                foreach (var e in StolenBy) sb.Append('|').Append(e.Key).Append('=').Append(e.Value);
                 l.Add(sb.ToString());
             }
         }
@@ -160,11 +179,20 @@ namespace MadMax.Npc
 
         public static void LoadHauls(List<string> lines)
         {
-            Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear(); MarketHaulFrom.Clear(); Stolen.Clear();
+            Hauls.Clear(); MarketHauls.Clear(); MarketHaulDay.Clear(); MarketHaulFrom.Clear(); Stolen.Clear(); StolenBy.Clear();
             if (lines == null) return;
             foreach (var line in lines)
             {
                 var f = line.Split('|');
+                if (line.StartsWith("?"))                                                         // who took them
+                {
+                    for (int i = 1; i < f.Length; i++)
+                    {
+                        int eq = f[i].IndexOf('=');
+                        if (eq > 0 && eq < f[i].Length - 1) StolenBy[f[i].Substring(0, eq)] = f[i].Substring(eq + 1);
+                    }
+                    continue;
+                }
                 if (line.StartsWith("!"))                                                         // the player's parts still out there
                 {
                     for (int i = 1; i < f.Length; i++)

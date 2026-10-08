@@ -127,7 +127,7 @@ namespace MadMax.Building
             {
                 if (inj.type == Wound.Fracture && !inj.splinted && lain > setAfter)
                 {
-                    inj.splinted = true;
+                    inj.splinted = true; inj.rough = false;
                     Say(g, "TRACTION: THE FRACTURE IS SET (" + Injury.ZoneNames[(int)inj.zone] + ")");
                     s.Practice(Skill.Survival, 3f);
                 }
@@ -144,11 +144,11 @@ namespace MadMax.Building
             {
                 bool open = inj.Open;
                 if (open && (!inj.bandaged || inj.BandageDirty) && (inj.Bleeding || inj.BandageDirty) && MedSupply.TakeFromCabinet(at, "med_bandage"))
-                { inj.bandaged = true; inj.bandageAge = 0f; Say(g, "THE CLINIC DRESSES YOUR " + Injury.ZoneNames[(int)inj.zone]); }
+                { inj.bandaged = true; inj.bandageAge = 0f; inj.rough = false; Say(g, "THE CLINIC DRESSES YOUR " + Injury.ZoneNames[(int)inj.zone]); }
                 if (open && !inj.disinfected && MedSupply.TakeFromCabinet(at, "med_disinfectant"))
                 { inj.disinfected = true; inj.infection = Mathf.Max(0f, inj.infection - 0.5f); Say(g, "WOUND DISINFECTED"); }
                 if (inj.type == Wound.Fracture && !inj.splinted && MedSupply.TakeFromCabinet(at, "med_splint"))
-                { inj.splinted = true; Say(g, "SPLINT FROM THE CABINET"); }
+                { inj.splinted = true; inj.rough = false; Say(g, "SPLINT FROM THE CABINET"); }
                 if (inj.infection > 0.3f && MedSupply.TakeFromCabinet(at, "med_antibiotics"))
                 { foreach (var i in s.injuries) i.infection = 0f; s.sick = Mathf.Min(s.sick, 5f); Say(g, "ANTIBIOTICS: THE INFECTION CLEARS"); }
             }

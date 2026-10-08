@@ -20,11 +20,16 @@ namespace MadMax.RPG
         /// festers until it is cut out at a surgery table (depth stage G).</summary>
         public bool shrapnel;
         public float bandageAge;             // seconds since the bandage went on (dirty after 10 min)
+        /// <summary>Dressed or splinted by an untrained hand (a companion without the knack): the bandage soils in
+        /// <see cref="RoughBandageSeconds"/> and a splinted fracture knits at <see cref="RoughSplint"/>. Cleared by any
+        /// proper care (the player's own, a clinic, a surgery table, a medical bay).</summary>
+        public bool rough;
+        public const float BandageSeconds = 600f, RoughBandageSeconds = 360f, RoughSplint = 0.8f;
         public float infection;              // 0..1
 
         public bool Bleeding => !bandaged && (type == Wound.Laceration || type == Wound.DeepWound || type == Wound.Mangled || (type == Wound.Stump && severity > 0.3f) || (type == Wound.Scratch && severity > 0.6f));
         public float BleedRate => !Bleeding ? 0f : type == Wound.Stump ? 1.1f * severity : type == Wound.DeepWound || type == Wound.Mangled ? 0.45f : type == Wound.Laceration ? 0.2f : 0.05f;
-        public bool BandageDirty => bandaged && bandageAge > 600f;
+        public bool BandageDirty => bandaged && bandageAge > (rough ? RoughBandageSeconds : BandageSeconds);
         /// <summary>Broken skin: can bleed, be bandaged, get infected (not bruises, fractures or a strained back).</summary>
         public bool Open => type != Wound.Bruise && type != Wound.Fracture && type != Wound.Strain;
 
@@ -43,8 +48,8 @@ namespace MadMax.RPG
             {
                 var s = new List<string>();
                 if (Bleeding) s.Add("BLEEDING");
-                if (bandaged) s.Add(BandageDirty ? "DIRTY BANDAGE" : "BANDAGED");
-                if (splinted) s.Add("SPLINTED");
+                if (bandaged) s.Add(BandageDirty ? "DIRTY BANDAGE" : rough ? "ROUGHLY BANDAGED" : "BANDAGED");
+                if (splinted) s.Add(rough && !bandaged ? "ROUGH SPLINT" : "SPLINTED");
                 if (shrapnel) s.Add("SHRAPNEL");
                 if ((type == Wound.Fracture || type == Wound.Mangled) && !splinted) s.Add("NEEDS SPLINT");
                 if (type == Wound.Mangled) s.Add("HANGING ON");
@@ -66,7 +71,7 @@ namespace MadMax.RPG
             if (infection > 0.5f) loss += (infection - 0.5f) * 0.3f * dt;
             bool canHeal = (type != Wound.Fracture || splinted) && (type != Wound.Mangled || (splinted && bandaged));
             float rate = canHeal ? (bandaged || type == Wound.Bruise || type == Wound.Scratch || type == Wound.Strain ? 1f : 0.35f) : 0f;
-            rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f);
+            rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f) * (rough && splinted && (type == Wound.Fracture || type == Wound.Mangled) ? RoughSplint : 1f);
             severity = Mathf.Max(shrapnel ? ShrapnelFloor : 0f, severity - dt * rate / (HealMinutes * 60f));
             return loss;
         }

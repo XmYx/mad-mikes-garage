@@ -86,7 +86,7 @@ namespace MadMax.Building
                     inj.shrapnel = false;
                     if (inj.type == Wound.DeepWound) inj.type = Wound.Laceration;          // stitched closed
                     inj.severity = Mathf.Min(inj.severity, 0.6f);
-                    inj.bandaged = true; inj.bandageAge = 0f; inj.disinfected = true; inj.infection = 0f;
+                    inj.bandaged = true; inj.bandageAge = 0f; inj.rough = false; inj.disinfected = true; inj.infection = 0f;
                     ok++;
                 }
                 else

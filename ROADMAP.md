@@ -1530,15 +1530,37 @@ the GPU was nearly full from other processes and the windowed player hung during
 2026-10-04 hung the same way), so this pass has no screenshots.
 
 ### Suggestions (tie the experience together)
-- [ ] **A trip heater for the road**: a fuel-burning engine heater kit carried in the trunk (the other half of winter
+- [x] **A trip heater for the road** (2026-10-08: item `use_trip_heater` (workbench; parts stalls in winter; on the TRIP KIT list in the cold): beside a cold vehicle it burns a litre from a fuel can in the pack (else the tank unless iced) and keeps the engine warm for 75 s like a block heater — coolant thawed, engine warmed, an iced tank thawing (`StartTripHeater`, `TripHeating`); scenario `vehicle.trip_heater`): a fuel-burning engine heater kit carried in the trunk (the other half of winter
   starts) — ten minutes beside a frozen car and a litre of fuel, so a winter trip needs fuel planned for the morning.
 - [ ] **Companions drive on their own key**: a companion handed a spare key (`misc_key_blank` copy) can take a fleet
   car without the player — fetch the second car from home, follow in convoy, bring the car to the player's waypoint.
-- [ ] **Stolen parts leave a trail**: a part STOLEN FROM YOU names the raid in the stall note and the seller's gang;
+- [x] **Stolen parts leave a trail** (2026-10-08: the car breaker's gang is kept with the stolen part (`Trade.StolenBy`, saved as a `?` line); the salvage vendor with it on the stall names the gang if they trust the player (disposition ≥ 20), else [CHA 6], one try a day (`Dialogue.StolenTrail`), and the waypoint goes on that gang's nearest raider convoy (`FollowStolenTrail`); scenario `towns.stolen_trail`. Taking it back off the convoy is still open): a part STOLEN FROM YOU names the raid in the stall note and the seller's gang;
   asking the vendor who sold it (CHA) points at the car breakers' camp — buying back or taking back.
-- [ ] **Burned-out wrecks tell what happened**: walking up to a burned landmark gives one line of the story (whose
+- [x] **Burned-out wrecks tell what happened** (2026-10-08: `BurnedOut.whose` (YOUR / A TRADER'S / THE <GANG>'S, saved); the nearest town within 1.5 km posts it (drinks to raiders — its standing +2 when the player was within 120 m —, mourns a trader, talks about the player's); walking up within 9 m tells the story once (`BurnedStory`); scenario `map.burned_story`): walking up to a burned landmark gives one line of the story (whose
   car, which gang, how long ago) from the town news; the town nearest mourns or cheers it (faction shift).
-- [ ] **Patched up, not healed**: a companion's dressing is rougher than the player's own care (bandage soils sooner,
+- [x] **Patched up, not healed** (2026-10-08: `Injury.rough` — companion dressings soil after 6 min instead of 10 and a rough splint knits at 0.8, unless the companion was a nurse / medic (`Companions.Patches`; preferred by the medic drill); the player's own care, a first-aid kit, clinic, surgery or medical bay redoes them; scenario `npc.rough_dressing`): a companion's dressing is rougher than the player's own care (bandage soils sooner,
   splint at 0.8 effect) unless the companion has the Survival trade — who rides along starts to matter for skills.
-- [ ] **Finding people by sight**: the binocular spotting works for anything heard of — wrecks in the news, rumoured
+- [x] **Finding people by sight** (2026-10-08, wrecks: binoculars pin unfound news wrecks in reach and in view (`SpotWrecks`, shared `InSight`); scenario `map.binocular_wrecks`. The LOOK FOR journal list, caches and raider camps are still open): the binocular spotting works for anything heard of — wrecks in the news, rumoured
   caches, raider camps — a "LOOK FOR" list in the journal fed by rumours and ticked off through the glasses.
+
+## Scheduled update (2026-10-08)
+Done this pass (ticked above): the trip heater for winter mornings away from power, the gang behind a stolen part named
+by the salvager (waypoint on their convoy), burned-out wrecks that tell whose they were and how the nearest town took
+it, rough companion dressings (nurses and medics excepted), binoculars that find news wrecks. Scenarios in
+`Acceptance/Blocks/ScheduledScenarios1008.cs` — all five pass in a headless Linux player build (`-batchmode -nographics`),
+with the 10-07 regressions (towns.haul_memory, map.burned_landmark, npc.companion_medic, vehicle.block_heater), ui.trip_kit,
+vehicle.keys, body.crutch and story.first_hour. Headless, so the screenshots are blank.
+
+### Suggestions (tie the experience together)
+- [ ] **Taking it back**: a part `Trade.StolenBy` a gang rides in their boss car's compartment until it reaches the
+  stall — ambush the convoy on the road named by the salvager and it is in the loot, free.
+- [ ] **Companions learn the knack**: a companion who has dressed wounds a few times (or read `book_first_aid` given to
+  them) stops being rough — riding with someone grows them, not only the player.
+- [ ] **Morning routine for the column**: at dawn in winter a companion with a trip heater lights it under the fleet
+  car that will be driven first, so the cold start is waiting when the player walks out.
+- [ ] **Survivors of a burned trader**: the driver who got clear walks the road toward town and asks for a lift
+  (passenger seat); delivered, the town that mourned the car remembers it (standing, a free meal at the stall).
+- [ ] **Cold-start dashboard**: a COLD lamp and, on diesels, a glow-plug wait before cranking; the trip heater or
+  block heater clears it — the winter morning reads from the gauges, not only the toast.
+- [ ] **LOOK FOR list**: rumours about caches, raider camps and missing people go to a journal list the binoculars
+  tick off (`InSight` already shared by camps and wrecks).
