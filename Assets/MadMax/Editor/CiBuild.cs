@@ -77,7 +77,7 @@ namespace MadMax.EditorTools
             finally
             {
                 BuildStamp.VersionOverride = null;
-                if (stripUpscaler) PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, defines0);
+                if (stripUpscaler) { PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, defines0); AssetDatabase.SaveAssets(); }
             }
         }
 
