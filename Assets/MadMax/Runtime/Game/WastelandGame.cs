@@ -194,7 +194,7 @@ namespace MadMax.Game
             else
             {
                 UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Terrain");
-                terrain.BuildAllNow(p);
+                terrain.BuildAllNow(CityStart ? CityFocus() : p);
                 Physics.SyncTransforms();
                 UnityEngine.Profiling.Profiler.EndSample();
                 ScreenFader.Progress(0.6f);
@@ -215,6 +215,7 @@ namespace MadMax.Game
                     SpawnHomestead();
                 }
             }
+            yield return SpawnCity();                                                             // the rolling city and its docks (roadmap 28)
             if (!(Rules.story && pending == null)) Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
             ScreenFader.Progress(0.85f);
             yield return null;
@@ -231,6 +232,7 @@ namespace MadMax.Game
             if (joining) { JoinAsClient(); played = true; }
             else if (pending != null) { RestorePlayer(pending); played = true; Toast("GAME LOADED"); }
             else if (Rules.story && !Dedicated) { }                                               // StoryNewGame placed the player by the wreck
+            else if (CityStart && City && !Dedicated) PlaceAboard();                               // START: ABOARD THE ROLLING CITY
             else if (fleet.Count == 0 && !Dedicated) { Player.gameObject.SetActive(true); var sp = p + Vector3.Cross(Vector3.up, dir) * 6f; sp.y = terrain.Height(sp.x, sp.z) + 0.1f; Player.Teleport(sp, 0f); terrain.focus = Player.transform; if (cameraRig) cameraRig.SetTarget(Player.transform); }
             else if (!Dedicated) Enter(fleet[0]);
             GameSettings.Current.Apply(this);
@@ -608,6 +610,7 @@ namespace MadMax.Game
             {
                 if (!c) continue;
                 c.SetManual(settings.manualTransmission && !c.aiDriven && (c != Current || HasClutchFoot));   // no left foot: no clutch
+                if (c == Current && settings.manualTransmission && LeftLegBroken) Hints.Show("broken_clutch", "YOUR LEFT LEG IS BROKEN: NO CLUTCH, THE GEARBOX STAYS AUTOMATIC UNTIL IT KNITS (REST IT, USE A CRUTCH, SLEEP IN A BED)");
                 c.gripMultiplier = c == Current ? Stats.DrivingGrip : 1f;
                 if (c.TryGetComponent<VehicleSystems>(out var vs)) vs.fuelMultiplier = Rules.fuelUse * (c == Current ? Stats.FuelEfficiency : 1f) * (c.TryGetComponent<VehicleTuning>(out var tn) ? tn.FuelFactor : 1f);
             }

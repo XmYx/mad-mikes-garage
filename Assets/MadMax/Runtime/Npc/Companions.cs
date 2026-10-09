@@ -25,7 +25,7 @@ namespace MadMax.Npc
     {
         public static readonly List<Npc> Live = new List<Npc>();
         static List<CompanionSave> pending;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; borrowed.Clear(); LastFireFighter = null; LastMedic = null; medicNext = 0f; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; borrowed.Clear(); LastFireFighter = null; LastMedic = null; medicNext = 0f; warming.Clear(); heaterDay = -1; LastHeaterLit = null; }
 
         public const int HireScrap = 80;
 
@@ -100,6 +100,7 @@ namespace MadMax.Npc
             Prune();
             FireDrill(g);
             MedicDrill(g);
+            MorningRoutine(g);
             if (pending == null || !g.Player || !DeformableTerrainReady()) return;
             var list = pending; pending = null;
             foreach (var s in list)
@@ -118,6 +119,131 @@ namespace MadMax.Npc
                 Live.Add(n);
                 if (s.vehicle >= 0 && s.vehicle < g.Fleet.Count && g.Fleet[s.vehicle]) n.TakeWheel(g.Fleet[s.vehicle]);
             }
+        }
+
+        // ------------------------------------------------------------------ morning routine (2026-10-09)
+
+        /// <summary>Dawn window (game hours) and how near the companion and the player must be to the fleet car.</summary>
+        public const float DawnFrom = 5.5f, DawnTo = 8.5f, MorningReach = 60f;
+        static int heaterDay = -1;
+        static readonly Dictionary<VehicleSystems, float> warming = new Dictionary<VehicleSystems, float>();
+        /// <summary>The companion who lit the heater this morning (tests).</summary>
+        public static Npc LastHeaterLit;
+
+        /// <summary>On a cold dawn a companion with a trip heater in their pack lights it under the fleet car nearest the
+        /// player (a litre from its tank), once a day, so the cold start is waiting when the player walks out.</summary>
+        static void MorningRoutine(WastelandGame g)
+        {
+            if (warming.Count > 0)
+            {
+                List<VehicleSystems> done = null;
+                foreach (var kv in warming)
+                {
+                    if (!kv.Key || kv.Key.Started || Time.time > kv.Value) (done ??= new List<VehicleSystems>()).Add(kv.Key);
+                    else { kv.Key.KeepWarm(Time.deltaTime); MadMax.Audio.Sfx.Loop(kv.Key, "fire", 0.25f, 1.4f, 12f); }
+                }
+                if (done != null) foreach (var s in done) { if (s) MadMax.Audio.Sfx.Loop(s, "fire", 0f); warming.Remove(s); }
+            }
+            var h = MadMax.World.DayNight.Hours;
+            if (heaterDay == MadMax.World.DayNight.Day || h < DawnFrom || h > DawnTo || !g.Player || g.Current) return;
+            if (MadMax.World.Weather.Temperature >= MadMax.Building.BlockHeater.ColdBelow) return;
+            LightHeaterNow(g);
+        }
+
+        /// <summary>The morning routine's step without the clock checks (tests, and the dawn tick). True if lit.</summary>
+        public static bool LightHeaterNow(WastelandGame g)
+        {
+            VehicleDriver car = null; float bd = MorningReach * MorningReach;
+            var at = g.Player.transform.position;
+            foreach (var v in g.Fleet)
+            {
+                if (!v || v.aiDriven || !v.TryGetComponent<VehicleSystems>(out var s) || s.Started || s.BlockWarm || s.Temperature >= 45f || warming.ContainsKey(s)) continue;
+                float d = (v.transform.position - at).sqrMagnitude;
+                if (d < bd) { bd = d; car = v; }
+            }
+            if (!car) return false;
+            var sys = car.GetComponent<VehicleSystems>();
+            if (sys.tankIced || sys.fuel < WastelandGame.TripHeatLitres + 0.5f) return false;
+            foreach (var n in Live)
+            {
+                if (!n || !n.Alive || n.Driving || n.Riding || !n.pack || n.pack.inventory.GetItem(WastelandGame.TripHeater) <= 0) continue;
+                if ((n.transform.position - car.transform.position).sqrMagnitude > MorningReach * MorningReach) continue;
+                sys.fuel -= WastelandGame.TripHeatLitres;
+                warming[sys] = Time.time + WastelandGame.TripHeatSeconds;
+                heaterDay = MadMax.World.DayNight.Day;
+                LastHeaterLit = n;
+                g.Toast(n.KnownName + " LIT THE TRIP HEATER UNDER THE " + WastelandGame.Name(car) + ": IT'LL BE WARM IN A MINUTE");
+                MadMax.Game.Journal.Add("CREW", n.KnownName + " WARMED THE " + WastelandGame.Name(car) + " AT DAWN");
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>A companion's heater is burning under this vehicle.</summary>
+        public static bool Warming(VehicleSystems s) => s && warming.ContainsKey(s);
+
+        // ------------------------------------------------------------------ walkie-talkie orders (2026-10-09)
+
+        public enum Order { Come, Hold, BringCar }
+        /// <summary>A spare fleet car must be this close to a companion for BRING A CAR.</summary>
+        public const float CarReach = 40f;
+        /// <summary>The last order heard over the radio and how many answered (tests).</summary>
+        public static Order LastOrder; public static int LastAnswered;
+
+        /// <summary>Companions with a handheld radio in their pack (they hear radio orders anywhere).</summary>
+        public static List<Npc> OnRadio()
+        {
+            Prune();
+            var l = new List<Npc>();
+            foreach (var n in Live)
+                if (n && n.Alive && n.pack && n.pack.inventory.GetItem(MadMax.Game.SafetyTools.HandRadio) > 0) l.Add(n);
+            return l;
+        }
+
+        /// <summary>The fleet car nearest <paramref name="n"/> (or any radio companion) within <see cref="CarReach"/> that
+        /// nobody drives.</summary>
+        public static VehicleDriver CarFor(WastelandGame g, Npc n)
+        {
+            VehicleDriver best = null; float bd = CarReach * CarReach;
+            foreach (var c in n ? new List<Npc> { n } : OnRadio())
+            {
+                if (c.Driving) continue;
+                foreach (var v in g.Fleet)
+                {
+                    if (!v || v == g.Current || v.aiDriven || !v.driveable || v.Occupied) continue;
+                    float d = (v.transform.position - c.transform.position).sqrMagnitude;
+                    if (d < bd) { bd = d; best = v; }
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Give an order over the handheld radio: COME (follow; drivers keep driving behind), HOLD (stay put,
+        /// a driver parks) or BRING A CAR (the nearest spare fleet car, driven behind the player). Returns how many answered.</summary>
+        public static int RadioOrder(WastelandGame g, Order o)
+        {
+            if (!g || g.Inventory.GetItem(MadMax.Game.SafetyTools.HandRadio) <= 0) return 0;
+            int k = 0;
+            bool carSent = false;
+            foreach (var n in OnRadio())
+            {
+                switch (o)
+                {
+                    case Order.Come: n.order = 0; k++; break;
+                    case Order.Hold:
+                        if (n.Driving) n.LeaveWheel();
+                        n.order = 1; n.home = n.transform.position; n.homeYaw = n.transform.eulerAngles.y; n.homeRadius = 1f; k++; break;
+                    case Order.BringCar:
+                        if (carSent || n.Driving) { if (n.Driving) { n.order = 0; k++; carSent = true; } break; }
+                        var car = CarFor(g, n);
+                        if (!car) break;
+                        n.order = 0; n.TakeWheel(car); carSent = true; k++; break;
+                }
+            }
+            LastOrder = o; LastAnswered = k;
+            MadMax.Audio.Sfx.Play2D("beep", 0.4f, 1.1f);
+            g.Toast(k == 0 ? "RADIO: STATIC. NOBODY ANSWERS" : o == Order.Come ? "RADIO: \"ON OUR WAY.\"" : o == Order.Hold ? "RADIO: \"HOLDING HERE.\"" : "RADIO: \"BRINGING IT ROUND.\"");
+            return k;
         }
 
         // ------------------------------------------------------------------ engine fires
@@ -194,7 +320,31 @@ namespace MadMax.Npc
             if (p == null) return false;
             string o = p.origin >= 0 && p.origin < NpcLore.Origin.Length ? NpcLore.Origin[p.origin] : "";
             string s = p.secret >= 0 && p.secret < NpcLore.Secret.Length ? NpcLore.Secret[p.secret] : "";
-            return o.Contains("NURSE") || o.Contains("MEDIC") || s.Contains("MEDIC");
+            if (o.Contains("NURSE") || o.Contains("MEDIC") || s.Contains("MEDIC")) return true;
+            var st = NpcRegistry.Peek(p.id);
+            return st != null && (st.Has(NpcSave.StudiedWounds) || st.tended >= KnackAfter);
+        }
+
+        // ---- learning the knack (2026-10-09): practice or the first-aid book makes anyone a proper medic
+        /// <summary>Dressings a companion must have done before theirs stop being rough.</summary>
+        public const int KnackAfter = 4;
+        public const string FirstAidBook = "book_first_aid";
+
+        /// <summary>A companion finished a dressing: count it; returns true the moment they got the knack.</summary>
+        public static bool Practise(NpcProfile p)
+        {
+            if (p == null || Patches(p)) return false;
+            var st = NpcRegistry.Get(p);
+            st.tended++;
+            return st.tended >= KnackAfter;
+        }
+
+        /// <summary>The player hands a companion the first-aid book: their next dressings are proper ones.</summary>
+        public static bool Study(NpcProfile p, MadMax.Items.Inventory from)
+        {
+            if (p == null || Patches(p) || from == null || !from.TakeItem(FirstAidBook)) return false;
+            NpcRegistry.Get(p).Set(NpcSave.StudiedWounds);
+            return true;
         }
 
         /// <summary>What a companion could treat the player with: a first-aid kit in their pack, else one in the

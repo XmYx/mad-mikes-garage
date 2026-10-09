@@ -36,15 +36,28 @@ namespace MadMax.Game
 
         public bool TwoHanded => style == ToolStyle.Overhead || style == ToolStyle.Grind || style == ToolStyle.Gun || style == ToolStyle.Thrust;
 
+        /// <summary>Held by a long handle in both hands: the animator keeps the left hand on it (null = no second grip).</summary>
+        public virtual Transform SecondGrip => null;
+
+        /// <summary>How it is carried at rest (a HumanClips arm overlay "hold_*", with "hold_*_fidget" now and then):
+        /// <see cref="ToolHolds"/> by id, else by kind. Null = the tool's own <see cref="IdlePose"/>.</summary>
+        public virtual string Hold => ToolHolds.For(this);
+
+        /// <summary>The rest hold uses both hands (port arms, a long gun at low ready): the left hand stays on it.</summary>
+        public bool HoldTwoHands => Hold == ToolHolds.Port || Hold == ToolHolds.Rifle;
+
         // ---- keyframes: (time, pose). Anticipation → strike → follow-through → recovery, whole body involved.
+        // the arms go up in front and over (negative x): Euler keys lerp per component, so +168 → -62 swung the tool back
+        // down under the body. The wrist (handRZ unused here) stays; the left hand is put on the handle by IK.
         static readonly (float t, ToolPose p)[] Overhead =
         {
-            (0f,    new ToolPose { armRX = -25, armLX = -30, armLZ = 14, foreR = -30, foreL = -35 }),
-            (0.38f, new ToolPose { chestX = -14, chestY = -8, armRX = 168, armRZ = 6, foreR = -45, armLX = 150, armLZ = 22, foreL = -55, knees = 8 }),
-            (0.5f,  new ToolPose { chestX = -16, chestY = -8, armRX = 172, armRZ = 6, foreR = -50, armLX = 155, armLZ = 22, foreL = -60, knees = 8 }),   // hold at the top
-            (0.62f, new ToolPose { chestX = 28, armRX = -62, foreR = -4, armLX = -52, armLZ = 16, foreL = -18, knees = 30 }),                           // impact
-            (0.74f, new ToolPose { chestX = 34, armRX = -40, foreR = -8, armLX = -36, armLZ = 14, foreL = -22, knees = 34 }),                           // follow-through
-            (1f,    new ToolPose { armRX = -25, armLX = -30, armLZ = 14, foreR = -30, foreL = -35 }),
+            (0f,    new ToolPose { chestX = 8, armRX = -14, foreR = -50, armLX = -48, armLZ = 24, foreL = -26, knees = 8 }),
+            (0.22f, new ToolPose { chestX = -2, chestY = 20, armRX = -60, armRZ = 10, foreR = -110, armLX = -86, armLZ = 50, foreL = -40, knees = 4 }),
+            (0.42f, new ToolPose { chestX = -14, chestY = 12, armRX = -150, armRZ = 4, foreR = -60, armLX = -160, armLZ = 50, foreL = -66, knees = 4 }),
+            (0.5f,  new ToolPose { chestX = -15, chestY = 10, armRX = -152, armRZ = 4, foreR = -62, armLX = -160, armLZ = 50, foreL = -72, knees = 6 }),   // hold at the top
+            (0.62f, new ToolPose { chestX = 34, chestY = -6, armRX = -40, armRZ = -10, foreR = -40, armLX = -52, armLZ = 22, foreL = -18, knees = 32 }),     // impact
+            (0.74f, new ToolPose { chestX = 38, chestY = -6, armRX = -44, armRZ = -10, foreR = -28, armLX = -55, armLZ = 22, foreL = -6, knees = 36 }),      // follow-through
+            (1f,    new ToolPose { chestX = 8, armRX = -14, foreR = -50, armLX = -48, armLZ = 24, foreL = -26, knees = 8 }),
         };
         static readonly (float t, ToolPose p)[] Slash =
         {

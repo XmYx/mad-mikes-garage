@@ -9,7 +9,7 @@ namespace MadMax.Game
     public enum ClothingSlot { Head, Face, Torso, Outer, Hands, Legs, Feet, Back, Pack, Vest, Arms, Shins, Belt, Shoulder, Hand }   // append only
     /// <summary>Damage kinds armour protects against (index into <see cref="ClothingDef.armor"/>).</summary>
     public enum DamageKind { Melee, Shot, Crash, Fall, Burn }
-    public enum HairStyle { Bald, Buzz, Short, Mohawk, Ponytail, Long }
+    public enum HairStyle { Bald, Buzz, Short, Mohawk, Ponytail, Long, Undercut }   // append only
 
     /// <summary>Body look. Serializable (saves, network).</summary>
     [Serializable]
@@ -24,6 +24,24 @@ namespace MadMax.Game
         public int body = -1;                // HD body shape: -1 auto (male by build), 0 M, 1 M2, 2 F, 3 F2 (HDHuman.Shapes)
         public int lost;                     // severed limbs: bit (int)BodyZone (ArmX = below the elbow, LegX = below the knee; Limbs)
         public string prosthetics = "";      // fitted prosthetics: "zone=id;zone=id" (ProstheticLibrary)
+        public int implant;                  // 0 none, 1 an amber eye implant at the right temple
+
+        /// <summary>The default new-game look (the concept art): black undercut, amber temple implant.</summary>
+        public static Appearance Lead()
+        {
+            var a = new Appearance { skinTone = 1, hair = HairStyle.Undercut, hairColor = 0, beard = 0, height = 0.98f, build = 0.95f, implant = 1 };
+            a.SetCyberArm(true);
+            return a;
+        }
+
+        /// <summary>The left forearm replaced by the salvaged cyber arm (a character-creation choice; a full hand).</summary>
+        public bool CyberArm => (lost & (1 << (int)MadMax.RPG.BodyZone.ArmL)) != 0 && ProstheticLibrary.FittedOn(this, MadMax.RPG.BodyZone.ArmL) == "pros_cyber_arm";
+        public void SetCyberArm(bool on)
+        {
+            int bit = 1 << (int)MadMax.RPG.BodyZone.ArmL;
+            if (on) lost |= bit; else lost &= ~bit;
+            ProstheticLibrary.SetFitted(this, MadMax.RPG.BodyZone.ArmL, on ? "pros_cyber_arm" : null);
+        }
 
         public Appearance Clone() => (Appearance)MemberwiseClone();
     }
@@ -225,6 +243,12 @@ namespace MadMax.Game
                     }
                     if (a.beard > 0 && p.z > 0.02f && p.y < 0.165f * h && p.y > 0.09f * h && Pal.Hash(v, 9) < (a.beard == 1 ? 0.45f : 0.95f))
                         if (!(Mathf.Abs(p.y - 0.135f * h) < 0.008f && Mathf.Abs(p.x) < 0.022f)) c = hair;
+                    if (a.implant == 1 && p.x > 0.055f && p.z > 0.035f && p.z < 0.075f)     // temple implant: steel ring, amber lens
+                    {
+                        float dy = p.y - (0.195f * h + 0.022f), dz = p.z - 0.055f, r2 = dy * dy + dz * dz;
+                        if (r2 < 0.0003f) c = Pal.Hex("ffb43c");
+                        else if (r2 < 0.0007f) c = Pal.Chrome[1];
+                    }
                     if (p.y < 0.105f * h) c = tone[2];                                 // neck in shadow
                 }
                 if (part == BodyPart.Pelvis) c = Pal.Hex("3a3634");                  // underwear
@@ -256,7 +280,8 @@ namespace MadMax.Game
             var col = HairColors[Mathf.Clamp(a.hairColor, 0, HairColors.Length - 1)];
             float h = a.height;
             var g = new VoxelGrid();
-            float thick = a.hair == HairStyle.Buzz ? 0.5f : 1.3f;
+            float thick = a.hair == HairStyle.Buzz ? 0.5f : a.hair == HairStyle.Undercut ? 1.8f : 1.3f;
+            bool under = a.hair == HairStyle.Undercut;
             for (int x = -5; x <= 5; x++)
             for (int y = 0; y <= 12; y++)
             for (int z = -6; z <= 6; z++)
@@ -270,8 +295,12 @@ namespace MadMax.Game
                 bool sides = Mathf.Abs(p.x) > 0.06f && p.y > 0.17f * h && p.z < 0.06f;
                 if (a.hair == HairStyle.Mohawk) { if (Mathf.Abs(p.x) > 0.018f || p.y < 0.19f * h) continue; }
                 else if (!(top || back || sides)) continue;
-                if (p.z > 0.075f && p.y < 0.26f * h) continue;                       // keep the face clear
-                g.Set(v, _ => Pal.Hash(v, 21) > 0.75f ? Color32.Lerp(col, Color.white, 0.15f) : col);
+                bool shaved = under && p.y < 0.235f * h && (p.x < -0.045f || p.z < -0.02f);   // undercut: left side and nape clipped short
+                if (shaved && d > 0.3f * S) continue;
+                bool fringe = under && p.z > 0.06f && p.x > -0.035f && p.y > 0.205f * h;  // a heavy fringe swept over the right brow
+                if (p.z > 0.075f && p.y < 0.26f * h && !fringe) continue;            // keep the face clear
+                var shade = shaved ? Color32.Lerp(col, Pal.Hex("6a5a50"), 0.45f) : col;
+                g.Set(v, _ => Pal.Hash(v, 21) > 0.75f ? Color32.Lerp(shade, Color.white, 0.15f) : shade);
             }
             if (a.hair == HairStyle.Mohawk)
                 for (int z = -4; z <= 3; z++) for (int y = 0; y < 3; y++) g.Set(0, Mathf.RoundToInt(0.31f * h / S) + y - Mathf.Abs(z) / 3, z, Pal.Solid(col));

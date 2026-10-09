@@ -99,7 +99,7 @@ namespace MadMax.Game
         public void Wake()
         {
             if (!Active) return;
-            foreach (var a in added) if (a is Rigidbody rb && rb.isKinematic) rb.isKinematic = false;
+            foreach (var a in added) if (a is Rigidbody rb && rb && rb.isKinematic) rb.isKinematic = false;
             settleAt = Time.time + 3f;
         }
 
@@ -111,6 +111,7 @@ namespace MadMax.Game
             if (!Active || Time.time < settleAt) return;
             // settled: freeze the pose (no more physics cost), the body stays where it fell
             bool calm = true;
+            added.RemoveAll(a => !a);                                                            // a severed limb or a destroyed body
             foreach (var a in added) if (a is Rigidbody rb && !rb.isKinematic && rb.linearVelocity.sqrMagnitude > 0.01f) { calm = false; break; }
             if (!calm) { settleAt = Time.time + 2f; return; }
             foreach (var a in added) if (a is Rigidbody rb) rb.isKinematic = true;

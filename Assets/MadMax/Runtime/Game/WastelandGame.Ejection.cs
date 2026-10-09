@@ -38,6 +38,23 @@ namespace MadMax.Game
         }
 
         /// <summary>Called by <see cref="VehicleDamage"/> on every hard contact of the driven vehicle.</summary>
+        /// <summary>A step later, its own vehicle once more: parts that switch their colliders on during the crash (lights,
+        /// breakables) would otherwise catch the body.</summary>
+        static System.Collections.IEnumerator IgnoreOwnLater(Collider[] body, VehicleDriver car)
+        {
+            yield return new WaitForFixedUpdate();
+            if (!car) yield break;
+            var theirs = car.GetComponentsInChildren<Collider>(true);
+            foreach (var a in body) foreach (var b in theirs) if (a && b) Physics.IgnoreCollision(a, b, true);
+        }
+
+        static System.Collections.IEnumerator PassOver(Collider[] body, Collider obstacle, float seconds)
+        {
+            foreach (var a in body) if (a && obstacle) Physics.IgnoreCollision(a, obstacle, true);
+            yield return new WaitForSeconds(seconds);
+            foreach (var a in body) if (a && obstacle) Physics.IgnoreCollision(a, obstacle, false);
+        }
+
         public void CrashEject(VehicleDriver car, float dv, Vector3 before, Vector3 after)
         {
             if (Current != car || !Player || !Ejects(car, dv)) return;
@@ -56,8 +73,12 @@ namespace MadMax.Game
             var cc = Player.GetComponent<CharacterController>();
             if (cc) cc.enabled = false;
             var flat = new Vector3(launch.x, 0f, launch.z);
-            Player.transform.SetPositionAndRotation(at + Vector3.up * (OpenVehicle(car) || car.GetComponent<BikeBalance>() ? 0.1f : 0.35f),
-                flat.sqrMagnitude > 0.01f ? Quaternion.LookRotation(flat) : Player.transform.rotation);
+            // out of the seat and clear of the ground: the seated legs reach below a low seat, and bones starting inside the
+            // terrain are pushed out with all their speed lost (the body dropped beside the car instead of flying)
+            float lift = OpenVehicle(car) || car.GetComponent<BikeBalance>() ? 0.1f : 0.35f;
+            var startAt = at + Vector3.up * lift;
+            if (terrain) startAt.y = Mathf.Max(startAt.y, terrain.Height(startAt.x, startAt.z) + 0.55f);
+            Player.transform.SetPositionAndRotation(startAt, flat.sqrMagnitude > 0.01f ? Quaternion.LookRotation(flat) : Player.transform.rotation);
             Toast(why + "!");
             var rd = Ragdoll.For(Player.Rig);
             // the shove lands high and forward: the head leads, the legs trail on the seat / bars → a forward tumble
@@ -65,9 +86,14 @@ namespace MadMax.Game
             var hit = head ? head.position : Player.transform.position + Vector3.up * 1.5f;
             rd.Go(launch.normalized * Mathf.Min(launch.magnitude, 25f) * 2f, hit, launch);
             // its own vehicle doesn't catch the body (it starts inside the cab)
-            var mine = Player.Rig.GetComponentsInChildren<Collider>();
-            var theirs = car.GetComponentsInChildren<Collider>();
+            var mine = Player.Rig.GetComponentsInChildren<Collider>(true);
+            var theirs = car.GetComponentsInChildren<Collider>(true);                              // incl. parts whose colliders are off now (light bars)
             foreach (var a in mine) foreach (var b in theirs) if (a && b) Physics.IgnoreCollision(a, b, true);
+            StartCoroutine(IgnoreOwnLater(mine, car));
+            if (Player.Rig.TryGetComponent<BodyKnock>(out var knock)) knock.IgnoreVehicle(car, 1.2f);
+            // the body tumbles over what the vehicle struck (a barrier, a wreck's bonnet) instead of stopping dead on it
+            var struck = car.TryGetComponent<VehicleDamage>(out var dmg) ? dmg.LastStruck : null;
+            if (struck && !struck.transform.IsChildOf(car.transform) && !struck.GetComponentInParent<MadMax.World.DeformableTerrain>()) StartCoroutine(PassOver(mine, struck, 0.6f));
             if (cameraRig)
             {
                 var pelvis = Player.Rig.Bone(BodyPart.Pelvis);

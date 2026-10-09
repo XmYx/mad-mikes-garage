@@ -105,8 +105,12 @@ namespace MadMax.Vehicles
         /// depenetration shoves).</summary>
         [System.NonSerialized] public float graceUntil;
 
+        /// <summary>What the vehicle last struck (an ejected rider tumbles over it).</summary>
+        public Collider LastStruck { get; set; }
+
         void Handle(Collision c)
         {
+            LastStruck = c.collider;
             if (Time.time - lastHit < cooldown || c.contactCount == 0 || Time.time < graceUntil) return;
             float dv = c.impulse.magnitude / rb.mass;
             if (dv < minImpactSpeed) return;

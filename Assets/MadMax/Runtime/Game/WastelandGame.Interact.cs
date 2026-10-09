@@ -47,9 +47,22 @@ namespace MadMax.Game
             if (cameraRig) cameraRig.SetTarget(car.transform);
         }
 
+        /// <summary>Δv (m/s) a belted occupant takes without harm: 7 (25 km/h) in a cab, 5 on an open seat.</summary>
+        public const float CrashSafeClosed = 7f, CrashSafeOpen = 5f;
+
+        /// <summary>Harm to the occupant from a crash of change of speed <paramref name="dv"/> (m/s): none under the safe
+        /// change, then growing steeply — ~8 at 36 km/h (bruising), ~30 at 50 km/h (wounds), ~75 at 72 km/h.</summary>
+        public static float CrashHarm(float dv, bool open)
+        {
+            float over = dv - (open ? CrashSafeOpen : CrashSafeClosed);
+            return over <= 0f ? 0f : Mathf.Pow(over, 1.5f) * 1.6f;
+        }
+
         void OnImpact(float strength, Vector3 point)
         {
-            if (Current && strength > 2.5f && Vector3.Distance(Current.transform.position, point) < 8f) Vitals?.Hurt((strength - 2.5f) * 5f, "CRASH");
+            // strength = the impact's Δv less VehicleDamage.minImpactSpeed (2.5 m/s)
+            float harm = Current ? CrashHarm(strength + 2.5f, OpenVehicle(Current)) : 0f;
+            if (harm > 0f && Vector3.Distance(Current.transform.position, point) < 8f) Vitals?.Hurt(harm, "CRASH");
             if (cameraRig && Current && Vector3.Distance(Current.transform.position, point) < 8f) cameraRig.Shake(strength);
         }
 

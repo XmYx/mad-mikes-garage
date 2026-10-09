@@ -7,7 +7,7 @@ namespace MadMax.Building
     /// analytically; this adds the upright decks on top so vehicles can drive up ramps and park on foundations.</summary>
     public static class StructureGround
     {
-        struct Deck { public Object owner; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; }
+        struct Deck { public Object owner; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; public Transform live; public System.Func<Vector3, Vector3> velocity; public List<Vector3> poly; }
         static readonly List<Deck> decks = new List<Deck>();
         static readonly int[] nearBuf = new int[16];
         static readonly HashSet<(Collider, Rigidbody)> ignored = new HashSet<(Collider, Rigidbody)>();
@@ -29,6 +29,26 @@ namespace MadMax.Building
             decks.Add(new Deck { owner = owner, collider = collider, sloped = size.z != size.w, toLocal = t.worldToLocalMatrix, toWorld = t.localToWorldMatrix, size = size, centre = t.position, reach2 = r * r });
         }
 
+        /// <summary>A deck that moves (the rolling city, its gangway): its frame is read from <paramref name="t"/> on every
+        /// query and <paramref name="velocity"/> gives the deck's own velocity at a point, so tyres grip relative to it.</summary>
+        public static void AddMovingDeck(Object owner, Transform t, Collider collider, Vector4 size, System.Func<Vector3, Vector3> velocity)
+        {
+            float r = Mathf.Sqrt(size.x * size.x + size.y * size.y) + 2.5f;
+            decks.Add(new Deck { owner = owner, collider = collider, sloped = size.z != size.w, size = size, reach2 = r * r, live = t, velocity = velocity });
+        }
+
+        /// <summary>A flat deck over a polygon (local x/z corners, local y = 0 the top): frame spans.</summary>
+        public static void AddPolygonDeck(Object owner, Transform t, Collider collider, List<Vector3> corners)
+        {
+            float r = 0f;
+            foreach (var c in corners) r = Mathf.Max(r, new Vector2(c.x, c.z).magnitude);
+            r += 2.5f;
+            decks.Add(new Deck { owner = owner, collider = collider, size = new Vector4(r, r, 0f, 0f), toLocal = t.worldToLocalMatrix, toWorld = t.localToWorldMatrix, centre = t.position, reach2 = r * r, poly = new List<Vector3>(corners) });
+        }
+
+        /// <summary>Velocity of the deck the last successful <see cref="Top"/> found (zero for a fixed one).</summary>
+        public static Vector3 LastVelocity { get; private set; }
+
         public static void Remove(Object owner)
         {
             for (int i = decks.Count - 1; i >= 0; i--) if (decks[i].owner == owner || !decks[i].owner) decks.RemoveAt(i);
@@ -44,17 +64,20 @@ namespace MadMax.Building
             for (int i = 0; i < decks.Count; i++)
             {
                 var d = decks[i];
+                if (d.live) { d.toLocal = d.live.worldToLocalMatrix; d.toWorld = d.live.localToWorldMatrix; d.centre = d.live.position; }
+                else if (!ReferenceEquals(d.live, null)) continue;                                   // a moving deck whose object is gone
                 float dx = at.x - d.centre.x, dz = at.z - d.centre.z;
                 if (dx * dx + dz * dz > d.reach2) continue;
                 if (body && d.sloped && d.collider) Ignore(d.collider, body);
                 if (body && near < nearBuf.Length) nearBuf[near++] = i;
                 var l = d.toLocal.MultiplyPoint3x4(at);
-                if (Mathf.Abs(l.x) > d.size.x || Mathf.Abs(l.z) > d.size.y) continue;
+                if (d.poly != null ? !MadMax.Building.Frame.Inside(d.poly, l.x, l.z) : Mathf.Abs(l.x) > d.size.x || Mathf.Abs(l.z) > d.size.y) continue;
                 float f = (l.z + d.size.y) / (2f * d.size.y);
                 var top = d.toWorld.MultiplyPoint3x4(new Vector3(l.x, Mathf.Lerp(d.size.z, d.size.w, f), l.z));
                 if (top.y > at.y + 0.05f || top.y <= height) continue;
                 height = top.y; found = true;
                 normal = d.toWorld.MultiplyVector(new Vector3(0f, 2f * d.size.y, d.size.z - d.size.w)).normalized;
+                LastVelocity = d.velocity != null ? d.velocity(top) : Vector3.zero;
             }
             // carried by a deck: the body no longer snags on the edges of the decks around it (lips, seams)
             if (found) for (int k = 0; k < near; k++) { var c = decks[nearBuf[k]].collider; if (c) Ignore(c, body); }

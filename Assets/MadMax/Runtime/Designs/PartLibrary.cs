@@ -748,6 +748,50 @@ namespace MadMax.Designs
             for (int x = -w; x <= w; x += 2) g.Set(c.x + x, c.y, c.z + d + 1, Pal.Solid(Pal.Chrome[2]));   // teeth
         }
 
+        /// <summary>A backhoe excavator's bucket hung on the stick-tip pin (voxels; pin = (0, pin.y, pin.z)): a D-shaped
+        /// shell bulging forward and down (back plate away from the cab), side plates, the mouth facing the cab, a row of
+        /// teeth on the cutting edge 8 down / 4 ahead of the pin (where <see cref="MadMax.Vehicles.Machine.BucketTip"/>
+        /// digs: curling sweeps it down and back), wear strips, lugs on the pin and a link up toward the bucket ram.</summary>
+        static void ExcavatorBucket(VoxelGrid g, Vector3Int pin, int w)
+        {
+            var steel = Pal.Weathered(Pal.Metal, 0.35f, 1112, 1, -40f);
+            var side = Pal.Weathered(Cat, 0.3f, 1113, 2, -40f);
+            Vector2 C = new Vector2(-3.5f, 7f);                                  // shell centre (y, z) from the pin
+            const float R = 6f;
+            Vector2 lip = new Vector2(-8f, 4f), top = new Vector2(1f, 1.5f);     // the mouth: from the top lugs to the cutting edge
+            Vector2 chordN = new Vector2(lip.y - top.y, -(lip.x - top.x)).normalized;   // normal of the mouth line
+            if (Vector2.Dot(C - top, chordN) < 0f) chordN = -chordN;              // pointing into the bucket
+            for (int y = -12; y <= 4; y++)
+            for (int z = -2; z <= 15; z++)
+            {
+                var p = new Vector2(y, z);
+                float r = Vector2.Distance(p, C);
+                bool inside = r <= R && Vector2.Dot(p - top, chordN) >= -0.3f;
+                if (!inside) continue;
+                bool shell = r > R - 1.1f;
+                for (int x = -w; x <= w; x++)
+                {
+                    bool plate = Mathf.Abs(x) == w;
+                    if (!(shell || plate)) continue;
+                    var at = new Vector3Int(pin.x + x, pin.y + y, pin.z + z);
+                    g.Set(at, shell && !plate && (z & 3) == 0 && y < -6 ? Pal.Ramp(Pal.Chrome, 0) : plate ? side : steel);   // wear strips under it
+                }
+            }
+            // the cutting edge and teeth, pointing on along the curl (down and back toward the cab)
+            var tdir = new Vector2(-0.55f, -0.83f);
+            for (int x = -w; x <= w; x++) g.Set(pin.x + x, pin.y + (int)lip.x, pin.z + (int)lip.y, Pal.Ramp(Pal.Chrome, 1));
+            for (int x = -w + 1; x <= w - 1; x += 3)
+                for (int k = 1; k <= 2; k++)
+                    g.Set(pin.x + x, pin.y + Mathf.RoundToInt(lip.x + tdir.x * k), pin.z + Mathf.RoundToInt(lip.y + tdir.y * k), Pal.Solid(Pal.Chrome[k == 2 ? 3 : 2]));
+            // lugs on the pin and the link toward the bucket ram
+            foreach (int x in new[] { -2, 2 })
+            {
+                g.Box(pin.x + x, pin.y - 1, pin.z - 1, pin.x + x, pin.y + 2, pin.z + 3, side);
+                g.Tube(new Vector3(pin.x + x, pin.y + 1, pin.z - 2), new Vector3(pin.x + x, pin.y + 7, pin.z - 4), 0.6f, Pal.Ramp(Pal.Metal, 1));
+            }
+            g.CylX(pin.y, pin.z, 1.2f, pin.x - 3, pin.x + 3, Pal.Ramp(Pal.Chrome, 1));       // the pin
+        }
+
         public static PartDesign ExcavatorArm()
         {
             var g = new VoxelGrid();
@@ -761,7 +805,7 @@ namespace MadMax.Designs
             g.Tube(new Vector3(0, 16, 24), new Vector3(0, -6, 42), 1.3f, paint);          // stick
             g.Tube(new Vector3(0, 19, 27), new Vector3(0, 6, 38), 0.5f, Pal.Ramp(Pal.Chrome, 2));   // bucket ram
             g.Use("bucket");
-            Bucket(g, new Vector3Int(0, -14, 38), 5, 7);
+            ExcavatorBucket(g, new Vector3Int(0, -6, 42), 6);
             g.Use("body");
             var p = Make("tool_excavator_arm", PartCategory.Tool, g, 900, 4);
             return p.Segment("boom", new Vector3Int(0, 0, 0)).Segment("stick", new Vector3Int(0, 16, 24), "boom").Segment("bucket", new Vector3Int(0, -6, 42), "stick");

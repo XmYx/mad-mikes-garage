@@ -10,7 +10,7 @@ namespace MadMax.Game
     public sealed class HumanClip
     {
         public const int Bones = 15;
-        public enum Mask : byte { Full, Upper, Lower }
+        public enum Mask : byte { Full, Upper, Lower, Arms, ArmR }
 
         public string name;
         public int frames;
@@ -34,7 +34,7 @@ namespace MadMax.Game
             var c = new HumanClip
             {
                 name = j.name, frames = j.frames, length = Mathf.Max(0.01f, j.length), loop = j.loop, gait = j.gait, hit = j.hit, speed = j.speed,
-                mask = j.mask == "upper" ? Mask.Upper : j.mask == "lower" ? Mask.Lower : Mask.Full,
+                mask = j.mask == "upper" ? Mask.Upper : j.mask == "lower" ? Mask.Lower : j.mask == "arms" ? Mask.Arms : j.mask == "arm_r" ? Mask.ArmR : Mask.Full,
                 rot = new Quaternion[j.frames * Bones], pelvis = new Vector3[j.frames],
             };
             for (int i = 0; i < c.rot.Length; i++) c.rot[i] = Quaternion.identity;
@@ -55,7 +55,13 @@ namespace MadMax.Game
             return c;
         }
 
-        public bool Affects(BodyPart p) => mask == Mask.Full || (mask == Mask.Upper) == IsUpper(p);
+        public bool Affects(BodyPart p) => mask switch
+        {
+            Mask.Full => true,
+            Mask.Arms => p >= BodyPart.UpperArmL && p <= BodyPart.HandR,
+            Mask.ArmR => p == BodyPart.UpperArmR || p == BodyPart.ForearmR || p == BodyPart.HandR,
+            _ => (mask == Mask.Upper) == IsUpper(p)
+        };
 
         public static bool IsUpper(BodyPart p) => p == BodyPart.Chest || p == BodyPart.Head || (p >= BodyPart.UpperArmL && p <= BodyPart.HandR);
 

@@ -63,6 +63,10 @@ namespace MadMax.Game
         Controls.Act? rebinding;
         int rebindFrame;
         int cursor, category, scroll;
+        float wheelAt = -9f;
+        /// <summary>Rows one notch of the mouse wheel moves on a list page.</summary>
+        public static int WheelRows = 1;
+        public int RowCount => items.Count;
         Page settingsFrom;
         CraftingStation station;
         Vector2 lastMouse;
@@ -479,7 +483,7 @@ namespace MadMax.Game
                     // skin, height and build are chosen at character creation; a mirror allows a haircut or a shave
                     if (mirror)
                     {
-                        Look("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + 6) % 6));
+                        Look("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + HairStyles) % HairStyles));
                         Look("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);
                         Look("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3);
                     }
@@ -501,6 +505,7 @@ namespace MadMax.Game
                     R("DIFFICULTY", () => GameRules.DifficultyNames[r.difficulty], d => r.difficulty = Mathf.Clamp(r.difficulty + d, 0, 3));
                     R("STARTING KIT", () => r.story ? "WHAT YOU CAN FIND" : GameRules.KitNames[r.startingKit], d => { if (!r.story) r.startingKit = Mathf.Clamp(r.startingKit + d, 0, 2); });
                     R("VEHICLES", () => r.story ? "ONE STRANDED CAR" : GameRules.FleetNames[r.fleet], d => { if (!r.story) r.fleet = (r.fleet + d + 4) % 4; });
+                    R("START", () => r.story ? "THE CONVOY WRECK" : GameRules.StartNames[r.start], d => { if (!r.story) r.start = (r.start + d + 2) % 2; });
                     R("RESOURCE YIELD", () => "X" + r.yield.ToString("0.0"), d => r.yield = Mathf.Clamp(r.yield + d * 0.25f, 0.25f, 3f));
                     R("FUEL USE", () => "X" + r.fuelUse.ToString("0.0"), d => r.fuelUse = Mathf.Clamp(r.fuelUse + d * 0.25f, 0.25f, 3f));
                     R("SKILL LEARNING", () => "X" + r.learning.ToString("0.0"), d => r.learning = Mathf.Clamp(r.learning + d * 0.25f, 0.25f, 4f));
@@ -530,9 +535,11 @@ namespace MadMax.Game
                     L("BODY", () => new[] { "RUGGED", "LEAN", "SOFT", "SHARP" }[a.body < 0 ? (a.build >= 0.975f ? 0 : 1) : a.body % 4],
                       d => a.body = ((a.body < 0 ? (a.build >= 0.975f ? 0 : 1) : a.body) + d + 4) % 4);
                     L("SKIN", () => (a.skinTone + 1).ToString(), d => a.skinTone = (a.skinTone + d + 4) % 4);
-                    L("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + 6) % 6));
+                    L("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + HairStyles) % HairStyles));
                     L("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);
                     L("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3);
+                    L("IMPLANT", () => a.implant == 1 ? "TEMPLE" : "NONE", d => a.implant = 1 - a.implant);
+                    L("LEFT ARM", () => a.CyberArm ? "CYBER ARM" : "FLESH", d => a.SetCyberArm(!a.CyberArm));
                     L("HEIGHT", () => Mathf.RoundToInt(a.height * 180) + " CM", d => a.height = Mathf.Clamp(a.height + d * 0.02f, 0.9f, 1.1f));
                     L("BUILD", () => Mathf.RoundToInt(a.build * 100) + "%", d => a.build = Mathf.Clamp(a.build + d * 0.05f, 0.85f, 1.2f));
                     for (int i = 0; i < MadMax.RPG.CharacterStats.AttrCount; i++)
@@ -977,7 +984,8 @@ namespace MadMax.Game
         // ---- new game drafts
         GameRules draftRules = new GameRules();
         MadMax.RPG.CharacterStats draftStats = new MadMax.RPG.CharacterStats();
-        Appearance draftLook = new Appearance();
+        Appearance draftLook = Appearance.Lead();
+        static readonly int HairStyles = System.Enum.GetValues(typeof(HairStyle)).Length;
         string draftSeed = "";
         bool hostNew;
         const int CreationPoints = 6;
@@ -1106,6 +1114,19 @@ namespace MadMax.Game
             }
             if (IsCatalogue) { if (dx != 0 || dy != 0) CatalogueMove(dx, dy); dx = 0; }        // the grid: left / right a cell, up / down a row
             else if (items.Count > 0) cursor = (cursor + dy + items.Count) % items.Count;
+            // the mouse wheel scrolls every list page (the selection and the window that follows it; no wrap-around).
+            // The catalogue grid, the loot window and the map read the wheel themselves.
+            if (mouse != null && !IsCatalogue && Current != Page.Container && Current != Page.Map && items.Count > 0)
+            {
+                float wheel = mouse.scroll.ReadValue().y;
+                int step = wheel > 0.01f ? -1 : wheel < -0.01f ? 1 : 0;
+                if (step != 0)
+                {
+                    int was = cursor;
+                    cursor = Mathf.Clamp(cursor + step * WheelRows, 0, items.Count - 1);
+                    if (cursor != was) { MadMax.Audio.Sfx.Play2D("click", 0.3f); wheelAt = Time.unscaledTime; }
+                }
+            }
             if (dy != 0 || dx != 0) MadMax.Audio.Sfx.Play2D("click", 0.5f);
             else if (ok) MadMax.Audio.Sfx.Play2D("menu", 0.6f);
 
@@ -1115,7 +1136,7 @@ namespace MadMax.Game
             {
                 var m = mouse.position.ReadValue();
                 var p = new Vector2Int(Mathf.FloorToInt(m.x / Screen.width * canvas.w), Mathf.FloorToInt((1f - m.y / Screen.height) * canvas.h));
-                bool moved = (m - lastMouse).sqrMagnitude > 1f;
+                bool moved = (m - lastMouse).sqrMagnitude > 1f && Time.unscaledTime - wheelAt > 0.25f;   // a wheel turn moves the rows under a still pointer
                 lastMouse = m;
                 for (int i = 0; i < items.Count; i++)
                     if (items[i].rect.Contains(p) && (moved || mouse.leftButton.wasPressedThisFrame))

@@ -218,7 +218,12 @@ namespace MadMax.Vehicles
                 float c = cond >= 0.75f ? 1f : cond >= 0.5f ? Mathf.Lerp(0.8f, 1f, (cond - 0.5f) / 0.25f) : Mathf.Lerp(0.12f, 0.8f, cond / 0.5f);
                 c += ep ? (ep.quality - 1) * 0.04f : 0f;
                 float ambient = MadMax.World.Weather.Temperature;
-                if (Temperature < 45f) c -= ambient < -10f ? 0.25f : ambient < 0f ? 0.1f : 0f;                   // a cold engine is stubborn
+                if (Temperature < 45f)                                                                         // a cold engine is stubborn
+                {
+                    float cold = ambient < -10f ? 0.25f : ambient < 0f ? 0.1f : 0f;
+                    if (FuelKind == ResourceType.Diesel) cold = GlowReady ? cold * 0.5f : cold + (ambient < 5f ? 0.3f : 0f);   // glow plugs: wait for the lamp
+                    c -= cold;
+                }
                 if (UsesPlugs && plugs < 0.3f) c -= 0.2f;
                 if (airFilter < 0.3f) c -= 0.1f;
                 if (!oilInFuel && OilFraction < 0.25f) c -= 0.1f;
@@ -287,6 +292,30 @@ namespace MadMax.Vehicles
             if (tankIced) Thaw(dt / 60f);
         }
 
+        // ---- cold start (2026-10-09): the COLD lamp, and on diesels the glow plugs that warm while the driver sits in.
+        /// <summary>Below this ambient a stopped engine under 45 °C counts as a cold start.</summary>
+        public const float ColdLampBelow = 5f;
+        /// <summary>Glow plug wait at 0 °C (longer in a harder frost).</summary>
+        public const float GlowSeconds = 3f;
+        float glow;
+        /// <summary>A stopped engine too cold to start easily: the dashboard COLD lamp. A block or trip heater clears it.</summary>
+        public bool ColdStart => !Started && HasEngine && Temperature < 45f && MadMax.World.Weather.Temperature < ColdLampBelow && !BlockWarm;
+        /// <summary>Diesel glow plugs still warming (the lamp is lit; cranking now is a long shot).</summary>
+        public bool GlowPlugsLit => ColdStart && FuelKind == ResourceType.Diesel && glow < 1f;
+        /// <summary>The plugs are hot (or not needed): crank now.</summary>
+        public bool GlowReady => FuelKind != ResourceType.Diesel || !ColdStart || glow >= 1f;
+        /// <summary>0..1 of the glow plug wait.</summary>
+        public float GlowProgress => glow;
+        /// <summary>Seconds of glow for the current cold.</summary>
+        public static float GlowFor(float ambient) => GlowSeconds * Mathf.Clamp(1f + (-ambient) / 15f, 0.6f, 2.5f);
+
+        void UpdateGlow(float dt)
+        {
+            if (FuelKind == ResourceType.Diesel && ColdStart && driver.Occupied && !driver.aiDriven)
+                glow = Mathf.Min(1f, glow + dt / GlowFor(MadMax.World.Weather.Temperature));
+            else if (!driver.Occupied || Started) glow = Mathf.Max(0f, glow - dt / 20f);   // the plugs cool once the key is off
+        }
+
         /// <summary>Running without a crank (the title film's car, a vehicle handed over already running).</summary>
         public void ForceStart() { Started = true; crankUntil = -1f; }
 
@@ -345,6 +374,12 @@ namespace MadMax.Vehicles
             var engine = driver.Engine;
             // ignition: AI drivers' engines run; a player's cranks on the throttle
             if (driver.aiDriven && engine) Started = true;
+            UpdateGlow(dt);
+            if (!Started && GlowPlugsLit && driver.Occupied && !driver.aiDriven && !Cranking && Time.time >= nextCrank && (driver.throttleInput > 0.1f || driver.brakeInput > 0.1f))
+            {
+                nextCrank = Time.time + 1.5f;                                                              // wait for the lamp first
+                MadMax.Game.WastelandGame.Instance?.Toast("GLOW PLUGS WARMING: WAIT FOR THE LAMP TO GO OUT");
+            }
             else if (!Started && driver.Occupied && engine && (driver.throttleInput > 0.1f || driver.brakeInput > 0.1f)) Crank();
             if (crankUntil > 0f && Time.time >= crankUntil)
             {
@@ -355,7 +390,7 @@ namespace MadMax.Vehicles
                 {
                     var eng = driver.Engine ? driver.Engine.GetComponent<VehiclePart>() : null;
                     string why = fuel <= 0f ? "NO FUEL IN THE TANK" : tankIced ? "THE FUEL LINE IS ICED: THAW THE TANK FIRST" : WrongFuel ? "IT COUGHS AND DIES: SOMETHING'S WRONG WITH THE FUEL" : Frozen ? "FROZEN UP: WARM IT FIRST" : eng && eng.damage >= 1f ? "THE ENGINE IS SEIZED"
-                               : UsesPlugs && plugs < 0.3f ? "IT SPUTTERS AND DIES: TRY AGAIN" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN"
+                               : UsesPlugs && plugs < 0.3f ? "IT SPUTTERS AND DIES: TRY AGAIN" : Temperature < 45f && MadMax.World.Weather.Temperature < 0f ? "COLD ENGINE: TRY AGAIN, OR WARM IT (BLOCK OR TRIP HEATER)"
                                : "IT DIDN'T CATCH: TRY AGAIN";
                     MadMax.Game.WastelandGame.Instance?.Toast(why);
                 }

@@ -265,7 +265,7 @@ namespace MadMax.Game
         }
 
         /// <summary>A left foot (or a leg prosthetic) for the clutch: without one the gearbox stays automatic.</summary>
-        public bool HasClutchFoot => LegLoss(true) < 0.99f;
+        public bool HasClutchFoot => LegLoss(true) < 0.99f && !LeftLegBroken;
 
         /// <summary>1 when a fitted mount arm carries this tool (it is always at hand on the hotbar).</summary>
         public int BuiltInTool(string id)

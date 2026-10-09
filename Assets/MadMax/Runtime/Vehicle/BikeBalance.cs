@@ -148,11 +148,12 @@ namespace MadMax.Vehicles
 
         void OnCollisionEnter(Collision c)
         {
-            if (Crashed || !v || !v.Occupied || Time.time < crashCd) return;
+            if (Crashed || !v || !v.Occupied) return;
             var n = c.contactCount > 0 ? c.GetContact(0).normal : Vector3.up;
             if (n.y > 0.7f) return;                                                           // landings and the ground
             if (c.rigidbody && !c.rigidbody.isKinematic && c.rigidbody.mass < 40f) return;       // pickups, debris, crates: ride over them
             float hit = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
+            if (Time.time < crashCd && hit < 10f) return;                                      // just mounted: knocks don't throw, a wall still does
             // shrubs, fences, cacti: the bike ploughs through (the prop carves) with a wobble instead of a spill
             var prop = c.collider.GetComponentInParent<MadMax.World.DestructibleVoxels>();
             if (prop && (prop.name == "Bush" || prop.name == "Fence" || prop.name == "Cactus" || prop.VoxelCount < 500) && hit < 16f)
@@ -161,12 +162,13 @@ namespace MadMax.Vehicles
                 rb.linearVelocity *= 0.92f;
                 return;
             }
+            if (hit > 7f && TryGetComponent<VehicleDamage>(out var vd)) vd.LastStruck = c.collider;     // the rider tumbles over it
             if (hit > 7f) { LastCrash = "hit " + c.collider.name + " " + hit.ToString("0.0") + " n=" + n; Crash(hit * 2.2f, "THROWN OVER THE BARS"); }
         }
 
         void Crash(float severity, string why)
         {
-            if (Crashed || Time.time < crashCd) return;
+            if (Crashed || (Time.time < crashCd && severity < 22f)) return;
             Crashed = true;
             v.steerOverride = float.NaN;
             var g = MadMax.Game.WastelandGame.Instance;

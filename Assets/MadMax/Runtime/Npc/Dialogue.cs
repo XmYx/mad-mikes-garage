@@ -236,6 +236,12 @@ namespace MadMax.Npc
             if (npc.order != 1) Add("WAIT HERE.", () => { npc.order = 1; npc.home = npc.transform.position; npc.homeYaw = npc.transform.eulerAngles.y; End("I'LL BE HERE."); });
             var claim = MadMax.Building.ClaimFlag.Near(npc.transform.position);
             if (claim && npc.order != 2) Add("GUARD THE BASE.", () => { npc.order = 2; npc.home = claim.transform.position; npc.homeRadius = 10f; End("NOBODY GETS PAST ME."); });
+            if (g.Inventory.GetItem(Companions.FirstAidBook) > 0 && !Companions.Patches(npc.Profile))
+                Add("(GIVE FIELD FIRST AID) READ THIS. NEXT TIME YOU PATCH ME UP, DO IT RIGHT.", () =>
+                {
+                    if (Companions.Study(npc.Profile, g.Inventory)) End("...HUH. SO THAT'S HOW A SPLINT SITS. GOT IT.");
+                    else CompanionHub();
+                }, "THEIR DRESSINGS STOP BEING ROUGH");
             var car = SpareCar();
             if (car) Add("TAKE THE " + WastelandGame.Name(car) + " AND FOLLOW ME.", () => { npc.order = 0; npc.TakeWheel(car); End("I'LL STAY ON YOUR TAIL."); }, "THEY DRIVE IT BEHIND YOU; GET IN IT YOURSELF TO TAKE IT BACK");
             Add("(T OPENS THEIR PACK)  WE'RE DONE. GO YOUR OWN WAY.", () => { Companions.Dismiss(g, npc); End("...FINE. TAKE CARE OUT THERE."); }, "THEY LEAVE, DROPPING WHAT THEY CARRY FOR YOU");
@@ -429,7 +435,12 @@ namespace MadMax.Npc
                 {
                     string[] keys = { "wheel_street", "radiator_car", "exhaust_side_pipes", "bumper_bull_bar" };
                     var key = keys[P.seed & 3];
-                    var part = g.SpawnPart(key, npc.transform.position + npc.transform.forward * 1.2f + Vector3.up * 0.6f, npc.transform.rotation);
+                    // set down on the floor between them and the player (in front of a counter, not into it or their own capsule)
+                    var me = npc.transform.position;
+                    var toward = g.Player ? Vector3.ProjectOnPlane(g.Player.transform.position - me, Vector3.up) : npc.transform.forward;
+                    var spot = me + (toward.sqrMagnitude > 0.01f ? toward.normalized : npc.transform.forward) * Mathf.Min(1.1f, toward.magnitude * 0.5f + 0.4f);
+                    spot.y = Physics.Raycast(spot + Vector3.up * 1.6f, Vector3.down, out var floor, 4f, ~0, QueryTriggerInteraction.Ignore) ? floor.point.y : me.y;
+                    var part = g.SpawnPart(key, spot + Vector3.up * 0.35f, npc.transform.rotation);
                     if (part) { part.gameObject.AddComponent<Rigidbody>().mass = part.mass; MadMax.Net.NetSession.Instance?.SendLooseSpawn(part); }
                     reward = "TAKE THIS " + key.Replace('_', ' ').ToUpperInvariant() + ". I WON'T NEED IT.";
                     break;

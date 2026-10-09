@@ -41,6 +41,10 @@ namespace MadMax.Game
         CharacterController cc;
         HumanAnimator anim;
         float vy, swingT = -1f, lastYaw, fallSpeed;
+        float hitStop, reactAt = -9f;
+        bool strikeNow;
+        float raiseLeft, gunUpUntil;
+        string reactClip;
         bool airborne;
 
         /// <summary>Carrying more than the strength-based capacity: slower, cannot run.</summary>
@@ -141,6 +145,8 @@ namespace MadMax.Game
             if (faceViewYaw) transform.rotation = Interior ? Quaternion.LookRotation(Vector3.ProjectOnPlane(Quaternion.Euler(0, viewYaw, 0) * Vector3.forward, Interior.transform.up), Interior.transform.up) : Quaternion.Euler(0, viewYaw, 0);
             swingT = 0f;
             struck = false;
+            // a gun carried low (its hold) is brought up to the shoulder before the shot
+            raiseLeft = Tool.style == ToolStyle.Gun && !aiming && Time.time >= gunUpUntil && ToolHolds.Clip(Tool) != null ? 0.18f : 0f;
             var v = WastelandGame.Instance ? WastelandGame.Instance.Vitals : null;
             v?.Spend(Tool.style == ToolStyle.Overhead ? 12f : Tool.style == ToolStyle.Gun ? 2f : 6f);
         }
@@ -305,6 +311,7 @@ namespace MadMax.Game
             if (SeatedIn) { UpdateSeated(dt); return; }
             if (Interior) { UpdateInterior(dt); return; }
             if (Traversing) { TraverseTick(dt); return; }                                  // vault, climb, zip (roadmap 22)
+            if (ClimbTick(dt)) return;                                                     // on a ladder (roadmap 29)
 
             var terrain = DeformableTerrain.Instance;
             var dir = Quaternion.Euler(0, viewYaw, 0) * new Vector3(moveInput.x, 0, moveInput.y);
@@ -318,6 +325,7 @@ namespace MadMax.Game
             if (aiming) speed = Mathf.Min(speed, walkSpeed * 0.7f);
             if (game) speed *= game.InjurySpeed;
             if (Carried) speed *= 0.6f;
+            if (HeavySwing) speed *= 0.3f;                                                  // feet planted for a two-handed blow
             speed *= CrouchSpeed(stats, canRun);
             if (terrain) speed *= Mathf.Lerp(1f, 0.6f, terrain.SurfaceAt(transform.position.x, transform.position.z).mud);
             if (MadMax.Building.DefenceHazard.All.Count > 0) speed *= MadMax.Building.DefenceHazard.SlowAt(transform.position);   // barbed wire
@@ -459,7 +467,10 @@ namespace MadMax.Game
             float yaw = transform.eulerAngles.y;
             float turn = Mathf.DeltaAngle(lastYaw, yaw) / dt;
             lastYaw = yaw;
-            ToolPose? toolPose = PoseOverride ?? (Tool ? Tool.IdlePose : null);
+            // at rest the tool is carried in its hold (arm clip); a long gun comes up to the shoulder while aiming
+            bool gunUp = Tool && Tool.style == ToolStyle.Gun && (aiming || Time.time < gunUpUntil);   // aiming, or just fired
+            string hold = Tool && PoseOverride == null && !Carried && !gunUp ? ToolHolds.Clip(Tool) : null;
+            ToolPose? toolPose = PoseOverride ?? (Tool && hold == null ? Tool.IdlePose : null);
             bool crouchClip = Crouching && !Sliding && HumanClips.Enabled;                   // the crouch clips bend the legs
             if ((Crouching || Sliding) && !crouchClip) toolPose = CrouchPose(toolPose);
             string action = PoseOverride.HasValue ? ActionClip : null;
@@ -468,20 +479,75 @@ namespace MadMax.Game
             {
                 var st = WastelandGame.Instance ? WastelandGame.Instance.Stats : null;
                 var vt = WastelandGame.Instance ? WastelandGame.Instance.Vitals : null;
-                swingT += dt * (st != null ? st.ToolSpeed : 1f) * (vt && vt.Exhausted ? 0.7f : 1f) * (WastelandGame.Instance ? WastelandGame.Instance.InjuryToolSpeed : 1f);
+                float sdt = dt;
+                if (raiseLeft > 0f) { raiseLeft -= dt; sdt = 0f; }                              // a lowered gun comes up to the shoulder first
+                if (hitStop > 0f) hitStop -= dt;                                               // the blow lands: a beat of stillness
+                else swingT += sdt * (st != null ? st.ToolSpeed : 1f) * (vt && vt.Exhausted ? 0.7f : 1f) * (WastelandGame.Instance ? WastelandGame.Instance.InjuryToolSpeed : 1f);
                 float t = swingT / Tool.swingDuration;
+                if (!struck && t >= Tool.strikeAt)
+                {
+                    struck = true;
+                    swingT = Tool.strikeAt * Tool.swingDuration;                                 // the pose at the impact, not past it
+                    t = Tool.strikeAt;
+                    // a blow lands where the body has put the tool (after the pose below); a shot leaves before its recoil
+                    if (Tool.style == ToolStyle.Gun) { Tool.Strike(this); gunUpUntil = Time.time + 3f; }
+                    else strikeNow = true;
+                }
                 toolPose = Tool.Pose(Mathf.Min(t, 1f));
-                if (!struck && t >= Tool.strikeAt) { struck = true; Tool.Strike(this); }
                 if (t >= 1f) swingT = -1f;
                 action = SwingClip(Tool); actionT = Mathf.Min(t, 1f); actionHit = Tool.strikeAt;
+            }
+            else if (reactClip != null && action == null && !Carried)
+            {
+                var rc = HumanClips.Get(reactClip);
+                float rt = rc != null ? (Time.time - reactAt) / rc.length : 1f;
+                if (rt >= 1f) reactClip = null;
+                else { action = reactClip; actionT = rt; }
             }
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = hs, grounded = grounded, verticalSpeed = vertical, turnRate = turn, lookPitch = lookPitch,
                 carrying = Carried, tool = Carried ? null : toolPose, twoHanded = Tool && Tool.TwoHanded,
                 crouching = crouchClip, action = Carried ? null : action, actionT = actionT, actionHit = actionHit,
+                grip2 = !Tool || Carried ? null : swingT >= 0f ? Tool.SecondGrip : hold != null && Tool.HoldTwoHands ? Tool.transform : null,
+                hold = swingT >= 0f ? null : hold,
                 limpL = gm ? gm.LimpL : 0f, limpR = gm ? gm.LimpR : 0f, armHurtL = gm ? gm.ArmHurtL : 0f, armHurtR = gm ? gm.ArmHurtR : 0f
             });
+            if (strikeNow && Tool)
+            {
+                strikeNow = false;
+                Tool.Strike(this);
+                if (Tool is MeleeTool mt && mt.LastHit > 0f) Impact(mt);
+            }
+        }
+
+        /// <summary>A two-handed overhead blow in progress (sledge, pickaxe): the feet stay planted.</summary>
+        public bool HeavySwing => swingT >= 0f && Tool && Tool.style == ToolStyle.Overhead && Tool.TwoHanded;
+
+        /// <summary>The blow met something: hit-stop (longer for hard things and heavy tools), a bounce back off stone and
+        /// metal, sparks or dust where it struck, the camera jolts for the player.</summary>
+        void Impact(MeleeTool mt)
+        {
+            float hard = mt.LastHit;
+            float heavy = Mathf.Clamp(mt.power, 0.3f, 1.2f) * (mt.TwoHanded ? 1.2f : 1f);
+            hitStop = LastHitStop = Mathf.Min(0.13f, (0.05f + 0.05f * hard) * heavy);
+            if (hard > 0.6f) swingT = Mathf.Max(0f, swingT - mt.swingDuration * 0.02f * hard * heavy);   // rings off it
+            var p = mt.LastPoint;
+            var back = -transform.forward;
+            if (hard >= 0.8f) Fx.Sparks(p, (back + Vector3.up).normalized, Mathf.RoundToInt(4 + 8 * heavy), new Color(1f, 0.78f, 0.4f));
+            else if (hard >= 0.25f && hard < 0.5f) Fx.Smoke(p, Vector3.up * 0.6f + back * 0.3f, 0.25f + 0.2f * heavy, new Color(0.55f, 0.48f, 0.38f, 0.6f), 1.2f);
+            var g = WastelandGame.Instance;
+            if (g && g.Player == this && g.cameraRig) g.cameraRig.Shake((0.6f + 2.4f * hard) * heavy);
+        }
+
+        /// <summary>The pause the last landed blow held (seconds; tests).</summary>
+        public float LastHitStop { get; private set; }
+
+        /// <summary>Hit by someone: a flinch over whatever the body does (a swing in progress plays on).</summary>
+        public void React(bool heavy)
+        {
+            reactClip = heavy && HumanClips.Get("stagger") != null && swingT < 0f ? "stagger" : "flinch";
+            reactAt = Time.time;
         }
 
         /// <summary>The keyframed clip for a tool's swing (null = its procedural pose): shovels dig, hammers hammer,
@@ -490,7 +556,8 @@ namespace MadMax.Game
         {
             if (!t || t.id == null) return null;
             if (t.id.Contains("shovel") || t.id.Contains("spade")) return "dig";
-            if (t.TwoHanded) return null;                                                     // two hands on the handle: the tool's own pose
+            if (t.TwoHanded) return t.style == ToolStyle.Overhead && HumanClips.Get("sledge") != null ? "sledge" : null;   // two hands on a long handle
+                                                                                              // (sledge, pick); the rest: the tool's own pose
             if (t.id.Contains("hammer") && !t.id.Contains("sledge")) return "hammer";
             switch (t.style)
             {

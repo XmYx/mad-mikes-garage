@@ -9,7 +9,7 @@ forearm x < 0 bends the elbow, foot x > 0 points the toes down, chest / head x >
 the left hip forward, left limbs z < 0 / right limbs z > 0 spread them outward. Pelvis offsets are metres (game
 space, height 1) added to the rest pelvis position.
 
-A clip: dict(length seconds, loop, mask full|upper|lower, keys=[(t 0..1, pose dict, opts)]); opts:
+A clip: dict(length seconds, loop, mask full|upper|lower|arms|arm_r, keys=[(t 0..1, pose dict, opts)]); opts:
   pelvis=(x, y, z)  explicit pelvis offset; ground=True computes y so the lowest heel/toe touches the floor (+ lift);
   lift=dy           added after grounding (flight phase of a run, jump).
 Loops repeat their first key at t = 1. Clip metadata: speed (m/s the cycle was authored for, gaits), hit (0..1
@@ -199,7 +199,7 @@ CROUCH_WALK = gait([
 ])
 
 # ---------------------------------------------------------------- standing / idle
-STAND = {"Pelvis": (0, 0, 0), "Chest": (1, 0, 0), "UpperArmL": (-2, 0, -5), "UpperArmR": (-2, 0, 5),
+STAND = {"Pelvis": (0, 0, 0), "Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9),
          "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4),
          "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}
 
@@ -368,6 +368,57 @@ WAVE = [(0.0, {"UpperArmR": (-10, 0, 10), "ForearmR": (-20, 0, 0)}, {}),
         (0.45, {"Chest": (-2, 0, 0), "UpperArmR": (-150, 0, 40), "ForearmR": (-20, 0, 30), "HandR": (0, 0, 20)}, {}),
         (0.65, {"Chest": (-2, 0, 0), "UpperArmR": (-150, 0, 30), "ForearmR": (-30, 0, -20), "HandR": (0, 0, -20)}, {}),
         (1.0, {"UpperArmR": (-10, 0, 10), "ForearmR": (-20, 0, 0)}, {})]
+# two hands on a long handle (sledgehammer, pickaxe): staggered stance, left foot ahead. The head comes up the right side,
+# drops behind the back with the hands above the head (a beat at the top), the hands lead forward while the head lags,
+# then hips, knees and the trunk drive it down into the blow ahead at knee height; it sits there a moment and comes back
+# up. Arm angles were fitted (scipy: the right hand to grip / handle-direction targets of the voxel sledge, the left hand
+# onto the handle 0.07-0.26 m above the right); the game keeps the left hand on the handle with IK.
+SLEDGE = [
+    (0.0, {"Pelvis": (0, 10, 0), "Chest": (8, -10, 0), "Head": (2, 4, 0), "UpperArmL": (-49, -2, 24), "UpperArmR": (-11, -16, -1), "ForearmL": (-24, 0, 0),
+           "ForearmR": (-49, 0, 0), "HandR": (-64, 0, -8), "ThighL": (-21, 0, -4), "ThighR": (6, 0, 4), "ShinL": (14, 0, 0), "ShinR": (12, 0, 0),
+           "FootL": (7, -10, 4), "FootR": (-18, -10, -4)}, {"ground": True}),
+    (0.22, {"Pelvis": (0, 2, 0), "Chest": (-2, 22, -4), "Head": (-2, -14, 0), "UpperArmL": (-79, 12, 49), "UpperArmR": (-37, -4, -4), "ForearmL": (-38, 0, 0),
+            "ForearmR": (-72, 0, 0), "HandL": (0, 0, 1), "HandR": (-96, 0, 17), "ThighL": (-16, 0, -4), "ThighR": (9, 0, 4), "ShinL": (8, 0, 0),
+            "ShinR": (10, 0, 0), "FootL": (8, -2, 4), "FootR": (-19, -2, -4)}, {"ground": True, "pelvis": (0, 0, -0.03)}),
+    (0.42, {"Chest": (-14, 12, 0), "Head": (6, -8, 0), "UpperArmL": (-161, -30, 57), "UpperArmR": (-126, -11, -2), "ForearmL": (-66, 0, 0),
+            "ForearmR": (-49, 0, 0), "HandL": (0, 0, 4), "HandR": (-122, 0, 1), "ThighL": (-14, 0, -4), "ThighR": (10, 0, 4), "ShinL": (4, 0, 0),
+            "ShinR": (8, 0, 0), "FootL": (10, 0, 4), "FootR": (-18, 0, -4)}, {"ground": True, "pelvis": (0, 0, -0.04)}),
+    (0.47, {"Pelvis": (0, 1, 0), "Chest": (-15, 10, 0), "Head": (8, -6, 0), "UpperArmL": (-161, -35, 57), "UpperArmR": (-125, -6, -6), "ForearmL": (-73, 0, 0),
+            "ForearmR": (-50, 0, 0), "HandL": (0, 0, 5), "HandR": (-123, 0, 0), "ThighL": (-15, 0, -4), "ThighR": (10, 0, 4), "ShinL": (6, 0, 0),
+            "ShinR": (9, 0, 0), "FootL": (9, -1, 4), "FootR": (-18, -1, -4)}, {"ground": True, "pelvis": (0, 0, -0.04)}),
+    (0.54, {"Pelvis": (0, 6, 0), "Chest": (6, 4, 0), "Head": (4, -2, 0), "UpperArmL": (-123, -12, 48), "UpperArmR": (-111, -4, -22), "ForearmL": (-78, 0, 0),
+            "ForearmR": (-57, 0, 0), "HandL": (0, 0, 5), "HandR": (-93, 0, -13), "ThighL": (-21, 0, -4), "ThighR": (6, 0, 4), "ShinL": (14, 0, 0),
+            "ShinR": (12, 0, 0), "FootL": (7, -6, 4), "FootR": (-18, -6, -4)}, {"ground": True, "pelvis": (0, 0, 0.0)}),
+    (0.62, {"Pelvis": (10, 12, 0), "Chest": (26, -6, 0), "Head": (-14, 6, 0), "UpperArmL": (-51, -3, 22), "UpperArmR": (-33, -16, -12), "ForearmL": (-18, 0, 0),
+            "ForearmR": (-45, 0, 0), "HandL": (0, 0, -1), "HandR": (-23, 0, 13), "ThighL": (-36, 0, -4), "ThighR": (-1, 0, 4), "ShinL": (36, 0, 0),
+            "ShinR": (30, 0, 0), "FootL": (-10, -12, 4), "FootR": (-39, -12, -4)}, {"ground": True, "pelvis": (0, 0, 0.06)}),
+    (0.74, {"Pelvis": (12, 12, 0), "Chest": (28, -6, 0), "Head": (-16, 6, 0), "UpperArmL": (-55, -5, 22), "UpperArmR": (-39, -14, -12), "ForearmL": (-5, 0, 0),
+            "ForearmR": (-29, 0, 0), "HandR": (-30, 0, 14), "ThighL": (-38, 0, -4), "ThighR": (-3, 0, 4), "ShinL": (40, 0, 0), "ShinR": (34, 0, 0),
+            "FootL": (-14, -12, 4), "FootR": (-43, -12, -4)}, {"ground": True, "pelvis": (0, 0, 0.065)}),
+]
+SLEDGE.append((1.0, SLEDGE[0][1], SLEDGE[0][2]))
+
+# hit reactions: a flinch over whatever the body is doing (head snaps back, arms come up to cover), and a stagger
+# (a heavy blow: knocked back a step, arms out for balance, caught and recovered)
+FLINCH = [(0.0, {}, {}),
+          (0.18, {"Chest": (-12, 8, 4), "Head": (-16, -12, 6), "UpperArmL": (-58, 0, 26), "UpperArmR": (-52, 0, -20), "ForearmL": (-112, 0, 0),
+                  "ForearmR": (-104, 0, 0), "HandL": (0, 0, 20), "HandR": (0, 0, -20)}, {}),
+          (0.4, {"Chest": (-6, 4, 2), "Head": (-6, -6, 2), "UpperArmL": (-36, 0, 16), "UpperArmR": (-30, 0, -10), "ForearmL": (-80, 0, 0),
+                 "ForearmR": (-70, 0, 0)}, {}),
+          (1.0, {}, {})]
+STAGGER_HIT = add(STAND, {"Chest": (-20, 6, 4), "Head": (-18, -8, 4), "UpperArmL": (-40, 0, -48), "UpperArmR": (-34, 0, 52),
+                          "ForearmL": (-30, 0, 0), "ForearmR": (-36, 0, 0), "ThighL": (-8, 0, -4), "ShinL": (10, 0, 0), "ThighR": (22, 0, 6), "ShinR": (18, 0, 0)})
+STAGGER_CATCH = flat_feet(add(STAND, {"Pelvis": (6, 0, 0), "Chest": (14, 0, 0), "Head": (-6, 0, 0), "UpperArmL": (-30, 0, -30), "UpperArmR": (-26, 0, 30),
+                                      "ForearmL": (-40, 0, 0), "ForearmR": (-40, 0, 0), "ThighL": (-34, 0, -6), "ShinL": (52, 0, 0),
+                                      "ThighR": (6, 0, 6), "ShinR": (40, 0, 0)}))
+STAGGER = [(0.0, STAND, {"ground": True}),
+           (0.16, STAGGER_HIT, {"ground": True, "pelvis": (0, 0, -0.08)}),
+           (0.42, STAGGER_CATCH, {"ground": True, "pelvis": (0, 0, -0.14)}),
+           (0.7, flat_feet(add(STAND, {"Chest": (6, 0, 0), "UpperArmL": (-14, 0, -10), "UpperArmR": (-12, 0, 10), "ForearmL": (-30, 0, 0),
+                                       "ForearmR": (-30, 0, 0), "ThighL": (-14, 0, -4), "ShinL": (20, 0, 0), "ThighR": (2, 0, 4), "ShinR": (12, 0, 0)})),
+            {"ground": True, "pelvis": (0, 0, -0.06)}),
+           (1.0, STAND, {"ground": True})]
+
 # ---------------------------------------------------------------- death: knees buckle, fall forward onto the front
 DEATH = [(0.0, STAND, {"ground": True}),
          (0.2, flat_feet(add(STAND, {"ThighL": (-30, 0, -4), "ShinL": (60, 0, 0), "ThighR": (-24, 0, 4), "ShinR": (54, 0, 0), "Chest": (16, 0, 6), "Head": (20, 0, 0),
@@ -381,6 +432,99 @@ DEATH = [(0.0, STAND, {"ground": True}),
          (1.0, add(STAND, {"Pelvis": (90, 0, 4), "ThighL": (-8, 0, -10), "ShinL": (24, 0, 0), "ThighR": (0, 0, 6), "ShinR": (16, 0, 0), "FootL": (12, 0, 0),
                            "FootR": (8, 0, 0), "Chest": (2, 0, 6), "Head": (-34, 60, 0), "UpperArmL": (-150, 0, -40), "UpperArmR": (-110, 0, 46),
                            "ForearmL": (-20, 0, 0), "ForearmR": (-40, 0, 0)}), {"pelvis": (0, -0.82, 0.78)})]
+
+# ---------------------------------------------------------------- holding a tool (idle overlays) and fidgets
+# Holds play over the idle / walk on the arms only (mask arm_r: the right arm, arms: both), so breathing, weight
+# shifts and look-arounds stay. Fitted (scipy) to grip / tool-direction targets per carry style and checked against
+# the body shapes (export_clips.clearance: no limb or tool inside the torso, hips, thighs or head at build 0.85-1.2
+# with 2.5 cm for clothes). A fidget (mask upper) plays now and then while standing still with that hold.
+HOLDS = {
+    "hold_side": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-5, 4, 7), "ForearmR": (-4, 0, 0), "HandR": (-47, 0, 2)}, {}), (0.5, {"UpperArmR": (-5, 5, 8), "ForearmR": (-4, 0, 0), "HandR": (-49, 0, 3)}, {})]),
+    "hold_shoulder": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-27, 5, -9), "ForearmR": (-89, 0, 0), "HandR": (-120, 0, 11)}, {}), (0.5, {"UpperArmR": (-28, 5, -8), "ForearmR": (-90, 0, 0), "HandR": (-117, 0, 10)}, {})]),
+    "hold_staff": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (5, 14, 8), "ForearmR": (-53, 0, 0), "HandR": (-120, 0, 8)}, {}), (0.5, {"UpperArmR": (6, 15, 8), "ForearmR": (-56, 0, 0), "HandR": (-118, 0, 8)}, {})]),
+    "hold_port": dict(length=3.0, loop=True, mask="arms", keys=[(0.0, {"UpperArmL": (-31, 0, 21), "UpperArmR": (17, -19, 5), "ForearmL": (-8, 0, 0), "ForearmR": (-72, 0, 0), "HandR": (-26, 0, -18)}, {}), (0.5, {"UpperArmL": (-31, 0, 22), "UpperArmR": (19, -18, 5), "ForearmL": (-11, 0, 0), "ForearmR": (-75, 0, 0), "HandR": (-26, 0, -18)}, {})]),
+    "hold_torch": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-14, 5, 4), "ForearmR": (-59, 0, 0), "HandR": (-92, 0, 7)}, {}), (0.5, {"UpperArmR": (-13, 5, 4), "ForearmR": (-62, 0, 0), "HandR": (-89, 0, 7)}, {})]),
+    "hold_flash": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-13, 1, 6), "ForearmR": (-71, 0, 0), "HandR": (9, 0, -3)}, {}), (0.5, {"UpperArmR": (-12, 1, 5), "ForearmR": (-73, 0, 0), "HandR": (10, 0, -2)}, {})]),
+    "hold_hang": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-3, -1, 15), "HandR": (0, 0, -8)}, {}), (0.5, {"UpperArmR": (-3, -1, 15), "ForearmR": (-1, 0, 0), "HandR": (-1, 0, -9)}, {})]),
+    "hold_rifle": dict(length=3.0, loop=True, mask="arms", keys=[(0.0, {"UpperArmL": (-34, 0, 20), "UpperArmR": (23, -17, 12), "ForearmL": (-6, 0, 0), "ForearmR": (-79, 0, 0), "HandR": (-27, 0, -25)}, {}), (0.5, {"UpperArmL": (-33, 0, 20), "UpperArmR": (24, -17, 12), "ForearmL": (-9, 0, 0), "ForearmR": (-82, 0, 0), "HandL": (0, 0, -1), "HandR": (-27, 0, -25)}, {})]),
+    "hold_pistol": dict(length=3.0, loop=True, mask="arm_r", keys=[(0.0, {"UpperArmR": (-11, -5, 8), "ForearmR": (-41, 0, 0), "HandR": (-7, 0, -8)}, {}), (0.5, {"UpperArmR": (-9, -5, 9), "ForearmR": (-45, 0, 0), "HandR": (-5, 0, -8)}, {})]),
+    "hold_side_fidget": dict(length=3.2, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-5, 4, 7), "ForearmL": (-14, 0, 0), "ForearmR": (-4, 0, 0), "HandL": (0, 0, 4), "HandR": (-47, 0, 2)}, {}),
+        (0.25, {"Chest": (5, 8, 0), "Head": (16, 12, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-7, -11, 4), "ForearmL": (-12, 0, 0), "ForearmR": (-73, 0, 0), "HandL": (0, 0, 4), "HandR": (-50, 0, -7)}, {}),
+        (0.45, {"Chest": (5, 8, 0), "Head": (16, 12, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-7, -11, 4), "ForearmL": (-12, 0, 0), "ForearmR": (-73, 0, 0), "HandL": (0, 0, 4), "HandR": (-50, 0, 28)}, {}),
+        (0.62, {"Chest": (5, 8, 0), "Head": (16, 12, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-7, -11, 4), "ForearmL": (-12, 0, 0), "ForearmR": (-73, 0, 0), "HandL": (0, 0, 4), "HandR": (-50, 0, -7)}, {}),
+        (0.85, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-5, 4, 7), "ForearmL": (-14, 0, 0), "ForearmR": (-4, 0, 0), "HandL": (0, 0, 4), "HandR": (-47, 0, 2)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-5, 4, 7), "ForearmL": (-14, 0, 0), "ForearmR": (-4, 0, 0), "HandL": (0, 0, 4), "HandR": (-47, 0, 2)}, {})]),
+    "hold_shoulder_fidget": dict(length=3.6, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-27, 5, -9), "ForearmL": (-14, 0, 0), "ForearmR": (-89, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 11)}, {}),
+        (0.22, {"Chest": (-2, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-38, 6, -8), "ForearmL": (-12, 0, 0), "ForearmR": (-84, 0, 0), "HandL": (0, 0, 4), "HandR": (-113, 0, 11)}, {}),
+        (0.4, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-27, 5, -9), "ForearmL": (-14, 0, 0), "ForearmR": (-89, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 11)}, {}),
+        (0.55, {"Chest": (-3, -6, 0), "Head": (-4, -28, 4), "UpperArmL": (2, 0, -13), "UpperArmR": (-27, 5, -9), "ForearmL": (-12, 0, 0), "ForearmR": (-89, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 11)}, {}),
+        (0.8, {"Chest": (-3, -6, 0), "Head": (-4, -28, 4), "UpperArmL": (2, 0, -13), "UpperArmR": (-27, 5, -9), "ForearmL": (-12, 0, 0), "ForearmR": (-89, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 11)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-27, 5, -9), "ForearmL": (-14, 0, 0), "ForearmR": (-89, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 11)}, {})]),
+    "hold_staff_fidget": dict(length=4.0, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (5, 14, 8), "ForearmL": (-14, 0, 0), "ForearmR": (-53, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 8)}, {}),
+        (0.2, {"Chest": (3, 0, 7), "Head": (0, 24, -3), "UpperArmL": (-2, 0, -9), "UpperArmR": (-3, 29, 0), "ForearmL": (-12, 0, 0), "ForearmR": (-35, 0, 0), "HandL": (0, 0, 4), "HandR": (-123, 0, 3)}, {}),
+        (0.45, {"Chest": (3, 0, 7), "Head": (0, -16, -1), "UpperArmL": (-2, 0, -9), "UpperArmR": (-3, 29, 0), "ForearmL": (-12, 0, 0), "ForearmR": (-35, 0, 0), "HandL": (0, 0, 4), "HandR": (-123, 0, 3)}, {}),
+        (0.7, {"Chest": (3, 0, 7), "Head": (0, 24, -3), "UpperArmL": (-2, 0, -9), "UpperArmR": (-3, 29, 0), "ForearmL": (-12, 0, 0), "ForearmR": (-35, 0, 0), "HandL": (0, 0, 4), "HandR": (-123, 0, 3)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (5, 14, 8), "ForearmL": (-14, 0, 0), "ForearmR": (-53, 0, 0), "HandL": (0, 0, 4), "HandR": (-120, 0, 8)}, {})]),
+    "hold_port_fidget": dict(length=3.0, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-31, 0, 21), "UpperArmR": (17, -19, 5), "ForearmL": (-8, 0, 0), "ForearmR": (-72, 0, 0), "HandR": (-26, 0, -18)}, {}),
+        (0.3, {"Chest": (7, -6, 0), "Head": (18, -10, 0), "UpperArmL": (-46, 2, 31), "UpperArmR": (5, -9, 12), "ForearmL": (-29, 0, 0), "ForearmR": (-87, 0, 0), "HandR": (-33, 0, -13)}, {}),
+        (0.6, {"Chest": (7, -6, 0), "Head": (18, -10, 0), "UpperArmL": (-46, 2, 31), "UpperArmR": (5, -9, 12), "ForearmL": (-29, 0, 0), "ForearmR": (-87, 0, 0), "HandR": (-33, 0, -28)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-31, 0, 21), "UpperArmR": (17, -19, 5), "ForearmL": (-8, 0, 0), "ForearmR": (-72, 0, 0), "HandR": (-26, 0, -18)}, {})]),
+    "hold_torch_fidget": dict(length=4.0, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-14, 5, 4), "ForearmL": (-14, 0, 0), "ForearmR": (-59, 0, 0), "HandL": (0, 0, 4), "HandR": (-92, 0, 7)}, {}),
+        (0.2, {"Chest": (-1, -8, 0), "Head": (-6, -32, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-26, 17, 8), "ForearmL": (-12, 0, 0), "ForearmR": (-115, 0, 0), "HandL": (0, 0, 4), "HandR": (-29, 0, 7)}, {}),
+        (0.5, {"Chest": (-1, 10, 0), "Head": (-6, 34, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-26, 17, 8), "ForearmL": (-12, 0, 0), "ForearmR": (-115, 0, 0), "HandL": (0, 0, 4), "HandR": (-29, 0, 7)}, {}),
+        (0.75, {"Chest": (-1, 10, 0), "Head": (-6, 34, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-26, 17, 8), "ForearmL": (-12, 0, 0), "ForearmR": (-115, 0, 0), "HandL": (0, 0, 4), "HandR": (-29, 0, 7)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-14, 5, 4), "ForearmL": (-14, 0, 0), "ForearmR": (-59, 0, 0), "HandL": (0, 0, 4), "HandR": (-92, 0, 7)}, {})]),
+    "hold_flash_fidget": dict(length=4.0, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-13, 1, 6), "ForearmL": (-14, 0, 0), "ForearmR": (-71, 0, 0), "HandL": (0, 0, 4), "HandR": (9, 0, -3)}, {}),
+        (0.25, {"Chest": (1, -14, 0), "Head": (2, -20, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 17), "ForearmL": (-12, 0, 0), "ForearmR": (-79, 0, 0), "HandL": (0, 0, 4), "HandR": (-2, 0, -24)}, {}),
+        (0.6, {"Chest": (1, 14, 0), "Head": (2, 20, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-20, 5, -5), "ForearmL": (-12, 0, 0), "ForearmR": (-61, 0, 0), "HandL": (0, 0, 4), "HandR": (3, 0, 22)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-13, 1, 6), "ForearmL": (-14, 0, 0), "ForearmR": (-71, 0, 0), "HandL": (0, 0, 4), "HandR": (9, 0, -3)}, {})]),
+    "hold_hang_fidget": dict(length=2.6, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-3, -1, 15), "ForearmL": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -8)}, {}),
+        (0.3, {"Chest": (4, 4, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-6, -2, 14), "ForearmL": (-12, 0, 0), "ForearmR": (-16, 0, 0), "HandL": (0, 0, 4), "HandR": (15, 0, -8)}, {}),
+        (0.5, {"Chest": (4, 4, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-6, -2, 14), "ForearmL": (-12, 0, 0), "ForearmR": (-22, 0, 0), "HandL": (0, 0, 4), "HandR": (15, 0, -8)}, {}),
+        (0.7, {"Chest": (4, 4, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-6, -2, 14), "ForearmL": (-12, 0, 0), "ForearmR": (-16, 0, 0), "HandL": (0, 0, 4), "HandR": (15, 0, -8)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-3, -1, 15), "ForearmL": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -8)}, {})]),
+    "hold_rifle_fidget": dict(length=3.2, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-34, 0, 20), "UpperArmR": (23, -17, 12), "ForearmL": (-6, 0, 0), "ForearmR": (-79, 0, 0), "HandR": (-27, 0, -25)}, {}),
+        (0.3, {"Chest": (7, -8, 0), "Head": (20, -12, 0), "UpperArmL": (-32, 10, 28), "UpperArmR": (28, -6, 13), "ForearmL": (-58, 0, 0), "ForearmR": (-110, 0, 0), "HandR": (-27, 0, -14)}, {}),
+        (0.55, {"Chest": (7, -8, 0), "Head": (20, -12, 0), "UpperArmL": (-32, 10, 28), "UpperArmR": (28, -6, 13), "ForearmL": (-58, 0, 0), "ForearmR": (-110, 0, 0), "HandR": (-27, 0, 6)}, {}),
+        (0.75, {"Chest": (7, -8, 0), "Head": (20, -12, 0), "UpperArmL": (-32, 10, 28), "UpperArmR": (28, -6, 13), "ForearmL": (-58, 0, 0), "ForearmR": (-110, 0, 0), "HandR": (-27, 0, -14)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-34, 0, 20), "UpperArmR": (23, -17, 12), "ForearmL": (-6, 0, 0), "ForearmR": (-79, 0, 0), "HandR": (-27, 0, -25)}, {})]),
+    "hold_pistol_fidget": dict(length=3.0, loop=False, mask="upper", keys=[
+        (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-11, -5, 8), "ForearmL": (-14, 0, 0), "ForearmR": (-41, 0, 0), "HandL": (0, 0, 4), "HandR": (-7, 0, -8)}, {}),
+        (0.3, {"Chest": (6, 6, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-11, -10, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-72, 0, 0), "HandL": (0, 0, 4), "HandR": (-33, 0, -12)}, {}),
+        (0.5, {"Chest": (6, 6, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-11, -10, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-72, 0, 0), "HandL": (0, 0, 4), "HandR": (-33, 0, 33)}, {}),
+        (0.7, {"Chest": (6, 6, 0), "Head": (20, 10, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-11, -10, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-72, 0, 0), "HandL": (0, 0, 4), "HandR": (-33, 0, -12)}, {}),
+        (1.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -7), "UpperArmR": (-11, -5, 8), "ForearmL": (-14, 0, 0), "ForearmR": (-41, 0, 0), "HandL": (0, 0, 4), "HandR": (-7, 0, -8)}, {})]),
+}
+# empty hands: more idle variants (stretch, rub the neck, hands on the hips) between the breathing idle
+IDLE_STRETCH = [
+    (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.14, {"Chest": (-9, 0, 0), "Head": (-16, 0, 0), "UpperArmL": (-170, 0, -21), "UpperArmR": (-170, 0, 21), "ForearmL": (-30, 0, 0), "ForearmR": (-32, 0, 0), "HandL": (0, 0, 14), "HandR": (0, 0, -14), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.3, {"Chest": (-12, 0, 0), "Head": (-16, 0, 0), "UpperArmL": (-174, 0, -21), "UpperArmR": (-174, 0, 21), "ForearmL": (-30, 0, 0), "ForearmR": (-32, 0, 0), "HandL": (0, 0, 14), "HandR": (0, 0, -14), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.42, {"Chest": (4, 0, 0), "UpperArmL": (-2, 0, -15), "UpperArmR": (-2, 0, 15), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.55, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True})]
+IDLE_NECK = [
+    (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.15, {"Chest": (4, 0, 0), "Head": (14, 0, -8), "UpperArmL": (-2, 0, -9), "UpperArmR": (-165, 32, -58), "ForearmL": (-12, 0, 0), "ForearmR": (-142, 0, 0), "HandL": (0, 0, 4), "HandR": (21, 0, 11), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.27, {"Chest": (4, 0, 0), "Head": (14, -6, -8), "UpperArmL": (-2, 0, -9), "UpperArmR": (-165, 32, -58), "ForearmL": (-12, 0, 0), "ForearmR": (-142, 0, 0), "HandL": (0, 0, 4), "HandR": (21, 0, 25), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.39, {"Chest": (4, 0, 0), "Head": (14, 0, -8), "UpperArmL": (-2, 0, -9), "UpperArmR": (-165, 32, -58), "ForearmL": (-12, 0, 0), "ForearmR": (-142, 0, 0), "HandL": (0, 0, 4), "HandR": (21, 0, 11), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.51, {"Chest": (4, 0, 0), "Head": (14, 6, -8), "UpperArmL": (-2, 0, -9), "UpperArmR": (-165, 32, -58), "ForearmL": (-12, 0, 0), "ForearmR": (-142, 0, 0), "HandL": (0, 0, 4), "HandR": (21, 0, 25), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.62, {"Chest": (4, 0, 0), "Head": (14, 0, -8), "UpperArmL": (-2, 0, -9), "UpperArmR": (-165, 32, -58), "ForearmL": (-12, 0, 0), "ForearmR": (-142, 0, 0), "HandL": (0, 0, 4), "HandR": (21, 0, 11), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.78, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True})]
+IDLE_HIPS = [
+    (0.0, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.12, {"Chest": (1, 0, 0), "UpperArmL": (43, 26, -17), "UpperArmR": (43, -26, 17), "ForearmL": (-86, 0, 0), "ForearmR": (-86, 0, 0), "HandL": (2, 0, 30), "HandR": (2, 0, -30), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.3, {"Chest": (1, 6, 0), "Head": (-2, 30, 0), "UpperArmL": (43, 26, -17), "UpperArmR": (43, -26, 17), "ForearmL": (-86, 0, 0), "ForearmR": (-86, 0, 0), "HandL": (2, 0, 30), "HandR": (2, 0, -30), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.5, {"Chest": (1, -6, 0), "Head": (-2, -28, 0), "UpperArmL": (43, 26, -17), "UpperArmR": (43, -26, 17), "ForearmL": (-86, 0, 0), "ForearmR": (-86, 0, 0), "HandL": (2, 0, 30), "HandR": (2, 0, -30), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.66, {"Chest": (1, 0, 0), "UpperArmL": (43, 26, -17), "UpperArmR": (43, -26, 17), "ForearmL": (-86, 0, 0), "ForearmR": (-86, 0, 0), "HandL": (2, 0, 30), "HandR": (2, 0, -30), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
+    (0.8, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True})]
 
 CLIPS = {
     # name: length (s), loop, mask, keys, meta
@@ -413,10 +557,17 @@ CLIPS = {
     "swing_overhead": dict(length=0.55, loop=False, mask="upper", keys=SWING_OH, hit=0.64),
     "swing_slash": dict(length=0.5, loop=False, mask="upper", keys=SWING_SL, hit=0.55),
     "thrust": dict(length=0.45, loop=False, mask="upper", keys=THRUST, hit=0.5),
+    "sledge": dict(length=1.0, loop=False, mask="full", keys=SLEDGE, hit=0.62, tool=True),
+    "flinch": dict(length=0.45, loop=False, mask="upper", keys=FLINCH),
+    "stagger": dict(length=0.9, loop=False, mask="full", keys=STAGGER),
     "talk_a": dict(length=3.2, loop=True, mask="upper", keys=TALK_A),
     "talk_b": dict(length=3.6, loop=True, mask="upper", keys=TALK_B),
     "wave": dict(length=1.4, loop=False, mask="upper", keys=WAVE),
     "death_fall": dict(length=1.3, loop=False, mask="full", keys=DEATH),
+    "idle_stretch": dict(length=6.0, loop=True, mask="full", keys=IDLE_STRETCH),
+    "idle_neck": dict(length=5.0, loop=True, mask="full", keys=IDLE_NECK),
+    "idle_hips": dict(length=6.0, loop=True, mask="full", keys=IDLE_HIPS),
+    **HOLDS,
 }
 
 

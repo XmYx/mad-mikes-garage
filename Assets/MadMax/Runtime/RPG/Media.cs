@@ -51,6 +51,7 @@ namespace MadMax.RPG
             B("vhs_survival", "VHS: DESERT SURVIVAL", Skill.Survival, 200, 30),
             B("vhs_karate", "VHS: STREET KARATE", Skill.Melee, 200, 30),
             B("vhs_demolition", "VHS: DEMOLITION DERBY", Skill.Demolition, 180, 30, "k_weapon_mounts"),
+            B("book_first_aid", "FIELD FIRST AID", Skill.Survival, 140, 25),
             B("book_charm", "HOW TO MAKE FRIENDS AFTER THE END", Skill.Speech, 150, 25),
             B("vhs_salesman", "VHS: SUPER SALESMAN SEMINAR", Skill.Speech, 180, 30),
         };

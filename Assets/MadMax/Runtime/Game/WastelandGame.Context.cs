@@ -353,6 +353,18 @@ namespace MadMax.Game
             ContextActions.Register("world.item", (g, t, into) => g.WorldItemOptions(t, into));
             ContextActions.Register("world.ground", (g, t, into) => g.GroundOptions(t, into));
             ContextActions.Register("pack.item", (g, t, into) => { if (t.item != null) into.AddRange(g.ItemUseOptions(t.item)); });
+            ContextActions.Register("crew.radio", (g, t, into) => { if (t.item == null) g.CrewRadioOptions(into); });
+        }
+
+        /// <summary>Walkie-talkie orders (2026-10-09): with a handheld radio in the pack, companions carrying one hear
+        /// COME / HOLD / BRING A CAR from any distance.</summary>
+        void CrewRadioOptions(List<ContextOption> into)
+        {
+            if (Inventory.GetItem(MadMax.Game.SafetyTools.HandRadio) <= 0 || MadMax.Npc.Companions.OnRadio().Count == 0) return;
+            into.Add(Opt("RADIO THE CREW: COME TO ME", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.Come), false));
+            into.Add(Opt("RADIO THE CREW: HOLD WHERE YOU ARE", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.Hold), false));
+            bool car = MadMax.Npc.Companions.CarFor(this, null) != null;
+            into.Add(Opt("RADIO THE CREW: BRING A CAR", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.BringCar), false, car ? null : "NO SPARE CAR NEAR THEM"));
         }
 
         static readonly Regex CtxToken = new Regex(@"\[([^\]]+)\]\s*([^\[]*)");

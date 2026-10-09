@@ -58,6 +58,20 @@ namespace MadMax.RPG
             }
         }
 
+        /// <summary>A broken leg or foot (the recovery arc: rest, a crutch and sleep speed it, walking on it slows it).</summary>
+        public bool BrokenLeg => type == Wound.Fracture && (zone == BodyZone.LegL || zone == BodyZone.LegR || zone == BodyZone.FootL || zone == BodyZone.FootR);
+        /// <summary>Healing pace multiplier set by the game each step (<c>WastelandGame.RecoveryPace</c>); 1 = normal.</summary>
+        [System.NonSerialized] public float pace = 1f;
+
+        /// <summary>Healing while asleep or resting off-screen: only the knitting, no bleeding or infection.</summary>
+        public void Rest(float seconds, float factor)
+        {
+            bool canHeal = (type != Wound.Fracture || splinted) && (type != Wound.Mangled || (splinted && bandaged)) && infection <= 0.3f && Bleeding == false;
+            if (!canHeal) return;
+            float rate = factor * (rough && splinted && (type == Wound.Fracture || type == Wound.Mangled) ? RoughSplint : 1f) * pace;
+            severity = Mathf.Max(shrapnel ? ShrapnelFloor : 0f, severity - seconds * rate / (HealMinutes * 60f));
+        }
+
         /// <summary>Advance healing, bleeding and infection. Returns health lost this step.</summary>
         public float Tick(float dt, float hygiene, float nutrition)
         {
@@ -71,7 +85,7 @@ namespace MadMax.RPG
             if (infection > 0.5f) loss += (infection - 0.5f) * 0.3f * dt;
             bool canHeal = (type != Wound.Fracture || splinted) && (type != Wound.Mangled || (splinted && bandaged));
             float rate = canHeal ? (bandaged || type == Wound.Bruise || type == Wound.Scratch || type == Wound.Strain ? 1f : 0.35f) : 0f;
-            rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f) * (rough && splinted && (type == Wound.Fracture || type == Wound.Mangled) ? RoughSplint : 1f);
+            rate *= Mathf.Lerp(0.3f, 1f, nutrition) * (infection > 0.3f ? 0.2f : 1f) * (rough && splinted && (type == Wound.Fracture || type == Wound.Mangled) ? RoughSplint : 1f) * pace;
             severity = Mathf.Max(shrapnel ? ShrapnelFloor : 0f, severity - dt * rate / (HealMinutes * 60f));
             return loss;
         }
@@ -108,6 +122,7 @@ namespace MadMax.RPG
             {
                 case "CRASH":
                 {
+                    if (amount < 6f) break;                                                      // shaken, sore: no wound
                     int n = amount > 25f ? 2 : 1;
                     for (int i = 0; i < n; i++)
                     {

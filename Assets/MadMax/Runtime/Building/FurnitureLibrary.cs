@@ -27,6 +27,7 @@ namespace MadMax.Building
         public int plan = -1;            // structure plan pseudo piece: index into StructurePlans (-2 = the capture tool)
         public float voxel = VoxelMesher.DefaultSize;   // big coarse pieces (the hangar) use larger voxels
         public string desc;              // what it is for (build menu); null = read from what it is (FurnitureLibrary.Describe)
+        public FrameKind frame;          // free frame (roadmap 29): beams / ladders point to point, spans over beam ends
     }
 
     /// <summary>Placeable furniture and building pieces. Origin = mounting point on the surface, +Y = away from the
@@ -177,6 +178,7 @@ namespace MadMax.Building
             defs.AddRange(KitchenPieces());
             defs.AddRange(FarmPieces());
             defs.AddRange(RoadsPieces());
+            defs.AddRange(FramePieces());
             defs.AddRange(MetalPieces());
             defs.AddRange(HusbandryPieces());
             defs.AddRange(UtilitiesPieces());

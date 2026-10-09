@@ -19,7 +19,7 @@ namespace MadMax.Vehicles
         public Transform speedNeedle, rpmNeedle;
         readonly int[][] gearSeg = new int[1][], speedSeg = new int[3][];
         readonly int[] fuelLed = new int[10], tempLed = new int[10];
-        readonly int[] lamps = new int[9];
+        readonly int[] lamps = new int[10];
         public static readonly Vector2 SpeedAt = new Vector2(-0.105f, 0.004f), RpmAt = new Vector2(0.105f, 0.004f);
         public const float DialR = 0.046f, Sweep = 270f;
 
@@ -66,7 +66,7 @@ namespace MadMax.Vehicles
             // warning lamps along the bottom
             for (int k = 0; k < lamps.Length; k++)
             {
-                float x = -0.064f + k * 0.016f;
+                float x = -0.0648f + k * 0.0144f;
                 Quad(x - 0.0052f, -0.0515f, x + 0.0052f, -0.0425f, 0.0005f, Shade(rim, 0.8f));
                 lamps[k] = Quad(x - 0.0042f, -0.0505f, x + 0.0042f, -0.0435f, 0f, off);
             }

@@ -21,6 +21,8 @@ namespace MadMax.Game.Acceptance
         public virtual bool NeedsWorld => true;
         /// <summary>Rules for this scenario's fresh world (null = the standard sandbox rules, seed 7).</summary>
         public virtual GameRules WorldRules => null;
+        /// <summary>Always gets a fresh world, even in a quick run that reuses one (it changes the world for good).</summary>
+        public virtual bool Isolated => false;
         public abstract IEnumerator Run(ScenarioContext c);
     }
 

@@ -29,6 +29,7 @@ namespace MadMax.Game
         public int loot = 1;                // 0 scarce, 1 normal, 2 plenty, 3 hoarder: loot rolls, crates, wreck stripping
         public int raids = 2;               // raids on claimed bases: 0 never, 1 rare, 2 normal, 3 often (BaseRaid.Intervals)
         public bool story;                  // STORY start (the campaign, storyline.md) instead of SANDBOX
+        public int start;                   // sandbox start: 0 the yard, 1 aboard the rolling city (roadmap 28)
 
         public static readonly float[] DayLengths = { 0f, 12f, 24f, 48f, 96f };
         public static readonly string[] DayLengthNames = { "ENDLESS DAY", "12 MIN", "24 MIN", "48 MIN", "96 MIN" };
@@ -42,6 +43,7 @@ namespace MadMax.Game
 
         public static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD", "BRUTAL" };
         public static readonly string[] KitNames = { "NOTHING", "BASIC", "FULL WORKSHOP" };
+        public static readonly string[] StartNames = { "THE YARD", "ABOARD THE ROLLING CITY" };
         public static readonly string[] FleetNames = { "FULL FLEET", "SCAVENGER", "TRABANT", "ON FOOT" };
         public static readonly string[] WeatherNames = { "NEVER RAINS", "RARE", "NORMAL", "STORMY" };
         public static readonly string[] SeasonNames = { "SUMMER", "AUTUMN", "WINTER", "SPRING" };

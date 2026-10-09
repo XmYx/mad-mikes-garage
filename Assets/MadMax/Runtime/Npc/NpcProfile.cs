@@ -86,8 +86,8 @@ namespace MadMax.Npc
             }
             else
             {
-                p.outfit.Add(Pick("tshirt", "tank", "hoodie", "tshirt")); p.outfit.Add(Pick("pants", "jeans", "shorts", "jeans"));
-                if (r.NextDouble() < 0.4) p.outfit.Add(Pick("jacket", "coat", "vest"));
+                p.outfit.Add(Pick("tshirt", "tank", "hoodie", "tshirt")); p.outfit.Add(Pick("pants", "jeans", "shorts", "jeans", "patched_cargo"));
+                if (r.NextDouble() < 0.4) p.outfit.Add(Pick("jacket", "coat", "vest", "work_jacket"));
                 if (r.NextDouble() < 0.4) p.outfit.Add(Pick("sunhat", "beanie", "scarf", "goggles"));
                 if (role == NpcRole.Wanderer && r.NextDouble() < 0.35) p.tool = Pick("tool_pipe", "tool_machete", "tool_axe");
             }
@@ -119,8 +119,9 @@ namespace MadMax.Npc
         public List<int> boughtN = new List<int>();
         public bool dead;
         public int lost;                              // severed limbs (Appearance.lost bits, Limbs)
+        public int tended;                            // times this companion dressed the player's wounds (Companions.Knack)
 
-        public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16, Companion = 32, Surrendered = 64;
+        public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16, Companion = 32, Surrendered = 64, StudiedWounds = 128;
         public bool Has(int f) => (flags & f) != 0;
         public void Set(int f, bool on = true) { if (on) flags |= f; else flags &= ~f; }
 

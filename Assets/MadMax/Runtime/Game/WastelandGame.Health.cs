@@ -121,11 +121,46 @@ namespace MadMax.Game
             for (int i = s.injuries.Count - 1; i >= 0; i--)
             {
                 var inj = s.injuries[i];
+                inj.pace = inj.BrokenLeg ? RecoveryPace : 1f;
                 loss += inj.Tick(dt, s.hygiene, nutrition);
                 if (inj.infection > 0.6f && s.sick <= 0f) { s.sick = 60f; Toast("INFECTED WOUND: FEVER"); }
                 if (inj.severity <= 0f) { s.injuries.RemoveAt(i); Toast(Injury.WoundNames[(int)inj.type] + " HEALED"); }
             }
             if (loss > 0f) { s.health -= loss; if (s.health <= 0f) { s.health = 0f; PlayerDied("BLED OUT"); } }
+        }
+
+        // ---- recovery arc for a broken leg (2026-10-09)
+        public const float WalkOnBreak = 0.5f, CrutchPace = 1f, RestPace = 1.5f, SleepPace = 1.6f;
+        /// <summary>How fast a splinted broken leg knits right now: sitting, driving or riding rests it, a crutch carries
+        /// the weight, walking on it without one sets it back.</summary>
+        public float RecoveryPace
+        {
+            get
+            {
+                if (!Player || Player.Sitting || Current) return RestPace;
+                if (Player.moveInput.sqrMagnitude < 0.01f) return 1f;
+                return OnCrutch ? CrutchPace : WalkOnBreak;
+            }
+        }
+
+        /// <summary>A splinted break in the left leg or foot: no clutch until it has mostly knitted.</summary>
+        public bool LeftLegBroken
+        {
+            get
+            {
+                if (Stats == null) return false;
+                foreach (var i in Stats.injuries) if (i.BrokenLeg && (i.zone == BodyZone.LegL || i.zone == BodyZone.FootL) && i.severity > 0.3f) return true;
+                return false;
+            }
+        }
+
+        /// <summary>Hours slept: wounds knit through the night, faster in a comfortable bed.</summary>
+        public void HealWhileAsleep(float hours, float comfort)
+        {
+            float seconds = hours * DayNight.DayMinutes * 60f / 24f;
+            float f = SleepPace * Mathf.Lerp(0.7f, 1.3f, Mathf.Clamp01(comfort / 8f));
+            foreach (var inj in Stats.injuries) inj.Rest(seconds, inj.BrokenLeg ? f : 1f);
+            Stats.injuries.RemoveAll(i => i.severity <= 0f);
         }
 
         /// <summary>How much an injury hampers its limb, 0..1 (fractures most; splints and healing help).</summary>

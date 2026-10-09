@@ -84,10 +84,19 @@ namespace MadMax.Game
             }
         }
 
+        /// <summary>A body thrown out of <paramref name="v"/> (a crash ejection): its own vehicle neither catches nor
+        /// "runs it over" while it flies clear (the closing speed is the body's own flight).</summary>
+        public void IgnoreVehicle(VehicleDriver v, float seconds)
+        {
+            if (!v || !Collect()) return;
+            Ignore(v);
+            foreach (var e in ignored) if (e.v == v) e.minUntil = Time.time + seconds;
+        }
+
         void Ignore(VehicleDriver v)
         {
-            foreach (var e in ignored) if (e.v == v) { e.minUntil = Time.time + 0.5f; return; }
-            var vcols = v.GetComponentsInChildren<Collider>();
+            foreach (var e in ignored) if (e.v == v) { e.minUntil = Mathf.Max(e.minUntil, Time.time + 0.5f); return; }
+            var vcols = v.GetComponentsInChildren<Collider>(true);
             foreach (var a in cols) foreach (var b in vcols) if (a && b && !b.isTrigger) Physics.IgnoreCollision(a, b, true);
             ignored.Add(new Ignored { v = v, cols = vcols, minUntil = Time.time + 0.5f });
         }

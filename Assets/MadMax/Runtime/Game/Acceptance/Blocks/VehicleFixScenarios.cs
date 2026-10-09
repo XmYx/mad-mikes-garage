@@ -339,6 +339,7 @@ namespace MadMax.Game.Acceptance
                 yield return null;
                 g.Exit();
                 yield return null;
+                if (g.Player && g.Player.transform.IsChildOf(v.transform)) g.Player.Teleport(shore + Vector3.up * 0.3f, 0f);   // stepped into a walk-in cabin: off the boat before it goes
                 Object.Destroy(v.gameObject);
                 yield return null;
             }

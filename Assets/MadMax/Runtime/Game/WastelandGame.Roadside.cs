@@ -202,6 +202,11 @@ namespace MadMax.Game
             Toast(medic.KnownName + (rough ? " PATCHED YOU UP, ROUGHLY (" : " PATCHED YOU UP (") + n + " WOUND" + (n == 1 ? "" : "S") + ")");
             if (rough) Hints.Show("rough_dressing", "A COMPANION'S DRESSING SOILS SOONER AND THEIR SPLINT HOLDS WORSE: REDO IT YOURSELF (O) WHEN YOU CAN, OR TRAVEL WITH SOMEONE WHO KNOWS WOUNDS");
             Journal.Add("HEALTH", medic.KnownName + " DRESSED YOUR WOUNDS");
+            if (rough && MadMax.Npc.Companions.Practise(medic.Profile))
+            {
+                Toast(medic.KnownName + " HAS GOT THE KNACK OF IT: THEIR DRESSINGS HOLD NOW");
+                Journal.Add("HEALTH", medic.KnownName + " LEARNED TO DRESS WOUNDS PROPERLY");
+            }
             return n;
         }
 

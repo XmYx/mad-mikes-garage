@@ -156,6 +156,7 @@ namespace MadMax.Game
                 if (FuelFrozen(MadMax.World.Weather.Season) && MadMax.World.Weather.Temperature < 0f) sys.IceTank();
             }
             v.Body.isKinematic = true;
+            SettleOnGround(v);
         }
 
         /// <summary>The first yard wreck keeps a light bar on its roof: something to take off with the wrench and bolt onto
@@ -197,6 +198,7 @@ namespace MadMax.Game
             if (go.TryGetComponent<VehicleDamage>(out var settle)) { settle.graceUntil = Time.time + 4f; settle.AddFrameDamage(0.5f, 1f); }
             if (go.TryGetComponent<VehicleSystems>(out var sys) && !(go.TryGetComponent<VehicleBurn>(out var vb) && vb.charred)) { sys.fuel = sys.fuelCapacity * 0.05f; }
             v.Body.isKinematic = true;
+            SettleOnGround(v);
             return v;
         }
 
@@ -263,10 +265,11 @@ namespace MadMax.Game
                 if (net && net.Online && !net.Simulates(v)) continue;          // interpolated replica
                 if (v.aiDriven) { if (v.Body.isKinematic) Wake(v.Body); continue; }   // NPC drivers roam beyond the frozen zone
                 if (v.transform.parent && v.GetComponentInParent<TrailerDeck>()) continue;   // strapped on a transporter: stays kinematic, rides along
+                if (v.transform.parent && v.GetComponentInParent<MadMax.World.RollingCity>()) continue;   // strapped on the rolling city's deck
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) { v.Body.isKinematic = false; continue; }
                 float d = Dist(v.transform.position);
-                if (!v.Body.isKinematic && d > 70f) v.Body.isKinematic = true;
+                if (!v.Body.isKinematic && d > 70f) { v.Body.isKinematic = true; SettleOnGround(v); }
                 else if (v.Body.isKinematic && d < 50f) Wake(v.Body);
             }
             foreach (var part in VehiclePart.Registry)
@@ -277,6 +280,52 @@ namespace MadMax.Game
                 if (!rb.isKinematic && d > 70f) rb.isKinematic = true;
                 else if (rb.isKinematic && d < 50f) Wake(rb);
             }
+        }
+
+        /// <summary>Set a vehicle that is about to sleep kinematic down on the ground under it: resting on its springs
+        /// (on its belly when the wheels are gone), tilted to the slope, the heading kept. Left alone when it lies on its
+        /// side or roof, stands on a deck, or floats. Without this, cars frozen mid-drop (spawned wrecks, a car still
+        /// settling when the player drove 70 m off) hovered until the player came within 50 m.</summary>
+        public void SettleOnGround(VehicleDriver v)
+        {
+            if (!v || !terrain) return;
+            var t = v.transform;
+            if (t.up.y < 0.6f || v.GetComponentInParent<MadMax.World.RollingCity>() || v.transform.parent) return;
+            var p = v.Body ? v.Body.position : t.position;
+            float probe = p.y + 1.5f;
+            if (MadMax.Building.StructureGround.Count > 0 && MadMax.Building.StructureGround.Top(new Vector3(p.x, p.y + 1.5f, p.z), ref probe, out _)) return;
+            var fwd = Vector3.ProjectOnPlane(t.forward, Vector3.up).normalized;
+            if (fwd.sqrMagnitude < 0.01f) return;
+            var right = Vector3.Cross(Vector3.up, fwd);
+            float H(Vector3 at) => terrain.HeightNoLoad(at.x, at.z);
+            float hf = H(p + fwd * 1.4f), hb = H(p - fwd * 1.4f), hr = H(p + right * 0.75f), hl = H(p - right * 0.75f);
+            float ground = (hf + hb + hr + hl) * 0.25f;
+            if (!float.IsNaN(terrain.WaterLevel(p.x, p.z)) && terrain.WaterLevel(p.x, p.z) > ground + 0.3f) return;   // afloat or sunk
+            var n = Vector3.Cross(fwd * 2.8f + Vector3.up * (hf - hb), right * 1.5f + Vector3.up * (hr - hl)).normalized;
+            if (n.y < 0f) n = -n;
+            float rest = v.HasWheels ? v.RestHeight : BellyHeight(v);
+            var rot = Quaternion.LookRotation(Vector3.ProjectOnPlane(fwd, n).normalized, n);
+            var pos = new Vector3(p.x, ground, p.z) + n * rest;
+            if (v.Body) { v.Body.position = pos; v.Body.rotation = rot; }
+            t.SetPositionAndRotation(pos, rot);
+        }
+
+        /// <summary>Origin height above the ground for a vehicle lying on its body (lowest collider point, local).</summary>
+        static float BellyHeight(VehicleDriver v)
+        {
+            float min = float.MaxValue;
+            var inv = v.transform.worldToLocalMatrix;
+            foreach (var c in v.GetComponentsInChildren<Collider>())
+            {
+                if (!c.enabled || c.isTrigger) continue;
+                var b = c.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z);
+                    min = Mathf.Min(min, inv.MultiplyPoint3x4(corner).y);
+                }
+            }
+            return min == float.MaxValue ? 0.4f : Mathf.Max(0.05f, -min);
         }
 
         void Wake(Rigidbody rb)

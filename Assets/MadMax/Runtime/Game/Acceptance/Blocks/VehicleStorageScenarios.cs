@@ -212,8 +212,8 @@ namespace MadMax.Game.Acceptance
             // ---- a standing person
             var at = pad + dir * 18f;
             at.y = DeformableTerrain.Instance.Height(at.x, at.z);
-            var npc = MadMax.Npc.Npc.Spawn(NpcProfile.Make("test:knock1", NpcRole.Wanderer, 6161), at + Vector3.up * 0.05f, VehicleStorageScenarios.Yaw(-dir), null, g.propMaterial);
-            c.Fixture("a wanderer standing 18 m down the lane");
+            var npc = MadMax.Npc.Npc.Spawn(NpcProfile.Make("test:knock1", NpcRole.Stallkeeper, 6161), at + Vector3.up * 0.05f, VehicleStorageScenarios.Yaw(-dir), null, g.propMaterial);
+            c.Fixture("a stallkeeper standing 18 m down the lane (stallkeepers stand; a wanderer may stroll off the lane)");
             yield return Drive(c, g, car, pad, dir, npc, null);
 
             // ---- a body lying in the road
@@ -251,7 +251,11 @@ namespace MadMax.Game.Acceptance
                 car.Body.linearVelocity = aim * Speed + Vector3.up * car.Body.linearVelocity.y;
                 yield return new WaitForFixedUpdate();
             }
-            if (!c.Check(Struck(), $"the car hits the {what} ({Time.time - t0:0.0} s)")) { car.throttleInput = 0f; g.Exit(); yield break; }
+            if (!c.Check(Struck(), $"the car hits the {what} ({Time.time - t0:0.0} s)"))
+            {
+                c.Note($"car at {car.Body.position} ({car.Body.linearVelocity.magnitude:0.0} m/s), {what} at {Pelvis()}, alive {(target ? target.Alive : false)}; touching: {TestWorld.Contacts(car)}");
+                car.throttleInput = 0f; g.Exit(); yield break;
+            }
             c.Metric(what + "_impact_speed", car.Body.linearVelocity.magnitude * 3.6f, "km/h");
             if (lying) c.Fixture("the Sedan drives on over the body");
             else { car.throttleInput = 0f; car.brakeInput = 1f; c.Fixture("the driver stands on the brake after the hit"); }

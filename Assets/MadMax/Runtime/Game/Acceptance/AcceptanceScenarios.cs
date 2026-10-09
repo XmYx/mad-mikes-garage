@@ -63,6 +63,10 @@ namespace MadMax.Game.Acceptance
             foreach (var s in ScheduledScenarios1006.All()) yield return s;
             foreach (var s in ScheduledScenarios1007.All()) yield return s;
             foreach (var s in ScheduledScenarios1008.All()) yield return s;
+            foreach (var s in ScheduledScenarios1009.All()) yield return s;
+            foreach (var s in CityScenarios.All()) yield return s;
+            foreach (var s in FixScenarios1009.All()) yield return s;
+            foreach (var s in FrameScenarios.All()) yield return s;
             foreach (var s in UpdateScenarios1005.All()) yield return s;
             foreach (var s in LightsScenarios.All()) yield return s;
             foreach (var s in BagsScenarios.All()) yield return s;
@@ -904,6 +908,9 @@ namespace MadMax.Game.Acceptance
             c.Check(turned > 15f, $"steers on the move ({turned:0} deg in 3 s)");
 
             v.throttleInput = 0f; v.brakeInput = 0f;
+            v.steerInput = 0f;
+            yield return TestWorld.Place(c, v, pad, dir, 1f);                                 // back on the pad: the turn may have ended against a pylon or a wreck
+            v.handbrake = false; v.steerInput = 1f;
             yield return new WaitForSeconds(1f);
             y0 = v.transform.eulerAngles.y;
             var ps = v.transform.position;

@@ -72,7 +72,9 @@ namespace MadMax.Npc
 
         /// <summary>An open wound (arrows, bolts, blades): loses health for a while, leaving a blood trail.</summary>
         public void Bleed(float seconds) { if (mode != Mode.Dead) bleedUntil = Mathf.Max(bleedUntil, Time.time + seconds); }
-        Vector3 goal, lastPos, detour, lastBlow, lastVelocity;
+        Vector3 goal, lastPos, detour, lastBlow, lastVelocity, staggerDir;
+        float reactAt = -9f, staggerUntil;
+        string reactClip;
         float detourUntil;
         bool hasGoal;
         Vector3 faceTarget;
@@ -301,13 +303,17 @@ namespace MadMax.Npc
             if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
             if (rig.appearance.lost != 0) speed *= LimbPace;                                   // hopping on one leg, crawling on none
 
+            // knocked back by a heavy blow: carried along it, slowing, still facing the one who struck
+            bool staggering = Time.time < staggerUntil;
+            if (staggering && !seated) { move = staggerDir; speed = 2.6f * (staggerUntil - Time.time) / StaggerTime; }
+
             float moved = 0f;
             if (seated) SitAtFire();
             else
             {
                 // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal
                 if (Time.time < detourUntil && move.sqrMagnitude > 0.001f) move = detour;
-                if (move.sqrMagnitude > 0.001f && !Blocked(terrain, me, move)) Face(move, dt);
+                if (move.sqrMagnitude > 0.001f && !Blocked(terrain, me, move)) { if (!staggering) Face(move, dt); }
                 else if (move.sqrMagnitude > 0.001f) { hasGoal = false; move = Vector3.zero; speed = 0f; }
                 if (Time.time < faceUntil && speed < 0.1f) Face(Flat(faceTarget - me), dt);
                 vy = cc.isGrounded ? -1f : vy + Physics.gravity.y * dt;
@@ -344,16 +350,72 @@ namespace MadMax.Npc
             bool near = gm && gm.Player && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Follow)
                         && (gm.Player.transform.position - transform.position).sqrMagnitude < 3.5f * 3.5f;
             anim.LookAt = talking || near ? gm.Player.Eye.position : (Vector3?)null;
+            float rt = -1f;
+            string react = swing >= 0f ? null : Reaction(out rt);
+            // carried at rest; a gun is up at the shoulder while fighting at range
+            string hold = tool && swing < 0f && !seated && mode != Mode.Surrender && !(mode == Mode.Fight && Ranged) ? ToolHolds.Clip(tool) : null;
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = moved, grounded = seated || cc.isGrounded, verticalSpeed = seated ? 0f : vy, sitting = seated, lounging = seated,
-                tool = mode == Mode.Surrender ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null,
-                twoHanded = tool && tool.TwoHanded, talking = talking,
-                action = swing >= 0f ? PlayerCharacter.SwingClip(tool) : null, actionT = swing, actionHit = tool ? tool.strikeAt : 0f
+                tool = mode == Mode.Surrender ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : hold == null ? tool.IdlePose : null) : (ToolPose?)null,
+                twoHanded = tool && tool.TwoHanded, talking = talking, hold = hold,
+                grip2 = !tool || mode == Mode.Surrender ? null : swing >= 0f ? tool.SecondGrip : hold != null && tool.HoldTwoHands ? tool.transform : null,
+                action = swing >= 0f ? PlayerCharacter.SwingClip(tool) : react, actionT = swing >= 0f ? swing : react != null ? rt : -1f,
+                actionHit = swing >= 0f && tool ? tool.strikeAt : 0f
             });
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+
+        const float StaggerTime = 0.45f;
+
+        /// <summary>A melee blow: the swing plays, the hit lands at the tool's strike moment unless they are struck first.</summary>
+        public void BeginSwing()
+        {
+            swing = 0f; attackCd = 1.3f;
+            Invoke(nameof(MeleeHit), tool ? tool.swingDuration * tool.strikeAt : 0.3f);
+        }
+
+        public bool Swinging => swing >= 0f;
+        /// <summary>The hit reaction playing ("flinch", "stagger") or null; knocked back by a heavy blow.</summary>
+        public string Reacting => Time.time - reactAt < 1f ? reactClip : null;
+        public bool Staggering => Time.time < staggerUntil;
+
+        /// <summary>The hit-reaction clip playing (flinch / stagger) and its progress; null when none.</summary>
+        string Reaction(out float t)
+        {
+            t = -1f;
+            if (reactClip == null) return null;
+            var c = HumanClips.Get(reactClip);
+            t = c != null ? (Time.time - reactAt) / c.length : 1f;
+            if (t < 1f) return reactClip;
+            reactClip = null; t = -1f;
+            return null;
+        }
+
+        /// <summary>Struck: a flinch; a solid blow during the wind-up spoils the swing; a heavy one (sledge, a big hit)
+        /// staggers them back a step along the blow and costs them a beat before they can strike again.</summary>
+        void React(Vector3 direction, float power, float dmg)
+        {
+            bool heavy = power >= 0.9f || dmg >= 22f;
+            bool windingUp = swing >= 0f && swing < (tool ? tool.strikeAt : 0.6f);
+            if (heavy || windingUp && dmg >= 8f) { swing = -1f; CancelInvoke(nameof(MeleeHit)); }
+            if (heavy)
+            {
+                reactClip = "stagger";
+                var d = Flat(direction);
+                staggerDir = d.sqrMagnitude > 0.01f ? d.normalized : -transform.forward;
+                staggerUntil = Time.time + StaggerTime;
+                attackCd = Mathf.Max(attackCd, 1.2f);
+            }
+            else
+            {
+                reactClip = "flinch";
+                attackCd = Mathf.Max(attackCd, 0.45f);
+            }
+            reactAt = Time.time;
+        }
+
         // ---- pathfinding (NpcPath): straight at the goal when the way is clear, else along a grid route
         readonly List<Vector3> route = new List<Vector3>();
         Vector3 routeGoal;
@@ -657,7 +719,7 @@ namespace MadMax.Npc
             if (speed < 0.1f) Face(Toward(target), dt);
             if ((attackCd -= dt) > 0f || swing >= 0f) return;
             if (Ranged && dist < 18f && speed < 3f) { Shoot(g, target, dist); attackCd = Random.Range(1.8f, 2.8f); }
-            else if (!Ranged && dist < want + 0.5f) { swing = 0f; attackCd = 1.3f; Invoke(nameof(MeleeHit), (tool ? tool.swingDuration * tool.strikeAt : 0.3f)); }
+            else if (!Ranged && dist < want + 0.5f) BeginSwing();
         }
 
         /// <summary>A spot 2.5–6 m away with something solid (a wall, a car, a rock, the lie of the land) between it
@@ -817,6 +879,7 @@ namespace MadMax.Npc
             if (boutStrike != null) { boutStrike(this); MadMax.Audio.Sfx.Play("punch", pp + Vector3.up, 0.6f, 1.1f); return; }   // a supervised bout scores it
             g.HitBladed = Limbs.Bladed(Profile.tool);
             g.Vitals.Hurt(Random.Range(7f, 13f) * power, "MELEE");
+            g.Player.React(power >= 1.2f);
             BloodStains.Splash(pp, 0.4f);
             MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", pp + Vector3.up, 0.8f);
         }
@@ -968,6 +1031,7 @@ namespace MadMax.Npc
                             || (byNpc && byNpc.companion) || OwnedPiece(g, source));
             lastByPlayer = byPlayer;
             if (health <= 0f) { Die(byPlayer); return; }
+            React(direction, power, dmg);
             // beaten: throw the weapon down (less likely with the boss still up and friends around)
             if (!companion && Hostile && health < maxHealth * 0.22f && Profile.role != NpcRole.RaiderBoss)
             {

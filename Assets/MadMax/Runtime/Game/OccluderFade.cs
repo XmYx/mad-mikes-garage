@@ -36,6 +36,7 @@ namespace MadMax.Game
             var d = c.GetComponentInParent<MadMax.World.DestructibleVoxels>();
             Renderer r = d ? d.GetComponent<Renderer>() : null;
             if (!r) { var p = c.GetComponentInParent<MadMax.Building.Placeable>(); if (p) r = p.GetComponent<Renderer>(); }
+            if (!r && c.TryGetComponent<MadMax.World.Cutaway>(out _)) r = c.GetComponent<Renderer>();
             return r && cut.Contains(r);
         }
         readonly HashSet<Renderer> cut = new HashSet<Renderer>(), now = new HashSet<Renderer>();
@@ -102,6 +103,12 @@ namespace MadMax.Game
         void Consider(Collider c, Vector3 head)
         {
             if (!c || (c.attachedRigidbody && !c.attachedRigidbody.isKinematic)) return;   // loose things stay visible
+            if (c.TryGetComponent<MadMax.World.Cutaway>(out _))                           // the rolling city's blocks
+            {
+                var cr = c.GetComponent<Renderer>();
+                if (cr && cr.bounds.max.y >= head.y + 1.2f) now.Add(cr);
+                return;
+            }
             var d = c.GetComponentInParent<MadMax.World.DestructibleVoxels>();
             Renderer r = d ? d.GetComponent<Renderer>() : null;
             if (!r)

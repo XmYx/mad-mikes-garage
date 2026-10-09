@@ -122,6 +122,7 @@ namespace MadMax.Game
         public List<string> blockContext = new List<string>();               // loot left in searched spots, last respawn choice
         public List<string> blockFluids = new List<string>();                // fluids block: hand containers' contents ("id\u001flitres\u001fmix")
         public List<string> blockBags = new List<string>();                  // worn bags' contents, back strain (WastelandGame.Bags)
+        public List<string> blockCity = new List<string>();                  // the rolling city: its timetable clock (WastelandGame.Cities)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

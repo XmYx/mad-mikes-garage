@@ -59,6 +59,7 @@ namespace MadMax.World
             roads.SpawnPoint(out yardP, out yardDir);
             yardSide = Vector3.Cross(Vector3.up, yardDir);
             BuildRivers(new System.Random(seed * 31 + 7));
+            if (MadMax.Game.GameRules.Current == null || !MadMax.Game.GameRules.Current.story) BuildCity();   // the rolling city's circuit (roadmap 28; sandbox only so far)
         }
 
         // ------------------------------------------------------------------ the start yard
@@ -314,6 +315,7 @@ namespace MadMax.World
                 s.road = roadMax;
                 wet *= 1f - s.road * 0.85f;
             }
+            if (city != null) city.Grade(x, z, ref h, ref s);                                   // the rolling city's crawlerway and docks
             if (yard > 0.8f && s.road < 0.3f && s.feature == 0) s.feature = 6;                 // yard gravel
             s.height = h;
             s.baseWet = wet;

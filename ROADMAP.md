@@ -257,6 +257,13 @@ decorative turret.
 
 - [x] Melee: spear (reach), nail bat, knife (fast, bleeds), leaf-spring blade
 - [x] Ranged: slingshot, bow & arrows (silent), crossbow, pipe pistol, revolver, bolt rifle, flare gun
+- [x] **Weight of a blow** (2026-10-08): two-handed sledge / pick swing as a full-body clip (`sledge`: stance, lift
+      up the side, beat at the top, hips and knees drive it down ahead), the left hand kept on long handles by arm IK
+      (`HandTool.SecondGrip`, `HumanAnimator.GripIK`), feet planted while it plays; hit-stop by hardness and tool weight,
+      bounce off stone/metal, sparks or dust, camera jolt (`PlayerCharacter.Impact`, `MeleeTool.LastHit`); NPCs flinch,
+      heavy blows stagger them back a step, a solid hit in the wind-up spoils their swing; the player flinches when
+      struck. Scenario `combat.melee_feel`.
+- [ ] Blocking / parrying and directional hit reactions (left/right/behind); reactions on network proxies
 - [x] **Ammo crafting** (arrows, bolts, shells, cartridges; gunpowder from charcoal + sulfur + saltpeter)
 - [x] **Aim mode** (hold RMB): crosshair, shoulder aim, iso aims at the cursor
 - [x] **Reload, magazines, jams** for crude guns
@@ -1469,11 +1476,11 @@ then passed on the re-run — look at the launch assists on wet ground.
   beats it (or abandons the car when it's past saving) — raider molotovs become a fight over a car, not a coin toss.
 - [x] **Spare keys and locksmiths** (2026-10-07: `misc_key_blank` (workbench) + using a car key at a workbench cuts a spare (`CutSpareKey`); parts vendors cut a key for a vehicle with a lost key brought within 40 m — 40 scrap, collect it from them the next day (`Dialogue.Keys`, `KeyOrders`, saved); scenario `vehicle.spare_keys`. Companions taking a fleet car by its key is still open): a key blank + the original at a workbench cuts a copy (companions can take a fleet
   car); town mechanics sell a key for a found car whose key is lost, for scrap and a day's wait.
-- [ ] **Walkie-talkie orders**: a companion carrying a handheld radio takes orders from any distance (come, hold, bring
+- [x] **Walkie-talkie orders** (2026-10-09: with `tool_radio` in the pack, companions carrying one hear RADIO THE CREW: COME / HOLD / BRING A CAR from any context menu at any distance (`Companions.RadioOrder`, `OnRadio`, `CarFor`); no radio on their side = static; scenario `npc.radio_orders`. Open: a dedicated key on the held radio): a companion carrying a handheld radio takes orders from any distance (come, hold, bring
   the car) through the radio keys — the radio as the tool that keeps a crew together.
 - [x] **Rumours reveal givers** (2026-10-05: `WastelandGame.GiverRumour` in town talk, `HeardOf` pinned and saved; scenario `talk.giver_rumours`): unmet story givers beyond the nearest three are heard of in town talk (`Dialogue`
   rumours: "THE RELAY WOMAN OUT EAST NEEDS A HAND") and only then pinned — the journal grows by talking to people.
-- [ ] **Recovery arc for a broken leg**: a splinted fracture heals over days; the crutch, rest in a bed and the clinic
+- [x] **Recovery arc for a broken leg** (2026-10-09: `WastelandGame.RecoveryPace` — walked on ×0.5, crutch ×1, seated / driving ×1.5; nights in a bed knit wounds (`HealWhileAsleep`, by comfort); a broken left leg (`LeftLegBroken`) takes the clutch (`HasClutchFoot`) until severity < 0.3; scenario `body.leg_recovery`. Open: clinic bed for the player): a splinted fracture heals over days; the crutch, rest in a bed and the clinic
   speed it; until then driving a manual is out (clutch foot) — the injury becomes a few days of play, not a number.
 
 ## Scheduled update (2026-10-05)
@@ -1554,13 +1561,64 @@ vehicle.keys, body.crutch and story.first_hour. Headless, so the screenshots are
 ### Suggestions (tie the experience together)
 - [ ] **Taking it back**: a part `Trade.StolenBy` a gang rides in their boss car's compartment until it reaches the
   stall — ambush the convoy on the road named by the salvager and it is in the loot, free.
-- [ ] **Companions learn the knack**: a companion who has dressed wounds a few times (or read `book_first_aid` given to
+- [x] **Companions learn the knack** (2026-10-09: `NpcSave.tended` counts their dressings, the 4th (`Companions.KnackAfter`) makes them a proper medic; FIELD FIRST AID (`book_first_aid`, loot / shops) handed over in their talk sets `NpcSave.StudiedWounds`; scenario `npc.companion_knack`): a companion who has dressed wounds a few times (or read `book_first_aid` given to
   them) stops being rough — riding with someone grows them, not only the player.
-- [ ] **Morning routine for the column**: at dawn in winter a companion with a trip heater lights it under the fleet
+- [x] **Morning routine for the column** (2026-10-09: 05:30–08:30 below 5 °C, once a day, a companion with `use_trip_heater` in their pack within 60 m warms the stopped fleet car nearest the player from a litre of its tank (`Companions.MorningRoutine` / `LightHeaterNow`); scenario `npc.morning_heater`): at dawn in winter a companion with a trip heater lights it under the fleet
   car that will be driven first, so the cold start is waiting when the player walks out.
 - [ ] **Survivors of a burned trader**: the driver who got clear walks the road toward town and asks for a lift
   (passenger seat); delivered, the town that mourned the car remembers it (standing, a free meal at the stall).
-- [ ] **Cold-start dashboard**: a COLD lamp and, on diesels, a glow-plug wait before cranking; the trip heater or
+- [x] **Cold-start dashboard** (2026-10-09: COLD lamp (`VehicleSystems.ColdStart`, pixel + HD dashboards, 10th HD lamp); diesel glow plugs warm while someone sits in (`GlowFor`: 3 s at 0 °C, longer in frost), the lamp blinks, cranking before it goes out is held back and a cold diesel without glow is a long shot (−0.3); block / trip heater clears it; scenario `vehicle.cold_start_lamp`): a COLD lamp and, on diesels, a glow-plug wait before cranking; the trip heater or
   block heater clears it — the winter morning reads from the gauges, not only the toast.
 - [ ] **LOOK FOR list**: rumours about caches, raider camps and missing people go to a journal list the binoculars
   tick off (`InSight` already shared by camps and wrecks).
+- [ ] **Crew check-ins on the radio**: companions holding a post (WAIT / GUARD) call in at dusk on the home frequency
+  ("ALL QUIET AT THE YARD") and shout when raiders show up — the radio orders become a two-way crew line.
+- [ ] **Glow-plug relay click**: a dash relay clicks when the plugs are hot and the starter turns heavier in the frost
+  (`EngineSynth` crank load from `Temperature`) — the cold start heard, not only seen.
+- [ ] **A medic in the crew treats others**: a companion with the knack patches other companions and hurt townsfolk
+  (disposition, faction standing) — the knack as a social skill.
+- [ ] **Convalescence at home**: a broken leg at home rests in the bed with books and the radio (reading speed bonus,
+  radio shows), visitors from town bring food — downtime as play.
+
+## User requests (2026-10-09, concept art)
+- [x] **Lead character look**: default new-game look = the concept art — black undercut (`HairStyle.Undercut`), amber temple implant (`Appearance.implant`), salvaged cyber arm on the left (`pros_cyber_arm`, LEFT ARM in character creation), `work_jacket` (patched rust-orange), `patched_cargo` with knee pads, `canvas_satchel`; NPC wanderers wear the new pieces too. Open: HD garments / hair for the HD pack (`garments.py`), implant glow in HD.
+- [x] **Rolling city look + procedural generation** (roadmap 28 R1b).
+
+## User requests (2026-10-08, evening)
+- [x] **Parked cars float** (2026-10-09: `WastelandGame.SettleOnGround` on freeze / road wrecks / wreck spawn; scenario `vehicle.parked_settle`): a parked / sleeping car sometimes rests above the ground (settle onto the wheels'
+      terrain contact before sleeping; re-ground on wake and after streaming).
+- [x] **Excavator bucket looks off** (2026-10-09: `PartLibrary.ExcavatorBucket` D-shell on the pin, mouth to the cab, teeth; `machines.excavator_bucket`): bucket shape / hinge and its curl against the stick (check the segment pivots and
+      the bucket voxel design against a real excavator).
+- [x] **Dozer blade wider range** (2026-10-09: −34°..+22°; `machines.dozer_blade`): the blade arm lifts and drops further (raise for travel, cut below grade).
+- [x] **Crash injuries too easy** (2026-10-09: `CrashHarm(dv, open)`, safe below 25 km/h belted / 18 km/h open, CRASH < 6 no wound; `vehicle.crash_harm`): car accidents injure the driver too readily — thresholds by Δv (belted occupant,
+      cabin crush, airbag-less wrecks), minor bumps never injure.
+- [x] **Mouse wheel scrolls menus and panels** (2026-10-09: list pages move the cursor; catalogue, container and map keep their own wheel; `ui.mouse_wheel`): every scrolling list / page (catalogue, inventory, trade, journal,
+      settings, loot panel) follows the wheel.
+
+## 28. Rolling cities `T3` — in progress
+Mobilised downtowns: old city blocks bolted onto a giant deck that crawls across the wasteland on tracked bogies,
+stopping at city docks (graded yards with ramps, cranes and stalls) along a fixed circuit.
+- [~] **R1 — one rolling city** (2026-10-08: the circuit, docks, deck + bogies + four downtown blocks with real storeys and stairs, shacks / scaffold / bridge / tank / windmill / engine house / crane, the timetable, gangway, the player carried, parked cars strapped, driven cars grip the moving deck, stack smoke and sound, the cutaway opens its blocks; scenario `city.ride`. Open: NPCs and stalls aboard, ruts, night lights, map pin and timetable on the journal, HD look, network sync beyond the join snapshot): a deterministic city (deck, four tracked bogies, downtown core of pre-war
+      brick/concrete blocks with post-apocalyptic attachments: scaffolds, shacks hung off the facades, catwalks and
+      bridges between roofs, smokestacks, a crane, water tanks, windmills), a circuit through the world graded like
+      a road, docks at the stops (ramps meet the deck edge), movement (slow, steady, stops on a timetable), riders (the
+      player, NPCs and parked vehicles move with it), track ruts, sound (engines, treads, horn at departure).
+- [~] **R2 — start on the city** (2026-10-08: RULES START: ABOARD THE ROLLING CITY puts the player on the deck at the first dock; the fleet and homestead stay at the yard 180 m away. Open: kit in a deck-side garage, a car on the deck): a new-game start (RULES: START ON THE ROLLING CITY) beginning aboard at a dock,
+      with the homestead kit in a deck-side garage; acceptance scenario that boards, rides a leg and steps off at a dock.
+- [x] **R1b — procedural city** (2026-10-09, from the concept art: `CityDesign.Layout(seed)` cuts each side of the main street into lots — prefab panel blocks (balconies glazed / caged / sheeted, AC boxes, rust streaks, lift house, mast, roof gardens), old downtown brick/stone (cornices, neon, hung shacks), works halls (sawtooth roofs, pipes, banded stacks), a market hall, a container yard with the crane; stern works with 3-4 stacks; bridges over the street; galleries with huts and lamps under the deck sides; cables between masts and stacks; sprocket/idler spokes and six road wheels on the bogies. Open: more track modules visible past the deck, smoke per stack size, HD pass)
+- [ ] **R3 — living aboard**: residents, stalls and a town leader (faction), jobs aboard (stoking, repairs), the
+      city as a settlement for trade/news/contracts, player rooms to rent or build (deck plots).
+- [ ] **R4 — more cities**: other circuits and styles (industrial, church city, raider hulk), cities meeting at docks,
+      raids on a moving city, the city breaking down (a stranded city becomes a temporary town).
+
+## 29. Free building: beams, spans and climbing `T3` — in progress (2026-10-08, with roadmap 28)
+Paving the way for a post-punk high-rise look (stacked shacks, walkways and platforms grown over old towers and the
+rolling cities).
+- [x] **Beams anywhere** (2026-10-09: `Building/Frame` — `beam_wood` / `beam_steel` from click to click at any angle, ≤ 8 m, snap to beam ends, Shift straight, chain on; cost per 2 m; `BuildMode.Frame`. Open: struts/cables, snapping to piece edges): a beam piece snaps by either end to any surface, piece edge or another beam's end at any
+      angle (not the 90° / 0.08 m grid), length set by the second click; struts and cables as variants.
+- [x] **Spans between beam ends** (2026-10-09: `span_planks/sheet/grating` over 3-6 picked ends, plane check ≤ 0.3 m, level spans are decks (`StructureGround.AddPolygonDeck`). Open: `StructureSupport` through the beams): pick 3-6 beam ends → an elevated surface (planks, sheet, grating) is laid over the
+      irregular polygon they enclose (walkable, drivable when strong enough, `StructureSupport` through the beams).
+- [~] **Working ladders** (2026-10-09: `ladder_frame(_steel)` any length and lean, `PlayerCharacter.Climb` grabs on walking in, steps off at the top; scenario `build.frame`. Open: NPCs in `NpcPath`): ladders climb (on foot input, enter/leave at the top and bottom, NPCs use them in
+      `NpcPath`), any length, onto beams and spans.
+- [ ] **Post-punk high rise**: shacks and spans hung off existing towers and the rolling city's blocks; a structure
+      plan library of hybrid pieces; collapse when beams are cut.

@@ -11,7 +11,9 @@ namespace MadMax.Game.Acceptance
 {
     /// <summary>Unattended acceptance runner (roadmap 26, Q1). Player flags:
     /// <c>-acceptance &lt;suite&gt;</c> (fast | full | catalogue | vehicles | mobility), <c>-results &lt;dir&gt;</c>,
-    /// <c>-scenario &lt;id prefix&gt;</c>, <c>-runtimeout &lt;s&gt;</c>, and <c>-profiledir &lt;dir&gt;</c> (see <see cref="Profile"/>).
+    /// <c>-scenario &lt;id prefixes, comma-separated&gt;</c>, <c>-skip &lt;id prefixes&gt;</c>, <c>-reuse</c> (quick: one world for
+    /// consecutive standard-rule scenarios, fresh after a failure, every <see cref="ReuseLimit"/> scenarios and for
+    /// <see cref="Scenario.Isolated"/> ones), <c>-runtimeout &lt;s&gt;</c>, and <c>-profiledir &lt;dir&gt;</c> (see <see cref="Profile"/>).
     /// Starts a fixed-seed new game, runs every matching scenario with its own timeout, writes results.json +
     /// junit.xml + coverage.json and quits with 0 (all passed), 1 (a failure), 2 (only blocked) or 3 (hang / crash:
     /// a watchdog thread reports a stalled main thread). No input is needed from launch to exit.</summary>
@@ -22,7 +24,9 @@ namespace MadMax.Game.Acceptance
         public static bool Running => Instance;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Instance = null; }
 
-        string suite = "fast", filter, resultsDir;
+        string suite = "fast", filter, skip, resultsDir;
+        bool reuse;
+        const int ReuseLimit = 8;
         float runTimeout = 5400f;                                             // the fast suite runs ~80 scenarios
         readonly List<ScenarioContext> results = new List<ScenarioContext>();
         readonly object gate = new object();
@@ -45,6 +49,8 @@ namespace MadMax.Game.Acceptance
             if (i + 1 < args.Length && !args[i + 1].StartsWith("-")) r.suite = args[i + 1];
             string Arg(string k) { int j = Array.IndexOf(args, k); return j >= 0 && j + 1 < args.Length ? args[j + 1] : null; }
             r.filter = Arg("-scenario");
+            r.skip = Arg("-skip");
+            r.reuse = Array.IndexOf(args, "-reuse") >= 0;
             r.resultsDir = Path.GetFullPath(Arg("-results") ?? Path.Combine(Profile.Dir, "acceptance"));
             if (float.TryParse(Arg("-runtimeout"), NumberStyles.Float, CultureInfo.InvariantCulture, out var rt)) r.runTimeout = rt;
             go.SetActive(true);
@@ -52,7 +58,11 @@ namespace MadMax.Game.Acceptance
 
         /// <summary>Start a run from the editor (Play mode, e.g. via Unity MCP): an isolated profile under the project's
         /// Temp folder, results in <paramref name="results"/>; stops Play mode when done instead of quitting.</summary>
-        public static void StartInEditor(string suite, string filter, string results)
+        public static void StartInEditor(string suite, string filter, string results) => StartInEditor(suite, filter, results, null, false);
+
+        /// <summary>As above, leaving out the scenarios whose ids start with any of <paramref name="skip"/> (comma-separated);
+        /// <paramref name="reuse"/>: a quick run sharing worlds between scenarios (see <c>-reuse</c>).</summary>
+        public static void StartInEditor(string suite, string filter, string results, string skip, bool reuse)
         {
             if (Instance) return;
             Profile.Use(Path.Combine(Application.dataPath, "../Temp/acceptance_profile"));
@@ -61,6 +71,7 @@ namespace MadMax.Game.Acceptance
             go.SetActive(false);
             var r = go.AddComponent<AcceptanceRunner>();
             r.suite = suite; r.filter = string.IsNullOrEmpty(filter) ? null : filter; r.resultsDir = Path.GetFullPath(results);
+            r.skip = string.IsNullOrEmpty(skip) ? null : skip; r.reuse = reuse;
             go.SetActive(true);
         }
 
@@ -119,8 +130,8 @@ namespace MadMax.Game.Acceptance
             runStart = Time.realtimeSinceStartup;
             var all = new List<Scenario>();
             foreach (var s in AcceptanceScenarios.All())
-                if (Array.IndexOf(s.Suites, suite) >= 0 && (filter == null || Array.Exists(filter.Split(','), f => s.Id.StartsWith(f.Trim())))) all.Add(s);
-            Debug.Log($"[acceptance] {all.Count} scenarios");
+                if (Array.IndexOf(s.Suites, suite) >= 0 && Matches(s.Id, filter, true) && !Matches(s.Id, skip, false)) all.Add(s);
+            Debug.Log($"[acceptance] {all.Count} scenarios" + (skip != null ? " (skipping " + skip + ")" : "") + (reuse ? " (quick: worlds reused)" : ""));
 
             // data-only checks first: they need no world
             foreach (var s in all) if (!s.NeedsWorld) yield return RunOne(s);
@@ -131,24 +142,40 @@ namespace MadMax.Game.Acceptance
                 yield return StartWorld(world);
                 world.seconds = Time.realtimeSinceStartup - world.startedAt;
                 lock (gate) results.Add(world);
-                bool first = true;
+                bool first = true, standard = true, lastFailed = false;
+                int sinceFresh = 0;
                 foreach (var sc in all)
                 {
                     if (!sc.NeedsWorld) continue;
                     if (world.outcome != Outcome.Pass) { lock (gate) results.Add(new ScenarioContext { id = sc.Id, outcome = Outcome.Blocked, reason = "no world: " + world.reason }); continue; }
-                    // isolation: every scenario gets the same fresh fixed-seed world (a new game loads in a few seconds)
-                    if (!first || sc.WorldRules != null)
+                    // isolation: every scenario gets the same fresh fixed-seed world (a new game loads in a few seconds);
+                    // a quick run (reuse) keeps the standard world going until something fails or needs its own
+                    bool keep = reuse && !first && standard && sc.WorldRules == null && !sc.Isolated && !lastFailed && sinceFresh < ReuseLimit;
+                    if (keep) sinceFresh++;
+                    else if (!first || sc.WorldRules != null)
                     {
                         var fresh = new ScenarioContext { id = "setup.fresh_world", resultsDir = resultsDir, startedAt = Time.realtimeSinceStartup };
                         yield return StartWorld(fresh, sc.WorldRules);
                         if (fresh.outcome != Outcome.Pass) { lock (gate) results.Add(new ScenarioContext { id = sc.Id, outcome = Outcome.Blocked, reason = "fresh world failed: " + fresh.reason }); continue; }
+                        sinceFresh = 0;
                     }
                     first = false;
+                    standard = sc.WorldRules == null && !sc.Isolated;
+                    int before = results.Count;
                     yield return RunOne(sc);
+                    lastFailed = results.Count > before && results[results.Count - 1].outcome == Outcome.Fail;
                     Reset();
                 }
             }
             Finish();
+        }
+
+        /// <summary>Does the id start with any of the comma-separated prefixes (none given: <paramref name="empty"/>)?</summary>
+        static bool Matches(string id, string prefixes, bool empty)
+        {
+            if (string.IsNullOrEmpty(prefixes)) return empty;
+            foreach (var f in prefixes.Split(',')) { var p = f.Trim(); if (p.Length > 0 && id.StartsWith(p)) return true; }
+            return false;
         }
 
         /// <summary>A fixed-seed new game with the standard rules; waits until the player can act.</summary>
@@ -198,8 +225,12 @@ namespace MadMax.Game.Acceptance
             WastelandGame.MachineInput = default;
             var g = WastelandGame.Instance;
             if (!g) return;
-            if (g.Current) { var v = g.Current; v.throttleInput = v.brakeInput = v.steerInput = 0f; v.handbrake = true; g.Exit(); }
-            if (g.Player) g.Player.moveInput = Vector2.zero;
+            try                                                                                       // a scenario that broke the world must not end the run
+            {
+                if (g.Current) { var v = g.Current; v.throttleInput = v.brakeInput = v.steerInput = 0f; v.handbrake = true; g.Exit(); }
+                if (g.Player) g.Player.moveInput = Vector2.zero;
+            }
+            catch (System.Exception e) { Debug.LogException(e); }
         }
 
         void Finish()

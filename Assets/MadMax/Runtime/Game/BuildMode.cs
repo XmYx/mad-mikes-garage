@@ -12,7 +12,7 @@ namespace MadMax.Game
     /// (pieces on a vehicle ride with it). B opens the build menu (<see cref="MenuSystem.OpenBuild"/>), picking a piece
     /// starts placing it; tap B again to put the hammer away. 1-0 / page keys select in the category, Y rotate, LMB
     /// place. Costs come from the Inventory.</summary>
-    public class BuildMode : MonoBehaviour
+    public partial class BuildMode : MonoBehaviour
     {
         public float reach = 4f;
         public float grid = 0.08f;
@@ -159,6 +159,7 @@ namespace MadMax.Game
             if (!targetPiece && def.plan >= 0 && Controls.Down(Controls.Act.BuildDismantle)) { StructurePlans.Forget(def.plan); Selected = Mathf.Max(0, Selected - 1); game.Toast("PLAN FORGOTTEN"); return; }
             if (targetPiece && Controls.Down(Controls.Act.BuildUpgrade)) { Upgrade(targetPiece); return; }
             if (targetPiece && Controls.Down(Controls.Act.BuildRepair)) { Repair(targetPiece); return; }
+            if (def.frame != MadMax.Building.FrameKind.None) { FrameTick(def, hit, kb, mouse, pad); return; }   // free frame (roadmap 29)
 
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
             Transform parent = chassis ? chassis.transform : structures;

@@ -50,6 +50,18 @@ namespace MadMax.Game
 
         static Color32 Weave(Vector3Int v, Color32[] ramp, int seed, int bias = 1) => Pal.Pick(ramp, v, seed, bias);
 
+        static readonly Color32[] PatchColours = { Pal.Hex("a89a7c"), Pal.Hex("6a6e52"), Pal.Hex("5a5c5e"), Pal.Hex("7a3a34") };
+        /// <summary>A sewn-on patch (4×4-voxel cells, about one in nine) with a darker stitched edge, or null.</summary>
+        static Color32? Patch(Vector3Int v, int seed)
+        {
+            int cx = Mathf.FloorToInt(v.x / 4f), cy = Mathf.FloorToInt(v.y / 4f), cz = Mathf.FloorToInt(v.z / 4f);
+            float h = Pal.Hash(cx, cy, cz, seed);
+            if (h > 0.11f) return null;
+            var c = PatchColours[(int)(h * 1000f) % PatchColours.Length];
+            bool edge = ((v.x & 3) == 0 || (v.y & 3) == 0) && Pal.Hash(v, seed + 1) < 0.5f;
+            return edge ? Color32.Lerp(c, Color.black, 0.35f) : c;
+        }
+
         static List<ClothingDef> Build()
         {
             var denim = new[] { Pal.Hex("1e2a3a"), Pal.Hex("2c3c52"), Pal.Hex("3e5270"), Pal.Hex("56709a") };
@@ -57,6 +69,8 @@ namespace MadMax.Game
             var khaki = Pal.Olive;
             var dust = new[] { Pal.Hex("8a7a64"), Pal.Hex("a8967a"), Pal.Hex("c4b294") };
             var red = new[] { Pal.Hex("5a1a14"), Pal.Hex("7e261c"), Pal.Hex("a43426") };
+            var orange = new[] { Pal.Hex("6e2e14"), Pal.Hex("94401c"), Pal.Hex("b45a26"), Pal.Hex("c87034") };
+            var darkOlive = new[] { Pal.Hex("262a20"), Pal.Hex("34392c"), Pal.Hex("444a3a") };
             return new List<ClothingDef>
             {
                 Def("tshirt", "T-SHIRT", ClothingSlot.Torso, 0.6f, (v, p, t) => Weave(v, Pal.Cream, 801, 1),
@@ -65,6 +79,20 @@ namespace MadMax.Game
                 Def("jacket", "LEATHER JACKET", ClothingSlot.Outer, 1.4f, (v, p, t) =>
                     p == BP.Chest && v.x == 0 && v.z > 0 ? Pal.Chrome[2] : Weave(v, leather, 803, 2),
                     (BP.Chest, Full), (BP.Pelvis, new Vector2(0, 0.35f)), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, new Vector2(0, 0.92f)), (BP.ForearmR, new Vector2(0, 0.92f))).Gear(waterproof: 0.3f, durability: 1.6f),
+                // the lead's look (concept art): a rust-orange work jacket patched in canvas, a grey hood collar; dark
+                // cargo pants patched at the thighs with strapped knee pads
+                Def("work_jacket", "PATCHED WORK JACKET", ClothingSlot.Outer, 1.4f, (v, p, t) =>
+                    p == BP.Chest && t > 0.86f ? Weave(v, Pal.Metal, 830, 1)
+                    : (p == BP.ForearmL || p == BP.ForearmR) && t > 0.78f ? Weave(v, Pal.Metal, 831, 0)
+                    : p == BP.Chest && v.x == 0 && v.z > 0 ? Pal.Chrome[2]
+                    : Patch(v, 832) is Color32 pc ? pc : Weave(v, orange, 833, 2),
+                    (BP.Chest, Full), (BP.Pelvis, new Vector2(0, 0.35f)), (BP.UpperArmL, Full), (BP.UpperArmR, Full), (BP.ForearmL, new Vector2(0, 0.92f)), (BP.ForearmR, new Vector2(0, 0.92f))).Gear(waterproof: 0.3f, durability: 1.4f),
+                Def("patched_cargo", "PATCHED CARGO PANTS", ClothingSlot.Legs, 0.7f, (v, p, t) =>
+                    (p == BP.ShinL || p == BP.ShinR) && t < 0.2f && v.z > 0 ? (p == BP.ShinL ? Weave(v, Pal.Rust, 834, 2) : Weave(v, Pal.RigGreen, 835, 1))   // knee pads
+                    : (p == BP.ShinL || p == BP.ShinR) && t < 0.24f && v.z > 0 ? Pal.Black[1]
+                    : (p == BP.ThighL || p == BP.ThighR) && t > 0.45f && t < 0.6f && Mathf.Abs(v.x) > 2 ? Weave(v, darkOlive, 836, 0)              // side pockets
+                    : Patch(v, 837) is Color32 pc ? pc : Weave(v, darkOlive, 838, 2),
+                    (BP.Pelvis, Full), (BP.ThighL, Full), (BP.ThighR, Full), (BP.ShinL, new Vector2(0, 0.85f)), (BP.ShinR, new Vector2(0, 0.85f))).Gear(durability: 1.2f),
                 Def("vest", "SCAV VEST", ClothingSlot.Outer, 1.6f, (v, p, t) => (v.y % 5 == 0) ? Pal.Rust[1] : Weave(v, dust, 804, 1), (BP.Chest, new Vector2(0.05f, 0.9f))),
                 Def("pants", "CARGO PANTS", ClothingSlot.Legs, 0.7f, (v, p, t) => (p == BP.ThighL || p == BP.ThighR) && t > 0.45f && t < 0.6f ? Weave(v, khaki, 805, 0) : Weave(v, khaki, 806, 2),
                     (BP.Pelvis, Full), (BP.ThighL, Full), (BP.ThighR, Full), (BP.ShinL, new Vector2(0, 0.85f)), (BP.ShinR, new Vector2(0, 0.85f))),
@@ -287,6 +315,6 @@ namespace MadMax.Game
         }
 
         /// <summary>Default outfit for a new wastelander.</summary>
-        public static readonly string[] Starter = { "tshirt", "jacket", "pants", "boots", "shoulder" };
+        public static readonly string[] Starter = { "tshirt", "work_jacket", "patched_cargo", "boots", "canvas_satchel" };
     }
 }

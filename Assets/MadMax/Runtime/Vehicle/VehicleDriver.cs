@@ -228,9 +228,12 @@ namespace MadMax.Vehicles
             {
                 if (!w.part || !w.grounded) continue;
                 float side = w.left ? 1f : -1f;                                              // turning right: the left track leads
-                // split within the grip: past it both tracks would just slip equally and the machine would not turn
+                // split within the grip: past it both tracks would just slip equally and the machine would not turn.
+                // Steering is clutch-and-brake: the inner track held back, the outer driven, by a share of the track's
+                // grip — not of the drive (cruising in a high gear the drive is small and the machine barely turned)
                 float limited = Mathf.Sign(share) * Mathf.Min(Mathf.Abs(share), w.maxF * 0.9f);
-                w.drive = pivot ? turn * side * w.maxF * 0.75f : limited * Mathf.Clamp(1f + turn * side * 1.4f, -0.8f, 1.1f);
+                float steerForce = turn * side * w.maxF * 0.4f;
+                w.drive = pivot ? turn * side * w.maxF * 0.75f : Mathf.Clamp(limited + steerForce, -w.maxF * 0.95f, w.maxF * 0.95f);
             }
         }
 
@@ -463,6 +466,7 @@ namespace MadMax.Vehicles
                 w.fwd = Vector3.ProjectOnPlane(fwd, n).normalized;
                 w.side = Vector3.Cross(n, w.fwd);
                 Vector3 v = rb.GetPointVelocity(w.contact);
+                if (w.deck) v -= MadMax.Building.StructureGround.LastVelocity;                // tyres grip relative to a moving deck
                 w.vf = Vector3.Dot(v, w.fwd); w.vs = Vector3.Dot(v, w.side);
 
                 // dry → wet firm ground (a film of rain on tarmac or hardpan) → mud; each tyre type has its own numbers
@@ -765,6 +769,9 @@ namespace MadMax.Vehicles
                 }
             }
         }
+
+        /// <summary>Any road wheel mounted (a stripped wreck lies on its belly).</summary>
+        public bool HasWheels { get { foreach (var w in wheels) if (w.part && !w.virt) return true; return false; } }
 
         /// <summary>Height of the vehicle's origin above level ground when it rests on its springs (each axle one rolling
         /// radius plus the ride height up): to set a vehicle down without dropping it.</summary>

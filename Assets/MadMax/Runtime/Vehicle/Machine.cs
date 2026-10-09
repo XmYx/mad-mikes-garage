@@ -187,7 +187,7 @@ namespace MadMax.Vehicles
                 }
                 case Kind.Dozer:
                 {
-                    Hinge(ref bladeLift, Mathf.Clamp(MachineKeys.Axis(k.h1, k.h2) - k.up, -1f, 1f), 12f, -20f, 16f, dt);       // up raises
+                    Hinge(ref bladeLift, Mathf.Clamp(MachineKeys.Axis(k.h1, k.h2) - k.up, -1f, 1f), 16f, -34f, 22f, dt);       // up raises (high for travel, below grade to cut)
                     Hinge(ref bladePitch, Mathf.Clamp(MachineKeys.Axis(k.h3, k.h4) + k.qe, -1f, 1f), 15f, -15f, 15f, dt);
                     Hinge(ref bladeAngle, Mathf.Clamp(MachineKeys.Axis(k.h6, k.h5) + k.side, -1f, 1f), 20f, -25f, 25f, dt);
                     var e = BladeEdge();

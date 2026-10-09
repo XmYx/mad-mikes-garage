@@ -137,14 +137,19 @@ namespace MadMax.Net
                 toolVisual = s.tool < ToolLibrary.AllIds.Count ? ToolLibrary.Create(ToolLibrary.AllIds[s.tool], material) : null;
                 if (toolVisual) { AttachTool(); toolVisual.gameObject.SetActive(!workProp); }
             }
+            string hold = !working && toolVisual && s.swing <= 0f && !s.carrying && !s.seated ? ToolHolds.Clip(toolVisual) : null;
             ToolPose? pose = working ? WastelandGame.WorkPoseAt(workPose, Time.time - workStart)
-                           : toolVisual ? (s.swing > 0f ? toolVisual.Pose(s.swing) : toolVisual.IdlePose) : (ToolPose?)null;
+                           : toolVisual ? (s.swing > 0f ? toolVisual.Pose(s.swing) : hold == null ? toolVisual.IdlePose : null) : (ToolPose?)null;
             anim.Tick(Time.deltaTime, new HumanAnimator.State
             {
                 speed = Mathf.Lerp(a.speed, b.speed, f), grounded = s.grounded, verticalSpeed = s.vertical, lookPitch = s.lookPitch,
                 sitting = s.seated, steer = veh && s.seated ? veh.steerInput : 0f, carrying = s.carrying,
                 tool = pose,
-                twoHanded = toolVisual && toolVisual.TwoHanded
+                twoHanded = toolVisual && toolVisual.TwoHanded,
+                grip2 = !toolVisual || working || s.carrying ? null : s.swing > 0f ? toolVisual.SecondGrip : hold != null && toolVisual.HoldTwoHands ? toolVisual.transform : null,
+                hold = hold,
+                action = !working && toolVisual && s.swing > 0f ? PlayerCharacter.SwingClip(toolVisual) : null,
+                actionT = s.swing > 0f ? s.swing : -1f, actionHit = toolVisual ? toolVisual.strikeAt : 0f
             });
         }
     }

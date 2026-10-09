@@ -1,7 +1,7 @@
 """Unattended acceptance run (roadmap 26, Q1): launches a player build on a disposable profile, supervises it,
 and exits with the run's result. No input is needed from launch to the final report.
 
-    python3 tools/acceptance/run.py [--suite fast|full|catalogue|vehicles] [--scenario <id prefix>]
+    python3 tools/acceptance/run.py [--suite fast|full|catalogue|vehicles] [--scenario <id prefixes>] [--skip <id prefixes>] [--quick]
                                     [--player Builds/Linux/MadMikesGarage.x86_64] [--timeout 1800] [--keep]
 
 Exit codes: 0 all passed, 1 a scenario failed, 2 only blocked scenarios, 3 hang/crash/timeout (no trustworthy
@@ -23,7 +23,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="fast")
-    ap.add_argument("--scenario")
+    ap.add_argument("--scenario", help="id prefixes, comma-separated")
+    ap.add_argument("--skip", help="leave out ids starting with these prefixes (comma-separated)")
+    ap.add_argument("--quick", action="store_true", help="reuse the world between standard-rule scenarios (faster, less isolated)")
     ap.add_argument("--player", default=os.path.join(ROOT, "Builds", "Linux", "MadMikesGarage.x86_64"))
     ap.add_argument("--timeout", type=float, default=1800)
     ap.add_argument("--keep", action="store_true", help="keep the disposable profile folder")
@@ -40,6 +42,10 @@ def main():
            "-mute", "-no-intro", "-logFile", os.path.join(results, "player.log"), "-screen-fullscreen", "0", "-screen-width", "1280", "-screen-height", "720"]
     if a.scenario:
         cmd += ["-scenario", a.scenario]
+    if a.skip:
+        cmd += ["-skip", a.skip]
+    if a.quick:
+        cmd += ["-reuse"]
     print("[acceptance]", " ".join(cmd), flush=True)
     t0 = time.time()
     proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)

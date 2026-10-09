@@ -23,6 +23,8 @@ namespace MadMax.Game.Acceptance
             yield return new PeopleCompanion();
             yield return new PeopleRaiders();
             yield return new PeopleCombat();
+            yield return new MeleeFeel();
+            yield return new IdleClearance();
             yield return new PeopleDefences();
             yield return new AnimalsHerdsTaming();
             yield return new RadioStations();

@@ -131,6 +131,7 @@ namespace MadMax.Vehicles
                 Lamp(43, 20, "O", (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : Off);
                 Lamp(48, 20, "T", (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
                 Lamp(53, 20, "S", (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
+                Lamp(58, 20, "C", ColdLamp(sys));
             }
             canvas.Upload();
         }
@@ -160,7 +161,16 @@ namespace MadMax.Vehicles
             hd.SetLamp(6, (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
             hd.SetLamp(7, (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
             hd.SetLamp(8, sys && !sys.Started ? Amber : Off);
+            hd.SetLamp(9, sys ? ColdLamp(sys) : Off);
             hd.Upload();
+        }
+
+        /// <summary>COLD lamp: steady while the engine is cold, blinking while diesel glow plugs warm, off once ready.</summary>
+        public static Color32 ColdLamp(VehicleSystems sys)
+        {
+            if (!sys.ColdStart) return Off;
+            if (sys.GlowPlugsLit) return Mathf.Repeat(Time.time, 0.6f) < 0.35f ? Amber : Off;
+            return sys.FuelKind == MadMax.Items.ResourceType.Diesel ? Off : Amber;
         }
 
         void Lamp(int x, int y, string c, Color32 col)

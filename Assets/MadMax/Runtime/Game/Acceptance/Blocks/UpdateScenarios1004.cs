@@ -423,7 +423,8 @@ namespace MadMax.Game.Acceptance
             var g = c.Game;
             if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
             int recipes = 0; foreach (var r in RecipeLibrary.All) if (ProstheticLibrary.Is(r.output)) recipes++;
-            c.Check(recipes == ProstheticLibrary.All.Count, $"every prosthetic has a recipe ({recipes} of {ProstheticLibrary.All.Count})");
+            int makeable = 0; foreach (var d in ProstheticLibrary.All) if (!d.salvage) makeable++;
+            c.Check(recipes == makeable, $"every makeable prosthetic has a recipe ({recipes} of {makeable}; salvage-only pieces excluded)");
             g.Sever(BodyZone.HandR, true); g.Sever(BodyZone.ArmL, true); g.Sever(BodyZone.LegL, true);
             c.Fixture("right hand, left forearm and left lower leg amputated clean");
             g.Inventory.AddItem("pros_hook"); g.Inventory.AddItem("pros_peg_leg"); g.Inventory.AddItem("pros_blade_arm");

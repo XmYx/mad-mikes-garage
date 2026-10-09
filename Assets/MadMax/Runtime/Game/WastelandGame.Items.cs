@@ -322,7 +322,7 @@ namespace MadMax.Game
         }
 
         // ---------------------------------------------------------------- loot
-        static readonly string[] LootMedia = { "book_mechanics_1", "book_mechanics_2", "book_gunsmith", "book_builder", "book_scrapper", "book_hotwiring", "book_chemistry", "vhs_driving", "vhs_survival", "vhs_karate", "vhs_demolition" };
+        static readonly string[] LootMedia = { "book_mechanics_1", "book_mechanics_2", "book_gunsmith", "book_builder", "book_scrapper", "book_hotwiring", "book_chemistry", "book_first_aid", "vhs_driving", "vhs_survival", "vhs_karate", "vhs_demolition" };
 
         /// <summary>Chance to turn up a book or tape while salvaging (Perception and Salvaging help).</summary>
         public void RollLoot(float baseChance)

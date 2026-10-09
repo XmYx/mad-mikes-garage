@@ -115,6 +115,7 @@ namespace MadMax.Game
                 Stats.hunger = Mathf.Max(5f, Stats.hunger - slept * 2f);
                 Stats.thirst = Mathf.Max(5f, Stats.thirst - slept * 3f);
                 Stats.health = Mathf.Min(Stats.MaxHealth, Stats.health + Stats.MaxHealth * (0.2f + comfort * 0.03f));
+                if (DayNight.DayMinutes > 0f) HealWhileAsleep(slept, comfort);
                 if (comfort >= 3f)
                 {
                     Stats.restedUntil = DayNight.TotalDays * 24f + 4f + comfort * 1.2f;

@@ -42,6 +42,7 @@ namespace MadMax.Game
             }
             else if (a.hair == HairStyle.Ponytail) { nodes = 6; segLen = 0.055f; roots.Add(new Vector3(0, 0.25f * h, -0.1f)); roots.Add(new Vector3(0.012f, 0.25f * h, -0.1f)); }
             else if (a.hair == HairStyle.Mohawk) { nodes = 3; segLen = 0.04f; roots.Add(new Vector3(0, 0.25f * h, -0.08f)); }
+            else if (a.hair == HairStyle.Undercut) { nodes = 3; segLen = 0.035f; roots.Add(new Vector3(0.03f, 0.27f * h, 0.07f)); roots.Add(new Vector3(0.05f, 0.26f * h, 0.06f)); }
             else return;
 
             strandMesh = HumanDesign.HairStrandMesh(col, segLen);

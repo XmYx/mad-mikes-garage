@@ -19,6 +19,8 @@ namespace MadMax.Game
         public bool arm, whole;
         public float grip, limp, speed = 1f, stamina = 1f, carry, noise, kg = 1f;
         public bool climbs;
+        /// <summary>Pre-war salvage (the lead's cyber arm): found or worn from the start, never made at a bench.</summary>
+        public bool salvage;
         public string tool;
         public System.Action<VoxelGrid> model;
         public Vector3Int gripAt = new Vector3Int(0, -6, 0);
@@ -74,6 +76,21 @@ namespace MadMax.Game
             new ProstheticDef { id = "pros_hydraulic_arm", name = "HYDRAULIC ARM", arm = true, whole = true, grip = 1f, climbs = true, carry = 15f, stamina = 1.1f, kg = 4f, noise = 0.25f, gripAt = new Vector3Int(0, -12, 0),
                 desc = "PISTONS AND A STEEL GRAB: A STRONG ARM (+15 KG CARRIED), HEAVY",
                 model = g => { Cuff(g, 3); g.Box(-1, -10, -1, 1, -4, 1, Steel); g.Box(2, -9, 0, 2, -4, 0, Bright); g.Box(-2, -9, 0, -2, -4, 0, Pal.Ramp(Pal.Ochre, 2)); g.Box(-1, -13, 0, 1, -11, 0, Bright); } },
+            new ProstheticDef { id = "pros_cyber_arm", name = "SALVAGED CYBER ARM", salvage = true, arm = true, whole = true, grip = 1f, climbs = true, kg = 1.6f, noise = 0.08f, gripAt = new Vector3Int(0, -13, 0),
+                desc = "PRE-WAR PLATING, BLACK JOINTS, CABLES OUT IN THE OPEN: A FULL HAND",
+                model = g =>
+                {
+                    VoxMat plate = p => Pal.Hash(p, 870) < 0.12f ? Pal.Sand[1] : Pal.Pick(Pal.Cream, p, 871, 1), joint = Pal.Ramp(Pal.Black, 1);
+                    g.CylY(0, 0, 1.7f, -1, 0, Steel);                                                       // elbow socket
+                    g.CylY(0, 0, 1.6f, -9, -2, plate);                                                     // forearm shell
+                    g.Box(-2, -4, -1, -2, -3, 1, joint); g.Box(-2, -8, -1, -2, -7, 1, joint);              // seams
+                    g.Set(1, -5, -2, Pal.Solid(Pal.Ochre[3]));                                             // status lamp
+                    for (int y = -9; y <= -1; y++) { g.Set(-1, y, -2, Pal.Solid(y % 3 == 0 ? Pal.Crimson[2] : Pal.Black[0])); g.Set(1, y + (y & 1), -2, Pal.Solid(Pal.Black[1])); }   // cables
+                    g.Box(-1, -10, -1, 1, -10, 1, joint);                                                  // wrist
+                    g.Box(-1, -12, -1, 1, -11, 1, plate);                                                  // palm
+                    for (int f = -1; f <= 1; f++) { g.Set(f, -13, 0, joint); g.Box(f, -15, 0, f, -14, 0, plate); }
+                    g.Set(2, -11, 0, joint); g.Box(2, -13, 0, 2, -12, 1, plate);                          // thumb
+                } },
             new ProstheticDef { id = "pros_peg_leg", name = "PEG LEG", whole = true, limp = 0.45f, speed = 0.8f, stamina = 1.15f, kg = 1.5f, noise = 0.1f,
                 desc = "A TURNED WOODEN PEG: WALKS, SLOWLY",
                 model = g => { Cuff(g, 3); g.CylY(0, 0, 1.4f, -7, -4, Timber); g.Box(0, -12, 0, 0, -8, 0, Timber); g.Set(0, -13, 0, Pal.Solid(Pal.Tire[1])); } },

@@ -29,6 +29,8 @@ namespace MadMax.Game
         HumanClip idleCur, idlePrev, actClip;
         float idleT, idlePrevT, idleFade = 1f, idleNext = 6f;
         float airT, landT = 9f, airW, crouchW, actW, actT, carryW, aimW, talkW, lookW, ikL, ikR, ikPelvis;
+        HumanClip holdClip, fidgetClip;
+        float holdW, fidgetT = -1f, fidgetNext = 6f;
         bool wasGrounded = true;
         float baseW;
         Vector3 lastLook;
@@ -97,6 +99,18 @@ namespace MadMax.Game
 
         void Post(BodyPart p, float x, float y, float z) => tgt[(int)p] = tgt[(int)p] * Quaternion.Euler(x, y, z);
 
+        /// <summary>An action clip over the targets; a full-body one (sledge swing, stagger, dig) leaves the legs to the
+        /// gait while walking, so the feet don't skate in a planted stance.</summary>
+        void OverAction(HumanClip c, float t, float w, float move)
+        {
+            if (c.mask != HumanClip.Mask.Full || move < 0.05f) { Over(c, t, w, true); return; }
+            c.Sample(t, tmp, out var p);
+            float legs = w * (1f - 0.85f * move);
+            for (int i = 0; i < N; i++)
+                tgt[i] = Quaternion.Slerp(tgt[i], tmp[i], HumanClip.IsUpper((BodyPart)i) ? w : legs);
+            pelAcc = Vector3.Lerp(pelAcc, p, legs);
+        }
+
         static float Remap(float t, float toolHit, float clipHit)
         {
             if (toolHit <= 0f || toolHit >= 1f || clipHit <= 0f || clipHit >= 1f) return t;
@@ -156,6 +170,7 @@ namespace MadMax.Game
             bt[0].localPosition = new Vector3(0f, pelvisBase, 0f) + pelCur;
 
             ApplyFootIK(dt, feetDown && FootIK && NearCamera(25f));
+            GripIK(dt, s);
         }
 
         void Locomotion(float dt, State s, float move, float run)
@@ -172,7 +187,7 @@ namespace MadMax.Game
             float a = Mathf.Clamp01(s.speed / 1.0f), b = Mathf.InverseLerp(2.0f, 3.6f, s.speed), c = Mathf.InverseLerp(4.6f, 5.6f, s.speed);
             var sprint = Clip("sprint") ?? Clip("run");
             float stand = 1f - crouchW;
-            UpdateIdle(dt, s.speed < 0.15f);
+            UpdateIdle(dt, s.speed < 0.15f, s.hold == null && !s.carrying && !s.tool.HasValue);
             float wIdle = (1f - a) * stand;
             if (idlePrev != null && idleFade < 1f) { Acc(idlePrev, idlePrevT / idlePrev.length, wIdle * (1f - idleFade)); Acc(idleCur, idleT / idleCur.length, wIdle * idleFade); }
             else Acc(idleCur, idleT / idleCur.length, wIdle);
@@ -226,7 +241,10 @@ namespace MadMax.Game
             tgt[(int)foot] = Quaternion.Slerp(tgt[(int)foot], Quaternion.identity, 0.5f * limp);
         }
 
-        void UpdateIdle(float dt, bool idle)
+        static readonly string[] IdleVariants = { "idle_shift", "idle_look" };
+        static readonly string[] FreeVariants = { "idle_shift", "idle_look", "idle_shift", "idle_look", "idle_stretch", "idle_neck", "idle_hips" };
+
+        void UpdateIdle(float dt, bool idle, bool freeHands)
         {
             idleT += dt; idlePrevT += dt;
             idleFade = Mathf.MoveTowards(idleFade, 1f, dt / 0.8f);
@@ -234,7 +252,10 @@ namespace MadMax.Game
             if (!idle) { idleNext = Mathf.Max(idleNext, idleT + 4f); return; }
             if (idleT < idleNext || idleFade < 1f) return;
             // a variant now and then: shift the weight, look around; back to breathing
-            string next = idleCur.name != "idle" ? "idle" : rnd.NextDouble() < 0.5 ? "idle_shift" : "idle_look";
+            // with empty hands also a stretch, a rub of the neck, hands on the hips
+            var pool = freeHands ? FreeVariants : IdleVariants;
+            string next = forcedIdle ?? (idleCur.name != "idle" ? "idle" : pool[rnd.Next(pool.Length)]);
+            forcedIdle = null;
             var c = Clip(next);
             if (c == null) { idleNext = idleT + 8f; return; }
             idlePrev = idleCur; idlePrevT = idleT;
@@ -258,7 +279,8 @@ namespace MadMax.Game
                 if (actClip != null && actClip.loop) actT += dt / actClip.length;
             }
             bool clipAction = actClip != null && actW > 0f;
-            if (clipAction) Over(actClip, actT, actW, true);
+            Holding(dt, s, move);
+            if (clipAction) OverAction(actClip, actT, actW, move);
 
             // a tool pose without a clip: the procedural ToolPose (right arm, left arm when two-handed, chest, knees)
             if (s.tool.HasValue && want == null && !s.sitting)
@@ -382,6 +404,76 @@ namespace MadMax.Game
             var r2 = axis1.sqrMagnitude > 1e-10f ? Quaternion.AngleAxis(acat0 * Mathf.Rad2Deg, ia * axis1.normalized) : Quaternion.identity;
             a.localRotation = a.localRotation * (r0 * r2);
             b.localRotation = b.localRotation * r1;
+        }
+
+        /// <summary>Tests: play the hold's fidget now / switch to an idle variant now.</summary>
+        public void ForceFidget() { fidgetNext = 0f; }
+        public void ForceIdle(string variant) { forcedIdle = variant; idleNext = 0f; idleFade = 1f; }
+        string forcedIdle;
+        /// <summary>The fidget playing (null = none) and the idle variant.</summary>
+        public string Fidget => fidgetT >= 0f && fidgetClip != null ? fidgetClip.name : null;
+        public string IdleClip => idleCur != null ? idleCur.name : null;
+
+        // ------------------------------------------------------------------ carrying a tool at rest
+        /// <summary>The hold overlay (arms only, so breathing / shifting / looking around stay) faded out under actions,
+        /// aiming and carrying; standing still with it, its fidget plays every 7-16 s (looks the tool over, shifts it).</summary>
+        void Holding(float dt, State s, float move)
+        {
+            var want = s.hold != null && !s.sitting && !s.lying && !s.carrying ? Clip(s.hold) : null;
+            if (want != null) holdClip = want;
+            float target = want != null ? (1f - actW) * (1f - aimW) : 0f;
+            holdW = Mathf.MoveTowards(holdW, target, dt * 6f);
+            if (holdClip == null || holdW <= 0.001f) { fidgetT = -1f; return; }
+            Over(holdClip, time / holdClip.length, holdW, false);
+
+            bool still = move < 0.1f && actW < 0.05f && aimW < 0.05f && !s.talking && want != null;
+            if (fidgetT < 0f)
+            {
+                if (!still) { fidgetNext = Mathf.Max(fidgetNext, 3f); return; }
+                if ((fidgetNext -= dt) > 0f) return;
+                fidgetClip = Clip(holdClip.name + "_fidget");
+                fidgetNext = 7f + (float)rnd.NextDouble() * 9f;
+                if (fidgetClip == null) return;
+                fidgetT = 0f;
+            }
+            if (fidgetClip == null) { fidgetT = -1f; return; }
+            fidgetT += dt / fidgetClip.length;
+            if (fidgetT >= 1f || !still) { fidgetT = -1f; return; }
+            float env = Mathf.Clamp01(Mathf.Min(fidgetT, 1f - fidgetT) / 0.12f);    // ease in and out
+            Over(fidgetClip, fidgetT, holdW * env, false);
+        }
+
+        // ------------------------------------------------------------------ second hand on the handle
+        float gripW;
+
+        /// <summary>Two-bone arm IK: the left hand onto the handle of a tool held in both hands, at the point of the handle
+        /// nearest to where the pose put it (between 0.1 and 0.45 tool units above the right hand), so a swing reads as one
+        /// body moving one tool. Fades in and out; skipped with the left arm hurt or gone.</summary>
+        void GripIK(float dt, State s)
+        {
+            bool on = s.grip2 && s.grip2.gameObject.activeInHierarchy && !s.sitting && !s.lying && !s.carrying && s.armHurtL <= 0.6f
+                      && !rig.BoneGone(BodyPart.HandL) && !rig.BoneGone(BodyPart.ForearmL);
+            gripW = Mathf.MoveTowards(gripW, on ? 1f : 0f, dt * 8f);
+            if (gripW <= 0.001f || !s.grip2) return;
+            var ua = rig.Bone(BodyPart.UpperArmL); var fa = rig.Bone(BodyPart.ForearmL); var hand = rig.Bone(BodyPart.HandL);
+            if (!ua || !fa || !hand) return;
+            var tool = s.grip2;
+            var axis = tool.TransformVector(Vector3.down);
+            float unit = axis.magnitude;
+            if (unit < 1e-4f) return;
+            axis /= unit;
+            Quaternion ua0 = ua.localRotation, fa0 = fa.localRotation;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var palm = hand.TransformVector(new Vector3(0f, -0.055f, 0f));
+                float u = Mathf.Clamp(Vector3.Dot(hand.position + palm - tool.position, axis), 0.1f * unit, 0.45f * unit);
+                Solve(ua, fa, hand, tool.position + axis * u - palm);
+            }
+            if (gripW < 1f)
+            {
+                ua.localRotation = Quaternion.Slerp(ua0, ua.localRotation, gripW);
+                fa.localRotation = Quaternion.Slerp(fa0, fa.localRotation, gripW);
+            }
         }
 
         // ------------------------------------------------------------------ look at

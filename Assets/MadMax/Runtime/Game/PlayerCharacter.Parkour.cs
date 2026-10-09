@@ -300,6 +300,15 @@ namespace MadMax.Game
             carry = Vector3.zero;
             if (!cc.isGrounded || !Probe(transform.position + Vector3.up * 0.3f, Vector3.down, 0.6f, out var under)) { rideFor = 0f; return carry; }
             var rb = under.collider.attachedRigidbody;
+            // the rolling city's deck (kinematic): carried with it and turned with it
+            if (rb && rb.isKinematic && rb.TryGetComponent<MadMax.World.RollingCity>(out var city))
+            {
+                var cv = city.PointVelocity(transform.position);
+                carry = new Vector3(cv.x, 0f, cv.z);
+                transform.rotation = Quaternion.Euler(0f, city.YawRate * dt, 0f) * transform.rotation;
+                rideFor = 0f;
+                return carry;
+            }
             if (!rb || rb.isKinematic) { rideFor = 0f; return carry; }
             var v = rb.GetPointVelocity(transform.position);
             carry = new Vector3(v.x, 0f, v.z);

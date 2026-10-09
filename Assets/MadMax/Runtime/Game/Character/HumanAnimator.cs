@@ -24,6 +24,8 @@ namespace MadMax.Game
             public string action;            // keyframed action clip (HumanClips) playing over the body; null = none
             public float actionT;            // its progress 0..1 (< 0 = loop on its own clock)
             public float actionHit;          // the tool's strike moment 0..1 the clip's hit is lined up with (0 = none)
+            public Transform grip2;          // a long-handled tool held in both hands: the left hand stays on its handle (IK)
+            public string hold;              // how the held tool is carried at rest ("hold_*" arm overlay clip, ToolHolds); null = none
         }
 
         readonly HumanRig rig;
@@ -127,6 +129,7 @@ namespace MadMax.Game
             Set(BodyPart.ForearmR, foreR, 0, 0, ks);
             Set(BodyPart.HandL, 0, 0, 0, k);
             Set(BodyPart.HandR, 0, 0, handR, ks);
+            GripIK(dt, s);
         }
 
         void Sit(State s, float k)
