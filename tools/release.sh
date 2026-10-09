@@ -80,13 +80,15 @@ if editor_open; then
   say "an editor has the project open: building inside it through Unity MCP"
   [ -f "$MCP" ] || die "no $MCP to drive the open editor (close the editor to build in batch mode)"
   rm -f "$OUT/editor_builds.txt"
-  code="UnityEditor.EditorApplication.delayCall += () => { var r = \\\"\\\"; bool regen = true;"
+  code="var r = \\\"\\\"; bool regen = true;"
   for t in "${targets[@]}"; do
     T="${t%%:*}"; P="$OUT/${t#*:}"
     code+=" { bool ok = MadMax.EditorTools.CiBuild.Run(UnityEditor.BuildTarget.$T, \\\"$P\\\", \\\"$full\\\", regen); regen = false; r += \\\"$T \\\" + ok + \\\"\\\\n\\\"; }"
   done
-  code+=" UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Standalone, UnityEditor.BuildTarget.StandaloneLinux64); System.IO.File.WriteAllText(\\\"$OUT/editor_builds.txt\\\", r); }; return \\\"queued\\\";"
-  python3 "$MCP" execute_code "{\"action\":\"execute\",\"code\":\"$code\"}" | grep -q queued || die "could not queue the builds in the editor"
+  code+=" UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Standalone, UnityEditor.BuildTarget.StandaloneLinux64); System.IO.File.WriteAllText(\\\"$OUT/editor_builds.txt\\\", r); return \\\"built\\\";"
+  # run on the editor's main thread directly (a delayCall can sit unfired in an unfocused editor); the MCP request
+  # times out long before the builds end, so it runs in the background and the result file is what counts
+  (timeout 7200 python3 "$MCP" execute_code "{\"action\":\"execute\",\"code\":\"$code\"}" > "$OUT/editor_mcp.txt" 2>&1 &)
   until [ -f "$OUT/editor_builds.txt" ]; do sleep 15; done
   cat "$OUT/editor_builds.txt"
   grep -q False "$OUT/editor_builds.txt" && die "a build failed (see the editor console)"

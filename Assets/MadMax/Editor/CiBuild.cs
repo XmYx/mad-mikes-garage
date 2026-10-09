@@ -33,8 +33,17 @@ namespace MadMax.EditorTools
             string ext = target == BuildTarget.StandaloneWindows64 ? ".exe" : target == BuildTarget.StandaloneOSX ? ".app" : ".x86_64";
             if (string.IsNullOrEmpty(path)) path = $"build/{target}/MadMikesGarage{ext}";
             if (!path.EndsWith(ext)) path += ext;
+            // a Windows player cross-built off Windows gets ENABLE_NVIDIA without the NVIDIA module reference, and URP's
+            // DLSS code doesn't compile: build it without the upscaler framework (STP / FSR / DLSS) and restore after
+            string defines0 = PlayerSettings.GetScriptingDefineSymbols(NamedBuildTarget.Standalone);
+            bool stripUpscaler = target == BuildTarget.StandaloneWindows64 && Application.platform != RuntimePlatform.WindowsEditor && defines0.Contains("ENABLE_UPSCALER_FRAMEWORK");
             try
             {
+                if (stripUpscaler)
+                {
+                    PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, string.Join(";", defines0.Split(';').Where(d => d != "ENABLE_UPSCALER_FRAMEWORK")));
+                    Debug.Log("[MadMax] CI build: Windows cross-build without ENABLE_UPSCALER_FRAMEWORK (no DLSS/STP/FSR in this player)");
+                }
                 if (regenerate)
                 {
                     AssetDatabase.Refresh();                                      // a freshly rendered HD pack (tools/release.sh)
@@ -65,7 +74,11 @@ namespace MadMax.EditorTools
                 Debug.LogException(e);
                 return false;
             }
-            finally { BuildStamp.VersionOverride = null; }
+            finally
+            {
+                BuildStamp.VersionOverride = null;
+                if (stripUpscaler) PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, defines0);
+            }
         }
 
         /// <summary>Universal (x64 + ARM64) macOS player. Uses reflection so the project compiles without Mac build support installed.</summary>
