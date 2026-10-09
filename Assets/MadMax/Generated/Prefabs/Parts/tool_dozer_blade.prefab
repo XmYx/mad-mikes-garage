@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 9131820938628381845}
   - component: {fileID: 2585785023102707070}
   - component: {fileID: 7847539822265702783}
-  - component: {fileID: 4079224240251790498}
+  - component: {fileID: 2011917732040767467}
   - component: {fileID: 6726756415387899793}
   m_Layer: 9
   m_Name: blade
@@ -33,8 +33,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 7960473571455851024}
-  - {fileID: 569822514818149378}
+  - {fileID: 8511520771614763020}
+  - {fileID: 1108824135417004978}
   m_Father: {fileID: 6632017848875140127}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2585785023102707070
@@ -97,7 +97,7 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!205 &4079224240251790498
+--- !u!205 &2011917732040767467
 LODGroup:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -118,11 +118,11 @@ LODGroup:
   - screenRelativeHeight: 0.07
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 4810183323184477229}
+    - renderer: {fileID: 8156429759930750724}
   - screenRelativeHeight: 0.01
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 3061321858603472947}
+    - renderer: {fileID: 5250303460754439444}
   m_Enabled: 1
   m_GlobalIlluminationLOD: 0
 --- !u!65 &6726756415387899793
@@ -261,7 +261,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.144, y: 0.78306794, z: 1.1759999}
   m_Center: {x: 0, y: 0.29553396, z: 0.49199998}
---- !u!1 &4750089060188799215
+--- !u!1 &3765757834533634814
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -269,95 +269,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1140677814457765846}
-  - component: {fileID: 3772977137097006101}
-  - component: {fileID: 4831668755478464695}
+  - component: {fileID: 1108824135417004978}
+  - component: {fileID: 345874521066515230}
+  - component: {fileID: 5250303460754439444}
   m_Layer: 9
-  m_Name: tool_dozer_blade
+  m_Name: LOD2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1140677814457765846
+--- !u!4 &1108824135417004978
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4750089060188799215}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 6632017848875140127}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3772977137097006101
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4750089060188799215}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
-  partId: tool_dozer_blade
-  category: 13
-  sizeClass: 4
-  mass: 600
-  radius: 0
-  damage: 0
-  quality: 1
---- !u!114 &4831668755478464695
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4750089060188799215}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a2cb93b403e84b9d8ca1ec319d40d22e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MadMax.Rendering.HDModel
-  asset: tool_dozer_blade
-  group: parts
-  bounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
-  wheelSockets: []
-  wheelRadii: []
---- !u!1 &6356047962509519923
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7960473571455851024}
-  - component: {fileID: 2304148203959223661}
-  - component: {fileID: 4810183323184477229}
-  m_Layer: 9
-  m_Name: LOD1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7960473571455851024
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6356047962509519923}
+  m_GameObject: {fileID: 3765757834533634814}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -366,21 +294,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 9131820938628381845}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &2304148203959223661
+--- !u!33 &345874521066515230
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6356047962509519923}
-  m_Mesh: {fileID: -7908924162419818310, guid: 61b0b7ce320276ff28d7ffecbae9085b, type: 3}
---- !u!23 &4810183323184477229
+  m_GameObject: {fileID: 3765757834533634814}
+  m_Mesh: {fileID: 6101867029721778044, guid: 61b0b7ce320276ff28d7ffecbae9085b, type: 3}
+--- !u!23 &5250303460754439444
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6356047962509519923}
+  m_GameObject: {fileID: 3765757834533634814}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -426,7 +354,7 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &7680410566825074661
+--- !u!1 &4750089060188799215
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -434,23 +362,95 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 569822514818149378}
-  - component: {fileID: 4389452564710865750}
-  - component: {fileID: 3061321858603472947}
+  - component: {fileID: 1140677814457765846}
+  - component: {fileID: 3772977137097006101}
+  - component: {fileID: 7031560359102516150}
   m_Layer: 9
-  m_Name: LOD2
+  m_Name: tool_dozer_blade
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &569822514818149378
+--- !u!4 &1140677814457765846
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7680410566825074661}
+  m_GameObject: {fileID: 4750089060188799215}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6632017848875140127}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3772977137097006101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4750089060188799215}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
+  partId: tool_dozer_blade
+  category: 13
+  sizeClass: 4
+  mass: 600
+  radius: 0
+  damage: 0
+  quality: 1
+--- !u!114 &7031560359102516150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4750089060188799215}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2cb93b403e84b9d8ca1ec319d40d22e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MadMax.Rendering.HDModel
+  asset: tool_dozer_blade
+  group: parts
+  bounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 0, y: 0, z: 0}
+  wheelSockets: []
+  wheelRadii: []
+--- !u!1 &5670660588235440665
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8511520771614763020}
+  - component: {fileID: 7298004769796663824}
+  - component: {fileID: 8156429759930750724}
+  m_Layer: 9
+  m_Name: LOD1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8511520771614763020
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5670660588235440665}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -459,21 +459,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 9131820938628381845}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &4389452564710865750
+--- !u!33 &7298004769796663824
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7680410566825074661}
-  m_Mesh: {fileID: 6101867029721778044, guid: 61b0b7ce320276ff28d7ffecbae9085b, type: 3}
---- !u!23 &3061321858603472947
+  m_GameObject: {fileID: 5670660588235440665}
+  m_Mesh: {fileID: -7908924162419818310, guid: 61b0b7ce320276ff28d7ffecbae9085b, type: 3}
+--- !u!23 &8156429759930750724
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7680410566825074661}
+  m_GameObject: {fileID: 5670660588235440665}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
