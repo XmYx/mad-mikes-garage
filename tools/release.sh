@@ -108,7 +108,7 @@ fi
 # regeneration may touch tracked generated content: the release must match a commit
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   if [ "$dry" = 1 ]; then say "note: regeneration changed tracked files (dry run: not committed)"; else
-    git add -A -- . ':!.codex'
+    git add -u -- .
     git commit -qm "Regenerated content for $tag"
     git push -q origin main
     sha="$(git rev-parse HEAD)"
