@@ -335,7 +335,7 @@ def setup_cycles(o, ao_dist):
     if not o["cpu"]:
         try:
             prefs = bpy.context.preferences.addons["cycles"].preferences
-            for dev in ("OPTIX", "CUDA", "HIP", "ONEAPI"):
+            for dev in ("OPTIX", "CUDA", "HIP", "ONEAPI", "METAL"):
                 try:
                     prefs.compute_device_type = dev
                 except TypeError:
@@ -346,6 +346,8 @@ def setup_cycles(o, ao_dist):
                     for d in prefs.devices:
                         d.use = d.type == dev
                     sc.cycles.device = "GPU"
+                    if dev == "METAL":                 # specialised kernels recompile as every pass rewires the
+                        prefs.kernel_optimization_level = "OFF"   # materials: generic kernels bake ~13% faster
                     log("bake device", dev, gpus[0].name)
                     break
         except Exception as e:  # noqa: BLE001
@@ -431,6 +433,110 @@ def paint_mask(base, pid):
     return blur3(m).astype(np.float32), ref.tolist()
 
 
+IMPLICIT_GENERATED = {"TEX_NOISE", "TEX_VORONOI", "TEX_WAVE", "TEX_GRADIENT", "TEX_MAGIC", "TEX_CHECKER", "TEX_BRICK",
+                      "TEX_WHITE_NOISE", "TEX_GABOR"}   # procedural textures: an unlinked Vector means Generated coords
+
+
+def coords_from_attributes(mats):
+    """Texture coordinates that depend on the object (Object, Generated, a procedural texture's implicit Generated)
+    read the per-part copies bake_proxy stored instead: on the joined proxy they would be measured in the first part's
+    space and the whole asset's bounds. Covers node groups. -> undo()."""
+    added, relinked, seen = [], [], set()
+
+    def walk(nt):
+        if nt is None or nt in seen:
+            return
+        seen.add(nt)
+        cache = {}
+
+        def attr(name):
+            if name not in cache:
+                n = nt.nodes.new("ShaderNodeAttribute")
+                n.attribute_type = "GEOMETRY"
+                n.attribute_name = name
+                added.append((nt, n))
+                cache[name] = n.outputs["Vector"]
+            return cache[name]
+        for n in list(nt.nodes):
+            if n.type == "GROUP":
+                walk(n.node_tree)
+            elif n.type == "TEX_COORD" and n.object is None:
+                for out, name in (("Generated", "bake_gen"), ("Object", "bake_obj")):
+                    for ln in list(n.outputs[out].links):
+                        relinked.append((nt, ln.from_socket, ln.to_socket))
+                        to = ln.to_socket
+                        nt.links.remove(ln)
+                        nt.links.new(attr(name), to)
+            elif n.type in IMPLICIT_GENERATED:
+                v = n.inputs.get("Vector")
+                if v is not None and not v.links and not v.hide_value:
+                    nt.links.new(attr("bake_gen"), v)
+    for m in mats:
+        if m and m.node_tree:
+            walk(m.node_tree)
+
+    def undo():
+        for nt, n in added:
+            nt.nodes.remove(n)
+        for nt, f, t in relinked:
+            nt.links.new(f, t)
+    return undo
+
+
+def bake_proxy(objs, mats):
+    """One joined, evaluated copy of an atlas's meshes, the originals hidden from render while it bakes.
+    bpy.ops.object.bake runs a Cycles session per selected object, and that session (scene sync, margin, teardown)
+    costs far more than the samples: a 20-mesh car paid it 100 times over its 5 passes. Same geometry, materials and
+    atlas UVs, so the maps match. -> (objects to bake, cleanup)."""
+    if len(objs) < 2:
+        return objs, lambda: None
+    names = [ob.data.uv_layers[0].name for ob in objs if ob.data.uv_layers]
+    uv = max(set(names), key=names.count) if names else "UVMap"
+    dg = bpy.context.evaluated_depsgraph_get()
+    col = bpy.context.scene.collection
+    parts = []
+    for ob in objs:
+        me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), preserve_all_data_layers=True, depsgraph=dg)
+        # the part's own Object and Generated coordinates (Cycles: (co - (loc - size)) / (2 size) over the texture
+        # space), which joining would lose
+        co = np.empty(len(me.vertices) * 3, np.float32)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        loc, size = np.array(ob.data.texspace_location), np.array(ob.data.texspace_size)
+        size = np.where(np.abs(size) < 1e-8, 1e-8, size)
+        gen = (co - (loc - size)) / (2 * size)
+        for name, val in (("bake_obj", co), ("bake_gen", gen)):
+            a = me.attributes.new(name, "FLOAT_VECTOR", "POINT")
+            a.data.foreach_set("vector", np.ascontiguousarray(val, np.float32).ravel())
+        if me.uv_layers:
+            me.uv_layers[0].name = uv                  # join merges UV layers by name: one shared atlas layer
+        c = bpy.data.objects.new(ob.name + "__bake", me)
+        col.objects.link(c)
+        c.matrix_world = ob.matrix_world.copy()
+        parts.append(c)
+    undo_coords = coords_from_attributes(mats)
+    hidden = [(ob, ob.hide_render) for ob in objs]
+    for ob in objs:
+        ob.hide_render = True                          # AO sees the proxy only, not the proxy and the originals
+    select(parts, parts[0])
+    bpy.ops.object.join()
+    proxy = parts[0]
+    uvl = proxy.data.uv_layers
+    i = uvl.find(uv)
+    if i >= 0:
+        uvl.active_index = i
+        uvl[i].active_render = True
+
+    def cleanup():
+        me = proxy.data
+        bpy.data.objects.remove(proxy, do_unlink=True)
+        bpy.data.meshes.remove(me)
+        undo_coords()
+        for ob, h in hidden:
+            ob.hide_render = h
+    return [proxy], cleanup
+
+
 def bake_atlas(name, objs, size, out_dir, o, paint_mats):
     mats = []
     for ob in objs:
@@ -438,6 +544,15 @@ def bake_atlas(name, objs, size, out_dir, o, paint_mats):
             if m and m not in mats:
                 mats.append(m)
     t0 = time.time()
+    objs, cleanup = bake_proxy(objs, mats)
+    try:
+        maps = bake_maps(name, objs, mats, size, o, paint_mats)
+    finally:
+        cleanup()
+    return write_atlas(name, size, out_dir, mats, paint_mats, t0, *maps)
+
+
+def bake_maps(name, objs, mats, size, o, paint_mats):
     base = bake_pass(objs, mats, new_image(name + "_b", size), "base")
     props = bake_pass(objs, mats, new_image(name + "_p", size), "props", paint_mats=paint_mats)
     ao = bake_pass(objs, mats, new_image(name + "_ao", size), "AO", samples=o["ao_samples"])
@@ -445,7 +560,10 @@ def bake_atlas(name, objs, size, out_dir, o, paint_mats):
     emit_mats = [m for m in mats if classify(m).startswith("lamp")]
     emit = bake_pass(objs, mats, new_image(name + "_e", size), "emit") if emit_mats else None
     normal = bake_pass(objs, mats, new_image(name + "_n", size), "NORMAL") if has_normal_detail(mats) else None
+    return base, props, ao, alpha, emit, normal
 
+
+def write_atlas(name, size, out_dir, mats, paint_mats, t0, base, props, ao, alpha, emit, normal):
     ao1 = np.clip(blur3(ao[..., 0]), 0, 1)
     b = np.clip(base[..., :3], 0, 1)
     mask, ref = paint_mask(b, props[..., 2]) if paint_mats else (np.zeros(ao1.shape, np.float32), None)
