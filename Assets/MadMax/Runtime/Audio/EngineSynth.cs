@@ -61,6 +61,8 @@ namespace MadMax.Audio
         /// <summary>Condition 0..1: engine wear, oil (1 = full and good), misfire, spark-knock tendency, cold engine,
         /// exhaust leak before the muffler, muffler damage, clogged air filter.</summary>
         public float wear, oil = 1f, misfire, ping, cold, leak, mufflerDamage, clog;
+        /// <summary>Frost-thick oil 0..1: the starter turns slower and labours on each compression.</summary>
+        public float frost;
         /// <summary>Fuel at the injectors / carburettor (false: cranks without a cough).</summary>
         public bool fuelled = true;
 
@@ -275,7 +277,7 @@ namespace MadMax.Audio
 
             bool crankOnly = cranking && !on;
             float targetRpm;
-            if (crankOnly) targetRpm = crankBase * (1f - 0.25f * cold) * (1f + wear * 0.25f);     // worn = less compression = turns faster
+            if (crankOnly) targetRpm = crankBase * (1f - 0.25f * cold) * (1f - 0.35f * frost) * (1f + wear * 0.25f);     // worn = less compression = turns faster
             else if (on) targetRpm = Mathf.Max(rpm, idleRpm * (0.95f + 0.6f * flare * flare * (3f - 2f * flare)));
             else targetRpm = 0f;
             float rpmTau = (on || crankOnly ? 0.05f : 0.35f) * Mathf.Pow(flywheel, on ? 0.6f : 0.25f);
@@ -294,7 +296,7 @@ namespace MadMax.Audio
             float fastDecay = Mathf.Exp(-1f / (0.0004f * sr)), bovDecay = Mathf.Exp(-1f / (0.35f * sr));
             float rasp = profile.rasp * (1f + mufflerDamage * 1.5f) * (0.25f + 0.75f * Mathf.Max(curLoad, rpmN));   // raw edge comes with flow
             float level = 0.36f * profile.gain * (0.6f + 0.4f * size) / Mathf.Sqrt(Mathf.Max(1f, cyl / 4f));
-            float period = s.Cycle / cyl, compDepth = Mathf.Clamp(0.55f * 4f / cyl, 0.1f, 0.6f) * (s.diesel ? 1.2f : 1f) * (1f - wear * 0.5f);
+            float period = s.Cycle / cyl, compDepth = Mathf.Clamp(0.55f * 4f / cyl, 0.1f, 0.6f) * (s.diesel ? 1.2f : 1f) * (1f - wear * 0.5f) * (1f + 0.3f * frost);
             float fluct = 0.025f * Mathf.Min(1f, 4f / cyl) * (1f + s.cam);                      // the crank speeds up after each firing
             float first = s.fireDeg[0];
             int mask = ring.Length - 1, pmask = pipe.Length - 1;

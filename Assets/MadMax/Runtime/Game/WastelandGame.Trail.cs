@@ -186,10 +186,39 @@ namespace MadMax.Game
             if (GangWhereabouts(gang, from, out var at))
             {
                 SetWaypoint(at, gang, true);
-                Journal.Add("RAID", "THE " + gang + " SOLD ON YOUR " + what + " - THEY RIDE " + NpcLore.Distance(Flat(at - from)) + " " + NpcLore.Compass(at.x - from.x, at.z - from.z) + " (WAYPOINT SET)");
+                Journal.Add("RAID", "THE " + gang + (MadMax.Npc.Trade.InTransit(id) ? " STILL CARRY YOUR " + what + " IN THEIR BOSS'S CAR" : " SOLD ON YOUR " + what) + " - THEY RIDE " + NpcLore.Distance(Flat(at - from)) + " " + NpcLore.Compass(at.x - from.x, at.z - from.z) + " (WAYPOINT SET)");
             }
             else Journal.Add("RAID", "THE " + gang + " SOLD ON YOUR " + what);
         }
+
+        // ------------------------------------------------------------------ taking it back (2026-10-12)
+
+        /// <summary>A raider boss fell: the parts their gang stole from the player and has not sold yet (still in
+        /// transit to market, <see cref="MadMax.Npc.Trade.InTransit"/>) were riding with them and drop beside the body.
+        /// Returns how many came back.</summary>
+        public int ReclaimFromBoss(string gang, Vector3 at)
+        {
+            var ids = MadMax.Npc.Trade.CarriedBy(gang);
+            int n = 0;
+            foreach (var id in ids)
+            {
+                if (!id.StartsWith("part:")) continue;
+                var p = at + Quaternion.Euler(0f, n * 70f, 0f) * new Vector3(1.4f, 0f, 0f);
+                if (DeformableTerrain.Instance) p.y = DeformableTerrain.Instance.Height(p.x, p.z) + 0.6f;
+                var part = SpawnPart(id.Substring(5), p, Quaternion.Euler(0f, n * 70f, 0f));
+                if (!part) continue;
+                MadMax.Npc.Trade.Recover(id);
+                LastReclaimed = id;
+                n++;
+                Journal.Add("RAID", "TOOK BACK YOUR " + ItemName(id) + " FROM THE " + gang);
+                TickLookFor("THE " + gang + " (YOUR " + ItemName(id) + ")");
+            }
+            if (n > 0) Toast("THE " + gang + "'S BOSS WAS CARRYING YOUR " + (n == 1 ? ItemName(LastReclaimed) : n + " STOLEN PARTS") + ": TAKE IT BACK ([E])");
+            return n;
+        }
+
+        /// <summary>The last stolen part recovered off a raider boss (tests).</summary>
+        public static string LastReclaimed;
 
         // ------------------------------------------------------------------ binoculars find news wrecks
 
@@ -230,7 +259,7 @@ namespace MadMax.Game
         {
             if (!BinocularsTool.Looking || Current || !Player || RoadWrecks.Count == 0) return;
             int n = SpotWrecks(Player.transform.position, Camera.main);
-            if (n > 0) { Toast("SPOTTED THROUGH THE BINOCULARS: A WRECK FROM THE NEWS (ON THE MAP)"); Journal.Add("FOUND", "SPOTTED A WRECK FROM THE NEWS"); }
+            if (n > 0) { TickLookFor("A WRECK IN THE NEWS"); Toast("SPOTTED THROUGH THE BINOCULARS: A WRECK FROM THE NEWS (ON THE MAP)"); Journal.Add("FOUND", "SPOTTED A WRECK FROM THE NEWS"); }
         }
 
         void UpdateTrail() => UpdateTripHeater();

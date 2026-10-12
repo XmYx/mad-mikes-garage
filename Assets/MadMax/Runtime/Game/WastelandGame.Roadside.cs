@@ -32,6 +32,7 @@ namespace MadMax.Game
             string whose = BurnedWhose(v, out bool raider, out string gang);
             BurnedOuts.Add(new BurnedOut { pos = p, day = DayNight.TotalDays, name = n, whose = whose });
             BurnedReaction(v, p, whose, raider, gang);
+            if (whose == "A TRADER'S") StrandSurvivors(p);
             if (BurnedOuts.Count > 16) BurnedOuts.RemoveAt(0);
             Journal.Add("ROAD", "A " + n + " SMOULDERS AT " + Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.z));
         }
@@ -210,6 +211,38 @@ namespace MadMax.Game
             return n;
         }
 
+        /// <summary>A companion with the knack treats someone else (Companions.TendOthers): a
+        /// first-aid kit stops the bleeding and mends 50 health, a bandage 25. A townsperson remembers it: disposition
+        /// +10, helped, their faction +2, and word gets round (reputation +1). Returns 1 when treated, 0 with nothing to use.</summary>
+        public int CompanionTreatOther(MadMax.Npc.Npc medic, MadMax.Npc.Npc patient, Container from)
+        {
+            if (!medic || !patient || !patient.Alive) return 0;
+            var pack = medic.pack ? medic.pack.inventory : null;
+            Inventory kitFrom = from && from.inventory.GetItem(MadMax.Npc.Companions.FirstAidKit) > 0 ? from.inventory
+                              : pack != null && pack.GetItem(MadMax.Npc.Companions.FirstAidKit) > 0 ? pack : null;
+            float hp;
+            if (kitFrom != null && kitFrom.TakeItem(MadMax.Npc.Companions.FirstAidKit)) hp = 50f;
+            else if (pack != null && pack.TakeItem("med_bandage")) hp = 25f;
+            else { Toast(medic.KnownName + " HAS NOTHING LEFT TO TREAT " + patient.KnownName + " WITH"); return 0; }
+            patient.Mend(hp);
+            MadMax.Audio.Sfx.Play("scratch", patient.transform.position, 0.4f, 1.1f, 15f);
+            if (patient.companion)
+            {
+                Toast(medic.KnownName + " PATCHED UP " + patient.KnownName);
+                Journal.Add("CREW", medic.KnownName + " DRESSED " + patient.KnownName + "'S WOUNDS");
+                return 1;
+            }
+            var st = patient.State;
+            st.disposition = Mathf.Min(100, st.disposition + 10);
+            st.Set(MadMax.Npc.NpcSave.Helped);
+            var f = MadMax.Npc.Factions.Of(patient);
+            if (f != MadMax.Npc.Faction.None) MadMax.Npc.Factions.Shift(f, 2);
+            MadMax.Npc.NpcRegistry.Reputation = Mathf.Min(100, MadMax.Npc.NpcRegistry.Reputation + 1);
+            Toast(medic.KnownName + " PATCHED UP " + patient.KnownName + ": THEY WON'T FORGET IT");
+            Journal.Add("CREW", medic.KnownName + " TREATED " + patient.KnownName + (f != MadMax.Npc.Faction.None ? " (" + MadMax.Npc.Factions.Names[(int)f] + ")" : ""));
+            return 1;
+        }
+
         // ------------------------------------------------------------------ binoculars find a vague giver
 
         public const float SpotReach = 260f;
@@ -226,7 +259,7 @@ namespace MadMax.Game
                 if (q.giver == null || MadMax.Story.Story.StateOf(q.id) != MadMax.Story.Story.State.Open) continue;
                 var m = MadMax.Story.StoryCast.Find(q.giver);
                 if (m == null || !HeardVague.Contains(m.Value.key) || m.Value.anchor == null || !MadMax.Story.StoryAnchors.Has(m.Value.anchor)) continue;
-                if (SpotCamp(m.Value.key, MadMax.Story.StoryAnchors.Get(m.Value.anchor), me, cam)) { Toast("SPOTTED THROUGH THE BINOCULARS: THE " + m.Value.title + "'S CAMP (ON THE MAP)"); Journal.Add("FOUND", "SPOTTED THE " + m.Value.title + "'S CAMP"); }
+                if (SpotCamp(m.Value.key, MadMax.Story.StoryAnchors.Get(m.Value.anchor), me, cam)) { TickLookFor("THE " + m.Value.title + "'S CAMP"); Toast("SPOTTED THROUGH THE BINOCULARS: THE " + m.Value.title + "'S CAMP (ON THE MAP)"); Journal.Add("FOUND", "SPOTTED THE " + m.Value.title + "'S CAMP"); }
             }
         }
 
@@ -246,6 +279,7 @@ namespace MadMax.Game
             UpdateBinocularSpotting();
             UpdateBurnedStories();
             UpdateBinocularWrecks();
+            UpdateHitchers();
             for (int i = BurnedOuts.Count - 1; i >= 0; i--) if (DayNight.TotalDays - BurnedOuts[i].day > BurnedDays * 2f) BurnedOuts.RemoveAt(i);
         }
 

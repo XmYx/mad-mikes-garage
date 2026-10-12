@@ -65,6 +65,38 @@ namespace MadMax.Npc
             MarketHaulFrom[town.index] = new Vector2(from.x, from.z);
         }
 
+        /// <summary>A stolen part still on its way to market (its town's haul arrives after today): the gang's boss
+        /// carries it until then (taking it back, 2026-10-12).</summary>
+        public static bool InTransit(string id)
+        {
+            if (string.IsNullOrEmpty(id) || !Stolen.ContainsKey(id)) return false;
+            foreach (var kv in MarketHauls)
+                if (kv.Value.ContainsKey(id) && MarketHaulDay.TryGetValue(kv.Key, out int day) && day > MadMax.World.DayNight.Day) return true;
+            return false;
+        }
+
+        /// <summary>Stolen parts of <paramref name="gang"/> still in transit.</summary>
+        public static List<string> CarriedBy(string gang)
+        {
+            var l = new List<string>();
+            if (string.IsNullOrEmpty(gang)) return l;
+            foreach (var kv in StolenBy) if (kv.Value == gang && InTransit(kv.Key)) l.Add(kv.Key);
+            return l;
+        }
+
+        /// <summary>Taken back off the gang before market day: one fewer on its way to the stall.</summary>
+        public static void Recover(string id)
+        {
+            foreach (var kv in MarketHauls)
+            {
+                if (!kv.Value.TryGetValue(id, out int had) || !MarketHaulDay.TryGetValue(kv.Key, out int day) || day <= MadMax.World.DayNight.Day) continue;
+                if (had > 1) kv.Value[id] = had - 1; else kv.Value.Remove(id);
+                if (kv.Value.Count == 0) { int t = kv.Key; MarketHauls.Remove(t); MarketHaulDay.Remove(t); MarketHaulFrom.Remove(t); }
+                break;
+            }
+            if (Stolen.TryGetValue(id, out int st)) { if (st > 1) Stolen[id] = st - 1; else { Stolen.Remove(id); StolenBy.Remove(id); } }
+        }
+
         /// <summary>The scavenger leaves the wreck with what nobody bought: it reaches <paramref name="town"/>'s salvage
         /// stalls a day later. Returns the goods carried.</summary>
         public static int HaulToMarket(string scavenger, MadMax.World.Settlement town, Vector3? from = null)

@@ -99,6 +99,7 @@ namespace MadMax.Audio
                 engine.misfire = Mathf.Clamp01(blend.misfire + (sys.UsesPlugs ? Mathf.Max(0f, 0.45f - sys.plugs) : 0f) + (sys.FuelFraction < 0.03f ? 0.4f : 0f));
                 engine.ping = sys.UsesPlugs ? Mathf.Clamp01((blend.power < 0.97f ? (1f - blend.power) * 3f : 0f) + Mathf.Max(0f, sys.Temperature - 100f) / 25f) : 0f;
                 engine.cold = Mathf.Clamp01((60f - sys.Temperature) / 50f);
+                engine.frost = sys.FrostDrag;
                 engine.clog = Mathf.Clamp01(1f - sys.airFilter * 1.4f);
             }
             float exDamage = exhaustPart ? Mathf.Clamp01(exhaustPart.damage) : 0f;

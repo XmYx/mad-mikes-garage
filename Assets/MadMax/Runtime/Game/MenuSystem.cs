@@ -428,6 +428,16 @@ namespace MadMax.Game
                         if (!c.completed && !c.failed && !jp.Exists(q => q.label == c.title))
                             items.Add(new Item { label = c.title, value = () => c.need > 0 ? c.done + "/" + c.need : "", hint = c.deadline >= 0 ? "DEADLINE: DAY " + (c.deadline + 1) : null });
                     if (items.Count == jobsFrom) items.Add(new Item { label = "NO JOBS IN HAND", value = () => "BOARDS AND BOSSES IN TOWN", enabled = () => false });
+                    var look = new List<WastelandGame.Pin>();
+                    game.LookFor(look);
+                    if (look.Count > 0 || game.LookTicked.Count > 0) items.Add(new Item { label = "- LOOK FOR -", enabled = () => false });
+                    foreach (var pin in look)
+                    {
+                        var pp = pin;
+                        var me = game.Current ? game.Current.transform.position : game.Player.transform.position;
+                        items.Add(new Item { label = "[ ] " + pp.label, value = () => (pp.radius > 0f ? "~" : "") + Mathf.RoundToInt(Vector3.Distance(new Vector3(pp.pos.x, me.y, pp.pos.z), me)) + " M", confirm = () => { game.SetWaypoint(pp.pos, pp.label); Close(); }, hint = pp.radius > 0f ? "SOMEWHERE WITHIN " + Mathf.RoundToInt(pp.radius) + " M. LOOK THROUGH BINOCULARS FROM INSIDE THE CIRCLE. ENTER: WAYPOINT" : "ENTER: SET A WAYPOINT THERE" });
+                    }
+                    foreach (var t in game.LookTicked) { var tt = t; items.Add(new Item { label = "[X] " + tt, value = () => "FOUND", enabled = () => false }); }
                     var shop = new List<WastelandGame.Pin>();
                     game.WorkshopPins(shop);
                     if (shop.Count > 0) items.Add(new Item { label = "- THE WORKSHOP AT HOME -", enabled = () => false });

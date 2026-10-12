@@ -59,7 +59,7 @@ namespace MadMax.Game
             return null;
         }
 
-        void SendHomeCall(string msg, Vector3 at)
+        public void SendHomeCall(string msg, Vector3 at)
         {
             LastHomeCall = msg;
             Journal.Add("HOME", msg.Replace("HOME FREQUENCY: ", ""));

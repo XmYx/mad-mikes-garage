@@ -25,7 +25,7 @@ namespace MadMax.Npc
     {
         public static readonly List<Npc> Live = new List<Npc>();
         static List<CompanionSave> pending;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; borrowed.Clear(); LastFireFighter = null; LastMedic = null; medicNext = 0f; warming.Clear(); heaterDay = -1; LastHeaterLit = null; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Live.Clear(); pending = null; borrowed.Clear(); LastFireFighter = null; LastMedic = null; LastPatient = null; treated.Clear(); checkDay.Clear(); alarmUntil.Clear(); checkNext = 0f; LastCheckIn = null; medicNext = 0f; warming.Clear(); heaterDay = -1; LastHeaterLit = null; }
 
         public const int HireScrap = 80;
 
@@ -101,6 +101,7 @@ namespace MadMax.Npc
             FireDrill(g);
             MedicDrill(g);
             MorningRoutine(g);
+            CheckIns(g);
             if (pending == null || !g.Player || !DeformableTerrainReady()) return;
             var list = pending; pending = null;
             foreach (var s in list)
@@ -246,6 +247,75 @@ namespace MadMax.Npc
             return k;
         }
 
+        // ------------------------------------------------------------------ crew check-ins (2026-10-12)
+
+        /// <summary>Dusk window (game hours) for the evening report; raiders this close to a post raise the alarm.</summary>
+        public const float CheckInFrom = 19f, CheckInTo = 21.5f, AlarmReach = 90f, AlarmAgain = 600f, RadioRange = 40f;
+        static readonly Dictionary<string, int> checkDay = new Dictionary<string, int>();
+        static readonly Dictionary<string, float> alarmUntil = new Dictionary<string, float>();
+        static float checkNext;
+        /// <summary>The last crew call heard (tests).</summary>
+        public static string LastCheckIn;
+
+        /// <summary>Where a post is, as the companion would say it.</summary>
+        static string PostName(Npc n)
+        {
+            var flag = MadMax.Building.ClaimFlag.Near(n.transform.position);
+            return flag ? "AT HOME" : "WHERE YOU LEFT ME";
+        }
+
+        /// <summary>Companions holding a post (WAIT / GUARD) with a handheld radio call in on the home frequency: once at
+        /// dusk ("ALL QUIET AT HOME") and at once when a raider column comes within <see cref="AlarmReach"/>. Out of the
+        /// player's earshot only (closer, they'd just shout).</summary>
+        static void CheckIns(WastelandGame g)
+        {
+            if (Time.time < checkNext || !g.Player || Live.Count == 0) return;
+            checkNext = Time.time + 2f;
+            var me = g.FocusPos;
+            float h = MadMax.World.DayNight.Hours;
+            foreach (var n in OnRadio())
+            {
+                if (n.order == 0 || n.Driving || n.Riding) continue;
+                var at = n.transform.position;
+                if ((at - me).sqrMagnitude < RadioRange * RadioRange) continue;
+                if (RaidAlarm(g, n)) continue;
+                if (h >= CheckInFrom && h <= CheckInTo && (!checkDay.TryGetValue(n.Profile.id, out var day) || day != MadMax.World.DayNight.Day))
+                    CheckInNow(g, n);
+            }
+        }
+
+        /// <summary>The evening report of one companion at their post (tests call it directly).</summary>
+        public static string CheckInNow(WastelandGame g, Npc n)
+        {
+            checkDay[n.Profile.id] = MadMax.World.DayNight.Day;
+            string line = n.Health < n.MaxHealth * 0.6f ? "TOOK A KNOCK, BUT HOLDING " + PostName(n)
+                        : n.order == 2 ? "ALL QUIET " + PostName(n) + ". GUARD'S UP"
+                        : "ALL QUIET " + PostName(n);
+            return Call(g, n, line);
+        }
+
+        /// <summary>A raider column near the post: one shout per <see cref="AlarmAgain"/>. True if called.</summary>
+        public static bool RaidAlarm(WastelandGame g, Npc n)
+        {
+            var d = NpcDirector.Instance;
+            if (!d || (alarmUntil.TryGetValue(n.Profile.id, out var until) && Time.time < until)) return false;
+            var c = d.NearestRaiders(n.transform.position, out float dist);
+            if (c == null || dist > AlarmReach || c.Friendly) return false;
+            alarmUntil[n.Profile.id] = Time.time + AlarmAgain;
+            var f = Factions.OfGang(c.Gang);
+            Call(g, n, "RAIDERS! " + (f != Faction.None ? "THE " + Factions.Names[(int)f] : "A COLUMN") + " " + PostName(n) + ". COME QUICK", true);
+            return true;
+        }
+
+        static string Call(WastelandGame g, Npc n, string line, bool urgent = false)
+        {
+            string msg = "HOME FREQUENCY: " + n.KnownName + ": \"" + line + "\"";
+            LastCheckIn = msg;
+            g.SendHomeCall(msg, n.transform.position);
+            if (urgent) { g.SetWaypoint(n.transform.position, n.KnownName, true); MadMax.Audio.Sfx.Play2D("beep", 0.5f, 0.8f); }
+            return msg;
+        }
+
         // ------------------------------------------------------------------ engine fires
 
         public const string Extinguisher = "tool_extinguisher";
@@ -367,7 +437,8 @@ namespace MadMax.Npc
         /// player opening a menu.</summary>
         static void MedicDrill(WastelandGame g)
         {
-            if (Live.Count == 0 || Time.time < medicNext || !g.Player || g.Current || g.Vitals.Dead || !g.NeedsTending) return;
+            if (Live.Count == 0 || Time.time < medicNext || !g.Player || g.Current || g.Vitals.Dead) return;
+            if (!g.NeedsTending) { TendOthers(g); return; }
             if (g.Vitals.SinceHurt < QuietSeconds) return;
             foreach (var n in Live) if (n && (n.tending || n.Foe)) return;                           // one at a time; not mid-fight
             medicNext = Time.time + 2f;
@@ -389,6 +460,46 @@ namespace MadMax.Npc
 
         /// <summary>The last companion sent to tend the player (tests).</summary>
         public static Npc LastMedic;
+
+        // ---- a medic in the crew treats others (2026-10-12)
+        /// <summary>The last person a companion went to treat (tests).</summary>
+        public static Npc LastPatient;
+        /// <summary>Patient id → when they may be treated again (a dressing per person per while).</summary>
+        static readonly Dictionary<string, float> treated = new Dictionary<string, float>();
+        public const float PatientAgain = 120f;
+
+        /// <summary>The player is whole and things are quiet: a companion with the knack (<see cref="Patches"/>) and
+        /// supplies goes to another hurt companion or a wounded townsperson within <see cref="MedicReach"/> of the player.
+        /// Townsfolk remember it (disposition, their faction's standing).</summary>
+        static void TendOthers(WastelandGame g)
+        {
+            foreach (var n in Live) if (n && (n.tending || n.Foe)) return;
+            medicNext = Time.time + 2f;
+            var at = g.Player.transform.position;
+            Npc patient = null; float pd = MedicReach * MedicReach;
+            foreach (var p in Npc.All)
+            {
+                if (!p || !p.Alive || p.proxy || !p.Wounded || p.Hostile || p.Foe || (p.Profile.Raider && !p.companion && !p.Surrendered)) continue;
+                if (treated.TryGetValue(p.Profile.id, out var again) && Time.time < again) continue;
+                float d = (p.transform.position - at).sqrMagnitude;
+                if (d < pd) { pd = d; patient = p; }
+            }
+            if (!patient) return;
+            Npc best = null; float bd = MedicReach; MadMax.Building.Container bestFrom = null;
+            foreach (var n in Live)
+            {
+                if (!n || n == patient || !n.Alive || n.fireTarget || n.Hostile || n.Surrendered || n.Driving || !Patches(n.Profile)) continue;
+                float d = Vector3.Distance(n.transform.position, patient.transform.position);
+                if (d >= bd || !MedicSupplies(g, n, out var from)) continue;
+                bd = d; best = n; bestFrom = from;
+            }
+            if (!best) { medicNext = Time.time + 5f; return; }
+            treated[patient.Profile.id] = Time.time + PatientAgain;
+            best.Unboard();
+            best.Tend(bestFrom, patient);
+            LastPatient = patient;
+            g.Toast(best.KnownName + " GOES TO SEE TO " + patient.KnownName);
+        }
 
         static int IndexOf(IReadOnlyList<VehicleDriver> list, VehicleDriver v) { for (int i = 0; i < list.Count; i++) if (list[i] == v) return i; return -1; }
 

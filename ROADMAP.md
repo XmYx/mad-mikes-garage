@@ -1559,26 +1559,52 @@ with the 10-07 regressions (towns.haul_memory, map.burned_landmark, npc.companio
 vehicle.keys, body.crutch and story.first_hour. Headless, so the screenshots are blank.
 
 ### Suggestions (tie the experience together)
-- [ ] **Taking it back**: a part `Trade.StolenBy` a gang rides in their boss car's compartment until it reaches the
+- [x] **Taking it back** (2026-10-12: until market day a stolen part rides with the gang (`Trade.InTransit/CarriedBy`); their raider boss killed drops it beside the body and it is off the market (`WastelandGame.ReclaimFromBoss`, `Trade.Recover`); the salvager's trail says whether they still carry it; scenario `towns.take_back`. Kept in the boss's body, not yet the boss car's compartment): a part `Trade.StolenBy` a gang rides in their boss car's compartment until it reaches the
   stall — ambush the convoy on the road named by the salvager and it is in the loot, free.
 - [x] **Companions learn the knack** (2026-10-09: `NpcSave.tended` counts their dressings, the 4th (`Companions.KnackAfter`) makes them a proper medic; FIELD FIRST AID (`book_first_aid`, loot / shops) handed over in their talk sets `NpcSave.StudiedWounds`; scenario `npc.companion_knack`): a companion who has dressed wounds a few times (or read `book_first_aid` given to
   them) stops being rough — riding with someone grows them, not only the player.
 - [x] **Morning routine for the column** (2026-10-09: 05:30–08:30 below 5 °C, once a day, a companion with `use_trip_heater` in their pack within 60 m warms the stopped fleet car nearest the player from a litre of its tank (`Companions.MorningRoutine` / `LightHeaterNow`); scenario `npc.morning_heater`): at dawn in winter a companion with a trip heater lights it under the fleet
   car that will be driven first, so the cold start is waiting when the player walks out.
-- [ ] **Survivors of a burned trader**: the driver who got clear walks the road toward town and asks for a lift
+- [x] **Survivors of a burned trader** (2026-10-12: trader crew within 40 m of a trader car that burns out become hitchers (`WastelandGame.Hitchers`, `Npc.hitchTown`) walking toward the nearest town; stop beside them and they climb into the passenger seat (waypoint to town); stopped in town they get out — town and Fuel Guild standing, disposition, a hot meal, town news; scenario `npc.hitcher`. Not saved): the driver who got clear walks the road toward town and asks for a lift
   (passenger seat); delivered, the town that mourned the car remembers it (standing, a free meal at the stall).
 - [x] **Cold-start dashboard** (2026-10-09: COLD lamp (`VehicleSystems.ColdStart`, pixel + HD dashboards, 10th HD lamp); diesel glow plugs warm while someone sits in (`GlowFor`: 3 s at 0 °C, longer in frost), the lamp blinks, cranking before it goes out is held back and a cold diesel without glow is a long shot (−0.3); block / trip heater clears it; scenario `vehicle.cold_start_lamp`): a COLD lamp and, on diesels, a glow-plug wait before cranking; the trip heater or
   block heater clears it — the winter morning reads from the gauges, not only the toast.
-- [ ] **LOOK FOR list**: rumours about caches, raider camps and missing people go to a journal list the binoculars
+- [x] **LOOK FOR list** (2026-10-12: journal section `- LOOK FOR -` (`WastelandGame.LookFor`): story camps known as search circles, news wrecks within reach nobody marked (150 m circle), gangs still carrying the player's parts; ENTER sets a waypoint; found items tick off as `[X]` (`LookTicked`, this session); scenario `ui.look_for`. Rumoured caches still open): rumours about caches, raider camps and missing people go to a journal list the binoculars
   tick off (`InSight` already shared by camps and wrecks).
-- [ ] **Crew check-ins on the radio**: companions holding a post (WAIT / GUARD) call in at dusk on the home frequency
+- [x] **Crew check-ins on the radio** (2026-10-12: companions on WAIT / GUARD with a `tool_radio`, out of earshot (40 m), report once at dusk 19:00–21:30 ("ALL QUIET AT HOME", hurt, guard up) and shout at once when a hostile raider column comes within 90 m of the post (waypoint on them) — `Companions.CheckIns/CheckInNow/RaidAlarm` over `SendHomeCall`; scenario `npc.crew_checkin`): companions holding a post (WAIT / GUARD) call in at dusk on the home frequency
   ("ALL QUIET AT THE YARD") and shout when raiders show up — the radio orders become a two-way crew line.
-- [ ] **Glow-plug relay click**: a dash relay clicks when the plugs are hot and the starter turns heavier in the frost
+- [x] **Glow-plug relay click** (2026-10-12: the relay clicks in when the plugs start and out when they are hot (`VehicleSystems.GlowClicks`); `FrostDrag` (frost-thick oil, 0 °C → −25 °C on a cold engine) slows the starter and deepens each compression in `EngineSynth` (`frost`); scenario `vehicle.glow_relay`): a dash relay clicks when the plugs are hot and the starter turns heavier in the frost
   (`EngineSynth` crank load from `Temperature`) — the cold start heard, not only seen.
-- [ ] **A medic in the crew treats others**: a companion with the knack patches other companions and hurt townsfolk
+- [x] **A medic in the crew treats others** (2026-10-12: with the player whole and things quiet, a companion with the knack and supplies walks to another hurt companion or a wounded townsperson within 30 m (`Companions.TendOthers`, `Npc.tendWho`): a kit mends 50, a bandage 25; townsfolk +10 disposition, helped, their faction +2, reputation +1 (`CompanionTreatOther`); scenario `npc.medic_others`): a companion with the knack patches other companions and hurt townsfolk
   (disposition, faction standing) — the knack as a social skill.
 - [ ] **Convalescence at home**: a broken leg at home rests in the bed with books and the radio (reading speed bonus,
   radio shows), visitors from town bring food — downtime as play.
+
+## Scheduled update (2026-10-12)
+Done this pass (ticked above): the crew medic treats other companions and hurt townsfolk, companions holding a post
+check in on the home frequency at dusk and shout when raiders come, the glow-plug relay clicks and the starter labours
+in a frost, stolen parts can be taken back off a raider boss before market day, the journal's LOOK FOR list, stranded
+trader crews who need a lift into town. Also committed the parked city/megacity work of 2026-10-09/10. Scenarios in
+`Acceptance/Blocks/ScheduledScenarios1012.cs` — all six pass in a headless Linux player build (`tools/acceptance/run.py
+--headless`, new flag), with npc.companion_medic / companion_knack / rough_dressing, vehicle.cold_start_lamp,
+towns.stolen_trail, map.burned_story, map.binocular_wrecks, audio.engine, story.first_hour, city.ride and city.living.
+Open, not from this pass (they fail the same on the build before it): `npc.radio_orders` (the recruited companion is
+missing from `Companions.Live` right after `Recruit`), `npc.morning_heater` only after the other companion scenarios in
+one run (passes alone: test isolation), `megacity.living` (stepping off the lift lands 2.2 m from the deck spot).
+
+### Suggestions (tie the experience together)
+- [ ] **Stolen parts in the boss car**: the part rides in the boss car's compartment (a crate in `VehicleStorage`) as
+  well as on the body — stop the car, open the trunk, and the raid didn't need a kill.
+- [ ] **Hitchers remember**: a delivered survivor greets the player by name in town next time and gives a trader
+  discount for a week; a survivor left on the road is found in the news ("WALKED IN AFTER TWO DAYS").
+- [ ] **Medic reputation**: townsfolk treated by the crew spread it (`TownNews`), and a town with a clinic asks the
+  crew medic to help on a bad day (a small contract) — the knack earns its keep.
+- [ ] **Check-ins carry the base**: the dusk report reads the home ledger (power out, food short, a station done) in
+  the companion's voice, so a crew at home replaces most HOME FREQUENCY station calls.
+- [ ] **Rumoured caches on LOOK FOR**: town talk names a cache (a buried stash with a loot table) as a search circle;
+  binoculars from inside show a marker post — the list gets a third kind of find.
+- [ ] **Frost on the gauges**: the oil-pressure needle rises slowly on a frosty start and the idle runs high until warm
+  (fast idle), heard and seen — the other end of the cold start.
 
 ## User requests (2026-10-09, night: generated cities)
 - [~] **Replace the tracked cities with the Blender-generated ones** (2026-10-09: `World/RollingCity/TrackedCity*.cs` ports modelbench/lib/citygen.py line for line through `CityKit` (box/span/beam/tube/lathe/ring/loft/wing/cable/ladder/railing, generator axes → deck-local game axes, per-vertex weathered `CM` palette, glow mesh on an unlit material, collision mesh of solid spans); both circuits carry a profile (Granite Falls 104 × 54 m, Saint Rust 120 × 58 m; `CityRoute.tracked` sets deck size, deck height 26.7 m, pose chord, bed and pier gap); crawler units with trucks, trestles, slewing rings, chain drives and four belt phases; walkable panel blocks (storey modules shared per floor: corridor, stair core, flats with furniture, balconies, AC, dishes, laundry; shops on the ground floor); halls, plants, banded chimneys, crane, pipe trunk with cabin stacks, pods, pilot bridge, railings with collision walls, lamps served by `CityLights`; high docks with lattice pier, stair tower and `CityLift`; `IDeckCarrier` carries the player on lifts. Pixel mode is only the shader over the same geometry. Scenario `city.ride` passes. Open: LOD for far views, smoke per stack size, HD look check, the old voxel profiles retired from the menu text)

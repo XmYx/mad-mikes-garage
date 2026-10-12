@@ -55,6 +55,14 @@ namespace MadMax.Game
             return n;
         }
 
+        /// <summary>The labels of the open page's rows (tests).</summary>
+        public List<string> ItemLabels()
+        {
+            var l = new List<string>();
+            foreach (var it in items) l.Add(it.label);
+            return l;
+        }
+
         /// <summary>Catalogue pages: the panel lines of the selected cell (what the hover panel shows).</summary>
         public List<string> TipLines()
         {

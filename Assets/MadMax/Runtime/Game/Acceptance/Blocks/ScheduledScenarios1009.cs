@@ -226,6 +226,7 @@ namespace MadMax.Game.Acceptance
             var opts = g.ContextOptionsFor(n);
             c.Check(!opts.Exists(o => o.label.StartsWith("RADIO THE CREW")), "no crew orders in the context menu");
             n.pack.inventory.AddItem(SafetyTools.HandRadio);
+            c.Note($"companion alive {n.Alive}, live {Companions.Live.Count}, on radio {Companions.OnRadio().Count}, their radios {n.pack.inventory.GetItem(SafetyTools.HandRadio)}, mine {g.Inventory.GetItem(SafetyTools.HandRadio)}");
             opts = g.ContextOptionsFor(n);
             c.Check(opts.Count(o => o.label.StartsWith("RADIO THE CREW")) == 3, "context menu: " + string.Join(", ", opts.Where(o => o.label.StartsWith("RADIO")).Select(o => o.label)));
             c.Check(Companions.RadioOrder(g, Companions.Order.Hold) == 1 && n.order == 1 && (n.home - n.transform.position).magnitude < 0.5f, "HOLD: they stay where they are: " + g.ToastText);

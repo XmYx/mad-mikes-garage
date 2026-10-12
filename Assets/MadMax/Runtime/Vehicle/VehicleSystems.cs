@@ -297,7 +297,7 @@ namespace MadMax.Vehicles
         public const float ColdLampBelow = 5f;
         /// <summary>Glow plug wait at 0 °C (longer in a harder frost).</summary>
         public const float GlowSeconds = 3f;
-        float glow;
+        float glow, glowWas;
         /// <summary>A stopped engine too cold to start easily: the dashboard COLD lamp. A block or trip heater clears it.</summary>
         public bool ColdStart => !Started && HasEngine && Temperature < 45f && MadMax.World.Weather.Temperature < ColdLampBelow && !BlockWarm;
         /// <summary>Diesel glow plugs still warming (the lamp is lit; cranking now is a long shot).</summary>
@@ -309,11 +309,24 @@ namespace MadMax.Vehicles
         /// <summary>Seconds of glow for the current cold.</summary>
         public static float GlowFor(float ambient) => GlowSeconds * Mathf.Clamp(1f + (-ambient) / 15f, 0.6f, 2.5f);
 
+        /// <summary>Times the glow relay clicked (tests).</summary>
+        public int GlowClicks { get; private set; }
+
+        /// <summary>Oil thickened by frost: 0 at 0 °C, 1 at −25 °C on a cold engine (the starter turns heavier).</summary>
+        public float FrostDrag => Mathf.Clamp01(-MadMax.World.Weather.Temperature / 25f) * Mathf.Clamp01((30f - Temperature) / 30f);
+
         void UpdateGlow(float dt)
         {
             if (FuelKind == ResourceType.Diesel && ColdStart && driver.Occupied && !driver.aiDriven)
+            {
+                if (glow <= 0f) MadMax.Audio.Sfx.Play("click", transform.position, 0.35f, 0.8f, 8f);   // the relay pulls in
                 glow = Mathf.Min(1f, glow + dt / GlowFor(MadMax.World.Weather.Temperature));
+                if (glow >= 1f && glowWas < 1f) { GlowClicks++; MadMax.Audio.Sfx.Play("click", transform.position, 0.5f, 1.25f, 8f); }   // ...and lets go: plugs hot
+                glowWas = glow;
+                return;
+            }
             else if (!driver.Occupied || Started) glow = Mathf.Max(0f, glow - dt / 20f);   // the plugs cool once the key is off
+            glowWas = glow;
         }
 
         /// <summary>Running without a crank (the title film's car, a vehicle handed over already running).</summary>

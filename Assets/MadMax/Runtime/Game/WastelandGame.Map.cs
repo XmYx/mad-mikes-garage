@@ -39,7 +39,7 @@ namespace MadMax.Game
         bool waypointQuiet;                 // set by races and guides: no toasts
         readonly List<Site> nearSites = new List<Site>();
 
-        Vector3 FocusPos => Current ? Current.transform.position : Player ? Player.transform.position : Vector3.zero;
+        public Vector3 FocusPos => Current ? Current.transform.position : Player ? Player.transform.position : Vector3.zero;
 
         public void SetWaypoint(Vector3 p, string what = null, bool silent = false)
         {

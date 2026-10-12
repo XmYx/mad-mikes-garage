@@ -57,6 +57,8 @@ namespace MadMax.Npc
         /// <summary>Here to be talked to: not asleep indoors, not riding or driving.</summary>
         public bool Available => Alive && !asleep && !Riding && !Driving && !Down;
         public bool Riding => rideSeat;
+        /// <summary>The vehicle whose passenger seat this person sits in (null = none).</summary>
+        public VehicleDriver RideVehicle => rideSeat ? rideSeat.Vehicle : null;
         public bool Driving => drivenCar;
         public VehicleDriver DrivenCar => drivenCar;
         /// <summary>Shops and stalls keep hours (7:00–20:00).</summary>
@@ -71,6 +73,8 @@ namespace MadMax.Npc
         bool lastByPlayer;
 
         /// <summary>An open wound (arrows, bolts, blades): loses health for a while, leaving a blood trail.</summary>
+        /// <summary>Losing blood right now.</summary>
+        public bool Bleeding => mode != Mode.Dead && Time.time < bleedUntil;
         public void Bleed(float seconds) { if (mode != Mode.Dead) bleedUntil = Mathf.Max(bleedUntil, Time.time + seconds); }
         Vector3 goal, lastPos, detour, lastBlow, lastVelocity, staggerDir;
         float reactAt = -9f, staggerUntil;
@@ -258,6 +262,7 @@ namespace MadMax.Npc
             if (sieging) Siege(dt, ref move, ref speed);
             else if (fireTarget && !foe && FireTick(me, dt, ref move, ref speed)) { }
             else if (tending && !foe && TendTick(me, dt, ref move, ref speed)) { }
+            else if (!foe && tendedBy && tendedBy.tending && tendedBy.tendWho == this) { faceTarget = tendedBy.transform.position; faceUntil = Time.time + 0.5f; }   // waits for the medic
             else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
             else switch (mode)
             {
@@ -628,7 +633,7 @@ namespace MadMax.Npc
         {
             var seat = rideSeat;
             if (!seat || !seat.Seat || !seat.Vehicle) { rideSeat = null; cc.enabled = true; return; }
-            bool stay = seat.Vehicle.aiDriven ? !companion : companion && order == 0 && g.Current == seat.Vehicle;
+            bool stay = hitchTown >= 0 || (seat.Vehicle.aiDriven ? !companion : companion && order == 0 && g.Current == seat.Vehicle);
             if (!stay && Mathf.Abs(seat.Vehicle.ForwardSpeed) < 2f) { Unboard(); return; }
             var st = seat.Seat.transform;
             transform.SetPositionAndRotation(st.position + Vector3.down * (0.94f * Profile.look.height), st.rotation);
@@ -1148,6 +1153,7 @@ namespace MadMax.Npc
             if (carriedKey != null) loot.extra.Add(carriedKey);                               // the car key on their ring
             if (pack) foreach (var kv in new List<KeyValuePair<string, int>>(pack.inventory.Items)) for (int i = 0; i < kv.Value; i++) loot.extra.Add(kv.Key);   // what they carried for you
             MadMax.Game.LastEngine.BossDrop(Profile, loot);
+            if (Profile.role == NpcRole.RaiderBoss) MadMax.Game.WastelandGame.Instance?.ReclaimFromBoss(Profile.gang, transform.position);   // stolen parts riding to market
             MadMax.Audio.Sfx.Play("bone", transform.position, 0.8f);
             convoy?.MemberDied(this);
         }
