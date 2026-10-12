@@ -427,7 +427,7 @@ namespace MadMax.Npc
         {
             var me = transform.position;
             var direct = Flat(p - me);
-            if (direct.sqrMagnitude < 0.36f) return direct;
+            if (direct.sqrMagnitude < 0.36f || aboard) return direct;                         // aboard a city: its routes are clear
             if (Time.time >= routeCheck || Flat(p - routeGoal).sqrMagnitude > 9f)
             {
                 routeCheck = Time.time + 0.8f + Random.value * 0.6f;                              // staggered across people
@@ -479,7 +479,7 @@ namespace MadMax.Npc
         /// <summary>Deep water or a cliff ahead: don't walk into it.</summary>
         bool Blocked(DeformableTerrain terrain, Vector3 me, Vector3 dir)
         {
-            if (!terrain) return false;
+            if (!terrain || aboard) return false;
             var ahead = me + dir.normalized * 0.8f;
             if (terrain.WaterDepthNoLoad(ahead.x, ahead.z) > 0.6f && mode != Mode.Fight) return true;
             return terrain.HeightNoLoad(ahead.x, ahead.z) - me.y > 1.2f;
@@ -493,6 +493,7 @@ namespace MadMax.Npc
         Mode Routine()
         {
             if (companion) return order == 1 ? Mode.Stand : order == 2 ? Mode.Wander : Mode.Follow;
+            if (aboard && !Hostile) return Mode.Stand;                                          // CityFolk walks them along the city's routes
             bool keeper = Profile.role == NpcRole.Shopkeeper || Profile.role == NpcRole.Stallkeeper || Profile.role == NpcRole.Leader;
             if (leaving || Hostile || Profile.Raider || convoy != null || raiding) return keeper ? Mode.Stand : Mode.Wander;
             float h = DayNight.Hours;

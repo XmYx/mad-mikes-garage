@@ -29,7 +29,7 @@ namespace MadMax.Game
         /// <summary>The default new-game look (the concept art): black undercut, amber temple implant.</summary>
         public static Appearance Lead()
         {
-            var a = new Appearance { skinTone = 1, hair = HairStyle.Undercut, hairColor = 0, beard = 0, height = 0.98f, build = 0.95f, implant = 1 };
+            var a = new Appearance { skinTone = 1, hair = HairStyle.Undercut, hairColor = 0, beard = 0, height = 0.98f, build = 0.95f, body = 2, implant = 1 };
             a.SetCyberArm(true);
             return a;
         }

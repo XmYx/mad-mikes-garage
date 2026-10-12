@@ -43,7 +43,7 @@ namespace MadMax.Game
         public void Go(Vector3 impulse, Vector3 point, Vector3 inheritVelocity = default)
         {
             if (Active || !rig) return;
-            Active = true;
+            Active = true; rig.Limp = true;
             added.Clear(); rest.Clear();
             var bodies = new Dictionary<BodyPart, Rigidbody>();
             foreach (var kv in rig.bones)
@@ -126,8 +126,10 @@ namespace MadMax.Game
             foreach (var a in added) if (a) DestroyImmediate(a);
             added.Clear();
             foreach (var kv in rest) if (kv.Key) { kv.Key.localPosition = kv.Value.pos; kv.Key.localRotation = kv.Value.rot; }
-            Active = false;
+            Active = false; if (rig) rig.Limp = false;
         }
+
+        void OnDestroy() { if (rig && Active) rig.Limp = false; }
 
         /// <summary>World position of the pelvis (where the body lies).</summary>
         public Vector3 Pelvis => rig && rig.bones.TryGetValue(BodyPart.Pelvis, out var t) && t ? t.position : transform.position;

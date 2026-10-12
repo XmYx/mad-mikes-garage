@@ -71,8 +71,11 @@ namespace MadMax.World
                     {
                         if (grid.TryGetValue(new Vector2Int(c.x + dx, c.y + dz), out var l))
                             foreach (int j in l) if (Flat(pts[i] - pts[j]) < Join) { adj[i].Add(j); adj[j].Add(i); }
-                        // neighbouring map cells of the player's roads (diagonals too) join each other
-                        if (byCell.TryGetValue(new Vector2Int(kv.Key.x + dx, kv.Key.y + dz), out int j2) && j2 > i) { adj[i].Add(j2); adj[j2].Add(i); }
+                        // neighbouring map cells of the player's roads join each other; diagonals only where no side cell
+                        // links them (a road running diagonally): across a corner the diagonal cut the open ground inside it
+                        if (byCell.TryGetValue(new Vector2Int(kv.Key.x + dx, kv.Key.y + dz), out int j2) && j2 > i
+                            && (dx == 0 || dz == 0 || !byCell.ContainsKey(new Vector2Int(kv.Key.x + dx, kv.Key.y)) && !byCell.ContainsKey(new Vector2Int(kv.Key.x, kv.Key.y + dz))))
+                        { adj[i].Add(j2); adj[j2].Add(i); }
                     }
                 }
             }

@@ -48,6 +48,12 @@ namespace MadMax.Game.Acceptance
             c.Check(m.Current == MenuSystem.Page.Map, "Esc goes back to the map");
             yield return Tap(UnityEngine.InputSystem.Key.M);
             c.Check(!m.IsOpen && Time.timeScale == 1f, "M closes it and the world runs again");
+            m.Open(MenuSystem.Page.Pause);
+            c.Check(m.BlocksWorldInput, "an open menu blocks world clicks");
+            m.Close();
+            c.Check(m.BlocksWorldInput, "the click that closes a menu stays consumed for this frame");
+            yield return null;
+            c.Check(!m.BlocksWorldInput, "world clicks are available again on the next frame");
 
             // ---- pause, settings tabs
             yield return Tap(UnityEngine.InputSystem.Key.Escape);

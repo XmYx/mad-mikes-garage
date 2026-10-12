@@ -169,16 +169,19 @@ namespace MadMax.Game
             {
                 var chassis = p.GetComponentInParent<VehicleChassis>();
                 int vi = chassis ? saved.IndexOf(chassis.GetComponent<VehicleDriver>()) : -1;
-                var parent = vi >= 0 ? saved[vi].transform : Build.Structures;
+                var rc = vi < 0 ? p.GetComponentInParent<CityHost>() : null;
+                int ci = rc ? CityHost.Hosts.IndexOf(rc) : -1;
+                var parent = vi >= 0 ? saved[vi].transform : ci >= 0 ? rc.transform : Build.Structures;
                 var wp = p.transform.position; var wr = p.transform.rotation;
                 if (p.TryGetComponent<Door>(out var door)) door.ClosedWorld(out wp, out wr);
                 d.placed.Add(new PlacedSave
                 {
-                    id = p.id, vehicle = vi, hits = p.hits, netId = p.Id, state = p.SaveState(), owner = p.owner,
+                    id = p.id, vehicle = vi, city = ci, hits = p.hits, netId = p.Id, state = p.SaveState(), owner = p.owner,
                     localPosition = parent.InverseTransformPoint(wp),
                     localRotation = Quaternion.Inverse(parent.rotation) * wr
                 });
             }
+            d.placed.AddRange(pendingCityPieces);                                               // aboard a city that is still being built
             foreach (var kv in terrain.DestructionState)
             {
                 if (!terrain.DestructionTemplates.TryGetValue(kv.Key, out var tid)) continue;
@@ -316,8 +319,10 @@ namespace MadMax.Game
                 var rb = part.gameObject.AddComponent<Rigidbody>();
                 rb.mass = part.mass; rb.isKinematic = true;
             }
+            pendingCityPieces.Clear();
             foreach (var p in d.placed)
             {
+                if (p.city >= 0) { pendingCityPieces.Add(p); continue; }                      // aboard a city: restored when it is built
                 Transform parent = p.vehicle >= 0 && p.vehicle < spawned.Count && spawned[p.vehicle] ? spawned[p.vehicle].transform : Build.Structures;
                 var placed = FurnitureLibrary.Spawn(p.id, parent, p.localPosition, p.localRotation, propMaterial);
                 if (placed) { placed.hits = p.hits; placed.netId = p.netId; placed.owner = p.owner; placed.LoadState(p.state); }

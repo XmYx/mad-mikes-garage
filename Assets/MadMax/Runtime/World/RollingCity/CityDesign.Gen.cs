@@ -35,26 +35,29 @@ namespace MadMax.World
             public readonly List<StackDef> stacks = new List<StackDef>();
             public readonly List<BridgeDef> bridges = new List<BridgeDef>();
             public readonly List<Vector3Int> anchors = new List<Vector3Int>();
-            public bool crane;
+            public bool crane, industrial;
+            public int hx = HX, hz = HZ;
         }
 
         static readonly Color32[] Panel = { Pal.Hex("6e685a"), Pal.Hex("837c6c"), Pal.Hex("989080"), Pal.Hex("aaa290") };
 
         /// <summary>Smokestack tops (deck-local metres) of the layout for this seed.</summary>
-        public static List<Vector3> Stacks(int seed)
+        public static List<Vector3> Stacks(int seed, bool industrial = false)
         {
             var list = new List<Vector3>();
-            foreach (var s in Layout(seed).stacks) list.Add(new Vector3(s.x * V, (s.y0 + s.h + 2) * V, s.z * V));
+            foreach (var s in Layout(seed, industrial).stacks) list.Add(new Vector3(s.x * V, (s.y0 + s.h + 2) * V, s.z * V));
             return list;
         }
 
         /// <summary>The seeded layout: lots, stacks, bridges and cable anchors (pure, thread-safe).</summary>
-        public static Plan Layout(int seed)
+        public static Plan Layout(int seed, bool industrial = false)
         {
-            var plan = new Plan();
+            var plan = new Plan { industrial = industrial, hx = industrial ? IndustrialHX : HX, hz = industrial ? IndustrialHZ : HZ };
             var rnd = new System.Random(seed * 7919 + 28);
             bool market = false;
-            foreach (var (x0, x1, street, segs) in new[] { (-68, -20, +1, new[] { (-102, 114) }), (20, 68, -1, new[] { (-102, -26), (26, 114) }) })
+            int edge = plan.hx - 4, stern = -plan.hz + (industrial ? 46 : 26), bow = plan.hz - 14;
+            int inner = industrial ? 28 : 20;
+            foreach (var (x0, x1, street, segs) in new[] { (-edge, -inner, +1, new[] { (stern, bow) }), (inner, edge, -1, new[] { (stern, -26), (26, bow) }) })
             {
                 int firstOfSide = plan.lots.Count;
                 foreach (var (a, b) in segs)
@@ -62,14 +65,14 @@ namespace MadMax.World
                     int z = a;
                     while (b - z + 1 >= 36)
                     {
-                        int len = 36 + rnd.Next(0, 37);
+                        int len = industrial ? 52 + rnd.Next(0, 25) : 36 + rnd.Next(0, 37);
                         if (b - (z + len + 4) + 1 < 36) len = b - z + 1;
                         var lot = new Lot { x0 = x0, x1 = x1, z0 = z, z1 = z + len - 1, street = street, seed = rnd.Next() & 0x3fffffff, index = plan.lots.Count };
                         double r = rnd.NextDouble();
-                        if (street < 0 && lot.z1 >= 100 && !plan.crane && r < 0.45) { lot.kind = LotKind.Yard; plan.crane = true; }
+                        if (street < 0 && lot.z1 >= bow - 14 && !plan.crane && r < 0.45) { lot.kind = LotKind.Yard; plan.crane = true; }
                         else if (!market && r < 0.15) { lot.kind = LotKind.Market; market = true; }
-                        else if (r < 0.33) lot.kind = LotKind.Works;
-                        else if (r < 0.58) lot.kind = LotKind.Brick;
+                        else if (r < (industrial ? 0.26 : 0.33)) lot.kind = LotKind.Works;
+                        else if (r < (industrial ? 0.40 : 0.58)) lot.kind = LotKind.Brick;
                         else lot.kind = LotKind.Panel;
                         plan.lots.Add(lot);
                         z += len + 4;
@@ -87,10 +90,16 @@ namespace MadMax.World
             foreach (var lot in plan.lots)
             {
                 var r = new System.Random(lot.seed);
-                lot.floors = lot.kind switch { LotKind.Panel => 5 + r.Next(0, 8), LotKind.Brick => 3 + r.Next(0, 5), LotKind.Works => 2 + r.Next(0, 2), LotKind.Market => 2, _ => 0 };
+                lot.floors = lot.kind switch
+                {
+                    LotKind.Panel => industrial ? 10 + r.Next(0, 9) : 5 + r.Next(0, 8),
+                    LotKind.Brick => industrial ? 7 + r.Next(0, 6) : 3 + r.Next(0, 5),
+                    LotKind.Works => industrial ? 4 + r.Next(0, 3) : 2 + r.Next(0, 2),
+                    LotKind.Market => industrial ? 3 : 2, _ => 0
+                };
                 // set back from the street or the deck edge a little
-                int back = lot.kind == LotKind.Yard ? 0 : r.Next(0, 5), edge = r.Next(0, 3);
-                if (lot.street > 0) { lot.x1 -= back; lot.x0 += edge; } else { lot.x0 += back; lot.x1 -= edge; }
+                int back = lot.kind == LotKind.Yard ? 0 : r.Next(0, 5), setbackEdge = r.Next(0, 3);
+                if (lot.street > 0) { lot.x1 -= back; lot.x0 += setbackEdge; } else { lot.x0 += back; lot.x1 -= setbackEdge; }
                 lot.doorZ = lot.z1 - lot.z0 >= 64 ? (lot.z0 + lot.z1) / 2 : lot.z1 - 9;
                 if ((lot.kind == LotKind.Panel || lot.kind == LotKind.Brick) && r.NextDouble() < 0.7) lot.shackFloor = 1 + r.Next(0, Mathf.Max(1, lot.floors - 1));
                 if (lot.kind == LotKind.Panel || lot.kind == LotKind.Brick)
@@ -115,18 +124,18 @@ namespace MadMax.World
             }
             // the stern works: three or four stacks of different heights
             var xs = new List<int> { -62, -48, -32, 32, 48, 62 };
-            int ns = 3 + rnd.Next(0, 2);
+            int ns = industrial ? 5 + rnd.Next(0, 2) : 3 + rnd.Next(0, 2);
             for (int k = 0; k < ns; k++)
             {
                 int i = rnd.Next(0, xs.Count); int x = xs[i]; xs.RemoveAt(i);
-                var s = new StackDef { x = x, z = -116, y0 = 2 * Storey + 3, h = 50 + rnd.Next(0, 56), r = 4f + (float)rnd.NextDouble() * 2.5f, style = rnd.Next(0, 3), owner = -1 };
+                var s = new StackDef { x = x, z = -plan.hz + 12, y0 = 2 * Storey + 3, h = industrial ? 76 + rnd.Next(0, 76) : 50 + rnd.Next(0, 56), r = industrial ? 5f + (float)rnd.NextDouble() * 3f : 4f + (float)rnd.NextDouble() * 2.5f, style = rnd.Next(0, 3), owner = -1 };
                 plan.stacks.Add(s);
                 plan.anchors.Add(new Vector3Int(s.x, s.y0 + s.h * 2 / 3, s.z));
             }
             // bridges over the street between facing blocks of three floors or more
             foreach (var l in plan.lots)
             {
-                if (plan.bridges.Count >= 2 || l.street < 0 || l.floors < 3 || (l.kind != LotKind.Panel && l.kind != LotKind.Brick)) continue;
+                    if (plan.bridges.Count >= (industrial ? 4 : 2) || l.street < 0 || l.floors < 3 || (l.kind != LotKind.Panel && l.kind != LotKind.Brick)) continue;
                 foreach (var rl in plan.lots)
                 {
                     if (rl.street > 0 || rl.floors < 3 || (rl.kind != LotKind.Panel && rl.kind != LotKind.Brick)) continue;
@@ -137,6 +146,16 @@ namespace MadMax.World
                     plan.bridges.Add(new BridgeDef { xL = l.x1, xR = rl.x0, z0 = z0, z1 = z0 + 11, y = f * Storey });
                     break;
                 }
+            }
+            if (industrial)
+            {
+                // Both promenades are reached through real stair cores; doors are cut after all facade dressing.
+                foreach (var lot in plan.lots)
+                    foreach (int level in new[] { 3, 6 })
+                    if (lot.floors > level)
+                        plan.bridges.Add(new BridgeDef { xL = lot.street > 0 ? lot.StreetX : 12,
+                            xR = lot.street > 0 ? -12 : lot.StreetX,
+                            z0 = lot.doorZ - 2, z1 = lot.doorZ + 7, y = level * Storey });
             }
             return plan;
         }
@@ -159,8 +178,14 @@ namespace MadMax.World
                 default: Yard(g, lot); break;
             }
             foreach (var b in plan.bridges)                                                      // doors onto the bridges
-                if (b.z0 >= lot.z0 && b.z1 <= lot.z1 && (lot.StreetX == b.xL || lot.StreetX == b.xR)) Door(g, b.z0 + 3, b.y + 1, lot.StreetX, false, 6, 9);
-            foreach (var s in plan.stacks) if (s.owner == lot.index) Stack(g, s);
+                if (b.z0 >= lot.z0 && b.z1 <= lot.z1 && (lot.StreetX == b.xL || lot.StreetX == b.xR))
+                {
+                    int a = Mathf.Min(lot.StreetX, lot.StreetX + lot.street * 6), bX = Mathf.Max(lot.StreetX, lot.StreetX + lot.street * 6);
+                    // Clear protruding balconies/signs too, not only the wall thickness.
+                    g.ClearBox(a, b.y + 1, b.z0 + 2, bX, b.y + 10, b.z1 - 1);
+                    Door(g, b.z0 + 2, b.y + 1, lot.StreetX, false, -lot.street, 7, 10);
+                }
+            foreach (var s in plan.stacks) if (!plan.industrial && s.owner == lot.index) Stack(g, s);
             return g;
         }
 
@@ -172,7 +197,7 @@ namespace MadMax.World
         {
             var r = new System.Random(lot.seed);
             int x0 = lot.x0, x1 = lot.x1, z0 = lot.z0, z1 = lot.z1, F = lot.floors, seed = lot.seed & 0xffff;
-            var ramp = r.NextDouble() < 0.6 ? Panel : Conc;
+            var ramp = plan.industrial || r.NextDouble() < 0.6 ? Panel : Conc;
             VoxMat wall = p =>
             {
                 if (p.y % Storey == 0) return Conc[0];
@@ -210,7 +235,7 @@ namespace MadMax.World
             {
                 int sz = z0 + 6 + r.Next(0, Mathf.Max(1, z1 - z0 - 24));
                 Shack(g, lot.OuterX - lot.street, lot.shackFloor * Storey, sz, 12, 10, 10, -lot.street, seed + 7);
-                Door(g, sz + 3, lot.shackFloor * Storey + 1, lot.OuterX, false, 5, 9);
+                Door(g, sz + 3, lot.shackFloor * Storey + 1, lot.OuterX, false, lot.street, 5, 9);
             }
             Roof(g, plan, lot, r, true);
         }
@@ -220,7 +245,11 @@ namespace MadMax.World
         {
             int xo = wx + outward * 4;
             int lo = Mathf.Min(wx + outward, xo), hi = Mathf.Max(wx + outward, xo);
-            for (int z = za + 1; z < zb; z++) for (int j = 1; j <= 8; j++) g.voxels.Remove(new Vector3Int(wx, y + j, z));
+            for (int z = za + 1; z < zb; z++) for (int j = 1; j <= 8; j++)
+            {
+                g.voxels.Remove(new Vector3Int(wx, y + j, z));
+                g.voxels.Remove(new Vector3Int(wx - outward, y + j, z));
+            }
             g.Mat(Stone); g.Box(lo, y, za, hi, y, zb, Pal.Ramp(Conc, 1, seed));
             float roll = Pal.Hash(wx, y, za, seed);
             if (roll < 0.3f)
@@ -273,7 +302,7 @@ namespace MadMax.World
         {
             var r = new System.Random(lot.seed);
             int x0 = lot.x0, x1 = lot.x1, z0 = lot.z0, z1 = lot.z1, F = lot.floors, seed = lot.seed & 0xffff;
-            bool stone = r.NextDouble() < 0.3;
+            bool stone = plan.industrial || r.NextDouble() < 0.3;
             VoxMat wall = stone ? Pal.Ramp(Limestone, 2, seed) : Pal.Stripe(Pal.Ramp(Brick, 2, seed), Pal.Ramp(Brick, 0, seed + 1), 1, 4);
             Block(g, x0, z0, x1, z1, F, Stone, wall, Pal.Ramp(Conc, 1, seed), seed, lot.street, lot.doorZ);
             g.Mat(Stone);
@@ -292,7 +321,7 @@ namespace MadMax.World
                     int z = z0 + 4 + (k * (z1 - z0 - 8)) / shacks;
                     if (z + w > z1 - 3) continue;
                     Shack(g, lot.OuterX - lot.street, f * Storey, z, w, 8 + r.Next(0, 5), 9 + r.Next(0, 2), -lot.street, seed + 11 + k);
-                    Door(g, z + 2, f * Storey + 1, lot.OuterX, false, 5, 9);
+                    Door(g, z + 2, f * Storey + 1, lot.OuterX, false, lot.street, 5, 9);
                 }
             }
             Roof(g, plan, lot, r, false);
@@ -314,7 +343,7 @@ namespace MadMax.World
             Block(g, x0, z0, x1, z1, F, Scrap, Corrugated(ramp, seed), Pal.Ramp(Conc, 0, seed), seed, lot.street, lot.doorZ, 16, 6);
             int top = F * Storey;
             g.Mat(Scrap);
-            for (int z = z0; z + 8 <= z1; z += 8)
+            for (int z = z0 + 32; z + 8 <= z1; z += 8)
             {
                 for (int k = 0; k < 8; k++) g.Box(x0, top + 3 + k * 5 / 8, z + k, x1, top + 3 + k * 5 / 8, z + k, Corrugated(Pal.Rust, seed + z));
                 g.Mat(Glass); g.Box(x0 + 1, top + 3, z + 7, x1 - 1, top + 7, z + 7, p => (p.x % 5) == 0 ? Pal.Metal[1] : Pal.Pick(Pal.Glass, p, seed, 2)); g.Mat(Scrap);
@@ -336,7 +365,7 @@ namespace MadMax.World
         static void MarketHall(VoxelGrid g, Lot lot)
         {
             int x0 = lot.x0, x1 = lot.x1, z0 = lot.z0, z1 = lot.z1, seed = lot.seed & 0xffff, sx = lot.StreetX;
-            Block(g, x0, z0, x1, z1, 2, Stone, Pal.Ramp(Brick, 1, seed + 40), Pal.Ramp(Conc, 1, seed), seed + 13, lot.street, lot.doorZ);
+            Block(g, x0, z0, x1, z1, lot.floors, Stone, Pal.Ramp(Brick, 1, seed + 40), Pal.Ramp(Conc, 1, seed), seed + 13, lot.street, lot.doorZ);
             g.ClearBox(sx, 1, z0 + 6, sx, Storey - 2, z1 - 6);
             g.Mat(Stone);
             for (int z = z0 + 6; z <= z1 - 6; z += 12) g.Box(sx, 1, z, sx, Storey - 1, z + 1, Pal.Ramp(Brick, 2, seed + z));
@@ -447,18 +476,18 @@ namespace MadMax.World
         static VoxelGrid SternWorks(Plan plan, int seed)
         {
             var g = new VoxelGrid();
-            int z0 = -126, z1 = -106;
+            int z0 = -plan.hz + 2, z1 = -plan.hz + (plan.industrial ? 42 : 22);
             foreach (var (x0, x1) in new[] { (-70, -20), (20, 70) })
             {
-                Block(g, x0, z0, x1, z1, 2, Stone, Pal.Stripe(Pal.Ramp(Brick, 1, seed), Pal.Ramp(Brick, 0, seed + 1), 1, 4), Pal.Ramp(Conc, 0, seed), seed + 50 + x0, x0 < 0 ? +1 : -1, -120);
+                Block(g, x0, z0, x1, z1, 2, Stone, Pal.Stripe(Pal.Ramp(Brick, 1, seed), Pal.Ramp(Brick, 0, seed + 1), 1, 4), Pal.Ramp(Conc, 0, seed), seed + 50 + x0, x0 < 0 ? +1 : -1, z0 + 6);
                 g.Mat(Scrap);
                 for (int x = x0 + 6; x < x1 - 6; x += 10) g.Box(x, 6, z1 + 1, x + 6, 16, z1 + 1, p => (p.y & 1) == 0 ? Pal.Black[1] : Pal.Metal[2]);
             }
-            foreach (var s in plan.stacks) if (s.owner < 0) Stack(g, s);
+            foreach (var s in plan.stacks) if (!plan.industrial && s.owner < 0) Stack(g, s);
             g.Mat(Stone);
             g.Box(-20, 2 * Storey, z0, 20, 2 * Storey + 6, z1, Pal.Stripe(Pal.Ramp(Brick, 1, seed), Pal.Ramp(Brick, 0, seed + 1), 1, 4));
             g.Mat(Scrap); g.Box(-16, 2 * Storey + 7, z1, 15, 2 * Storey + 12, z1, p => (p.x & 3) == 0 && p.y > 2 * Storey + 7 && p.y < 2 * Storey + 12 ? LampGlow : Pal.Navy[1]);
-            foreach (int y in new[] { 2 * Storey + 14, 2 * Storey + 18 }) g.Tube(new Vector3(-66, y, -110), new Vector3(66, y, -110), 1.3f, Pal.Ramp(Pal.Rust, 1, seed + y));
+            foreach (int y in new[] { 2 * Storey + 14, 2 * Storey + 18 }) g.Tube(new Vector3(-66, y, z1 - 4), new Vector3(66, y, z1 - 4), 1.3f, Pal.Ramp(Pal.Rust, 1, seed + y));
             return g;
         }
 
@@ -473,10 +502,15 @@ namespace MadMax.World
                 g.Mat(Scrap);
                 foreach (int z in new[] { b.z0, b.z1 })
                 {
-                    g.Box(xa, by + 4, z, xb, by + 4, z, Pal.Ramp(Pal.Ochre, 2));
-                    for (int x = xa; x <= xb; x += 4) g.Box(x, by + 1, z, x, by + 3, z, Pal.Ramp(Pal.Metal, 1));
+                    for (int x = xa; x <= xb; x++)
+                    {
+                        if (plan.industrial && Mathf.Abs(x) >= 12 && Mathf.Abs(x) <= 24) continue; // promenade junction
+                        g.Set(x, by + 4, z, Pal.Ramp(Pal.Ochre, 2));
+                        if ((x - xa) % 4 == 0) g.Box(x, by + 1, z, x, by + 3, z, Pal.Ramp(Pal.Metal, 1));
+                    }
                 }
                 for (int x = xa; x <= xb; x += 6) g.Box(x, by - 2, b.z0 + 1, x, by - 1, b.z1 - 1, Pal.Ramp(Pal.Rust, 0));
+                if (plan.industrial) continue; // struts stay under the span, outside the street
                 g.Tube(new Vector3(xa + 1, by - 1, b.z0 + 2), new Vector3(-17, 0, b.z0 + 2), 0.8f, Pal.Ramp(Pal.Rust, 0));
                 g.Tube(new Vector3(xb - 1, by - 1, b.z1 - 2), new Vector3(17, 0, b.z1 - 2), 0.8f, Pal.Ramp(Pal.Rust, 0));
             }
@@ -485,10 +519,10 @@ namespace MadMax.World
 
         /// <summary>Galleries hung off both deck sides below the plates (clear of the gangway and the bow): grating, a
         /// rail, knee braces, lamps under the deck edge, huts here and there.</summary>
-        static VoxelGrid Galleries(int seed)
+        static VoxelGrid Galleries(int seed, int HX, int HZ, bool industrial)
         {
             var g = new VoxelGrid().Mat(Scrap);
-            const int y = -10, depth = 12;
+            int y = industrial ? -12 : -10; const int depth = 12;
             foreach (int side in new[] { -1, 1 })
             {
                 int edge = side > 0 ? HX : -HX - 1, outer = edge + side * (depth - 1);
@@ -506,6 +540,7 @@ namespace MadMax.World
                     }
                     if ((z & 15) == 8) { g.Mat(Glass); g.Set(edge, -3, z, Pal.Solid(LampGlow)); g.Mat(Scrap); }
                 }
+                if (industrial) continue; // maintenance routes must remain clear end to end
                 for (int z = -HZ + 12; z < HZ - 30; z += 40)
                 {
                     if (side > 0 && z + 18 >= -GangHalf - 6 && z <= GangHalf + 5) continue;

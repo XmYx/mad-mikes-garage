@@ -17,6 +17,9 @@ Shader "MadMax/PixelVoxel"
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
         _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
         _DirtTop ("Mud Line (world Y)", Float) = -100000
+        _CitySurface ("Rolling City Surface Detail", 2D) = "white" {}
+        _CitySurfaceScale ("City Surface Scale", Float) = 0.24
+        _CitySurfaceStrength ("City Surface Strength", Range(0,1)) = 0
     }
     SubShader
     {
@@ -40,7 +43,11 @@ Shader "MadMax/PixelVoxel"
             half _WorldCut;
             half _Dirt;
             float _DirtTop;
+            float _CitySurfaceScale;
+            half _CitySurfaceStrength;
         CBUFFER_END
+        TEXTURE2D(_CitySurface);
+        SAMPLER(sampler_CitySurface);
         // global settings (0 = default look)
         float _MadMaxOutlineDelta;
         float _MadMaxBrightnessDelta;
@@ -160,6 +167,18 @@ Shader "MadMax/PixelVoxel"
                 albedo = SRGBToLinear(albedo);                             // vertex colours are authored in sRGB
                 #endif
                 albedo *= _Tint.rgb;
+                if (_CitySurfaceStrength > 0.001h)
+                {
+                    half3 axis = abs(normalize(TransformWorldToObjectDir(i.normalWS)));
+                    half3 blend = pow(axis, 8.0h);
+                    blend /= max(blend.x + blend.y + blend.z, 0.001h);
+                    float3 p = i.positionOS * _CitySurfaceScale; // attached to the moving hull, never swimming through world space
+                    half3 tx = SAMPLE_TEXTURE2D(_CitySurface, sampler_CitySurface, p.yz).rgb;
+                    half3 ty = SAMPLE_TEXTURE2D(_CitySurface, sampler_CitySurface, p.xz).rgb;
+                    half3 tz = SAMPLE_TEXTURE2D(_CitySurface, sampler_CitySurface, p.xy).rgb;
+                    half3 surface = tx * blend.x + ty * blend.y + tz * blend.z;
+                    albedo *= lerp(half3(1, 1, 1), surface, _CitySurfaceStrength);
+                }
                 // mud on vehicles (VehicleGrime): voxel splatters, thick low on the body, thinning out up to the mud line
                 if (_Dirt > 0.001h)
                 {

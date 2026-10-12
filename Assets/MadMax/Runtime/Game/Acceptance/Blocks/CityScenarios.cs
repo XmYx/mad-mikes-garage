@@ -12,6 +12,9 @@ namespace MadMax.Game.Acceptance
         public static IEnumerable<Scenario> All()
         {
             yield return new CityRide();
+            yield return new CityIndustrialAccess();
+            yield return new CityLiving();
+            yield return new MegaCityLiving();
         }
     }
 
@@ -31,6 +34,9 @@ namespace MadMax.Game.Acceptance
             yield return PH.Until(() => g.City && g.City.Ready, 30f);
             var city = g.City;
             if (!c.Check(city && city.Ready, "the rolling city is built" + (city ? " (" + city.Name + ")" : ""))) yield break;
+            yield return PH.Until(() => g.Cities.Count > 1 && g.Cities[1].Ready, 45f);
+            if (!c.Check(g.Cities.Count == 2 && (g.Cities[1].Industrial || g.Cities[1].Tracked != null) && g.Cities[1].Route != city.Route,
+                         "a second, independently routed city is present (" + g.Cities[1].Name + ")")) yield break;
             var P = g.Player;
             yield return new WaitForSeconds(1f);
             c.Check(!g.Current && city.OnDeck(P.transform.position, 4f), $"the game starts aboard, on foot (deck-local {Local(city, P.transform.position)})");
@@ -44,7 +50,8 @@ namespace MadMax.Game.Acceptance
             yield return null;
 
             // a car parked on the main street, strapped down by the city
-            var car = g.SpawnAiVehicle("Coupe", city.DeckPoint(new Vector3(-1.5f, 1.2f, 18f)), city.transform.rotation);
+            var carAt = city.Tracked != null ? new Vector3(city.Route.halfWidth - 5f, 1.2f, -4.5f) : new Vector3(-1.5f, 1.2f, 18f);
+            var car = g.SpawnAiVehicle("Coupe", city.DeckPoint(carAt), city.transform.rotation);
             if (!c.Check(car, "a coupe set down on the main street")) yield break;
             car.aiDriven = false; car.handbrake = true; car.Occupied = false;
             c.Fixture("a coupe parked on the deck's main street");
@@ -84,14 +91,15 @@ namespace MadMax.Game.Acceptance
             c.Fixture($"waited {Time.realtimeSinceStartup - rt0:0.0} s real, {Time.fixedTime - ft0:0.0} s fixed, clock +{city.Clock - ck0:0.0} s, timeScale {Time.timeScale}, city active {city.isActiveAndEnabled}");
             var dock = g.CityDocks.Find(d => d.index == 1);
             if (!c.Check(dock && city.GangwayDown, $"docked at the second stop, gangway down (dock {city.Dock}, {city.DwellLeft:0} s left, gangway {(city.GangwayDown ? "down" : "up")}, docks {g.CityDocks.Count}, clock {city.Clock:0} of {city.Cycle:0})")) yield break;
-            var tip = city.DeckPoint(new Vector3(CityRoute.HalfWidth + CityDesign.PierGap, 0f, 0f));
+            var tip = city.DeckPoint(new Vector3(city.Route.halfWidth + city.Route.pierGap, 0f, 0f));
             var pier = dock.PierPoint(0f, 0f);
             float gap = Vector2.Distance(new Vector2(tip.x, tip.z), new Vector2(pier.x, pier.z)), step = Mathf.Abs(tip.y - pier.y);
             c.Metric("gangway_gap", gap, "m"); c.Metric("gangway_step", step, "m");
-            c.Check(gap < CityDesign.GangLen * CityDesign.V - CityDesign.PierGap - 0.2f && step < 0.4f, $"the gangway rests on the pier ({gap:0.00} m off the line, it overlaps by {CityDesign.GangLen * CityDesign.V - CityDesign.PierGap - gap:0.00} m; {step:0.00} m step)");
-            P.Teleport(city.DeckPoint(new Vector3(14f, 0.15f, 0f)), city.transform.eulerAngles.y + 90f);
+            float overlap = city.GangwayLength - city.Route.pierGap;
+            c.Check(gap < overlap - 0.2f && step < 0.4f, $"the gangway rests on the pier ({gap:0.00} m off the line, it overlaps by {overlap - gap:0.00} m; {step:0.00} m step)");
+            P.Teleport(city.DeckPoint(new Vector3(city.Route.halfWidth - 4f, 0.15f, 0f)), city.transform.eulerAngles.y + 90f);
             yield return new WaitForSeconds(0.4f);
-            for (float t = 0f; t < 13f; t += Time.deltaTime) { P.AutoWalk = city.transform.right; yield return null; }   // the work system clears it between jobs (laden: ~1 m/s)
+            for (float t = 0f; t < (city.Tracked != null ? 19f : 13f); t += Time.deltaTime) { P.AutoWalk = city.transform.right; yield return null; }   // the work system clears it between jobs (laden: ~1 m/s)
             P.AutoWalk = null;
             yield return new WaitForSeconds(0.5f);
             var pl = dock.transform.InverseTransformPoint(P.transform.position);
@@ -124,6 +132,14 @@ namespace MadMax.Game.Acceptance
             if (rig) rig.LookToward((city.transform.position + city.transform.forward * 22f - city.transform.right * 14f + Vector3.up * 2f - near).normalized);
             yield return new WaitForSeconds(2f);
             c.Screenshot("city_tracks");
+            yield return null;
+            var industrial = g.Cities[1];
+            var overlook = industrial.transform.position - industrial.transform.right * 90f;
+            overlook.y = g.World.Sample(overlook.x, overlook.z).height + 0.2f;
+            P.Teleport(overlook, 0f);
+            if (rig) { rig.mode = ViewMode.ThirdPerson; rig.LookToward((industrial.transform.position + Vector3.up * 20f - overlook).normalized); }
+            yield return new WaitForSeconds(2f);
+            c.Screenshot("industrial_city_broadside");
             yield return null;
             if (rig) rig.mode = ViewMode.Isometric;
         }

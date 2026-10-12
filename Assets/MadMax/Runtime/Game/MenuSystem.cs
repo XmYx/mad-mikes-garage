@@ -16,6 +16,8 @@ namespace MadMax.Game
 
         public Page Current { get; private set; }
         public bool IsOpen => Current != Page.None;
+        /// <summary>World actions must not reuse the pointer press that dismissed or acted on a menu.</summary>
+        public bool BlocksWorldInput => IsOpen || ClosedFrame == Time.frameCount;
         /// <summary>The highlighted entry's label (menu focus, for automation and checks).</summary>
         /// <summary>Frame a page was last closed (the key that closed it must not reopen it the same frame).</summary>
         public int ClosedFrame { get; private set; } = -1;
@@ -505,7 +507,7 @@ namespace MadMax.Game
                     R("DIFFICULTY", () => GameRules.DifficultyNames[r.difficulty], d => r.difficulty = Mathf.Clamp(r.difficulty + d, 0, 3));
                     R("STARTING KIT", () => r.story ? "WHAT YOU CAN FIND" : GameRules.KitNames[r.startingKit], d => { if (!r.story) r.startingKit = Mathf.Clamp(r.startingKit + d, 0, 2); });
                     R("VEHICLES", () => r.story ? "ONE STRANDED CAR" : GameRules.FleetNames[r.fleet], d => { if (!r.story) r.fleet = (r.fleet + d + 4) % 4; });
-                    R("START", () => r.story ? "THE CONVOY WRECK" : GameRules.StartNames[r.start], d => { if (!r.story) r.start = (r.start + d + 2) % 2; });
+                    R("START", () => r.story ? "THE CONVOY WRECK" : GameRules.StartNames[Mathf.Clamp(r.start, 0, GameRules.StartNames.Length - 1)], d => { if (!r.story) r.start = (r.start + d + GameRules.StartNames.Length) % GameRules.StartNames.Length; });
                     R("RESOURCE YIELD", () => "X" + r.yield.ToString("0.0"), d => r.yield = Mathf.Clamp(r.yield + d * 0.25f, 0.25f, 3f));
                     R("FUEL USE", () => "X" + r.fuelUse.ToString("0.0"), d => r.fuelUse = Mathf.Clamp(r.fuelUse + d * 0.25f, 0.25f, 3f));
                     R("SKILL LEARNING", () => "X" + r.learning.ToString("0.0"), d => r.learning = Mathf.Clamp(r.learning + d * 0.25f, 0.25f, 4f));

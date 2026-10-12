@@ -208,6 +208,23 @@ namespace MadMax.Game
                 var fac = MadMax.Npc.Factions.OfSettlement(st);
                 Hover(tp, name + (known ? "" : "  (NOT VISITED)") + (fac == MadMax.Npc.Faction.None ? "" : "  " + MadMax.Npc.Factions.Names[(int)fac]));
             }
+            // the megacity: its towers show from kilometres away, so it is always on the map (outline to scale)
+            if (world.mega != null)
+            {
+                var mc = P(new Vector3(world.mega.centre.x, 0f, world.mega.centre.y));
+                int mh = Mathf.Max(2, Mathf.RoundToInt(world.mega.half / mpp));
+                bool known = game.Discovered.Contains("mega");
+                var col = known ? new Color32(200, 150, 255, 255) : new Color32(130, 100, 170, 255);
+                for (int k = -mh; k <= mh; k++)
+                    foreach (var q in new[] { new Vector2Int(mc.x + k, mc.y - mh), new Vector2Int(mc.x + k, mc.y + mh), new Vector2Int(mc.x - mh, mc.y + k), new Vector2Int(mc.x + mh, mc.y + k) })
+                        if (Inside(q)) c.Set(q.x, q.y, col);
+                if (Inside(mc))
+                {
+                    c.Rect(mc.x - 1, mc.y - 3, 3, 7, col);
+                    c.Text(mc.x - PixelCanvas.TextWidth(world.mega.name) / 2, mc.y + 5, world.mega.name, known ? Text : Dim);
+                    Hover(mc, world.mega.name + (known ? "  (MEGACITY: LIFTS FROM THE PLAZA, FLATS TO RENT)" : "  (MEGACITY)"));
+                }
+            }
             // found sites
             world.SitesNear(new Vector3(center.x, 0f, center.y), Mathf.Max(w, h) * mpp, mapSites);
             foreach (var site in mapSites)

@@ -24,6 +24,8 @@ namespace MadMax.Game
         public bool shareMeshes;
         /// <summary>No physics hair strands (distant or numerous characters).</summary>
         public bool noStrands;
+        /// <summary>A <see cref="Ragdoll"/> owns the bones: animation leaves them alone.</summary>
+        public bool Limp { get; set; }
         static readonly Dictionary<string, Mesh> shared = new Dictionary<string, Mesh>();
         // meshes being built ahead on a worker (Prewarm): one task per character, keyed by every part it makes
         static readonly Dictionary<string, System.Threading.Tasks.Task<Dictionary<string, MadMax.Voxel.VoxelMesher.MeshData>>> warming =

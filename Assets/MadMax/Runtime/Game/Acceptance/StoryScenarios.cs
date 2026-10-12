@@ -312,12 +312,14 @@ namespace MadMax.Game.Acceptance
             var g = c.Game;
             yield return new WaitForSeconds(2f);
             c.Check(MadMax.Story.Story.StateOf("S09") == MadMax.Story.Story.State.Open && MadMax.Story.Story.StateOf("S24") == MadMax.Story.Story.State.Open, "S09 and S24 are on offer in a sandbox world");
-            var pins = new List<WastelandGame.Pin>(); g.JobPins(pins);
-            c.Check(pins.Any(p => p.label.StartsWith("? UNA")) && pins.Any(p => p.label.StartsWith("? GUS")), "the map shows who has work");
+            // the map pins the nearest strangers with work by what they look like (2026-10-04: three, unnamed until met)
+            var offers = H.Offers(g);
+            c.Check(offers.Count > 0 && offers.Count <= WastelandGame.StoryOfferStrangers, "the map shows who has work nearby: " + H.Describe(g, offers));
             if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
 
             // ---- S09
             yield return Walk(c, "una", 2.5f);
+            c.Check(H.OfferPinned(g, "una") && H.Offers(g).Any(p => p.label == "? GARDENER"), "standing by her beds, Una's work is on the map (as the gardener): " + H.Describe(g, H.Offers(g)));
             yield return Until(() => g.CastBody("una") != null, 5f);
             var una = g.CastBody("una");
             if (!c.Check(una, "Una Pritch is at her beds")) yield break;
@@ -346,6 +348,7 @@ namespace MadMax.Game.Acceptance
 
             // ---- S24
             yield return Walk(c, "gus", 2.5f);
+            c.Check(H.OfferPinned(g, "gus") && H.Offers(g).Any(p => p.label == "? GRANDFATHER"), "in his corner, Gus's work is on the map: " + H.Describe(g, H.Offers(g)));
             yield return Until(() => g.CastBody("gus") != null, 5f);
             var gus = g.CastBody("gus");
             if (!c.Check(gus, "Gus Alder is in his corner")) yield break;
@@ -601,6 +604,26 @@ namespace MadMax.Game.Acceptance
     /// <summary>Shared test steps for story scenarios.</summary>
     static class H
     {
+        /// <summary>Story givers on offer the map pins right now ("?" pins: met givers by name, the nearest
+        /// <see cref="WastelandGame.StoryOfferStrangers"/> strangers by title), as "label at N m" for evidence.</summary>
+        public static List<WastelandGame.Pin> Offers(WastelandGame g)
+        {
+            var pins = new List<WastelandGame.Pin>(); g.JobPins(pins);
+            return pins.Where(p => p.label.StartsWith("? ")).ToList();
+        }
+
+        public static string Describe(WastelandGame g, List<WastelandGame.Pin> pins) =>
+            string.Join("; ", pins.Select(p => $"{p.label} at {Vector3.Distance(p.pos, g.Player.transform.position):0} m"));
+
+        /// <summary>A "?" pin stands at cast member <paramref name="key"/>'s place.</summary>
+        public static bool OfferPinned(WastelandGame g, string key)
+        {
+            var m = MadMax.Story.StoryCast.Find(key);
+            if (m == null || m.Value.anchor == null || !StoryAnchors.Has(m.Value.anchor)) return false;
+            var at = StoryAnchors.Get(m.Value.anchor);
+            return Offers(g).Any(p => new Vector2(p.pos.x - at.x, p.pos.z - at.z).sqrMagnitude < 1f);
+        }
+
         /// <summary>[E] on the A1 satchel lying by the wreck (nothing is collected by walking up to it).</summary>
         public static bool TakeSatchel(ScenarioContext c)
         {

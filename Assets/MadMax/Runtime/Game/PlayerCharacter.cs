@@ -393,6 +393,7 @@ namespace MadMax.Game
             if (sprintJump > 0f) { sprintJump -= dt; horizontal *= 1.12f; }                     // a running leap carries further
             horizontal += Carrier(dt);                                                        // riding on a vehicle bed or roof
             cc.Move((horizontal + Vector3.up * vy) * dt);
+            LiftHold();                                                                       // on a city lift's platform
             Velocity = cc.velocity;
             CrouchTick(dt, canRun);
 

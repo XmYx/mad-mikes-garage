@@ -87,6 +87,13 @@ namespace MadMax.Game
 
         public void Tick(Keyboard kb, Mouse mouse, Gamepad pad)
         {
+            // MenuSystem can close a page during this frame's pointer press. Do not let that
+            // same press place the selected piece (or connect a cable) in the world.
+            if (game && game.Menus && game.Menus.BlocksWorldInput)
+            {
+                if (ghost) ghost.SetActive(false);
+                return;
+            }
             if (pad != null && pad.dpad.left.wasPressedThisFrame) { if (Active) SetActive(false); else { game.Menus.OpenBuild(); return; } }
             if (kb != null && game.Player && !game.Current)
             {
@@ -162,7 +169,8 @@ namespace MadMax.Game
             if (def.frame != MadMax.Building.FrameKind.None) { FrameTick(def, hit, kb, mouse, pad); return; }   // free frame (roadmap 29)
 
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
-            Transform parent = chassis ? chassis.transform : structures;
+            var city = chassis ? null : hit.collider.GetComponentInParent<MadMax.World.CityHost>();
+            Transform parent = chassis ? chassis.transform : city ? city.transform : structures;       // pieces aboard a city ride with it
             var n = hit.normal;
             var localN = parent.InverseTransformDirection(n);
             bool axisAligned = Mathf.Max(Mathf.Abs(localN.x), Mathf.Max(Mathf.Abs(localN.y), Mathf.Abs(localN.z))) > 0.95f;
@@ -189,9 +197,11 @@ namespace MadMax.Game
                 // level on the ground, yawed square to the world (or tiled against the foundation under the cursor)
                 parent = structures;
                 if (chassis) blocked = "BUILD IT ON THE GROUND";
+                else if (city) blocked = "NO FOUNDATIONS ABOARD - BUILD ON THE FLOOR";
                 else if (def.foundation && targetPiece && FurnitureLibrary.Get(targetPiece.id) is FurnitureDef td && td.foundation) NextTo(targetPiece, hit.point, out localPos, out localRot);
                 else if (!LevelSpot(def, hit.point, rot, out localPos, out localRot)) blocked = "TOO STEEP FOR THE LEGS";
             }
+            if (blocked == null && !game.CanBuildAt(hit.point, out var why)) blocked = why;                // flats aboard the cities (Quarters)
             ghost.SetActive(true);
             ghostMesh.sharedMesh = def.mesh;
             GhostHD(def.id);
@@ -210,7 +220,7 @@ namespace MadMax.Game
             {
                 parent = targetPiece.transform.parent; localPos = targetPiece.transform.localPosition; localRot = targetPiece.transform.localRotation;
                 ghost.transform.SetPositionAndRotation(parent.TransformPoint(localPos), parent.rotation * localRot);
-                Valid = affordable; Status = affordable ? "[LMB] FIT " + def.name : "NOT ENOUGH MATERIALS";
+                Valid = affordable && blocked == null; Status = blocked ?? (affordable ? "[LMB] FIT " + def.name : "NOT ENOUGH MATERIALS");
             }
             aimParent = parent; aimPos = localPos; aimRot = localRot;
             bool place = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);

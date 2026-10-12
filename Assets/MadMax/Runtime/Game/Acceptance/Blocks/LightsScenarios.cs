@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 using MadMax.Building;
 using MadMax.Vehicles;
@@ -90,7 +91,14 @@ namespace MadMax.Game.Acceptance
             yield return LightsScenarios.Until(() => l1.Glowing && l2.Glowing, 4f);
             c.Check(l1.Glowing && l2.Glowing, "both lamps burn at night on the running generator");
             c.Check(a.Wired && Has(a, l1) && !Has(a, l2), $"switch A's circuit is its cable: lamp 1 only ({a.Circuit.Count} lights, wired {a.Wired})");
-            c.Check(!b.Wired && Has(b, l2) && !Has(b, l1), $"switch B's circuit is its room: lamp 2, not the cabled lamp 1 ({b.Circuit.Count} lights)");
+            if (!c.Check(!b.Wired && Has(b, l2) && !Has(b, l1), $"switch B's circuit is its room: lamp 2, not the cabled lamp 1 ({b.Circuit.Count} lights)"))
+            {
+                var from = swB.transform.position + swB.transform.up * 0.12f; var lt = lamp2.GetComponentInChildren<Light>(); var to = lt ? lt.transform.position : lamp2.transform.position;
+                var hs = Physics.RaycastAll(from, (to - from).normalized, (to - from).magnitude, ~0, QueryTriggerInteraction.Ignore);
+                var m2 = l2.Master;
+                c.Note($"switch B {from} up {swB.transform.up}, lamp 2 light {to}, lamp2 outdoor {l2.outdoor} external {l2.external} switchable {l2.Switchable}, master {(m2 ? m2.name + " at " + m2.transform.position + (m2 == a ? " (A)" : m2 == b ? " (B)" : "") + " parent " + (m2.transform.parent ? m2.transform.parent.name : "-") : "none")}, switches {LightSwitch.All.Count}; ray hits: "
+                       + string.Join(", ", hs.Where(h => !h.collider.transform.IsChildOf(swB.transform) && !h.collider.transform.IsChildOf(l2.transform)).Select(h => h.collider.name + " (" + h.collider.transform.root.name + ")")));
+            }
 
             a.Flip();
             yield return LightsScenarios.Until(() => !l1.Glowing, 2f);

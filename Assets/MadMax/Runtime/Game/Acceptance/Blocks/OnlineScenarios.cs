@@ -283,7 +283,8 @@ namespace MadMax.Game.Acceptance
             c.Metric("route_length", len2, "m");
             c.Metric("straight_length", Flat(start, goal), "m");
             c.Check(ok && viaPlayer, $"a road route over the player's paving is found ({route.Count} points)");
-            c.Check(corner < 4f, $"it goes round the corner ({corner:0.0} m from it) instead of across the open ground");
+            if (!c.Check(corner < 4f, $"it goes round the corner ({corner:0.0} m from it) instead of across the open ground"))
+                c.Note("route: " + string.Join(" ", route.Select(p => $"({p.x:0.0},{p.z:0.0}{(RoadRoute.IsPlayerNode(p) ? "*" : "")})")) + $"; start {start.x:0},{start.z:0} corner {b.x:0},{b.z:0} goal {goal.x:0},{goal.z:0}");
             int off = 0;
             for (int i = 1; i < route.Count - 1; i++) if (Mathf.Min(SegDist(route[i], a, b), SegDist(route[i], b, cc)) > 3f) off++;
             c.Check(off == 0, $"every road point of it lies on the paving ({off} off)");

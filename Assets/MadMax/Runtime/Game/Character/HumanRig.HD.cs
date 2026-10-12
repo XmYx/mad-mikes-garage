@@ -105,6 +105,11 @@ namespace MadMax.Game
                 }
                 if (!torn) voxelCovering.Add(d);
             }
+            // The reference lead's articulated-looking salvaged arm is a skinned HD assembly.
+            // Its meshes are rigidly bound at the shoulder so the missing forearm bones can collapse cleanly.
+            if (ProstheticLibrary.FittedOn(appearance, MadMax.RPG.BodyZone.ArmL) == "pros_cyber_arm")
+                foreach (var p in HDHuman.All(cat, shape, "prosthetic"))
+                    if (p.garment == "pros_cyber_arm") { var pp = p; Add(p, false, l => Lod(pp, l)); }
             var seen = new HashSet<string>();
             foreach (var p in HDHuman.All(cat, shape, "under"))
             {

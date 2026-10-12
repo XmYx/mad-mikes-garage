@@ -79,6 +79,11 @@ namespace MadMax.Game
                 bool seen = Vector2.Distance(s.pos, new Vector2(at.x, at.z)) < Mathf.Max(120f, s.reach + 30f);
                 if (seen && Discovered.Add(s.Key)) { Journal.Add("FOUND", SiteName(s) + " AT " + Mathf.RoundToInt(s.pos.x) + "," + Mathf.RoundToInt(s.pos.y)); Toast("FOUND: " + SiteName(s) + " (ON THE MAP)"); }
             }
+            if (World.mega != null && World.mega.Edge(at.x, at.z) < 60f && Discovered.Add("mega"))
+            {
+                Journal.Add("FOUND", "REACHED " + World.mega.name + ", THE MEGACITY. LIFTS RUN FROM THE PLAZA UP TO THE DECKS; THE CLERK BY THE FIRST LIFT RENTS FLATS.");
+                Toast("REACHED " + World.mega.name);
+            }
             foreach (var k in Scouted) Discovered.Add(k);
             foreach (var m in BiomeProps.Landmarks(World))
                 if (Vector2.Distance(m.pos, new Vector2(at.x, at.z)) < 90f && Discovered.Add("lm:" + m.index))

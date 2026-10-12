@@ -16,6 +16,16 @@ namespace MadMax.World
         public const float V = 0.25f;
         /// <summary>Deck half extents in voxels (18 × 32 m) and the storey height (3 m).</summary>
         public const int HX = 72, HZ = 128, Storey = 12;
+        // Dimensions change the plan, never the scale of its doors, rooms or stairs.
+        public const int IndustrialHX = 96, IndustrialHZ = 224;
+        public static Vector3[] BogieCentres(bool industrial)
+        {
+            if (!industrial) return Bogies;
+            var result = new List<Vector3>();
+            foreach (float z in new[] { -42f, -14f, 14f, 42f })
+                foreach (float x in new[] { -19.5f, 19.5f }) result.Add(new Vector3(x, -1.75f, z));
+            return result.ToArray();
+        }
         /// <summary>Bogie centres (metres, deck-local; y = their top below the deck surface).</summary>
         public static readonly Vector3[] Bogies = { new Vector3(-13.5f, -1.75f, 21f), new Vector3(13.5f, -1.75f, 21f), new Vector3(-13.5f, -1.75f, -21f), new Vector3(13.5f, -1.75f, -21f) };
         /// <summary>The gangway: hinge on the right deck edge, 6 m wide along z, 7 m long — it rests a metre onto the
@@ -42,16 +52,17 @@ namespace MadMax.World
         /// <summary>The city's fixed pieces: the deck, every lot of the seeded layout (<see cref="Layout"/>), the stern
         /// works, the galleries hung off the deck sides and the cables strung between roofs. Bogies, treads and the
         /// gangway are built separately (<see cref="Bogie"/>, <see cref="Tread"/>, <see cref="Gangway"/>).</summary>
-        public static List<Piece> City(int seed)
+        public static List<Piece> City(int seed, bool industrial = false)
         {
-            var plan = Layout(seed);
-            var list = new List<Piece> { new Piece { name = "Deck", grid = Deck(seed), collide = Collide.Box } };
+            var plan = Layout(seed, industrial);
+            var list = new List<Piece> { new Piece { name = "Deck", grid = Deck(seed, plan.hx, plan.hz, industrial), collide = Collide.Box } };
             for (int i = 0; i < plan.lots.Count; i++) list.Add(new Piece { name = "Lot" + i + "_" + plan.lots[i].kind, grid = LotGrid(plan, plan.lots[i]) });
             list.Add(new Piece { name = "Works", grid = SternWorks(plan, seed) });
             list.Add(new Piece { name = "Bridges", grid = Bridges(plan, seed) });
-            list.Add(new Piece { name = "Galleries", grid = Galleries(seed) });
+            list.Add(new Piece { name = "Galleries", grid = Galleries(seed, plan.hx, plan.hz, industrial) });
             list.Add(new Piece { name = "Cables", grid = Cables(plan, seed), collide = Collide.None });
             if (plan.crane) list.Add(new Piece { name = "Crane", grid = Crane(seed), collide = Collide.None });
+            if (industrial) list.Add(new Piece { name = "IndustrialSuperstructure", grid = IndustrialCirculation(plan, seed) });
             foreach (var p in list) p.grid.Bevel();
             return list;
         }
@@ -62,37 +73,43 @@ namespace MadMax.World
 
         static void Slab(VoxelGrid g, int x0, int z0, int x1, int z1, int y, byte mat, VoxMat paint) { g.Mat(mat); g.Box(x0, y, z0, x1, y, z1, paint); }
 
-        /// <summary>Four walls one voxel thick from y0 to y1 with window openings every storey (glass in some, boarded
+        /// <summary>Four walls two voxels thick from y0 to y1 with recessed window openings every storey (glass in some, boarded
         /// in others, the rest open).</summary>
         static void Walls(VoxelGrid g, int x0, int z0, int x1, int z1, int y0, int y1, byte mat, VoxMat paint, int seed, int pitch = 12, int winW = 4, int sill = 3, int winH = 6)
         {
             g.Mat(mat);
-            g.Box(x0, y0, z0, x1, y1, z0, paint); g.Box(x0, y0, z1, x1, y1, z1, paint);
-            g.Box(x0, y0, z0, x0, y1, z1, paint); g.Box(x1, y0, z0, x1, y1, z1, paint);
+            g.Box(x0, y0, z0, x1, y1, z0 + 1, paint); g.Box(x0, y0, z1 - 1, x1, y1, z1, paint);
+            g.Box(x0, y0, z0, x0 + 1, y1, z1, paint); g.Box(x1 - 1, y0, z0, x1, y1, z1, paint);
             for (int y = y0 - 1; y + sill + winH <= y1 + 1; y += Storey)
             {
-                for (int x = x0 + 4; x + winW <= x1 - 3; x += pitch) { Window(g, x, y + sill, z0, winW, winH, true, seed); Window(g, x, y + sill, z1, winW, winH, true, seed + 1); }
-                for (int z = z0 + 4; z + winW <= z1 - 3; z += pitch) { Window(g, x0, y + sill, z, winW, winH, false, seed + 2); Window(g, x1, y + sill, z, winW, winH, false, seed + 3); }
+                for (int x = x0 + 4; x + winW <= x1 - 3; x += pitch) { Window(g, x, y + sill, z0, winW, winH, true, +1, seed); Window(g, x, y + sill, z1, winW, winH, true, -1, seed + 1); }
+                for (int z = z0 + 4; z + winW <= z1 - 3; z += pitch) { Window(g, z, y + sill, x0, winW, winH, false, +1, seed + 2); Window(g, z, y + sill, x1, winW, winH, false, -1, seed + 3); }
             }
         }
 
-        static void Window(VoxelGrid g, int a, int y, int wall, int w, int h, bool alongX, int seed)
+        static void Window(VoxelGrid g, int a, int y, int wall, int w, int h, bool alongX, int inward, int seed)
         {
             float roll = Pal.Hash(a, y, wall, seed);
             for (int i = 0; i < w; i++)
             for (int j = 0; j < h; j++)
             {
-                var p = alongX ? new Vector3Int(a + i, y + j, wall) : new Vector3Int(wall, y + j, a + i);
-                g.voxels.Remove(p);
-                if (roll < 0.45f) { g.Mat(Glass); g.Set(p, Pal.Ramp(Pal.Glass, 2, seed)); }
-                else if (roll < 0.6f && j < h / 2) { g.Mat(Wood); g.Set(p, Pal.Ramp(Pal.Wood, 1, seed)); }      // boarded up halfway
+                var outer = alongX ? new Vector3Int(a + i, y + j, wall) : new Vector3Int(wall, y + j, a + i);
+                var inner = outer + (alongX ? new Vector3Int(0, 0, inward) : new Vector3Int(inward, 0, 0));
+                g.voxels.Remove(outer);
+                g.voxels.Remove(inner);
+                if (roll < 0.45f) { g.Mat(Glass); g.Set(inner, Pal.Ramp(Pal.Glass, 2, seed)); }
+                else if (roll < 0.6f && j < h / 2) { g.Mat(Wood); g.Set(inner, Pal.Ramp(Pal.Wood, 1, seed)); }      // boarded up halfway
             }
         }
 
-        static void Door(VoxelGrid g, int a, int y, int wall, bool alongX, int w = 5, int h = 9)
+        static void Door(VoxelGrid g, int a, int y, int wall, bool alongX, int inward, int w = 5, int h = 9)
         {
             for (int i = 0; i < w; i++) for (int j = 0; j < h; j++)
-                g.voxels.Remove(alongX ? new Vector3Int(a + i, y + j, wall) : new Vector3Int(wall, y + j, a + i));
+            {
+                var outer = alongX ? new Vector3Int(a + i, y + j, wall) : new Vector3Int(wall, y + j, a + i);
+                g.voxels.Remove(outer);
+                g.voxels.Remove(outer + (alongX ? new Vector3Int(0, 0, inward) : new Vector3Int(inward, 0, 0)));
+            }
         }
 
         /// <summary>A straight flight from the slab at floorY up one storey (one voxel up per two along, 27°), along +z
@@ -101,7 +118,7 @@ namespace MadMax.World
         {
             g.Mat(mat);
             for (int k = 0; k < Storey; k++) g.Box(x0, floorY + 1, z0 + 2 * k, x1, floorY + 1 + k, z0 + 2 * k + 1, paint);
-            g.ClearBox(x0, floorY + Storey, z0 + 6, x1, floorY + Storey, z0 + 2 * Storey + 1);
+            g.ClearBox(x0, floorY + Storey, z0 + 2, x1, floorY + Storey, z0 + 2 * Storey + 1);
         }
 
         /// <summary>A building of storeys: a slab per floor, walls with windows, flights alternating between two stair
@@ -116,10 +133,10 @@ namespace MadMax.World
             g.Box(x0, top + 1, z0, x0, top + 2, z1, wall); g.Box(x1, top + 1, z0, x1, top + 2, z1, wall);
             for (int f = 0; f < floors; f++)
             {
-                int fx0 = f % 2 == 0 ? x0 + 3 : x1 - 6;
-                Flight(g, fx0, fx0 + 3, z0 + 3, f * Storey, Stone, Pal.Ramp(Conc, 2, seed + f));
+                int fx0 = f % 2 == 0 ? x0 + 3 : x1 - 8;
+                Flight(g, fx0, fx0 + 5, z0 + 3, f * Storey, Stone, Pal.Ramp(Conc, 2, seed + f));
             }
-            Door(g, doorZ, 1, streetSide < 0 ? x0 : x1, false);
+            Door(g, doorZ, 1, streetSide < 0 ? x0 : x1, false, -streetSide);
         }
 
         /// <summary>A scrap box cantilevered off a facade at (x0, y0, z0..z0+w-1), d deep outward (±1), h high: plank
@@ -164,7 +181,7 @@ namespace MadMax.World
         }
 
         // ------------------------------------------------------------------ the deck
-        static VoxelGrid Deck(int seed)
+        static VoxelGrid Deck(int seed, int HX, int HZ, bool industrial)
         {
             var g = new VoxelGrid();
             g.Mat(Scrap);
@@ -185,6 +202,7 @@ namespace MadMax.World
             foreach (int x in new[] { -HX, HX - 1 })
             {
                 if (x > 0 && z >= -GangHalf - 1 && z <= GangHalf) continue;
+                if (industrial && (z >= HZ - 20 && z <= HZ - 10 || z >= -HZ + 36 && z <= -HZ + 46)) continue; // maintenance stair landings
                 if ((z & 7) == 0) g.Box(x, 0, z, x, 3, z, Pal.Ramp(Pal.Metal, 1));
                 g.Set(x, 4, z, Pal.Ramp(Pal.Ochre, 2)); g.Set(x, 2, z, Pal.Ramp(Pal.Metal, 2));
             }

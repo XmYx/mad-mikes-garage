@@ -39,6 +39,7 @@ namespace MadMax.Game
         /// <summary>One tick of the animator: clips when installed, the procedural poses otherwise.</summary>
         public void Tick(float dt, State s)
         {
+            if (rig.Limp) return;                                                               // physics poses a ragdoll
             if (HumanClips.Enabled && HumanClips.Get("idle") != null && HumanClips.Get("walk") != null && HumanClips.Get("run") != null)
             {
                 if (!UsingClips) curValid = false;

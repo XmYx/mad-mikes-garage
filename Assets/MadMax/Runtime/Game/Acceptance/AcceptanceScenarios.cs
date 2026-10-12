@@ -400,7 +400,11 @@ namespace MadMax.Game.Acceptance
             c.Metric("worst_rollback", -worst, "m");
             c.Metric("uphill_6s", gained, "m");
             c.Check(worst > -0.35f, $"does not roll back more than 0.35 m ({-worst:0.00} m)");
-            c.Check(gained > 2f, $"climbs the slope from rest ({gained:0.0} m in 6 s)");
+            if (!c.Check(gained > 2f, $"climbs the slope from rest ({gained:0.0} m in 6 s)"))
+            {
+                var t = DeformableTerrain.Instance; var vp = v.transform.position;
+                c.Note(TestWorld.State(v) + $"; origin {vp.y - t.Height(vp.x, vp.z):0.00} m above the ground, rest height {v.RestHeight:0.00}; touching: " + TestWorld.Contacts(v));
+            }
             yield return new WaitForSeconds(0.5f);
         }
     }

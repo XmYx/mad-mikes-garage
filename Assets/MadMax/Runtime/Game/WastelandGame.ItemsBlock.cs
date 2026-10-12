@@ -297,6 +297,7 @@ namespace MadMax.Game
         void TickPlacing()
         {
             if (placeKey == null) { PlaceStatus = null; if (placeGhost && placeGhost.activeSelf) placeGhost.SetActive(false); return; }
+            if (Menus && Menus.BlocksWorldInput) return; // the menu's PLACE click starts a preview; it must not confirm it too
             var mouse = Mouse.current; var pad = Gamepad.current;
             if (Current || Player.Sitting || (Build && Build.Active) || !Player.gameObject.activeSelf || PackCount(placeKey) <= 0 || (Vitals && Vitals.Dead)) { CancelPlacing(); return; }
             placeCount = Mathf.Clamp(placeCount, 1, PackCount(placeKey));

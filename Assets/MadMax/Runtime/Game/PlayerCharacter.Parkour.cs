@@ -300,12 +300,13 @@ namespace MadMax.Game
             carry = Vector3.zero;
             if (!cc.isGrounded || !Probe(transform.position + Vector3.up * 0.3f, Vector3.down, 0.6f, out var under)) { rideFor = 0f; return carry; }
             var rb = under.collider.attachedRigidbody;
-            // the rolling city's deck (kinematic): carried with it and turned with it
-            if (rb && rb.isKinematic && rb.TryGetComponent<MadMax.World.RollingCity>(out var city))
+            // the rolling city's deck, a dock lift (kinematic carriers): carried with it, lifted by it and turned with it
+            if (rb && rb.isKinematic && rb.TryGetComponent<MadMax.World.IDeckCarrier>(out var deck))
             {
-                var cv = city.PointVelocity(transform.position);
-                carry = new Vector3(cv.x, 0f, cv.z);
-                transform.rotation = Quaternion.Euler(0f, city.YawRate * dt, 0f) * transform.rotation;
+                if (deck is MadMax.World.CityLift lift) { onLift = lift; rideFor = 0f; return carry; }   // held to the platform (LiftHold)
+                var cv = deck.PointVelocity(transform.position);
+                carry = cv;
+                transform.rotation = Quaternion.Euler(0f, deck.YawRate * dt, 0f) * transform.rotation;
                 rideFor = 0f;
                 return carry;
             }
@@ -317,6 +318,28 @@ namespace MadMax.Game
             if (car && carry.magnitude > 4f && moveInput.sqrMagnitude < 0.05f) { if ((rideFor += dt) > 0.4f) Brace(car, under.point); }
             else rideFor = 0f;
             return carry;
+        }
+
+        MadMax.World.CityLift onLift;
+
+        /// <summary>Standing on a lift platform: held to where physics has it each frame (a CharacterController alone
+        /// loses the floor of a platform rising at 5 m/s between physics steps), catching up after a long frame (a hitch
+        /// lets the platform travel metres in one step). Walking off its edge or jumping lets go.</summary>
+        void LiftHold()
+        {
+            if (!onLift) return;
+            var top = onLift.PhysicsTop;
+            var l = Quaternion.Inverse(onLift.transform.rotation) * (transform.position - top);
+            if (Mathf.Abs(l.x) > MadMax.World.TrackedCity.LiftHalfX + 0.05f || Mathf.Abs(l.z) > MadMax.World.TrackedCity.LiftHalfZ + 0.05f || l.y < -4f || l.y > 2.5f || vy > 0.5f)
+            { onLift = null; return; }
+            if (Mathf.Abs(l.y - 0.02f) > 0.005f)
+            {
+                cc.enabled = false;
+                transform.position += Vector3.up * (0.02f - l.y);
+                cc.enabled = true;
+            }
+            airborne = false; fallSpeed = 0f;
+            if (vy < -1f) vy = -1f;
         }
 
         void Brace(VehicleDriver car, Vector3 at)

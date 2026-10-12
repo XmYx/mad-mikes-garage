@@ -57,18 +57,31 @@ namespace MadMax.Game
                 bodyRenderers.Add(cr); owned.Add(cap);
                 var def = ProstheticLibrary.Get(ProstheticLibrary.FittedOn(appearance, z));
                 if (def == null || !def.Fits(z)) continue;
-                var piece = new GameObject("Prosthetic", typeof(MeshFilter), typeof(MeshRenderer));
-                piece.transform.SetParent(stumpBone, false);
-                piece.transform.localPosition = cut.localPosition;
-                piece.GetComponent<MeshFilter>().sharedMesh = ProstheticLibrary.MeshFor(def);
-                var pr = piece.GetComponent<MeshRenderer>();
-                pr.sharedMaterial = material;
-                if (Limbs.Left(z)) piece.transform.localScale = new Vector3(-1f, 1f, 1f);
-                piece.AddComponent<LimbFollow>().bone = cut;
-                bodyRenderers.Add(pr); owned.Add(piece);
-                var grip = new GameObject("Grip").transform;
-                grip.SetParent(piece.transform, false);
-                grip.localPosition = (Vector3)def.gripAt * HumanDesign.S;
+                bool hdCyber = IsHD && z == BodyZone.ArmL && def.id == "pros_cyber_arm" &&
+                               HDHuman.First(HDCharacterCatalog.Instance, HDShape, "prosthetic") != null;
+                Transform grip;
+                if (hdCyber)
+                {
+                    grip = new GameObject("Grip").transform;
+                    grip.SetParent(stumpBone, false);
+                    grip.localPosition = cut.localPosition + (Vector3)def.gripAt * HumanDesign.S;
+                    owned.Add(grip.gameObject);
+                }
+                else
+                {
+                    var piece = new GameObject("Prosthetic", typeof(MeshFilter), typeof(MeshRenderer));
+                    piece.transform.SetParent(stumpBone, false);
+                    piece.transform.localPosition = cut.localPosition;
+                    piece.GetComponent<MeshFilter>().sharedMesh = ProstheticLibrary.MeshFor(def);
+                    var pr = piece.GetComponent<MeshRenderer>();
+                    pr.sharedMaterial = material;
+                    if (Limbs.Left(z)) piece.transform.localScale = new Vector3(-1f, 1f, 1f);
+                    piece.AddComponent<LimbFollow>().bone = cut;
+                    bodyRenderers.Add(pr); owned.Add(piece);
+                    grip = new GameObject("Grip").transform;
+                    grip.SetParent(piece.transform, false);
+                    grip.localPosition = (Vector3)def.gripAt * HumanDesign.S;
+                }
                 grips[z] = grip;
             }
         }

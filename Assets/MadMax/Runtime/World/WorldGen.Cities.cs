@@ -17,6 +17,13 @@ namespace MadMax.World
         public const float DeckHeight = 6.5f, HalfWidth = 18f, HalfLength = 32f;
 
         public readonly string name;
+        public readonly float halfWidth, halfLength;
+        /// <summary>Deck top above the bed, half the distance between the front and rear bogies (the pose chord), half
+        /// the graded bed's width and the gap from the deck edge to the pier (clear of the crawlers).</summary>
+        public readonly float deckHeight, chord, bedHalf, pierGap;
+        /// <summary>The generated tracked city riding this circuit (null: the voxel downtown designs).</summary>
+        public readonly TrackedCity.Params tracked;
+        public float BedWidth => bedHalf;
         public readonly Vector2[] pts;          // closed polyline (pts[n-1] → pts[0] closes it)
         public readonly float[] cum;            // distance along at each point (cum[n] = Length)
         public readonly float[] prof;           // graded bed height at each point
@@ -24,12 +31,26 @@ namespace MadMax.World
         public readonly float[] docks;          // distance along of each stop (the deck centre stops there)
         public readonly string[] dockNames;
         readonly Dictionary<long, int[]> grid;  // 64 m cells → segment indices within reach
-        const float Cell = 64f, Reach = HalfBed + Shoulder + DockOut + 12f;
+        const float Cell = 64f, Reach = 200f;
 
         public int Count => pts.Length;
 
-        public CityRoute(string name, Vector2[] pts, float[] prof, float[] docks, string[] dockNames)
+        public CityRoute(string name, Vector2[] pts, float[] prof, float[] docks, string[] dockNames, bool industrial = false, TrackedCity.Params tracked = null)
         {
+            this.tracked = tracked;
+            if (tracked != null)
+            {
+                halfWidth = tracked.HalfWidth; halfLength = tracked.HalfLength;
+                deckHeight = tracked.ZD; chord = tracked.Chord;
+                bedHalf = tracked.Reach + 6f; pierGap = tracked.Reach - tracked.HalfWidth + 3f;
+            }
+            else
+            {
+                halfWidth = industrial ? CityDesign.IndustrialHX * CityDesign.V : HalfWidth;
+                halfLength = industrial ? CityDesign.IndustrialHZ * CityDesign.V : HalfLength;
+                deckHeight = DeckHeight; chord = RollingCity.BogieZ;
+                bedHalf = Mathf.Max(HalfBed, halfWidth + 6f); pierGap = CityDesign.PierGap;
+            }
             this.name = name; this.pts = pts; this.prof = prof; this.docks = docks; this.dockNames = dockNames;
             int n = pts.Length;
             cum = new float[n + 1];
@@ -73,6 +94,16 @@ namespace MadMax.World
             return new Vector3(p.x, Mathf.Lerp(prof[i], prof[j], t), p.y);
         }
 
+        /// <summary>The same chord-centred deck frame is used by the moving hull and its stationary docks.</summary>
+        public void DeckPose(float s, out Vector3 position, out Quaternion rotation)
+        {
+            var front = At(s + chord, out _);
+            var rear = At(s - chord, out _);
+            var forward = front - rear;
+            position = (front + rear) * .5f + Vector3.up * deckHeight;
+            rotation = Quaternion.LookRotation(forward.sqrMagnitude > .01f ? forward.normalized : Vector3.forward, Vector3.up);
+        }
+
         public float HeightAt(float s) => At(s, out _).y;
 
         /// <summary>Nearest point of the circuit within reach: distance along, signed lateral offset (+ = right of travel).</summary>
@@ -103,12 +134,12 @@ namespace MadMax.World
         {
             if (!Nearest(x, z, out float along, out float lat)) return 0f;
             float bed = HeightAt(along);
-            float w = 1f - Mathf.Clamp01((Mathf.Abs(lat) - HalfBed) / Shoulder);
+            float w = 1f - Mathf.Clamp01((Mathf.Abs(lat) - BedWidth) / Shoulder);
             if (lat > 0f)
                 for (int k = 0; k < docks.Length; k++)
                 {
                     // the dock yard: flat out to the foot of the ramp on the right
-                    float e = Mathf.Max(Gap(along, docks[k]) - DockHalf, lat - (HalfWidth + DockOut));
+                    float e = Mathf.Max(Gap(along, docks[k]) - DockHalf, lat - (halfWidth + DockOut));
                     float wd = 1f - Mathf.Clamp01(e / 10f);
                     if (wd > w) { w = wd; bed = HeightAt(docks[k]); }
                 }
@@ -116,7 +147,7 @@ namespace MadMax.World
             w = w * w * (3f - 2f * w);
             h = Mathf.Lerp(h, bed, w);
             if (w > 0.85f && s.feature == 0) s.feature = 6;                                   // packed gravel: no props or cover
-            s.roadDist = Mathf.Min(s.roadDist, Mathf.Max(0f, Mathf.Abs(lat) - HalfBed));
+            s.roadDist = Mathf.Min(s.roadDist, Mathf.Max(0f, Mathf.Abs(lat) - BedWidth));
             return w;
         }
     }
@@ -125,6 +156,8 @@ namespace MadMax.World
     {
         /// <summary>The rolling city's circuit (null: none in this world).</summary>
         public CityRoute city;
+        /// <summary>A second independent circuit, carrying the industrial downtown crawler.</summary>
+        public CityRoute city2;
 
         static readonly string[] CityNames = { "BRASSWELL", "OLD MERIDIAN", "GRANITE FALLS", "SAINT RUST", "HAVENWORTH", "IRON CALLOWAY" };
 
@@ -133,14 +166,29 @@ namespace MadMax.World
         /// the first nearest the yard. The bed profile is the land smoothed over ~200 m with grades under 3 %.</summary>
         void BuildCity()
         {
-            var rnd = new System.Random(seed * 977 + 13);
-            string nm = CityNames[rnd.Next(CityNames.Length)];
+            city = BuildCityRoute(0, null);
+            city2 = BuildCityRoute(1, city);
+        }
+
+        CityRoute BuildCityRoute(int index, CityRoute primary)
+        {
+            var rnd = new System.Random(seed * 977 + 13 + index * 7919);
+            int nameIndex = rnd.Next(CityNames.Length);
+            if (index > 0 && primary != null && CityNames[nameIndex] == primary.name) nameIndex = (nameIndex + 1) % CityNames.Length;
+            string nm = CityNames[nameIndex];
             Vector2 Y = new Vector2(yardP.x, yardP.z), S = new Vector2(yardSide.x, yardSide.z), A = new Vector2(yardDir.x, yardDir.z);
             List<Vector2> best = null; int bestBad = int.MaxValue; Vector2 bestC = default;
+            float primarySide = 0f;
+            if (primary != null)
+            {
+                Vector3 primaryNearest = primary.At(ClosestAlong(primary, Y), out _);
+                primarySide = Mathf.Sign(Vector2.Dot(new Vector2(primaryNearest.x, primaryNearest.z) - Y, S));
+                if (Mathf.Abs(primarySide) < 0.1f) primarySide = 1f;
+            }
             for (int attempt = 0; attempt < 24 && bestBad > 0; attempt++)
             {
                 float R = 500f + (float)rnd.NextDouble() * 350f;
-                float sideSign = attempt % 2 == 0 ? -1f : 1f;
+                float sideSign = primary == null ? (attempt % 2 == 0 ? -1f : 1f) : -primarySide;
                 var C = Y + S * sideSign * (R + 170f) + A * (((float)rnd.NextDouble() - 0.5f) * 300f);
                 float th0 = Mathf.Atan2(Y.y - C.y, Y.x - C.x);
                 var ctrl = new Vector2[12];
@@ -158,10 +206,11 @@ namespace MadMax.World
                     if (LakeAt(p.x, p.y, out float t) != null && t < 1.9f) { bad += 3; continue; }
                     foreach (var st in settlements) if (Vector2.Distance(p, st.pos) < st.radius + 45f) { bad++; break; }
                     if (Vector2.Distance(p, Y) < 110f) bad += 3;
+                    if (primary != null && TooCloseToRoute(p, primary, 210f)) bad += 3;
                 }
                 if (bad < bestBad) { bestBad = bad; best = loop; bestC = C; }
             }
-            if (best == null) return;
+            if (best == null) return null;
             if (rnd.NextDouble() < 0.5) best.Reverse();                                        // clockwise or not, as rolled
             int first = 0; float near = float.MaxValue;
             for (int i = 0; i < best.Count; i++) { float d = Vector2.Distance(best[i], Y); if (d < near) { near = d; first = i; } }
@@ -200,7 +249,32 @@ namespace MadMax.World
                 for (int i = n - 2; i >= 0; i--) { float lim = maxGrade * Vector2.Distance(pts[i + 1], pts[i]); prof[i] = Mathf.Clamp(prof[i], prof[i + 1] - lim, prof[i + 1] + lim); }
             }
             for (int i = 0; i < n; i++) prof[i] = Mathf.Max(prof[i], SeaLevel + 1.5f);
-            city = new CityRoute(nm, pts, prof, docks, names);
+            return new CityRoute(nm, pts, prof, docks, names, index == 1, TrackedCity.Profile(index, 0));
+        }
+
+        static float ClosestAlong(CityRoute route, Vector2 point)
+        {
+            float best = float.MaxValue, along = 0f;
+            for (int i = 0; i < route.pts.Length; i++)
+            {
+                Vector2 a = route.pts[i], b = route.pts[(i + 1) % route.pts.Length], ab = b - a;
+                float t = ab.sqrMagnitude > 0f ? Mathf.Clamp01(Vector2.Dot(point - a, ab) / ab.sqrMagnitude) : 0f;
+                float d = (point - (a + ab * t)).sqrMagnitude;
+                if (d < best) { best = d; along = route.cum[i] + t * ab.magnitude; }
+            }
+            return along;
+        }
+
+        static bool TooCloseToRoute(Vector2 point, CityRoute route, float distance)
+        {
+            float d2 = distance * distance;
+            for (int i = 0; i < route.pts.Length; i++)
+            {
+                Vector2 a = route.pts[i], b = route.pts[(i + 1) % route.pts.Length], ab = b - a;
+                float t = ab.sqrMagnitude > 0f ? Mathf.Clamp01(Vector2.Dot(point - a, ab) / ab.sqrMagnitude) : 0f;
+                if ((point - (a + ab * t)).sqrMagnitude < d2) return true;
+            }
+            return false;
         }
 
         /// <summary>Closed Catmull-Rom through the control points, resampled every 8 m.</summary>

@@ -265,6 +265,7 @@ namespace MadMax.EditorTools
         static Info Classify(string pc, HashSet<string> known, Dictionary<string, string> variantOf)
         {
             if (pc == "Body") return new Info { kind = "body" };
+            if (pc == "pros_cyber_arm" || pc.StartsWith("pros_cyber_arm_")) return new Info { kind = "prosthetic", garment = "pros_cyber_arm" };
             if (pc == "brows") return new Info { kind = "brows" };
             if (pc.StartsWith("Eye")) return new Info { kind = "eyes" };
             if (pc.StartsWith("beard")) return new Info { kind = "beard" };

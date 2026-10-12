@@ -178,9 +178,11 @@ namespace MadMax.Game.Acceptance
             g.Player.Equip(null);
             c.Check(g.Inventory.Get(ResourceType.Honey) > honey0 && g.Stats.health >= hp0, $"honey taken under smoke without a sting (+{g.Inventory.Get(ResourceType.Honey) - honey0})");
             c.Check(snare.caught != null, "the snare caught something: " + snare.caught);
-            int meat0 = g.Inventory.GetItem("food_meat_raw");
+            // the meat a catch gives: raw meat from furred game, bug meat from a rad-roach (vermin in town)
+            string meat = snare.caught != null && AnimalLibrary.Get(snare.caught) != null && AnimalLibrary.Get(snare.caught).drops.Any(d => d.id == "food_bugmeat") ? "food_bugmeat" : "food_meat_raw";
+            int meat0 = g.Inventory.GetItem(meat);
             snare.Use(g, false);
-            c.Check(g.Inventory.GetItem("food_meat_raw") > meat0 && snare.caught == null, "the catch taken from the snare (meat) and the snare reset");
+            c.Check(g.Inventory.GetItem(meat) > meat0 && snare.caught == null, $"the catch taken from the snare ({meat}) and the snare reset");
             c.Check(cage.caught != null, "the cage trap holds a live catch: " + cage.caught);
             c.Check(sheep.wool > 0.8f, $"the fleece grew back ({sheep.wool * 100f:0}%)");
             c.Check(candles && candles.GetComponentInChildren<Light>(), "beeswax candles give light");
@@ -230,7 +232,8 @@ namespace MadMax.Game.Acceptance
             yield return Craft(c, g, "l_boots", leatherP ? leatherP.GetComponent<CraftingStation>() : null, made);
             c.Check(made[0] == 1 && ClothingLibrary.Get("cloth_leather_boots") != null, "leather boots off the bench");
             var belt = ClothingLibrary.Get("work_belt"); var cuirass = ClothingLibrary.Get("leather_cuirass");
-            c.Check(belt != null && belt.carry > 0f && cuirass != null && cuirass.armor != null, "belts carry more, the cuirass is armour");
+            var beltBag = BagLibrary.Get("work_belt");                                              // belts are bags (2026-10-01): they carry in their pouches
+            c.Check(belt != null && (belt.carry > 0f || beltBag != null && beltBag.capacity > 0f) && cuirass != null && cuirass.armor != null, "belts carry more, the cuirass is armour");
 
             // ---- 8. the stable: a tired horse gets its wind back
             var stableP = Put("stable", 0f, -10f);

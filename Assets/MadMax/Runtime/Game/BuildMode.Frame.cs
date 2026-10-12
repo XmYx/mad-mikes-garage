@@ -22,8 +22,10 @@ namespace MadMax.Game
         void FrameTick(FurnitureDef def, RaycastHit hit, Keyboard kb, Mouse mouse, Gamepad pad)
         {
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
-            var parent = chassis ? chassis.transform : structures;
+            var city = chassis ? null : hit.collider.GetComponentInParent<MadMax.World.CityHost>();
+            var parent = chassis ? chassis.transform : city ? city.transform : structures;
             var point = hit.point;
+            if (!game.CanBuildAt(point, out var why)) { ghost.SetActive(false); Valid = false; Status = why; beamStart = null; return; }   // flats aboard the cities
             bool onNode = Frame.NearestNode(point, Frame.NodeSnap, out var node);
             if (onNode) point = node;
             bool click = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);

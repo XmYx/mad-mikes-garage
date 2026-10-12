@@ -38,7 +38,7 @@ namespace MadMax.Game
     }
 
     [Serializable] public class LooseSave { public string part, state; public Vector3 position; public Quaternion rotation; public float damage; public uint netId; public int q; }
-    [Serializable] public class PlacedSave { public string id; public int vehicle = -1; public Vector3 localPosition; public Quaternion localRotation; public int hits; public uint netId; public string state, owner; }
+    [Serializable] public class PlacedSave { public string id; public int vehicle = -1, city = -1; public Vector3 localPosition; public Quaternion localRotation; public int hits; public uint netId; public string state, owner; }
     [Serializable] public class DestroyedSave { public string key, template; public bool all; public List<Vector3Int> removed = new List<Vector3Int>(); }
     [Serializable] public class ItemSave { public string id; public int count; }
     [Serializable] public class MovedSave { public string key; public Vector3 position; public Quaternion rotation; }
@@ -123,6 +123,7 @@ namespace MadMax.Game
         public List<string> blockFluids = new List<string>();                // fluids block: hand containers' contents ("id\u001flitres\u001fmix")
         public List<string> blockBags = new List<string>();                  // worn bags' contents, back strain (WastelandGame.Bags)
         public List<string> blockCity = new List<string>();                  // the rolling city: its timetable clock (WastelandGame.Cities)
+        public List<string> blockQuarters = new List<string>();              // flats rented / bought aboard the cities (WastelandGame.Quarters)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
         public string animalKills;

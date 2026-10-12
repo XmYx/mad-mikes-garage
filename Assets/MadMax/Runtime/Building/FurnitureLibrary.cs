@@ -515,7 +515,9 @@ namespace MadMax.Building
             go.transform.localRotation = localRot;
             go.GetComponent<MeshFilter>().sharedMesh = def.mesh;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
-            bool dynamicParent = parent && parent.GetComponentInParent<Rigidbody>();
+            var parentBody = parent ? parent.GetComponentInParent<Rigidbody>() : null;
+            bool onCity = parentBody && parentBody.isKinematic && parentBody.GetComponent<MadMax.World.CityHost>();   // a city's kinematic hull keeps mesh colliders
+            bool dynamicParent = parentBody && !onCity;
             if (def.meshCollider && !dynamicParent) go.AddComponent<MeshCollider>().sharedMesh = def.mesh;
             else
             {
@@ -529,7 +531,7 @@ namespace MadMax.Building
             DressHD(go, id, MadMax.World.HDProp.FlagsOf(mat));                                     // the HD model over the voxel mesh
             // pieces standing on the ground keep the grass out from under them
             var t = MadMax.World.DeformableTerrain.Instance;
-            if (!dynamicParent && t && t.World != null)
+            if (!parentBody && t && t.World != null)
             {
                 var b = go.GetComponent<Renderer>().bounds;
                 if (b.min.y < t.Height(b.center.x, b.center.z) + 0.3f) MadMax.World.FloraBlocker.Add(go, 0.02f);

@@ -16,10 +16,8 @@ namespace MadMax.World
         /// <summary>World frame of dock k: origin at the pier's inner edge (deck height), +x away from the circuit, +z along it.</summary>
         public static void Frame(CityRoute route, int k, out Vector3 origin, out Quaternion rot)
         {
-            var bed = route.At(route.docks[k], out var fwd);
-            var right = Vector3.Cross(Vector3.up, fwd);
-            origin = bed + right * (CityRoute.HalfWidth + CityDesign.PierGap) + Vector3.up * CityRoute.DeckHeight;
-            rot = Quaternion.LookRotation(fwd, Vector3.up);
+            route.DeckPose(route.docks[k], out var centre, out rot);
+            origin = centre + rot * Vector3.right * (route.halfWidth + route.pierGap);
         }
 
         /// <summary>Pier-top world point at a dock-local spot (metres: x from the inner edge, z along).</summary>
@@ -53,6 +51,40 @@ namespace MadMax.World
             ramp.localPosition = new Vector3(CityDesign.PierW * V + len * 0.5f, -drop * 0.5f, 0f);
             ramp.localRotation = Quaternion.Euler(0f, 90f, 0f);                                    // local +z runs out, down the ramp
             StructureGround.AddDeck(ramp, ramp, col, new Vector4(CityDesign.RampHalf * V, len * 0.5f, drop * 0.5f, -drop * 0.5f));
+            return dock;
+        }
+
+        /// <summary>A tracked city's high dock: pier on lattice towers, stair tower and vehicle lift (<see cref="CityLift"/>);
+        /// the pier (with its bridges) is a StructureGround deck, the walkers' collision is the kit's solid mesh.</summary>
+        public static CityDock CreateTracked(CityRoute route, int k, CityKit kit, CityKit lift, Material mat, Material glowMat)
+        {
+            Frame(route, k, out var origin, out var rot);
+            var go = new GameObject("CityDock_" + route.dockNames[k]);
+            go.transform.SetPositionAndRotation(origin, rot);
+            var dock = go.AddComponent<CityDock>();
+            dock.index = k; dock.dockName = route.dockNames[k];
+            var vis = new GameObject("Mesh", typeof(MeshFilter), typeof(MeshRenderer));
+            vis.transform.SetParent(go.transform, false);
+            vis.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.ToMesh(kit.mesh, "CityDock");
+            vis.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            if (kit.glow.verts.Count > 0)
+            {
+                var g = new GameObject("Glow", typeof(MeshFilter), typeof(MeshRenderer));
+                g.transform.SetParent(go.transform, false);
+                g.GetComponent<MeshFilter>().sharedMesh = VoxelMesher.ToMesh(kit.glow, "CityDockGlow");
+                g.GetComponent<MeshRenderer>().sharedMaterial = glowMat;
+            }
+            var col = vis.AddComponent<MeshCollider>();
+            col.sharedMesh = VoxelMesher.ToMesh(kit.solid, "CityDockSolid");
+            var lights = go.AddComponent<CityLights>();
+            lights.lamps.AddRange(kit.lamps);
+            float z0 = TrackedCity.LiftZ + TrackedCity.LiftHalfZ + 0.4f, z1 = TrackedCity.StairZ - 4f;
+            var pier = new GameObject("PierDeck").transform;
+            pier.SetParent(go.transform, false);
+            pier.localPosition = new Vector3(TrackedCity.PierWidth * 0.5f, 0f, (z0 + z1) * 0.5f);
+            StructureGround.AddDeck(pier, pier, col, new Vector4(TrackedCity.PierWidth * 0.5f, (z1 - z0) * 0.5f, 0f, 0f));
+            CityLift.Create(go.transform, new Vector3(TrackedCity.PierWidth * 0.5f, 0f, TrackedCity.LiftZ), route.deckHeight,
+                VoxelMesher.ToMesh(lift.mesh, "CityLift"), VoxelMesher.ToMesh(lift.glow, "CityLiftGlow"), VoxelMesher.ToMesh(lift.solid, "CityLiftSolid"), mat, glowMat);
             return dock;
         }
 

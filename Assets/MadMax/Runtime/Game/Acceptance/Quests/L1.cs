@@ -30,8 +30,9 @@ namespace MadMax.Game.Acceptance
             yield return new WaitForSeconds(2f);
             yield return Q3T.OnFoot(g);
             if (!c.Check(Q3T.Open("L1"), "L1 is on offer in a sandbox world")) yield break;
-            var pins = new List<WastelandGame.Pin>(); g.JobPins(pins);
-            c.Check(pins.Any(p => p.label.StartsWith("? BROTHER CASK")), "the map shows Brother Cask's shrine");
+            // strangers with work are pinned by what they look like, the nearest three (2026-10-04): at the shrine, Cask is one
+            yield return H.Walk(c, "cask", 6f);
+            c.Check(H.OfferPinned(g, "cask") && H.Offers(g).Any(p => p.label == "? KEEPER OF THE LAST ENGINE"), "the map shows Brother Cask's shrine: " + H.Describe(g, H.Offers(g)));
             c.Metric("shrine_to_town", Vector3.Distance(StoryAnchors.Get("cask"), StoryAnchors.Get("town1")), "m");
             c.Metric("last_run_latitude", MadMax.World.WorldGen.Latitude(StoryAnchors.Get("l5_end").z), "deg");
             c.Metric("last_run_distance", Vector3.Distance(StoryAnchors.Get("l5_end"), StoryAnchors.Get("town1")), "m");

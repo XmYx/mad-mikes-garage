@@ -13,14 +13,27 @@ namespace MadMax.World
     /// the leg to the next at walking-pace speed with a gentle start and stop. Its pose comes from the bed under the
     /// front and rear bogies. Riders: the player is carried (<see cref="PointVelocity"/>), parked vehicles are strapped
     /// to the deck while nobody drives them, driven ones grip the deck through <see cref="StructureGround"/>.</summary>
-    public class RollingCity : MonoBehaviour
+    public partial class RollingCity : CityHost, IDeckCarrier
     {
         public static RollingCity Instance { get; private set; }
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Instance = null; }
+        public static readonly List<RollingCity> All = new List<RollingCity>();
+        static Texture2D industrialSurface;
+        static Material industrialMaterial;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics()
+        {
+            Instance = null; All.Clear();
+            if (industrialMaterial) UnityEngine.Object.Destroy(industrialMaterial);
+            if (industrialSurface) UnityEngine.Object.Destroy(industrialSurface);
+            industrialMaterial = null; industrialSurface = null;
+        }
 
         public const float Speed = 3f, Accel = 0.05f, Dwell = 150f, BogieZ = 21f, GangwaySpeed = 18f;
 
         public CityRoute Route { get; private set; }
+        public bool Industrial { get; private set; }
+        /// <summary>The generated tracked city's params and plan (null: a voxel downtown design).</summary>
+        public TrackedCity.Params Tracked { get; private set; }
+        public TrackedCity.Plan Plan { get; private set; }
         public string Name => Route != null ? Route.name : "";
         /// <summary>Seconds on the timetable (saved); the pose is a function of it.</summary>
         public double Clock;
@@ -38,13 +51,17 @@ namespace MadMax.World
         public int NextDock { get; private set; }
         public float SecondsToNext { get; private set; }
         public float Cycle => cycle;
+        /// <summary>Gangway reach from the deck edge (it rests on the pier beyond <see cref="CityRoute.pierGap"/>).</summary>
+        public float GangwayLength => gangLen;
 
         Rigidbody rb;
         Transform gangway, gangDeck;
         BoxCollider gangDeckBox;
+        readonly HashSet<Mesh> ownedMeshes = new HashSet<Mesh>();
         readonly List<GameObject[]> treads = new List<GameObject[]>();
         readonly List<VehicleDriver> strapped = new List<VehicleDriver>();
         float gangAngle = 90f, treadDist, scanAt, smokeAt;
+        float gangLen = CityDesign.GangLen * CityDesign.V, gangHalf = CityDesign.GangHalf * CityDesign.V, treadStep = CityDesign.V;
         List<Vector3> stacks = new List<Vector3>();
         int treadPhase = -1;
         bool gangRegistered, wasDocked = true;
@@ -53,33 +70,38 @@ namespace MadMax.World
         float cycle;
 
         // ------------------------------------------------------------------ building
-        public static RollingCity Create(CityRoute route, int seed, Material mat)
+        public static RollingCity Create(CityRoute route, int seed, Material mat, bool industrial = false)
         {
             var go = new GameObject("RollingCity_" + route.name);
             var city = go.AddComponent<RollingCity>();
             city.Route = route;
+            city.Industrial = industrial && route.tracked == null;
+            if (route.tracked != null) city.Tracked = route.tracked.With(seed);
             city.rb = go.AddComponent<Rigidbody>();
             city.rb.isKinematic = true;
             city.rb.interpolation = RigidbodyInterpolation.Interpolate;
             city.Timetable();
-            Instance = city;
-            city.StartCoroutine(city.Build(seed, mat));
+            if (!Instance) Instance = city;
+            All.Add(city);
+            city.StartCoroutine(city.Tracked != null ? city.BuildTracked(seed, mat) : city.Build(seed, mat));
             return city;
         }
 
         IEnumerator Build(int seed, Material mat)
         {
+            if (Industrial) mat = IndustrialMaterial(mat, seed);
             // voxels and mesh data on workers; meshes on the main thread, colliders baked on workers
             var half = Vector3.one * (CityDesign.V * 0.5f);
             var piecesTask = Task.Run(() =>
             {
-                var pieces = CityDesign.City(seed);
-                stacks = CityDesign.Stacks(seed);
+                var pieces = CityDesign.City(seed, Industrial);
+                stacks = CityDesign.Stacks(seed, Industrial);
                 var data = new List<VoxelMesher.MeshData>();
                 foreach (var p in pieces) data.Add(VoxelMesher.BuildData(p.grid, CityDesign.V));
                 return (pieces, data);
             });
-            var bogieTask = Task.Run(() => VoxelMesher.BuildData(CityDesign.Bogie(seed), CityDesign.V));
+            var detailTask = Industrial ? Task.Run(() => CityDetail.Build(CityDesign.Layout(seed, true), seed)) : null;
+            var bogieTask = Task.Run(() => Industrial ? CityDetail.Bogie() : VoxelMesher.BuildData(CityDesign.Bogie(seed), CityDesign.V));
             var treadTasks = new Task<VoxelMesher.MeshData>[4];
             for (int i = 0; i < 4; i++) { int ph = i; treadTasks[i] = Task.Run(() => VoxelMesher.BuildData(CityDesign.Tread(ph), CityDesign.V)); }
             var gangTask = Task.Run(() => VoxelMesher.BuildData(CityDesign.Gangway(seed), CityDesign.V));
@@ -100,17 +122,23 @@ namespace MadMax.World
                 var id = mesh.GetEntityId();
                 bakes.Add((col, mesh, Task.Run(() => Physics.BakeMesh(id, false))));
             }
+            if (detailTask != null)
+            {
+                while (!detailTask.IsCompleted) yield return null;
+                if (detailTask.IsFaulted) { Debug.LogException(detailTask.Exception); yield break; }
+                Child("IndustrialDetails", VoxelMesher.ToMesh(detailTask.Result, "City_IndustrialDetails"), mat, Vector3.zero);
+            }
             // the deck: one box for the plates (wheels read it as a moving StructureGround deck); skirts and girders are visual
             var deck = transform.Find("Deck");
             var deckBox = deck.gameObject.AddComponent<BoxCollider>();
             deckBox.center = new Vector3(0f, -0.25f, 0f) - half;
-            deckBox.size = new Vector3(CityDesign.HX * 2f * CityDesign.V, 0.5f, CityDesign.HZ * 2f * CityDesign.V);
-            StructureGround.AddMovingDeck(this, transform, deckBox, new Vector4(CityRoute.HalfWidth, CityRoute.HalfLength, 0f, 0f), PointVelocity);
+            deckBox.size = new Vector3(Route.halfWidth * 2f, 0.5f, Route.halfLength * 2f);
+            StructureGround.AddMovingDeck(this, transform, deckBox, new Vector4(Route.halfWidth, Route.halfLength, 0f, 0f), PointVelocity);
 
             var bogieMesh = VoxelMesher.ToMesh(bogieTask.Result, "City_Bogie");
             var treadMeshes = new Mesh[4];
-            for (int i = 0; i < 4; i++) treadMeshes[i] = VoxelMesher.ToMesh(treadTasks[i].Result, "City_Tread" + i);
-            foreach (var at in CityDesign.Bogies)
+            for (int i = 0; i < 4; i++) { treadMeshes[i] = VoxelMesher.ToMesh(treadTasks[i].Result, "City_Tread" + i); ownedMeshes.Add(treadMeshes[i]); }
+            foreach (var at in CityDesign.BogieCentres(Industrial))
             {
                 var b = Child("Bogie", bogieMesh, mat, half);
                 b.transform.localPosition = at + half;
@@ -131,7 +159,7 @@ namespace MadMax.World
 
             gangway = new GameObject("Gangway").transform;
             gangway.SetParent(transform, false);
-            gangway.localPosition = new Vector3(CityRoute.HalfWidth, 0f, 0f);
+            gangway.localPosition = new Vector3(Route.halfWidth, 0f, 0f);
             var gm = Child("GangwayMesh", VoxelMesher.ToMesh(gangTask.Result, "City_Gangway"), mat, half);
             gm.transform.SetParent(gangway, false);
             gm.transform.localPosition = half;
@@ -148,8 +176,49 @@ namespace MadMax.World
             Snap();
         }
 
+        internal static Material IndustrialMaterial(Material source, int seed)
+        {
+            if (!industrialSurface)
+            {
+                const int size = 2048;
+                var pixels = new Color32[size * size];
+                for (int y = 0; y < size; y++) for (int x = 0; x < size; x++)
+                {
+                    float u = x / (float)size, v = y / (float)size;
+                    float broad = Mathf.Sin((u * 5f + Mathf.Sin(v * 3f) * 0.18f) * Mathf.PI * 2f + seed * 0.017f) * 0.5f + 0.5f;
+                    float grain = Mathf.Sin((u * 91f + v * 47f) * Mathf.PI * 2f) * Mathf.Sin((u * 173f - v * 113f) * Mathf.PI * 2f);
+                    float pores = Mathf.Sin((u * 37f + 0.12f) * Mathf.PI * 2f) * Mathf.Cos((v * 29f - 0.08f) * Mathf.PI * 2f);
+                    float streak = Mathf.Pow(Mathf.Clamp01(0.5f + Mathf.Sin((u * 13f + Mathf.Sin(v * 7f) * 0.09f) * Mathf.PI * 2f) * 0.5f), 12f);
+                    float rust = Mathf.Clamp01((broad * 0.32f + Mathf.Max(0f, grain) * 0.22f + streak * 0.35f + pores * 0.08f - 0.42f) * 2.8f);
+                    float value = 0.78f + grain * 0.075f + pores * 0.045f - streak * 0.12f;
+                    float r = Mathf.Clamp01(value + rust * 0.13f), g = Mathf.Clamp01(value - rust * 0.16f), b = Mathf.Clamp01(value - rust * 0.24f);
+                    pixels[y * size + x] = new Color(r, g, b, 1f);
+                }
+                industrialSurface = new Texture2D(size, size, TextureFormat.RGB24, true, false)
+                {
+                    name = "RollingCity_WeatheredConcreteAndOxide_2048",
+                    wrapMode = TextureWrapMode.Repeat,
+                    filterMode = FilterMode.Trilinear,
+                    anisoLevel = 4
+                };
+                industrialSurface.SetPixels32(pixels);
+                industrialSurface.Apply(true, true);
+            }
+            if (!industrialMaterial)
+            {
+                industrialMaterial = new Material(source) { name = "RollingCity_IndustrialSurface" };
+                industrialMaterial.SetFloat("_Bands", 6f);
+                industrialMaterial.SetFloat("_OutlinePx", .25f);
+                if (industrialMaterial.HasProperty("_CitySurface")) industrialMaterial.SetTexture("_CitySurface", industrialSurface);
+                if (industrialMaterial.HasProperty("_CitySurfaceScale")) industrialMaterial.SetFloat("_CitySurfaceScale", 0.22f);
+                if (industrialMaterial.HasProperty("_CitySurfaceStrength")) industrialMaterial.SetFloat("_CitySurfaceStrength", 0.42f);
+            }
+            return industrialMaterial;
+        }
+
         GameObject Child(string name, Mesh mesh, Material mat, Vector3 offset)
         {
+            ownedMeshes.Add(mesh);
             var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(transform, false);
             go.transform.localPosition = offset;
@@ -212,11 +281,7 @@ namespace MadMax.World
         /// <summary>The deck's pose at distance s: centred between the bogies, level along the bed under them.</summary>
         public void Pose(float s, out Vector3 pos, out Quaternion rot)
         {
-            var f = Route.At(s + BogieZ, out _);
-            var r = Route.At(s - BogieZ, out _);
-            var fwd = f - r;
-            pos = (f + r) * 0.5f + Vector3.up * CityRoute.DeckHeight;
-            rot = Quaternion.LookRotation(fwd.sqrMagnitude > 0.01f ? fwd.normalized : Vector3.forward, Vector3.up);
+            Route.DeckPose(s, out pos, out rot);
         }
 
         /// <summary>Jump straight to the pose of the current clock (load, start, tests).</summary>
@@ -244,11 +309,19 @@ namespace MadMax.World
         /// <summary>World point of a deck-local position (metres; y = 0 the deck surface).</summary>
         public Vector3 DeckPoint(Vector3 local) => transform.TransformPoint(local);
 
+        /// <summary>Is this world point within the city's whole volume (hull, crawlers, blocks, galleries)?</summary>
+        public override bool InCity(Vector3 p)
+        {
+            var l = transform.InverseTransformPoint(p);
+            float under = Tracked != null ? Tracked.ZD + 2f : 12f;
+            return Mathf.Abs(l.x) < Route.halfWidth + 14f && Mathf.Abs(l.z) < Route.halfLength + 20f && l.y > -under && l.y < 95f;
+        }
+
         /// <summary>Is this world point over the deck, up to <paramref name="above"/> metres above it?</summary>
         public bool OnDeck(Vector3 p, float above = 3f)
         {
             var l = transform.InverseTransformPoint(p);
-            return Mathf.Abs(l.x) < CityRoute.HalfWidth && Mathf.Abs(l.z) < CityRoute.HalfLength && l.y > -1f && l.y < above;
+            return Mathf.Abs(l.x) < Route.halfWidth && Mathf.Abs(l.z) < Route.halfLength && l.y > -1f && l.y < above;
         }
 
         // ------------------------------------------------------------------ running
@@ -285,7 +358,7 @@ namespace MadMax.World
             bool want = angle < 1f;
             if (want == gangRegistered) return;
             gangRegistered = want;
-            if (want) StructureGround.AddMovingDeck(gangway, gangDeck, gangDeckBox, new Vector4(CityDesign.GangLen * CityDesign.V * 0.5f, CityDesign.GangHalf * CityDesign.V, 0f, 0f), PointVelocity);
+            if (want) StructureGround.AddMovingDeck(gangway, gangDeck, gangDeckBox, new Vector4(gangLen * 0.5f, gangHalf, 0f, 0f), PointVelocity);
             else StructureGround.Remove(gangway);
         }
 
@@ -294,7 +367,7 @@ namespace MadMax.World
             if (!Ready) return;
             // treads: the grouser phase steps every quarter metre travelled
             treadDist += CurrentSpeed * Time.deltaTime;
-            int ph = Mathf.FloorToInt(treadDist / CityDesign.V) & 3;
+            int ph = Mathf.FloorToInt(treadDist / treadStep) & 3;
             if (ph != treadPhase)
             {
                 foreach (var set in treads) for (int i = 0; i < 4; i++) set[i].SetActive(i == ph);
@@ -323,7 +396,7 @@ namespace MadMax.World
         void StrapParked()
         {
             var centre = DeckPoint(new Vector3(0f, 1.5f, 0f));
-            int n = Physics.OverlapBoxNonAlloc(centre, new Vector3(CityRoute.HalfWidth, 2f, CityRoute.HalfLength), hits, transform.rotation, ~0, QueryTriggerInteraction.Ignore);
+            int n = Physics.OverlapBoxNonAlloc(centre, new Vector3(Route.halfWidth, 2f, Route.halfLength), hits, transform.rotation, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
                 var body = hits[i].attachedRigidbody;
@@ -365,8 +438,12 @@ namespace MadMax.World
         /// <summary>Vehicles riding strapped on the deck right now.</summary>
         public IReadOnlyList<VehicleDriver> Strapped => strapped;
 
-        void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
+            All.Remove(this);
+            foreach (var mesh in ownedMeshes) if (mesh) Destroy(mesh);
+            ownedMeshes.Clear();
             StructureGround.Remove(this);
             if (gangway) StructureGround.Remove(gangway);
             if (Instance == this) Instance = null;

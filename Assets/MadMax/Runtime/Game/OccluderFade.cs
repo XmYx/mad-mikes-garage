@@ -103,10 +103,14 @@ namespace MadMax.Game
         void Consider(Collider c, Vector3 head)
         {
             if (!c || (c.attachedRigidbody && !c.attachedRigidbody.isKinematic)) return;   // loose things stay visible
-            if (c.TryGetComponent<MadMax.World.Cutaway>(out _))                           // the rolling city's blocks
+            if (c.TryGetComponent<MadMax.World.Cutaway>(out var cutaway))                 // the rolling city's blocks and storeys
             {
                 var cr = c.GetComponent<Renderer>();
-                if (cr && cr.bounds.max.y >= head.y + 1.2f) now.Add(cr);
+                if (cr && cr.bounds.max.y >= head.y + 1.2f)
+                {
+                    now.Add(cr);
+                    if (cutaway.extra != null) foreach (var x in cutaway.extra) if (x) now.Add(x);
+                }
                 return;
             }
             var d = c.GetComponentInParent<MadMax.World.DestructibleVoxels>();

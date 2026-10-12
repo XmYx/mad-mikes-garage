@@ -122,8 +122,14 @@ namespace MadMax.Game.Acceptance
         static bool Clear(Vector3 p, float radius)
         {
             var t = DeformableTerrain.Instance;
-            var c = new Vector3(p.x, t.Height(p.x, p.z) + 0.4f + radius, p.z);              // low rocks, fences and kerbs count too
+            float h = t.Height(p.x, p.z);
+            var c = new Vector3(p.x, h + 0.4f + radius, p.z);
             int n = Physics.OverlapCapsuleNonAlloc(c, c + Vector3.up * 3f, radius, hits, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++) if (!hits[i].transform.name.StartsWith("Chunk")) return false;
+            // low rocks, fences and kerbs count too: the capsule's round bottom only reaches the ground at its centre
+            // (a 20 cm rock 1.6 m out beached a car on it: wheels see only the terrain, the body sat on the rock)
+            float slab = 0.45f + radius * 0.25f;                                                // the ground falls away on a slope
+            n = Physics.OverlapBoxNonAlloc(new Vector3(p.x, h, p.z), new Vector3(radius * 0.8f, slab, radius * 0.8f), hits, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++) if (!hits[i].transform.name.StartsWith("Chunk")) return false;
             return true;
         }

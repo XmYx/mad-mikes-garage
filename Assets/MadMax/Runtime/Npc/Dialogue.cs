@@ -197,6 +197,7 @@ namespace MadMax.Npc
             SeasonChoreChoice();                                                                // residents' seasonal chores (Dialogue.Seasons)
             PantryChoice();
             KeyChoice();                                                                        // mechanics cut keys for lost ones (Dialogue.Keys)
+            QuartersChoice();                                                                   // the housing clerk aboard a city (Dialogue.Quarters)
             StolenTrail();                                                                      // salvagers name who sold them the player's part
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);

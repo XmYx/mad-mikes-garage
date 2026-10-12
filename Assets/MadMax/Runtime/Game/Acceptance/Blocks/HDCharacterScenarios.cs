@@ -41,6 +41,48 @@ namespace MadMax.Game.Acceptance
             c.Check(player.Rig.IsHD, $"the player is built from the HD pack (shape {player.Rig.HDShape}, {player.Rig.HDPieces.Count} pieces)");
             CheckRig(c, player.Rig, "player");
 
+            // The reference lead uses the F body and the HD workwear/satchel/cyber arm, not voxel fallback shells.
+            foreach (var shape in cat.shapes)
+            {
+                c.Check(HDHuman.HasGarment(cat, shape, "work_jacket"), $"{shape}: HD patched work jacket");
+                c.Check(HDHuman.HasGarment(cat, shape, "patched_cargo"), $"{shape}: HD patched cargo trousers");
+                c.Check(HDHuman.HasGarment(cat, shape, "canvas_satchel"), $"{shape}: HD canvas satchel");
+                c.Check(HDHuman.All(cat, shape, "prosthetic").Any(p => p.garment == "pros_cyber_arm"), $"{shape}: skinned cyber-arm pieces");
+            }
+            var savedAppearance = player.Rig.appearance;
+            var savedOutfit = player.Rig.outfit.ToList();
+            player.Rig.appearance = Appearance.Lead();
+            foreach (var id in ClothingLibrary.Starter)
+            {
+                var def = ClothingLibrary.Get(id);
+                if (def == null) continue;
+                player.Rig.outfit.RemoveAll(w => ClothingLibrary.Get(w)?.slot == def.slot);
+                player.Rig.outfit.Add(id);
+            }
+            player.Rig.Rebuild();
+            c.Check(player.Rig.IsHD && player.Rig.HDShape == "F", $"reference lead uses the F HD shape ({player.Rig.HDShape})");
+            c.Check(player.Rig.HDPieces.Any(p => p.Contains("work_jacket")) && player.Rig.HDPieces.Any(p => p.Contains("patched_cargo")) &&
+                    player.Rig.HDPieces.Any(p => p.Contains("canvas_satchel")), "reference workwear and satchel are skinned HD meshes");
+            c.Check(player.Rig.HDPieces.Any(p => p.Contains("pros_cyber_arm")), "reference cyber arm is a skinned HD assembly");
+            var camera = g.cameraRig;
+            var oldMode = camera ? camera.mode : ViewMode.Isometric;
+            var oldIso = camera ? camera.isoSize : 6f;
+            var oldThird = camera ? camera.thirdDistance : 7.5f;
+            if (camera)
+            {
+                camera.mode = ViewMode.ThirdPerson;
+                camera.thirdDistance = 2.5f;
+                camera.LookToward(-player.transform.forward);
+                yield return null;
+                yield return null;
+            }
+            c.Screenshot("hd_character_reference");
+            yield return null;
+            if (camera) { camera.mode = oldMode; camera.isoSize = oldIso; camera.thirdDistance = oldThird; }
+            player.Rig.appearance = savedAppearance;
+            player.Rig.outfit.Clear(); player.Rig.outfit.AddRange(savedOutfit);
+            player.Rig.Rebuild();
+
             // ---- three NPCs: a wanderer, a raider and a woman
             var npcs = new List<MadMax.Npc.Npc>();
             var profiles = new List<NpcProfile> { NpcProfile.Make("test:hd1", NpcRole.Wanderer, 1111), NpcProfile.Make("test:hd2", NpcRole.Raider, 2222) };

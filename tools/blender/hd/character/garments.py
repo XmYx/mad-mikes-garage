@@ -20,6 +20,19 @@ MATS = {
     "sweater": ("2e5024", "knit", {}),
     "sweater_band": ("eeeadc", "knit", {}),
     "jacket": ("302d33", "leather", {}),
+    "work_orange": ("a64c20", "canvas", {"grime": 0.58, "scale": 1.4}),
+    "work_grey": ("55534d", "knit", {"grime": 0.5, "scale": 1.8}),
+    "work_patch": ("b9a77e", "canvas", {"grime": 0.62, "scale": 2.0}),
+    "work_stitch": ("d0a16b", "canvas", {"grime": 0.5, "scale": 2.2}),
+    "cargo_olive": ("34392c", "denim", {"grime": 0.58, "scale": 1.6}),
+    "cargo_patch": ("70664e", "canvas", {"grime": 0.65, "scale": 2.0}),
+    "cyber_cream": ("c5bda4", "metal", {"hex2": "766d58", "metal": 0.55, "grime": 0.45}),
+    "cyber_dark": ("252629", "metal", {"hex2": "101316", "metal": 0.8}),
+    "cyber_rust": ("9d4821", "metal", {"hex2": "4c2418", "metal": 0.55}),
+    "cyber_rubber": ("18191a", "rubber", {}),
+    "satchel_canvas": ("74664b", "canvas", {"grime": 0.65, "scale": 1.8}),
+    "satchel_leather": ("3c3022", "leather", {"grime": 0.5}),
+    "satchel_metal": ("967044", "metal", {"hex2": "4c3020", "metal": 0.55}),
     "duster": ("74492a", "leather", {}),
     "labcoat": ("eeeadc", "cloth", {"grime": 0.5}),
     "vest": ("a8967a", "canvas", {}),
@@ -259,6 +272,55 @@ def jacket(h):
             piece("jacket_zip", "chrome", zip_, ["Chest", "Pelvis"], res=FINE_H, tris=500, smooth=1, allowed=["Chest", "Pelvis"], sym=False)]
 
 
+def work_jacket(h):
+    # Reference lead's worn orange utility jacket: a shaped shell, raised grey hood/collar,
+    # reinforced elbows, layered patch pockets, zipper tape, and small stitched repair panels.
+    base = jacket(h)[0]
+    base["name"], base["field"], base["mat"] = "work_jacket", base["field"], "work_orange"
+
+    def hood(c):
+        x, y, z = c.loc("Head")
+        h = c.hum.h
+        outer = c.prims([P("Head", "ell", c=(0, 0.09*h, -0.075), rad=(0.105, 0.12, 0.092), k=0.025)])
+        opening = c.prims([P("Head", "ell", c=(0, 0.10*h, -0.030), rad=(0.083, 0.098, 0.070), k=0.018)])
+        hood_shell = np.maximum(outer, -opening)
+        hood_shell = np.maximum(hood_shell, y - 0.27*h)
+        collar = c.prims([P("Chest", "tor", c=(0, 0.355*h, -0.005), R=0.088, r=0.018, rot=rot_x(90))])
+        return only(c, ["Head", "Chest"], np.minimum(hood_shell, collar))
+
+    def pockets(c):
+        items = []
+        # Chest utility pockets with flap lips; mirrored lower patch pockets.
+        for sx in (-1, 1):
+            items.extend([
+                P("Chest", "box", c=(sx*0.070, 0.205, 0.124), half=(0.038, 0.044, 0.012), round=0.009, rot=rot_z(sx*3)),
+                P("Chest", "box", c=(sx*0.070, 0.252, 0.128), half=(0.040, 0.012, 0.014), round=0.006),
+            ])
+        items.append(P("Pelvis", "box", c=(0.098, 0.052, 0.115), half=(0.046, 0.046, 0.012), round=0.01, rot=rot_z(-4)))
+        return only(c, ["Chest", "Pelvis"], c.prims(items))
+
+    def repairs(c):
+        # Flat canvas reinforcement follows the limb surface and remains skinned to the limb.
+        items = [P("UpperArmL", "box", c=(0, -0.205, 0.015), half=(0.057, 0.038, 0.012), round=0.008, rot=rot_z(-5)),
+                 P("UpperArmR", "box", c=(0, -0.205, 0.015), half=(0.057, 0.038, 0.012), round=0.008, rot=rot_z(5)),
+                 P("ForearmL", "box", c=(0, -0.145, 0.012), half=(0.050, 0.032, 0.011), round=0.007),
+                 P("ForearmR", "box", c=(0, -0.145, 0.012), half=(0.050, 0.032, 0.011), round=0.007)]
+        return only(c, ["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"], c.prims(items))
+
+    def seams(c):
+        x, y, z = c.loc("Chest")
+        # Narrow raised seam piping at front opening and shoulder seams.
+        front = np.maximum(np.abs(x) - 0.0045, np.maximum(np.abs(y - 0.12) - 0.31, z - 0.137))
+        shoulder = c.prims([P("Chest", "cap", a=(sx*0.05, 0.32, 0.11), b=(sx*0.19, 0.29, 0.055), ra=0.0045, rb=0.0045, k=0.003) for sx in (-1, 1)])
+        return only(c, ["Chest", "Pelvis"], np.minimum(front, shoulder))
+
+    return [piece("work_jacket", "work_orange", base["field"], TORSO + ["Head"] + ARMS, tris=5600),
+            piece("work_hood", "work_grey", hood, ["Head", "Chest"], tris=1500, allowed=["Head", "Chest"]),
+            piece("work_pockets", "work_patch", pockets, ["Chest", "Pelvis"], tris=1400, allowed=["Chest", "Pelvis"], smooth=1),
+            piece("work_elbow_patches", "work_patch", repairs, ["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"], tris=1200, allowed=["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"], smooth=1),
+            piece("work_seams", "work_stitch", seams, ["Chest", "Pelvis"], tris=500, allowed=["Chest", "Pelvis"], smooth=1)]
+
+
 def bomber(h):
     def f(c):
         G = shell(c, 0.017, {"Chest": (0, 1), "Head": (0, 0.2), "Pelvis": (0, 0.3), "UpperArmL": (0, 1), "UpperArmR": (0, 1),
@@ -349,6 +411,36 @@ def pants(h, shin_t=0.85, name="pants", mat="pants"):
         return U(G, c.prims(pk), hems(c, ["ShinL", "ShinR"], shin_t, 0.011, 0.01))
     return [piece(name, mat, f, TORSO + LEGS, tris=3200),
             piece(name + "_belt", "belt", lambda c: _belt(c), TORSO, tris=600, allowed=TORSO)]
+
+
+def patched_cargo(h):
+    base, belt = pants(h, 0.85, "patched_cargo", "cargo_olive")
+
+    def cargo_pockets(c):
+        items = []
+        for bone, side in (("ThighL", -1), ("ThighR", 1)):
+            items.append(P(bone, "box", c=(side*0.075, -0.205, 0.018), half=(0.027, 0.062, 0.045), round=0.012, rot=rot_z(side*4)))
+            items.append(P(bone, "box", c=(side*0.075, -0.142, 0.021), half=(0.029, 0.012, 0.047), round=0.007, rot=rot_z(side*4)))
+        return only(c, ["ThighL", "ThighR"], c.prims(items))
+
+    def knees(c):
+        pieces = []
+        for bone in ("ShinL", "ShinR"):
+            # Soft-backed, scuffed knee caps with two stitched webbing straps.
+            pieces.extend([P(bone, "ell", c=(0, -0.055, 0.075), rad=(0.060, 0.073, 0.025), k=0.014),
+                           P(bone, "box", c=(0, -0.012, 0.082), half=(0.061, 0.009, 0.012), round=0.005),
+                           P(bone, "box", c=(0, -0.100, 0.078), half=(0.061, 0.008, 0.011), round=0.004)])
+        return only(c, ["ShinL", "ShinR"], c.prims(pieces))
+
+    def mends(c):
+        items = [P(b, "box", c=(0.012, -0.26, 0.012), half=(0.032, 0.028, 0.010), round=0.006, rot=rot_z(a))
+                 for b, a in (("ThighL", -8), ("ThighR", 7), ("ShinL", 5), ("ShinR", -6))]
+        return only(c, ["ThighL", "ThighR", "ShinL", "ShinR"], c.prims(items))
+
+    return [piece("patched_cargo", "cargo_olive", base["field"], TORSO + LEGS, tris=4100), belt,
+            piece("patched_cargo_pockets", "satchel_canvas", cargo_pockets, ["ThighL", "ThighR"], tris=1300, allowed=["ThighL", "ThighR"], smooth=1),
+            piece("patched_cargo_knees", "cyber_rust", knees, ["ShinL", "ShinR"], tris=1100, allowed=["ShinL", "ShinR"], smooth=1),
+            piece("patched_cargo_mends", "cargo_patch", mends, ["ThighL", "ThighR", "ShinL", "ShinR"], tris=600, allowed=["ThighL", "ThighR", "ShinL", "ShinR"], smooth=1)]
 
 
 def jeans(h):
@@ -1138,7 +1230,71 @@ def sling_bag(h):
 
 
 def canvas_satchel(h):
-    return _shoulder_bag(h, "canvas_satchel", "sand_pack", w=0.13, hh=0.1, d=0.04)
+    def strap(c):
+        xc, yc, zc = c.loc("Chest")
+        path = np.abs(0.55 * (xc + 0.15) + 0.83 * (yc - 0.4)) - 0.018
+        return only(c, ["Chest", "Pelvis"], np.maximum(c.F - 0.018, path))
+
+    def body(c):
+        # Soft but structured field satchel at the left hip, with a gusseted body and a folded top flap.
+        base = P("Pelvis", "box", c=(-0.155*c.hum.w, 0.005, 0.018), half=(0.061, 0.092, 0.043), round=0.022, rot=rot_y(8))
+        flap = P("Pelvis", "box", c=(-0.155*c.hum.w, 0.073, 0.061), half=(0.062, 0.034, 0.018), round=0.014, rot=rot_y(8))
+        gusset = P("Pelvis", "box", c=(-0.155*c.hum.w, -0.015, -0.024), half=(0.048, 0.060, 0.015), round=0.01, rot=rot_y(8))
+        return c.prims([base, flap, gusset])
+
+    def fittings(c):
+        x = -0.155*c.hum.w
+        items = [P("Pelvis", "box", c=(x, 0.036, 0.082), half=(0.027, 0.018, 0.008), round=0.006),
+                 P("Pelvis", "box", c=(x, 0.005, 0.068), half=(0.009, 0.035, 0.006), round=0.004),
+                 P("Pelvis", "box", c=(x-0.044, 0.0, 0.059), half=(0.004, 0.042, 0.004), round=0.003),
+                 P("Pelvis", "box", c=(x+0.044, 0.0, 0.059), half=(0.004, 0.042, 0.004), round=0.003)]
+        return only(c, ["Pelvis"], c.prims(items))
+
+    return [piece("canvas_satchel_strap", "satchel_leather", strap, ["Chest", "Pelvis"], tris=900, allowed=["Chest", "Pelvis"], sym=False),
+            piece("canvas_satchel", "satchel_canvas", body, ["Pelvis"], extra=(np.array([-0.34, 0.73, -0.16]), np.array([0.05, 1.2, 0.17])), tris=1700, allowed=["Pelvis"], sym=False),
+            piece("canvas_satchel_fittings", "satchel_metal", fittings, ["Pelvis"], tris=450, allowed=["Pelvis"], sym=False)]
+
+
+def pros_cyber_arm(h):
+    # Mechanical forearm and full hand. All sections are rigidly bound to UpperArmL so the HD
+    # stump cut can collapse the organic forearm while the assembly remains articulated at the shoulder.
+    def cuffs(c):
+        parts = [P("ForearmL", "tor", c=(0, -0.018, 0), R=0.036, r=0.009, rot=rot_x(90)),
+                 P("ForearmL", "tor", c=(0, -0.224, 0), R=0.032, r=0.008, rot=rot_x(90)),
+                 P("HandL", "tor", c=(0, -0.006, 0), R=0.033, r=0.008, rot=rot_x(90))]
+        return only(c, ["UpperArmL", "ForearmL", "HandL"], c.prims(parts))
+
+    def dark_core(c):
+        parts = [P("ForearmL", "cap", a=(0, -0.018, 0), b=(0, -0.225, 0), ra=0.031, rb=0.024, k=0.008),
+                 P("HandL", "box", c=(0, -0.042, 0), half=(0.037, 0.052, 0.022), round=0.012),
+                 P("HandL", "box", c=(-0.047, -0.078, 0.012), half=(0.014, 0.042, 0.014), round=0.01)]
+        for i in range(4):
+            x = -0.026 + i*0.017
+            parts.append(P("HandL", "cap", a=(x, -0.076, 0.008), b=(x, -0.126, 0.012), ra=0.007, rb=0.006, k=0.003))
+        return only(c, ["UpperArmL", "ForearmL", "HandL"], c.prims(parts))
+
+    def armor(c):
+        parts = [P("ForearmL", "box", c=(0, -0.112, 0.026), half=(0.041, 0.082, 0.014), round=0.012, rot=rot_z(-3)),
+                 P("ForearmL", "box", c=(0.0, -0.205, 0.016), half=(0.034, 0.024, 0.014), round=0.009),
+                 P("HandL", "box", c=(0, -0.038, 0.025), half=(0.030, 0.033, 0.010), round=0.009),
+                 P("HandL", "box", c=(-0.047, -0.072, 0.026), half=(0.011, 0.030, 0.009), round=0.006)]
+        return only(c, ["UpperArmL", "ForearmL", "HandL"], c.prims(parts))
+
+    def rails(c):
+        parts = []
+        for x in (-0.033, 0.033):
+            parts.append(P("ForearmL", "cap", a=(x, -0.035, 0.018), b=(x*0.82, -0.204, 0.020), ra=0.004, rb=0.003, k=0.002))
+        # Visible insulated cable runs and a small amber status lens.
+        parts.extend([P("ForearmL", "cap", a=(-0.032, -0.035, -0.016), b=(-0.024, -0.205, -0.020), ra=0.005, rb=0.004, k=0.003),
+                      P("ForearmL", "cap", a=(0.030, -0.038, -0.017), b=(0.025, -0.190, -0.020), ra=0.004, rb=0.004, k=0.002),
+                      P("ForearmL", "ell", c=(0.0, -0.082, 0.042), rad=(0.009, 0.009, 0.004))])
+        return only(c, ["UpperArmL", "ForearmL", "HandL"], c.prims(parts))
+
+    bounds = ["UpperArmL", "ForearmL", "HandL"]
+    return [piece("pros_cyber_arm_core", "cyber_dark", dark_core, bounds, tris=3000, allowed=["UpperArmL"]),
+            piece("pros_cyber_arm_armor", "cyber_cream", armor, bounds, tris=3000, allowed=["UpperArmL"]),
+            piece("pros_cyber_arm_cuffs", "cyber_rust", cuffs, bounds, tris=1200, allowed=["UpperArmL"]),
+            piece("pros_cyber_arm_cables", "cyber_rubber", rails, bounds, tris=1200, allowed=["UpperArmL"])]
 
 
 def _hand_bag(h, name, mat, prims_fn):
@@ -1165,6 +1321,8 @@ GARMENTS.update({
     "framepack": (framepack, "Pack"), "craftpack": (craftpack, "Pack"), "leather_satchel": (leather_satchel, "Pack"),
     "shoulder_bag": (shoulder_bag, "Shoulder"), "sling_bag": (sling_bag, "Shoulder"), "canvas_satchel": (canvas_satchel, "Shoulder"),
     "duffel": (duffel, "Hand"), "suitcase": (suitcase, "Hand"),
+    "work_jacket": (work_jacket, "Outer"), "patched_cargo": (patched_cargo, "Legs"),
+    "pros_cyber_arm": (pros_cyber_arm, "Prosthetic"),
 })
 HEADWEAR.update({"dive_helmet": 0.0, "moto_helmet": 0.0, "bee_veil": 0.232})
 
@@ -1173,4 +1331,3 @@ import os as _os
 if _os.environ.get("HD_GARMENTS"):
     _keep = set(_os.environ["HD_GARMENTS"].split(","))
     GARMENTS = {k: v for k, v in GARMENTS.items() if k in _keep}
-
