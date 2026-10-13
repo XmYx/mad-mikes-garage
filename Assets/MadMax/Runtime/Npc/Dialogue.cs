@@ -43,10 +43,13 @@ namespace MadMax.Npc
             if (P.Cast && !S.Has(NpcSave.Met)) { S.Set(NpcSave.Met); S.disposition = Mathf.Max(S.disposition, 10); }   // story characters skip the sizing-up
             line = NpcLore.Greeting(P.temper, S.Has(NpcSave.Met), S.disposition);
             if (!S.Has(NpcSave.Met)) FirstLook();
-            if (WastelandGame.Rescued(S)) line = "IT'S " + g.Stats.name + "! THE ONE WHO PICKED ME UP OFF THE ROAD." + (P.Vendor ? " YOU PAY FRIENDS' PRICES THIS WEEK." : "");
             if (S.disposition < -60) { Refuse(); return; }
             if (!S.Has(NpcSave.Met)) Opening();
-            else Hub();
+            else
+            {
+                Hub();
+                if (WastelandGame.Rescued(S)) line = "IT'S " + g.Stats.name + "! THE ONE WHO PICKED ME UP OFF THE ROAD." + (P.Vendor ? " YOU PAY FRIENDS' PRICES THIS WEEK." : "");   // hitchers remember
+            }
         }
 
         void Add(string label, Action act, string hint = null) => choices.Add(new Choice { label = label, act = act, hint = hint });

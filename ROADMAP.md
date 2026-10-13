@@ -1577,7 +1577,7 @@ vehicle.keys, body.crutch and story.first_hour. Headless, so the screenshots are
   (`EngineSynth` crank load from `Temperature`) — the cold start heard, not only seen.
 - [x] **A medic in the crew treats others** (2026-10-12: with the player whole and things quiet, a companion with the knack and supplies walks to another hurt companion or a wounded townsperson within 30 m (`Companions.TendOthers`, `Npc.tendWho`): a kit mends 50, a bandage 25; townsfolk +10 disposition, helped, their faction +2, reputation +1 (`CompanionTreatOther`); scenario `npc.medic_others`): a companion with the knack patches other companions and hurt townsfolk
   (disposition, faction standing) — the knack as a social skill.
-- [ ] **Convalescence at home**: a broken leg at home rests in the bed with books and the radio (reading speed bonus,
+- [x] **Convalescence at home** (2026-10-13: by day, a broken leg, inside an own claim, the bed offers LIE UP (`WastelandGame.LieUp`): 4 hours pass, the break rests × 2.2 (× 1.15 with a placed radio on, its station named), the open or first unread book reads at 1.5×, once a day a neighbour from the nearest non-hostile town brings food; scenario `body.lie_up`): a broken leg at home rests in the bed with books and the radio (reading speed bonus,
   radio shows), visitors from town bring food — downtime as play.
 
 ## Scheduled update (2026-10-12)
@@ -1593,18 +1593,43 @@ missing from `Companions.Live` right after `Recruit`), `npc.morning_heater` only
 one run (passes alone: test isolation), `megacity.living` (stepping off the lift lands 2.2 m from the deck spot).
 
 ### Suggestions (tie the experience together)
-- [ ] **Stolen parts in the boss car**: the part rides in the boss car's compartment (a crate in `VehicleStorage`) as
+- [x] **Stolen parts in the boss car** (2026-10-13: opening the storage of a raider boss car (cars[0] of the convoy, stopped) puts the gang's in-transit parts behind it, off the market (`OpenBossCar`, `ReturnStolen` shared with the boss's body); scenario `towns.boss_car`): the part rides in the boss car's compartment (a crate in `VehicleStorage`) as
   well as on the body — stop the car, open the trunk, and the raid didn't need a kill.
-- [ ] **Hitchers remember**: a delivered survivor greets the player by name in town next time and gives a trader
+- [x] **Hitchers remember** (2026-10-13: `NpcSave.rescuedDay`: for 7 days they greet the player by name and bargain +0.1 (`Rescued`, `Trade.Bargain`); a survivor who walks into town alone is town news (`NoteWalkedIn`); scenario `npc.hitcher_remembers`): a delivered survivor greets the player by name in town next time and gives a trader
   discount for a week; a survivor left on the road is found in the news ("WALKED IN AFTER TWO DAYS").
-- [ ] **Medic reputation**: townsfolk treated by the crew spread it (`TownNews`), and a town with a clinic asks the
+- [x] **Medic reputation** (2026-10-13: crew treatments count per town (`MedicWord`, news once a day); from 2, a 30 % daily "bad day" call (radio, journal, LOOK FOR) open until the next night — bring the medic into town for 30 scrap, standing, reputation and practice (`RollMedicCalls`, `AnswerMedicCall`); no clinic building needed; scenario `npc.medic_word`): townsfolk treated by the crew spread it (`TownNews`), and a town with a clinic asks the
   crew medic to help on a bad day (a small contract) — the knack earns its keep.
-- [ ] **Check-ins carry the base**: the dusk report reads the home ledger (power out, food short, a station done) in
+- [x] **Check-ins carry the base** (2026-10-13: `HomeWorries` (stalled/done stations, flat batteries, water, food < 3 days, worn pieces) in the dusk report; station calls from a claim with a radio companion on post go out in their voice (`HomeVoice`, `Companions.Relay`); scenario `npc.crew_base`): the dusk report reads the home ledger (power out, food short, a station done) in
   the companion's voice, so a crew at home replaces most HOME FREQUENCY station calls.
-- [ ] **Rumoured caches on LOOK FOR**: town talk names a cache (a buried stash with a loot table) as a search circle;
+- [x] **Rumoured caches on LOOK FOR** (2026-10-13: town talk (disposition ≥ 0) names this week's buried stash near the town (`CacheRumour`/`CacheNear`, deterministic) as a 160 m circle; binoculars pin the marker post; walking up finds a half-buried crate (loot table `cache`) and ticks it off; saved; scenario `ui.cache_rumour`): town talk names a cache (a buried stash with a loot table) as a search circle;
   binoculars from inside show a marker post — the list gets a third kind of find.
-- [ ] **Frost on the gauges**: the oil-pressure needle rises slowly on a frosty start and the idle runs high until warm
+- [x] **Frost on the gauges** (2026-10-13: `VehicleSystems.OilPressure` builds in 0.4 s warm, ~5–7 s in a hard frost — the OIL lamp glows amber until it does (pixel + HD); fast idle up to +45 % below 50 °C (`EngineStats.IdleRpm`), heard through the engine synth; no needle gauge yet; scenario `vehicle.frost_gauges`): the oil-pressure needle rises slowly on a frosty start and the idle runs high until warm
   (fast idle), heard and seen — the other end of the cold start.
+
+## Scheduled update (2026-10-13)
+Done this pass (ticked above): all seven open suggestions — stolen parts in the boss car, hitchers who remember (and
+the news of those left on the road), the crew medic's reputation and towns calling for them on a bad day, check-ins
+that carry the base, rumoured caches on LOOK FOR, frost on the gauges (oil-pressure lamp, fast idle), lying up at home
+with a broken leg. Scenarios in `Acceptance/Blocks/ScheduledScenarios1013.cs` — all seven pass in a headless Linux
+player built from the worktree, with towns.take_back, npc.hitcher, npc.crew_checkin, npc.medic_others,
+vehicle.glow_relay, vehicle.cold_start_lamp, base.home_ledger, ui.look_for, vehicle.drive.Sedan and body.crutch.
+Not released tonight: `/` was 100 % full (1.2 GB free) and `share/` held other sessions' uncommitted, unverified work
+(visual revamp, HD character polish), so the work sits on branch `nightly/1013` (the test player was built with
+Library/Temp on tmpfs).
+
+### Suggestions (tie the experience together)
+- [ ] **Oil-pressure needle**: a real gauge on the pixel and HD dashboards (the lamp is the only read-out now), with a
+  sagging needle on worn engines and low oil — the gauge tells the engine's health before a fault does.
+- [ ] **Neighbours by name**: the neighbour who visits the laid-up player is a real resident of that town (their
+  `NpcProfile`), disposition +5 per visit, and asks after the leg next time they meet.
+- [ ] **Cache rivals**: other scavengers hear the same rumour; a cache left a few days is found dug up with tracks
+  leading off (a wanderer carrying the loot) — the circle is a race, not a chore.
+- [ ] **Boss car chase**: once the gang knows the player wants the part back (after asking the salvager), the boss car
+  runs instead of parking for a toll — a chase on the road named by the trail.
+- [ ] **Medic's kit runs dry**: a town call uses the medic's bandages; the town pays part in medical supplies, and an
+  empty kit makes the medic say so on the radio — supplies become a crew errand.
+- [ ] **Hitcher network**: rescued survivors tip the player off once (a cache, a gang's route, a cheap part) on the
+  radio before their week runs out.
 
 ## User requests (2026-10-09, night: generated cities)
 - [~] **Replace the tracked cities with the Blender-generated ones** (2026-10-09: `World/RollingCity/TrackedCity*.cs` ports modelbench/lib/citygen.py line for line through `CityKit` (box/span/beam/tube/lathe/ring/loft/wing/cable/ladder/railing, generator axes → deck-local game axes, per-vertex weathered `CM` palette, glow mesh on an unlit material, collision mesh of solid spans); both circuits carry a profile (Granite Falls 104 × 54 m, Saint Rust 120 × 58 m; `CityRoute.tracked` sets deck size, deck height 26.7 m, pose chord, bed and pier gap); crawler units with trucks, trestles, slewing rings, chain drives and four belt phases; walkable panel blocks (storey modules shared per floor: corridor, stair core, flats with furniture, balconies, AC, dishes, laundry; shops on the ground floor); halls, plants, banded chimneys, crane, pipe trunk with cabin stacks, pods, pilot bridge, railings with collision walls, lamps served by `CityLights`; high docks with lattice pier, stair tower and `CityLift`; `IDeckCarrier` carries the player on lifts. Pixel mode is only the shader over the same geometry. Scenario `city.ride` passes. Open: LOD for far views, smoke per stack size, HD look check, the old voxel profiles retired from the menu text)

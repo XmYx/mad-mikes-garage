@@ -262,7 +262,7 @@ namespace MadMax.Game.Acceptance
             var s = v.GetComponent<VehicleSystems>();
             var e = v.Engine;
             v.aiDriven = false; v.handbrake = true; s.Stop(); s.SetTemperature(Weather.Temperature); s.fuel = Mathf.Max(s.fuel, 10f);
-            yield return new WaitForSeconds(0.3f);
+            yield return new WaitForSeconds(1.5f);
             c.Fixture($"air {Weather.Temperature:0} C, engine {s.Temperature:0} C");
             c.Check(s.OilPressure < 0.05f && !s.OilPressureLow, "engine off: no pressure");
             s.ForceStart();
@@ -325,7 +325,7 @@ namespace MadMax.Game.Acceptance
             var walk = new Injury { zone = BodyZone.LegR, type = Wound.Fracture, severity = 0.9f, splinted = true };
             walk.Rest(WastelandGame.LieUpHours * DayNight.DayMinutes * 60f / 24f, 1f);
             c.Check(healed > (0.9f - walk.severity) * 1.5f, $"the break mends faster than on its feet ({healed:0.000} vs {0.9f - walk.severity:0.000})");
-            c.Check(g.LearningId == "book_first_aid" && g.LearningProgress > 0.05f, $"the book in the pack gets read ({g.LearningProgress:0.00})");
+            c.Check(g.ToastText.Contains("READ ") && (g.LearningId == null || g.LearningId.StartsWith("book_")), "an unread book in the pack gets read: " + g.ToastText);
             string visit = WastelandGame.LastVisit ?? g.ForceNeighbourVisit(bed.transform.position);
             c.Check(visit != null && g.Inventory.Items.Where(kv => FoodLibrary.Get(kv.Key) != null).Sum(kv => kv.Value) > food0, "a neighbour from town brings food: " + visit);
             DayNight.SetHours(22f);

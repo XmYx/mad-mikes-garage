@@ -339,7 +339,7 @@ namespace MadMax.Vehicles
                 float thick = 1f + 0.5f * Mathf.Clamp01((40f - Temperature) / 60f);                  // cold oil reads high once it flows
                 target = (1f + 3.5f * rpm) * thick * Mathf.Clamp01(OilFraction * 2.5f);
             }
-            float tau = target > OilPressure ? OilRiseSeconds : 0.6f;
+            float tau = target > OilPressure ? OilRiseSeconds : target <= 0f ? 0.25f : 0.6f;          // drops fast with the engine off
             OilPressure = Mathf.MoveTowards(OilPressure, target, Mathf.Max(0.05f, Mathf.Abs(target - OilPressure)) * dt / tau);
         }
 
