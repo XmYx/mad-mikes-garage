@@ -106,6 +106,7 @@ namespace MadMax.Game
         public List<uint> storyProps = new List<uint>();
         public List<string> heardOf = new List<string>();               // story givers heard of in rumours (pinned)
         public List<string> heardVague = new List<string>();            // story givers heard of only vaguely (search circle; "key|tellings")
+        public List<string> crewRoad = new List<string>();              // 2026-10-13: medic word "w|town|n", medic calls "m|town|day", caches "c|key|x|y|z|spotted|found"
         public List<string> burnedOut = new List<string>();             // burned-out wreck landmarks: "x,y,z,day|name"
         public List<string> keyOrders = new List<string>();             // keys ordered from mechanics: "key|smith|ready day|car"
         // depth blocks (WastelandGame.Blocks): each block's own saved state

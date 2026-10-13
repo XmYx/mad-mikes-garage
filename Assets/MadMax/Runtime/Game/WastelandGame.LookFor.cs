@@ -51,6 +51,17 @@ namespace MadMax.Game
                 string key = "news:" + Mathf.RoundToInt(e.x) + "," + Mathf.RoundToInt(e.z);
                 into.Add(new Pin { label = "A WRECK IN THE NEWS (DAY " + e.day + ")", pos = VagueCentre(key, at, NewsWreckRadius), color = col, radius = NewsWreckRadius });
             }
+            // buried stashes from town talk: a circle until the post is spotted
+            foreach (var c in Caches)
+                if (!c.found) into.Add(new Pin { label = c.spotted ? "A BURIED STASH (MARKER POST)" : "A BURIED STASH", pos = c.spotted ? c.at : VagueCentre(c.key, c.at, c.radius), color = col, radius = c.spotted ? 0f : c.radius });
+            // towns calling for the crew medic
+            if (World != null)
+                foreach (var kv in MedicCalls)
+                    if (kv.Key >= 0 && kv.Key < World.settlements.Count)
+                    {
+                        var t = World.settlements[kv.Key];
+                        into.Add(new Pin { label = Market.TownName(t) + " NEEDS YOUR MEDIC", pos = new Vector3(t.pos.x, 0f, t.pos.y), color = col });
+                    }
             // gangs riding with the player's parts before market day
             var gangs = new HashSet<string>(Trade.StolenBy.Values);
             foreach (var gang in gangs)

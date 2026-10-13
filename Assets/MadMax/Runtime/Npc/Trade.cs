@@ -110,7 +110,8 @@ namespace MadMax.Npc
         /// <summary>0 (no advantage) .. 0.45 (best friends, silver tongue, won a haggle today).</summary>
         public static float Bargain(WastelandGame g, NpcSave s)
         {
-            float b = g.Stats.Bargain + Mathf.Clamp(s.disposition, -50, 80) * 0.0015f + (s.haggleDay == MadMax.World.DayNight.Day ? 0.08f : 0f);
+            float b = g.Stats.Bargain + Mathf.Clamp(s.disposition, -50, 80) * 0.0015f + (s.haggleDay == MadMax.World.DayNight.Day ? 0.08f : 0f)
+                    + (WastelandGame.Rescued(s) ? WastelandGame.RescueBargain : 0f);                  // a survivor the player picked up
             return Mathf.Clamp(b, -0.1f, 0.45f);
         }
 

@@ -9,6 +9,10 @@ namespace MadMax.Vehicles
         public float maxTorque = 500f;      // Nm
         public float maxRpm = 6000f;
         public float idleRpm = 900f;
+        /// <summary>Cold-engine fast idle, 0..0.45 over <see cref="idleRpm"/> (set by <see cref="VehicleSystems"/>).</summary>
+        [System.NonSerialized] public float fastIdle;
+        /// <summary>The idle the engine holds now (raised while cold).</summary>
+        public float IdleRpm => idleRpm * (1f + fastIdle);
         [Range(0.3f, 0.9f)] public float peakAt = 0.6f;
 
         VehiclePart part;

@@ -20,6 +20,7 @@ namespace MadMax.Building
         {
             Refresh();
             string c = " (" + Comfort.Word(comfort) + " " + Mathf.RoundToInt(comfort) + "/10)";
+            if (g.CanLieUp(this)) return "[E] LIE UP (REST THE LEG, READ, RADIO)" + c + "  [T] SET SPAWN";
             return (MadMax.World.DayNight.Darkness > 0.2f ? "[E] SLEEP" : "[E] REST") + c + "  [T] SET SPAWN";
         }
 
@@ -28,6 +29,7 @@ namespace MadMax.Building
             if (secondary) { g.SetSpawn(transform.position + transform.forward * 1.2f + Vector3.up * 0.2f); return; }
             checkedAt = -10f;
             Refresh();
+            if (g.CanLieUp(this)) { g.LieUp(this, comfort); return; }                               // convalescence at home
             g.Sleep(comfort, note);
         }
     }

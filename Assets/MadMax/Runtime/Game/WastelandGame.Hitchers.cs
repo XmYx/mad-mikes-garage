@@ -45,6 +45,7 @@ namespace MadMax.Game
             n.hitchTown = town.index;
             n.home = n.transform.position; n.homeRadius = 2f;
             if (!Hitchers.Contains(n)) Hitchers.Add(n);
+            NoteStranded(n);
         }
 
         void UpdateHitchers()
@@ -64,7 +65,7 @@ namespace MadMax.Game
                     continue;
                 }
                 var me = n.transform.position;
-                if (Flat(me - tp) < town.radius) { n.hitchTown = -1; Hitchers.RemoveAt(i); n.LetGo(); continue; }   // walked it themselves
+                if (Flat(me - tp) < town.radius) { n.hitchTown = -1; Hitchers.RemoveAt(i); NoteWalkedIn(n, town); n.LetGo(); continue; }   // walked it themselves: the news
                 if (Current && Current.driveable && Mathf.Abs(Current.ForwardSpeed) < 1.5f && Flat(Current.transform.position - me) < PickUpReach)
                 {
                     var seat = PassengerSeat.For(Current);
@@ -93,6 +94,7 @@ namespace MadMax.Game
             string tn = Market.TownName(town);
             n.State.disposition = Mathf.Min(100, n.State.disposition + 20);
             n.State.Set(NpcSave.Helped);
+            NoteRescued(n);                                                                        // remembered for a week
             var f = Factions.OfSettlement(town);
             Factions.Shift(f != Faction.None ? f : Faction.Settlers, 3);
             Factions.Shift(Faction.FuelGuild, 2);

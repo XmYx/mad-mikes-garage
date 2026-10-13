@@ -85,6 +85,7 @@ namespace MadMax.Game
         public void OpenVehicle(VehicleDriver v)
         {
             OpenedVehicle = v;
+            g.OpenBossCar(v);                                                                       // a raider boss's car: the stolen parts in the back
             SetPinned(true);
             Refresh();
             int n = LootSide.FindAll(src => src.box && src.box.GetComponentInParent<VehicleDriver>() == v).Count;

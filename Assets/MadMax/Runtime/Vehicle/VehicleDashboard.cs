@@ -128,7 +128,7 @@ namespace MadMax.Vehicles
             {
                 var f = sys.Faults;
                 Lamp(15, 20, "F", (f & (Fault.NoFuel | Fault.LowFuel | Fault.FuelLeak)) != 0 ? Amber : Off);
-                Lamp(43, 20, "O", (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : Off);
+                Lamp(43, 20, "O", (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : sys.OilPressureLow ? Amber : Off);
                 Lamp(48, 20, "T", (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
                 Lamp(53, 20, "S", (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
                 Lamp(58, 20, "C", ColdLamp(sys));
@@ -157,7 +157,7 @@ namespace MadMax.Vehicles
             hd.SetLamp(2, !eng ? Red : eng.GetComponent<VehiclePart>().damage > 0.5f ? Amber : Off);
             hd.SetLamp(3, wheelMissing ? Red : Off);
             hd.SetLamp(4, driver.Mud > 0.5f ? Amber : Off);
-            hd.SetLamp(5, (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : Off);
+            hd.SetLamp(5, (f & (Fault.NoOil | Fault.LowOil | Fault.OilLeak | Fault.Seized)) != 0 ? Red : sys && sys.OilPressureLow ? Amber : Off);
             hd.SetLamp(6, (f & Fault.Overheat) != 0 ? Red : (f & (Fault.LowCoolant | Fault.CoolantLeak)) != 0 ? Amber : Off);
             hd.SetLamp(7, (f & (Fault.ServiceDue | Fault.Clogged | Fault.Misfire)) != 0 ? Amber : Off);
             hd.SetLamp(8, sys && !sys.Started ? Amber : Off);

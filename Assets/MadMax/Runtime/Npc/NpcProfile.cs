@@ -119,6 +119,7 @@ namespace MadMax.Npc
         public List<int> boughtN = new List<int>();
         public bool dead;
         public int lost;                              // severed limbs (Appearance.lost bits, Limbs)
+        public int rescuedDay = -1;                   // world day the player brought them in off the road (hitchers remember)
         public int tended;                            // times this companion dressed the player's wounds (Companions.Knack)
 
         public const int Met = 1, Threatened = 2, Helped = 4, Hostile = 8, Parleyed = 16, Companion = 32, Surrendered = 64, StudiedWounds = 128;

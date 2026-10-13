@@ -43,6 +43,7 @@ namespace MadMax.Npc
             if (P.Cast && !S.Has(NpcSave.Met)) { S.Set(NpcSave.Met); S.disposition = Mathf.Max(S.disposition, 10); }   // story characters skip the sizing-up
             line = NpcLore.Greeting(P.temper, S.Has(NpcSave.Met), S.disposition);
             if (!S.Has(NpcSave.Met)) FirstLook();
+            if (WastelandGame.Rescued(S)) line = "IT'S " + g.Stats.name + "! THE ONE WHO PICKED ME UP OFF THE ROAD." + (P.Vendor ? " YOU PAY FRIENDS' PRICES THIS WEEK." : "");
             if (S.disposition < -60) { Refuse(); return; }
             if (!S.Has(NpcSave.Met)) Opening();
             else Hub();
@@ -392,6 +393,7 @@ namespace MadMax.Npc
             int i0 = ((P.seed & 0xffff) + Day) % facts.Count;
             line = facts[i0] + (facts.Count > 1 && S.disposition >= 20 ? " " + facts[(i0 + 1) % facts.Count] : "");
             if (S.disposition >= -5 && !P.Raider && g.GiverRumour(at, TrustsWithWay, P.id) is string giver) line = giver + " " + line;   // word of someone with work
+            if (S.disposition >= 0 && !P.Raider && g.CacheRumour(at) is string cache) line += " " + cache;   // a buried stash (LOOK FOR)
             MadMax.Game.Journal.Add("RUMOUR", P.Name + ": " + line);
             g.Stats.Practice(Skill.Speech, 0.5f);
             Hub(false);

@@ -239,6 +239,7 @@ namespace MadMax.Game
             if (f != MadMax.Npc.Faction.None) MadMax.Npc.Factions.Shift(f, 2);
             MadMax.Npc.NpcRegistry.Reputation = Mathf.Min(100, MadMax.Npc.NpcRegistry.Reputation + 1);
             Toast(medic.KnownName + " PATCHED UP " + patient.KnownName + ": THEY WON'T FORGET IT");
+            NoteMedicWord(medic, patient);
             Journal.Add("CREW", medic.KnownName + " TREATED " + patient.KnownName + (f != MadMax.Npc.Faction.None ? " (" + MadMax.Npc.Factions.Names[(int)f] + ")" : ""));
             return 1;
         }
@@ -280,6 +281,7 @@ namespace MadMax.Game
             UpdateBurnedStories();
             UpdateBinocularWrecks();
             UpdateHitchers();
+            UpdateNightly1013();
             for (int i = BurnedOuts.Count - 1; i >= 0; i--) if (DayNight.TotalDays - BurnedOuts[i].day > BurnedDays * 2f) BurnedOuts.RemoveAt(i);
         }
 

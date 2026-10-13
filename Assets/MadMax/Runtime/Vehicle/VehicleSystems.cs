@@ -315,6 +315,34 @@ namespace MadMax.Vehicles
         /// <summary>Oil thickened by frost: 0 at 0 °C, 1 at −25 °C on a cold engine (the starter turns heavier).</summary>
         public float FrostDrag => Mathf.Clamp01(-MadMax.World.Weather.Temperature / 25f) * Mathf.Clamp01((30f - Temperature) / 30f);
 
+        // ------------------------------------------------------------------ frost on the gauges (2026-10-13)
+
+        /// <summary>Oil pressure (bar): rises with rpm once running, slowly while the oil is frost-thick
+        /// (<see cref="OilRiseSeconds"/>), higher while cold (thick oil); 0 with the engine off or dry.</summary>
+        public float OilPressure { get; private set; }
+        /// <summary>The OIL lamp stays lit below this after a start (normal on a frosty morning, a fault if it lasts).</summary>
+        public const float OilLampBelow = 0.5f, FastIdleMax = 0.45f, FastIdleUntil = 50f;
+        /// <summary>Seconds for the pressure to build: 0.4 s warm, up to ~7 s in a hard frost.</summary>
+        public float OilRiseSeconds => 0.4f + 7f * FrostDrag;
+        /// <summary>Fast idle share while the engine warms (choke / cold idle): 0 from <see cref="FastIdleUntil"/> °C.</summary>
+        public float FastIdleShare => Started ? FastIdleMax * Mathf.Clamp01((FastIdleUntil - Temperature) / FastIdleUntil) : 0f;
+        /// <summary>Running with the oil pressure not yet up: the OIL lamp glows amber.</summary>
+        public bool OilPressureLow => Started && HasEngine && OilPressure < OilLampBelow;
+
+        void UpdateOilPressure(EngineStats engine, float dt)
+        {
+            if (engine) engine.fastIdle = FastIdleShare;
+            float target = 0f;
+            if (Started && engine && OilFraction > 0.02f)
+            {
+                float rpm = engine.maxRpm > 0f ? Mathf.Clamp01(driver.Rpm / engine.maxRpm) : 0f;
+                float thick = 1f + 0.5f * Mathf.Clamp01((40f - Temperature) / 60f);                  // cold oil reads high once it flows
+                target = (1f + 3.5f * rpm) * thick * Mathf.Clamp01(OilFraction * 2.5f);
+            }
+            float tau = target > OilPressure ? OilRiseSeconds : 0.6f;
+            OilPressure = Mathf.MoveTowards(OilPressure, target, Mathf.Max(0.05f, Mathf.Abs(target - OilPressure)) * dt / tau);
+        }
+
         void UpdateGlow(float dt)
         {
             if (FuelKind == ResourceType.Diesel && ColdStart && driver.Occupied && !driver.aiDriven)
@@ -388,6 +416,7 @@ namespace MadMax.Vehicles
             // ignition: AI drivers' engines run; a player's cranks on the throttle
             if (driver.aiDriven && engine) Started = true;
             UpdateGlow(dt);
+            UpdateOilPressure(engine, dt);
             if (!Started && GlowPlugsLit && driver.Occupied && !driver.aiDriven && !Cranking && Time.time >= nextCrank && (driver.throttleInput > 0.1f || driver.brakeInput > 0.1f))
             {
                 nextCrank = Time.time + 1.5f;                                                              // wait for the lamp first

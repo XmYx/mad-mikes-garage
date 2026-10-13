@@ -288,9 +288,12 @@ namespace MadMax.Npc
         public static string CheckInNow(WastelandGame g, Npc n)
         {
             checkDay[n.Profile.id] = MadMax.World.DayNight.Day;
+            g.HomeWorries(n.transform.position, worries);                                         // the base in their words
             string line = n.Health < n.MaxHealth * 0.6f ? "TOOK A KNOCK, BUT HOLDING " + PostName(n)
+                        : worries.Count > 0 ? "HOLDING " + PostName(n)
                         : n.order == 2 ? "ALL QUIET " + PostName(n) + ". GUARD'S UP"
                         : "ALL QUIET " + PostName(n);
+            for (int i = 0; i < worries.Count && i < 2; i++) line += ". " + worries[i];
             return Call(g, n, line);
         }
 
@@ -306,6 +309,11 @@ namespace MadMax.Npc
             Call(g, n, "RAIDERS! " + (f != Faction.None ? "THE " + Factions.Names[(int)f] : "A COLUMN") + " " + PostName(n) + ". COME QUICK", true);
             return true;
         }
+
+        static readonly List<string> worries = new List<string>();
+
+        /// <summary>A station call from home relayed in <paramref name="n"/>'s voice (WastelandGame.UpdateHomeRadio).</summary>
+        public static string Relay(WastelandGame g, Npc n, string line) => Call(g, n, line);
 
         static string Call(WastelandGame g, Npc n, string line, bool urgent = false)
         {

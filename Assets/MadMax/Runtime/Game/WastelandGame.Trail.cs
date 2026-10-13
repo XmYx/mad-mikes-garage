@@ -198,21 +198,7 @@ namespace MadMax.Game
         /// Returns how many came back.</summary>
         public int ReclaimFromBoss(string gang, Vector3 at)
         {
-            var ids = MadMax.Npc.Trade.CarriedBy(gang);
-            int n = 0;
-            foreach (var id in ids)
-            {
-                if (!id.StartsWith("part:")) continue;
-                var p = at + Quaternion.Euler(0f, n * 70f, 0f) * new Vector3(1.4f, 0f, 0f);
-                if (DeformableTerrain.Instance) p.y = DeformableTerrain.Instance.Height(p.x, p.z) + 0.6f;
-                var part = SpawnPart(id.Substring(5), p, Quaternion.Euler(0f, n * 70f, 0f));
-                if (!part) continue;
-                MadMax.Npc.Trade.Recover(id);
-                LastReclaimed = id;
-                n++;
-                Journal.Add("RAID", "TOOK BACK YOUR " + ItemName(id) + " FROM THE " + gang);
-                TickLookFor("THE " + gang + " (YOUR " + ItemName(id) + ")");
-            }
+            int n = ReturnStolen(gang, at + new Vector3(1.4f, 0f, 0f), Vector3.forward);
             if (n > 0) Toast("THE " + gang + "'S BOSS WAS CARRYING YOUR " + (n == 1 ? ItemName(LastReclaimed) : n + " STOLEN PARTS") + ": TAKE IT BACK ([E])");
             return n;
         }

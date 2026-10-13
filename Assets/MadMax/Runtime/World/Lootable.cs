@@ -114,6 +114,7 @@ namespace MadMax.World
             { "refinery", new[] { ("res:7", 10, 30, 3f), ("res:36", 10, 30, 3f), ("res:8", 2, 6, 2f), ("res:37", 2, 8, 1.5f), ("use_fuel_additive", 1, 2, 1f), ("tool_gas_torch", 1, 1, 0.3f), ("res:42", 1, 3, 0.5f) } },
             { "cave", new[] { ("farm_fertilizer", 2, 5, 3f), ("food_can", 1, 2, 1f), ("tool_lantern", 1, 1, 0.5f), ("tool_pickaxe", 1, 1, 0.4f), ("res:3", 3, 8, 2f), ("throw_dynamite", 1, 2, 0.4f), ("book_charm", 1, 1, 0.2f), ("bait_insects", 2, 6, 1f) } },
             { "lockbox", new[] { ("res:21", 2, 6, 2f), ("res:23", 1, 3, 1f), ("med_pills", 1, 2, 2f), ("ammo_shells", 2, 6, 2f), ("book_gunsmith", 1, 1, 0.4f), ("bp_weapon_mg", 1, 1, 0.3f), ("trophy_plate", 1, 1, 0.8f), ("use_battery", 1, 1, 0.4f) } },
+            { "cache", new[] { ("food_can", 2, 4, 3f), ("food_can_meat", 1, 2, 2f), ("food_jerky", 1, 3, 2f), ("drink_water", 1, 3, 2f), ("ammo_shells", 4, 10, 2f), ("ammo_cartridge", 3, 8, 1.5f), ("med_bandage", 1, 3, 2f), ("med_antibiotics", 1, 1, 0.5f), ("med_pills", 1, 2, 1f), ("res:7", 6, 18, 3f), ("res:1", 6, 20, 2f), ("throw_dynamite", 1, 2, 0.5f), ("tool_lantern", 1, 1, 0.4f), ("use_spark_plugs", 1, 2, 0.6f), ("bp_weapon_harpoon", 1, 1, 0.1f), ("book_hotwiring", 1, 1, 0.3f), ("trophy_plate", 1, 1, 0.3f) } },   // buried stashes (rumoured caches)
             { "office", new[] { ("misc_paper", 2, 6, 3f), ("book_gunsmith", 1, 1, 0.4f), ("book_mechanics_1", 1, 1, 0.4f), ("book_builder", 1, 1, 0.4f), ("res:21", 1, 3, 1f), ("res:4", 1, 2, 1f), ("drink_soda", 1, 1, 1f) } },
         };
 

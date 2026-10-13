@@ -405,8 +405,8 @@ namespace MadMax.Vehicles
                 // clutch slip at pull-away (brake-torqued: higher). Uphill the driver slips it nearer the torque peak
                 float uphill = Mathf.Clamp01((Vector3.Dot(transform.forward, Vector3.up) * (Reversing ? -1f : 1f) - 0.04f) * 6f) * Mathf.Clamp01(1f - Mathf.Abs(ForwardSpeed) / 4f);
                 float launchFrac = brakeCmd > 0.5f ? 0.8f : Mathf.Lerp(0.45f, Mathf.Max(0.55f, engine.peakAt), uphill);
-                float launch = engine.idleRpm + Mathf.Max(driveCmd, uphill * 0.8f) * (engine.maxRpm * launchFrac - engine.idleRpm);
-                float target = neutral ? Mathf.Lerp(engine.idleRpm, engine.maxRpm, driveCmd) : Mathf.Max(launch, wheelRpm * ratio);
+                float launch = engine.IdleRpm + Mathf.Max(driveCmd, uphill * 0.8f) * (engine.maxRpm * launchFrac - engine.IdleRpm);
+                float target = neutral ? Mathf.Lerp(engine.IdleRpm, engine.maxRpm, driveCmd) : Mathf.Max(launch, wheelRpm * ratio);
                 // while the clutch (or an automatic's torque converter) slips, torque at the wheels is multiplied:
                 // up to 1.9x from a standstill in an automatic, 1.3x slipping a manual clutch hard
                 float coupling = neutral ? 1f : Mathf.Clamp01(wheelRpm * ratio / Mathf.Max(1f, launch));

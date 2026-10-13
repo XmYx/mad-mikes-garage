@@ -39,7 +39,10 @@ namespace MadMax.Game
                 stationState[st] = now;
                 if (Flat(st.transform.position - me) < 40f) continue;                              // in earshot: the player sees it
                 string msg = HomeCall(st, was, now);
-                if (msg != null) SendHomeCall(msg, st.transform.position);
+                if (msg == null) continue;
+                var voice = HomeVoice(st.transform.position);                                      // a companion on post says it
+                if (voice) MadMax.Npc.Companions.Relay(this, voice, msg.Replace("HOME FREQUENCY: ", ""));
+                else SendHomeCall(msg, st.transform.position);
             }
             if (stationState.Count > 64)
             {
@@ -255,6 +258,7 @@ namespace MadMax.Game
             d.roadWrecks = new List<Vector4>(RoadWrecks);
             d.scavHauls = MadMax.Npc.Trade.SaveHauls();
             SaveRoadside(d);
+            SaveNightly1013(d);
         }
 
         void LoadHome(SaveData d)
@@ -263,6 +267,7 @@ namespace MadMax.Game
             if (d.roadWrecks != null) RoadWrecks.AddRange(d.roadWrecks);
             MadMax.Npc.Trade.LoadHauls(d.scavHauls);
             LoadRoadside(d);
+            LoadNightly1013(d);
         }
     }
 }
