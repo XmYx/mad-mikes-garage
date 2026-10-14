@@ -13,7 +13,11 @@ namespace MadMax.Building
         MeshFilter mf;
         int shownStage = -1;
 
-        void Awake() => mf = GetComponent<MeshFilter>();
+        void Awake()
+        {
+            mf = GetComponent<MeshFilter>();
+            if (TryGetComponent<MeshRenderer>(out var mr)) mr.sharedMaterial = CropVisuals.Material(mr.sharedMaterial);
+        }
 
         void Update()
         {

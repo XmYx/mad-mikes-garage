@@ -12,6 +12,12 @@ namespace MadMax.Rendering
         public Color32[] px;
         public Texture2D texture;
 
+        /// <summary>One recorded line of text (HD text: drawn by <see cref="HudTextGraphic"/> over the canvas).</summary>
+        public struct TextRun { public int x, y, scale; public Color32 color; public string text; }
+        /// <summary>Non-null: <see cref="Text"/> records runs here instead of drawing pixels (the HUD's HD font); a later
+        /// opaque rect over half a run hides it, as it would cover the pixels.</summary>
+        public List<TextRun> runs;
+
         public PixelCanvas(int width, int height) { Resize(width, height); }
 
         public void Resize(int width, int height)
@@ -22,7 +28,7 @@ namespace MadMax.Rendering
             texture = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PixelCanvas" };
         }
 
-        public void Clear(Color32 c) => Array.Fill(px, c);
+        public void Clear(Color32 c) { Array.Fill(px, c); runs?.Clear(); }
 
         public void Upload() { texture.SetPixels32(px); texture.Apply(false); }
 
@@ -50,6 +56,7 @@ namespace MadMax.Rendering
 
         public void Rect(int x, int y, int rw, int rh, Color32 c)
         {
+            if (runs != null && c.a >= 180 && rw * rh >= 12) Cover(x, y, rw, rh);
             for (int j = y; j < y + rh; j++) for (int i = x; i < x + rw; i++) Set(i, j, c);
         }
 
@@ -113,9 +120,26 @@ namespace MadMax.Rendering
 
         public static int TextWidth(string s, int scale = 1) => s.Length * 4 * scale - scale;
 
+        void Cover(int x, int y, int rw, int rh)
+        {
+            for (int i = runs.Count - 1; i >= 0; i--)
+            {
+                var r = runs[i];
+                int tw = TextWidth(r.text, r.scale), th = 5 * r.scale;
+                int ox = Mathf.Max(0, Mathf.Min(x + rw, r.x + tw) - Mathf.Max(x, r.x)), oy = Mathf.Max(0, Mathf.Min(y + rh, r.y + th) - Mathf.Max(y, r.y));
+                if (ox * oy * 2 >= tw * th) runs.RemoveAt(i);
+            }
+        }
+
         public int Text(int x, int y, string s, Color32 c, int scale = 1, bool shadow = true)
         {
             s = s.ToUpperInvariant();
+            if (runs != null)
+            {
+                if (shadow) runs.Add(new TextRun { x = x + scale, y = y + scale, scale = scale, color = new Color32(10, 5, 3, 220), text = s });
+                runs.Add(new TextRun { x = x, y = y, scale = scale, color = c, text = s });
+                return s.Length * 4 * scale;
+            }
             if (shadow) Text(x + scale, y + scale, s, new Color32(10, 5, 3, 220), scale, false);
             int cx = x;
             foreach (char ch in s)

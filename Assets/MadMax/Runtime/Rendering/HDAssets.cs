@@ -72,6 +72,22 @@ namespace MadMax.Rendering
         }
 
         /// <summary>A transform anywhere under <paramref name="root"/> by exact name (depth first).</summary>
+        /// <summary>The first transform named <paramref name="name"/> that carries a mesh renderer (depth first).</summary>
+        /// <summary>The imported node that draws <paramref name="objectName"/> (its transform holds the FBX import rotation).</summary>
+        public static Transform MeshNode(HDAssetRef a, string objectName) => a && a.model ? FindMesh(a.model.transform, objectName) : null;
+
+        static Transform FindMesh(Transform root, string name)
+        {
+            if (!root) return null;
+            if (root.name == name && (root.GetComponent<MeshFilter>() || root.GetComponent<SkinnedMeshRenderer>())) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var r = FindMesh(root.GetChild(i), name);
+                if (r) return r;
+            }
+            return null;
+        }
+
         public static Transform FindDeep(Transform root, string name)
         {
             if (!root) return null;
@@ -94,7 +110,8 @@ namespace MadMax.Rendering
         public static bool MeshOf(HDAssetRef a, string objectName, out Mesh mesh, out Material[] mats)
         {
             mesh = null; mats = null;
-            var t = a && a.model ? FindDeep(a.model.transform, objectName) : null;
+            // rigged exports (animals) name a part mesh like the bone it hangs from: take the first match that draws
+            var t = a && a.model ? FindMesh(a.model.transform, objectName) : null;
             if (!t) return false;
             if (t.TryGetComponent<MeshFilter>(out var mf) && t.TryGetComponent<MeshRenderer>(out var mr)) { mesh = mf.sharedMesh; mats = mr.sharedMaterials; }
             else if (t.TryGetComponent<SkinnedMeshRenderer>(out var sk)) { mesh = sk.sharedMesh; mats = sk.sharedMaterials; }

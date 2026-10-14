@@ -61,6 +61,7 @@ namespace MadMax.World
 
         static Mesh Lamp()
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.RunwayLamp();
             if (lampMesh) return lampMesh;
             var g = new VoxelGrid();
             g.Box(0, 0, 0, 0, 2, 0, Pal.Ramp(Pal.Metal, 1));                                       // post
@@ -73,6 +74,7 @@ namespace MadMax.World
         {
             anchor = new Vector3(s.pos.x, 0f, s.pos.y);
             day = mat;
+            if (MadMax.Rendering.HDBits.On) { mat = MadMax.Rendering.HDShapes.Solid; day = mat; }
             night = new Material(mat) { name = "RunwayLampLit" };
             night.SetFloat("_Unlit", 1f);
             var t = DeformableTerrain.Instance;

@@ -22,6 +22,7 @@ namespace MadMax.World
         {
             int key = (int)k * Variants + variant;
             if (meshes.TryGetValue(key, out var m) && m) return m;
+            if (MadMax.Rendering.HDBits.On) return meshes[key] = MadMax.Rendering.HDBits.Shards(Ramp(k), k == Kind.Glass ? 30 : 14, (k == Kind.Glass ? 11f : 7f) * 0.035f, 4711 + key * 131);
             var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Glass);
             var r = new System.Random(4711 + key * 131);
             var ramp = Ramp(k);
@@ -40,7 +41,7 @@ namespace MadMax.World
         {
             var t = DeformableTerrain.Instance;
             if (!t || Application.isBatchMode) return;
-            var mat = t.worldPropMaterial ? t.worldPropMaterial : null;
+            var mat = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : t.worldPropMaterial ? t.worldPropMaterial : null;
             if (!mat) return;
             float y = t.Height(at.x, at.z);
             if (Physics.Raycast(at + Vector3.up * 0.3f, Vector3.down, out var hit, 3f, ~0, QueryTriggerInteraction.Ignore) && hit.point.y > y) y = hit.point.y;

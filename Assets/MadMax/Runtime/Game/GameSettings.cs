@@ -53,6 +53,9 @@ namespace MadMax.Game
         public bool voiceCaptions = true;   // speech bubbles over talking NPCs
         public bool flatWorld;              // no horizon curve (the planet stays flat to the eye)
         public bool hints = true;        // context hints (the first times you meet something)
+        public int hudFont;              // 0 auto (HD text with full-resolution rendering), 1 pixel font, 2 HD text
+        /// <summary>HUD and menu text drawn smooth (HudTextGraphic) instead of the 3x5 pixel font.</summary>
+        public bool HDText => hudFont == 2 || (hudFont == 0 && vector);
         public int autosaveMinutes = 10; // 0 off
         // audio
         public float ambientVolume = 1f;

@@ -46,6 +46,8 @@ namespace MadMax.Vehicles
             public Vector3Int min, max;
             public int belt;
             public Bounds glass; public bool hasGlass;
+            /// <summary>Wheel arcs for HD guards: centre (voxel space), guard radius, x span.</summary>
+            public readonly List<(Vector3 c, float r, float x0, float x1)> arcs = new List<(Vector3, float, float, float)>();
         }
         static readonly Dictionary<string, Shape> shapes = new Dictionary<string, Shape>();
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
@@ -270,6 +272,7 @@ namespace MadMax.Vehicles
             foreach (var w in wheels)
             {
                 float R = w.r + 2f;
+                sh.arcs.Add((w.c, R, Mathf.Min(w.xa, w.xb) - 1f, Mathf.Max(w.xa, w.xb) + 1f));
                 int x0 = Mathf.FloorToInt(Mathf.Min(w.xa, w.xb)) - 1, x1 = Mathf.CeilToInt(Mathf.Max(w.xa, w.xb)) + 1;
                 for (float a = 15f; a <= 165f; a += 40f / R)
                 {
@@ -350,6 +353,9 @@ namespace MadMax.Vehicles
             var list = shape.zone[i];
             if (list.Count == 0) return;
             string key = shape.min + "|" + shape.max + "|" + list.Count + "|" + i + "|" + (int)mat[i];
+            bool hd = MadMax.Rendering.HDAssets.Enabled && MadMax.Rendering.HDShapes.Solid;
+            if (hd) key += "|hd";
+            if (hd && (!meshes.TryGetValue(key, out var hm) || !hm)) meshes[key] = BuildHD(z, mat[i], list);
             if (!meshes.TryGetValue(key, out var mesh) || !mesh)
             {
                 var g = new VoxelGrid();
@@ -364,8 +370,90 @@ namespace MadMax.Vehicles
             if (z == ArmorZone.Windows) { go.transform.localPosition = body.localPosition; go.transform.localRotation = body.localRotation; go.transform.localScale = body.localScale; }
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             var br = body.GetComponent<MeshRenderer>();
-            if (br) go.GetComponent<MeshRenderer>().sharedMaterial = MadMax.Rendering.HDModel.VoxelMaterialFor(br);   // voxel plates: HDLit with vertex colours on HD bodies
+            if (br) go.GetComponent<MeshRenderer>().sharedMaterial = hd ? MadMax.Rendering.HDShapes.Solid : MadMax.Rendering.HDModel.VoxelMaterialFor(br);   // voxel plates: HDLit with vertex colours on HD bodies
             shown[i] = go;
+        }
+
+        /// <summary>HD armour from the zone's voxel layer: bevelled sheets per material-sized cell of the plate's plane (steel
+        /// 12×9 voxels with rivet rows, scrap a 7×5 patchwork of tilted, mismatched sheets, composite 10×10 rubber tiles on
+        /// a steel strip), curved guard plates along each wheel arc, round bars for the window grilles.</summary>
+        Mesh BuildHD(ArmorZone z, ArmorMat m, List<Vector3Int> list)
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            int zi = (int)z;
+            if (z == ArmorZone.Windows)
+            {
+                var set = new HashSet<Vector3Int>(list);
+                var bar = m == ArmorMat.Steel ? Pal.Metal[2] : m == ArmorMat.Composite ? Pal.Tire[2] : Pal.Rust[2];
+                foreach (var axis in new[] { Vector3Int.right, Vector3Int.up, new Vector3Int(0, 0, 1) })
+                    foreach (var p in list)
+                    {
+                        if (set.Contains(p - axis) || !set.Contains(p + axis)) continue;            // the start of a run along the axis
+                        var e = p;
+                        while (set.Contains(e + axis)) e += axis;
+                        b.Tube((Vector3)p * S, (Vector3)e * S, S * 0.32f, S * 0.32f, bar, 6, true);
+                    }
+                return b.ToMesh("ArmorHD_Grille_" + MatNames[(int)m]);
+            }
+            if (z == ArmorZone.Wheels)
+            {
+                foreach (var a in shape.arcs)
+                {
+                    float w = (a.x1 - a.x0) * S, cx = (a.x0 + a.x1) * 0.5f * S;
+                    int segs = 7;
+                    for (int k = 0; k < segs; k++)
+                    {
+                        float a0 = Mathf.Lerp(15f, 165f, k / (float)segs), a1 = Mathf.Lerp(15f, 165f, (k + 1) / (float)segs), am = (a0 + a1) * 0.5f;
+                        var dir = new Vector3(0f, Mathf.Sin(am * Mathf.Deg2Rad), Mathf.Cos(am * Mathf.Deg2Rad));
+                        var o = new Vector3(cx, a.c.y * S, a.c.z * S) + dir * (a.r * S);
+                        float len = 2f * a.r * S * Mathf.Sin((a1 - a0) * 0.5f * Mathf.Deg2Rad) + 0.004f;
+                        var tangent = new Vector3(0f, Mathf.Cos(am * Mathf.Deg2Rad), -Mathf.Sin(am * Mathf.Deg2Rad));
+                        b.Plate(o, new Vector3(w, S * 0.5f, len), PlateColour(m, zi, k), Quaternion.LookRotation(tangent, dir), k % 2 == 0 ? 4 : 0, Pal.Chrome[1]);
+                    }
+                }
+                return b.ToMesh("ArmorHD_Guards_" + MatNames[(int)m]);
+            }
+            // flat zones: axes of the plate's plane (u, v) and its normal
+            int nAx = z == ArmorZone.Left || z == ArmorZone.Right ? 0 : z == ArmorZone.Roof ? 1 : 2;
+            int uAx = nAx == 0 ? 2 : 0, vAx = nAx == 1 ? 2 : 1;
+            int cw = m == ArmorMat.Steel ? 12 : m == ArmorMat.Composite ? 10 : 7, ch = m == ArmorMat.Steel ? 9 : m == ArmorMat.Composite ? 10 : 5;
+            var cells = new Dictionary<Vector2Int, (int u0, int u1, int v0, int v1, float depth, int n)>();
+            foreach (var p in list)
+            {
+                int u = p[uAx], v = p[vAx];
+                var key = new Vector2Int(Div(u, cw), Div(v, ch));
+                if (!cells.TryGetValue(key, out var c)) c = (u, u, v, v, 0f, 0);
+                cells[key] = (Mathf.Min(c.u0, u), Mathf.Max(c.u1, u), Mathf.Min(c.v0, v), Mathf.Max(c.v1, v), c.depth + p[nAx], c.n + 1);
+            }
+            var nrm = Vector3.zero; nrm[nAx] = z == ArmorZone.Left || z == ArmorZone.Rear ? -1f : 1f;
+            var uDir = Vector3.zero; uDir[uAx] = 1f;
+            var vDir = Vector3.zero; vDir[vAx] = 1f;
+            foreach (var kv in cells)
+            {
+                var c = kv.Value;
+                if (c.n < 3) continue;
+                var centre = Vector3.zero;
+                centre[uAx] = (c.u0 + c.u1) * 0.5f; centre[vAx] = (c.v0 + c.v1) * 0.5f; centre[nAx] = c.depth / c.n;
+                float su = (c.u1 - c.u0 + 1) * S, sv = (c.v1 - c.v0 + 1) * S;
+                float h = Pal.Hash(kv.Key.x, kv.Key.y, zi, 1231);
+                var rot = Quaternion.LookRotation(vDir, nrm);
+                if (m == ArmorMat.Scrap) { rot = Quaternion.AngleAxis((h - 0.5f) * 8f, nrm) * rot; su *= 1.08f; sv *= 1.1f; centre += nrm * (h * 0.4f); }   // overlapping, crooked sheets
+                var col = PlateColour(m, zi, kv.Key.x * 31 + kv.Key.y);
+                b.Plate(centre * S, new Vector3(su, S * (m == ArmorMat.Steel ? 0.7f : 0.5f), sv), col, rot, m == ArmorMat.Composite ? 0 : m == ArmorMat.Steel ? 14 : 8, Pal.Chrome[1]);
+                if (m == ArmorMat.Composite) b.Box(centre * S + nrm * S * 0.3f, Vector3.Scale(new Vector3(su, S * 0.3f, S * 0.8f), Vector3.one), Pal.Metal[2], S * 0.1f, rot);
+            }
+            return b.ToMesh("ArmorHD_" + ZoneNames[zi] + "_" + MatNames[(int)m]);
+        }
+
+        static Color32 PlateColour(ArmorMat m, int zone, int cell)
+        {
+            float h = Pal.Hash(cell, zone, 7, 1241);
+            switch (m)
+            {
+                case ArmorMat.Steel: return Pal.Metal[h < 0.5f ? 2 : 3];
+                case ArmorMat.Composite: return Pal.Tire[h < 0.5f ? 1 : 2];
+                default: return h < 0.38f ? Pal.Rust[2 + (h < 0.18f ? 1 : 0)] : h < 0.72f ? Pal.Metal[2 + (h < 0.55f ? 1 : 0)] : Pal.Olive[2];
+            }
         }
 
         static int Mod(int a, int m) => ((a % m) + m) % m;

@@ -37,11 +37,12 @@ namespace MadMax.World
             public Color32 color;
         }
 
-        public void Init(Material mat) { material = mat; Instance = this; }
+        public void Init(Material mat) { material = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat; Instance = this; }   // HD: bevelled chunks, round puffs
         void OnDestroy() { if (Instance == this) Instance = null; foreach (var m in cubes.Values) Destroy(m); }
 
         Mesh Cube(Color32 c)
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.Chunk(c);
             int key = c.r << 16 | c.g << 8 | c.b;
             if (cubes.TryGetValue(key, out var m) && m) return m;
             var g = new VoxelGrid();
@@ -107,7 +108,7 @@ namespace MadMax.World
             }
             else { p = puffs[nextPuff]; nextPuff = (nextPuff + 1) % puffs.Count; }
             p.t.gameObject.SetActive(true);
-            p.mf.sharedMesh = Cube(color);
+            p.mf.sharedMesh = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDBits.Puff(color) : Cube(color);
             p.t.SetPositionAndRotation(pos, Quaternion.Euler(0, Random.Range(0, 4) * 90f, 0));
             p.vel = velocity; p.born = Time.time; p.life = life; p.size = size;
             p.t.localScale = Vector3.one * size;

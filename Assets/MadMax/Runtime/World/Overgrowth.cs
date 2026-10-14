@@ -33,6 +33,7 @@ namespace MadMax.World
         DestructibleVoxels target;
         Task<Plan> job;
         Task<VoxelMesher.MeshData> meshJob;
+        Task<MadMax.Rendering.HDShapes> hdJob;                 // HD pack: leaves and moss instead of half-size voxels
         Plan plan;
         float size, level0, rate, factor, nextCheck;
         int seed, shownLevel = int.MinValue, shownKey = -1;
@@ -89,6 +90,12 @@ namespace MadMax.World
                 float h01 = (Stable(target.StateKey ?? name) & 0xffff) / 65535f;
                 level0 = plan.span * factor * (0.08f + 0.85f * h01 * h01);
                 rate = plan.span * factor / 30f;
+            }
+            if (hdJob != null)
+            {
+                if (!hdJob.IsCompleted) return;
+                if (hdJob.IsFaulted) Debug.LogException(hdJob.Exception); else ApplyHD(hdJob.Result);
+                hdJob = null;
             }
             if (meshJob != null)
             {
@@ -249,6 +256,7 @@ namespace MadMax.World
             bool flowers = biome != Biome.Desert && biome != Biome.Nuclear && !frost;
             bool spores = biome == Biome.Nuclear;
             float sz = size;
+            if (MadMax.Rendering.HDAssets.Enabled) { hdJob = Task.Run(() => BuildOverlayHD(p, nodes, level, sd, leaves, frost, snowy, flowers, spores, sz)); return; }
             meshJob = Task.Run(() => BuildOverlay(p, nodes, level, sd, leaves, frost, snowy, flowers, spores, sz));
         }
 
@@ -308,6 +316,86 @@ namespace MadMax.World
                 }
             }
             return VoxelMesher.BuildData(g, size * 0.5f);
+        }
+
+        /// <summary>HD overlay (worker thread): per grown face a few leaves lying on the wall and tilting out (more and
+        /// longer with age), moss cushions on tops, weeds on ledges, blossoms or spores on old growth. Local space of the
+        /// building template (voxel centres on integers × size).</summary>
+        static MadMax.Rendering.HDShapes BuildOverlayHD(Plan p, int[] nodes, float level, int seed, Color32[] leaves, bool frost, bool snowy, bool flowers, bool spores, float size)
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            foreach (int i in nodes)
+            {
+                float age = level - p.birth[i];
+                var q = p.cell[i];
+                int f = p.face[i];
+                var d = (Vector3)Dirs[f];
+                bool top = f == 2;
+                float cover = Mathf.Clamp01(age / 4f) * 0.92f + 0.05f;
+                var face = ((Vector3)q - d * 0.5f) * size + d * 0.004f;               // the wall surface of the host voxel
+                var t1 = Mathf.Abs(d.y) > 0.5f ? Vector3.right : Vector3.up;
+                var t2 = Vector3.Cross(d, t1);
+                int n = 1 + Mathf.FloorToInt(cover * 3.2f);
+                for (int k = 0; k < n; k++)
+                {
+                    var fine = new Vector3Int(q.x * 4 + k, q.y * 4 + f, q.z * 4);
+                    if (Pal.Hash(fine, seed) > cover) continue;
+                    float h = Pal.Hash(fine, seed + 1), a = Pal.Hash(fine, seed + 7) * 6.283f;
+                    float u = (Pal.Hash(fine, seed + 8) - 0.5f) * size * 0.8f, w = (Pal.Hash(fine, seed + 9) - 0.5f) * size * 0.8f;
+                    var at = face + t1 * u + t2 * w;
+                    Color32 col;
+                    if (top) col = snowy ? SnowCap : Moss[Mathf.Min(3, (int)(h * 4f))];
+                    else if (frost && h < 0.5f) col = Autumn[Mathf.Min(3, (int)(h * 8f))];
+                    else col = leaves[Mathf.Min(3, (int)(h * 4f))];
+                    if (top)
+                    {
+                        b.Ellipsoid(at, new Vector3(size * (0.35f + h * 0.3f), size * 0.08f, size * (0.35f + h * 0.25f)), col, 7, 4, true);
+                        continue;
+                    }
+                    if (!top && age > 9f && Pal.Hash(fine, seed + 2) < 0.06f && (flowers || spores))
+                    {
+                        var bc = flowers ? Blossom[Mathf.Min(Blossom.Length - 1, (int)(Pal.Hash(fine, seed + 6) * Blossom.Length))] : Spore;
+                        b.Ellipsoid(at + d * size * 0.12f, Vector3.one * size * 0.13f, bc, 6, 4);
+                    }
+                    float len = size * (0.55f + 0.5f * h) * (age > 7f ? 1.3f : 1f), tilt = age > 7f ? 0.45f : 0.2f;
+                    var dir = t1 * Mathf.Cos(a) + t2 * Mathf.Sin(a);
+                    if (Vector3.Dot(dir, Vector3.up) > 0.3f) dir = -dir;                   // ivy leaves hang
+                    b.Leaf(at, at + dir * len + d * len * tilt, len * 0.6f, col, 0f, Vector3.Cross(d, dir), d);
+                }
+                // weeds on ledges and roofs
+                if (top && !snowy && age > 6f && Pal.Hash(q, seed + 4) < 0.14f)
+                {
+                    int hn = 2 + (int)(Pal.Hash(q, seed + 5) * 4f);
+                    for (int k = 0; k < hn; k++)
+                    {
+                        float a = k * 2.3f + Pal.Hash(q, seed + 10), l = size * (0.8f + Pal.Hash(q, seed + 11 + k) * 1.4f);
+                        var root = face + new Vector3(Mathf.Cos(a) * size * 0.15f, 0f, Mathf.Sin(a) * size * 0.15f);
+                        b.Leaf(root, root + new Vector3(Mathf.Cos(a) * l * 0.3f, l, Mathf.Sin(a) * l * 0.3f), size * 0.12f, (frost ? Autumn : leaves)[Mathf.Min(3, 1 + k % 3)], 0.3f);
+                    }
+                }
+            }
+            for (int k = 0; k < b.c.Count; k++) { var cc = b.c[k]; cc.a = 215; b.c[k] = cc; }   // a little sway, like the voxel overlay
+            return b;
+        }
+
+        void ApplyHD(MadMax.Rendering.HDShapes b)
+        {
+            if (!this || !target) return;
+            if (mesh) Destroy(mesh);
+            mesh = null;
+            if (b == null || b.v.Count == 0) { if (overlay) overlay.SetActive(false); return; }
+            mesh = b.ToMesh("OvergrowthHD");
+            if (!overlay)
+            {
+                overlay = new GameObject("Overgrowth", typeof(MeshFilter), typeof(MeshRenderer));
+                overlay.transform.SetParent(transform, false);
+                var mr = overlay.GetComponent<MeshRenderer>();
+                mr.sharedMaterial = DeformableTerrain.Instance ? DeformableTerrain.Instance.overgrowthMaterial : null;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            overlay.transform.localPosition = Vector3.zero;
+            overlay.SetActive(true);
+            overlay.GetComponent<MeshFilter>().sharedMesh = mesh;
         }
 
         void Apply(VoxelMesher.MeshData md)

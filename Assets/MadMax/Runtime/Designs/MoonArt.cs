@@ -131,6 +131,9 @@ namespace MadMax.Designs
 
         /// <summary>The regolith plain: a heightfield at <see cref="Cell"/> spacing, one flat colour per cell (like the
         /// terrain) over smooth normals.</summary>
+        /// <summary>HD look for the Moon set (set by the title sequence on the main thread before the worker builds).</summary>
+        public static bool hd;
+
         public static SurfaceData BuildSurface()
         {
             int n = Mathf.RoundToInt(Radius * 2f / Cell);
@@ -161,7 +164,7 @@ namespace MadMax.Designs
                     int ii = i + (q & 1), jj = j + (q >> 1), k = jj * row + ii;
                     verts[v + q] = new Vector3(-Radius + ii * Cell, hs[k], -Radius + jj * Cell);
                     norms[v + q] = ns[k];
-                    cols[v + q] = col;
+                    cols[v + q] = hd ? Regolith(-Radius + ii * Cell, -Radius + jj * Cell, ii, jj) : col;   // HD: smooth, not per cell
                 }
                 tris[t++] = v; tris[t++] = v + 2; tris[t++] = v + 1;
                 tris[t++] = v + 1; tris[t++] = v + 2; tris[t++] = v + 3;
@@ -173,6 +176,7 @@ namespace MadMax.Designs
         /// <summary>Boulders scattered off the stage, seated on the ground (0.16 m voxels, one mesh in set space).</summary>
         public static Mesh Rocks()
         {
+            if (MadMax.Rendering.HDBits.On) return RocksHD();
             const float s = 0.16f;
             var g = new VoxelGrid();
             var r = new System.Random(4242);
@@ -205,6 +209,7 @@ namespace MadMax.Designs
         /// ramp. Authored along +Z (nose forward), origin at the hull's lowest point, 0.12 m voxels.</summary>
         public static Mesh Rocket()
         {
+            if (MadMax.Rendering.HDBits.On) return RocketHD();
             var g = new VoxelGrid();
             const int L = 72, R = 8;
             VoxMat hull = p =>
@@ -257,6 +262,7 @@ namespace MadMax.Designs
         /// bleached almost white. Origin on the ground under its centre, 0.14 m voxels.</summary>
         public static Mesh Lander()
         {
+            if (MadMax.Rendering.HDBits.On) return LanderHD();
             var g = new VoxelGrid();
             VoxMat foil = p => Pal.Hash(p.x >> 1, p.y, p.z >> 1, 12) > 0.6f ? Pal.Ochre[4] : Pal.Hash(p, 13) > 0.5f ? Pal.Ochre[3] : Pal.Bronze[3];
             for (int y = 12; y <= 24; y++)
@@ -335,11 +341,26 @@ namespace MadMax.Designs
                 float latC = (lat0 + lat1) * 0.5f, lonC = (lon0 + lon1) * 0.5f;
                 var col = w != null ? Ground(w, latC, lonC, i, j) : Pal.Navy[2];
                 Quad(gv, gn, gc, gt, Dir(lat0, lon0), Dir(lat0, lon1), Dir(lat1, lon1), Dir(lat1, lon0), col, 1f);
+                if (MadMax.Rendering.HDBits.On && w != null)
+                {
+                    // HD: each corner its own sample, so coasts and biomes blend instead of stepping; the clouds are
+                    // painted into the corners by density (an opaque shell of quads reads as white tiles)
+                    int k0 = gc.Count - 4;
+                    gc[k0] = Cloudy(Ground(w, lat0, lon0, i, j), lat0, lon0); gc[k0 + 1] = Cloudy(Ground(w, lat0, lon1, i + 1, j), lat0, lon1);
+                    gc[k0 + 2] = Cloudy(Ground(w, lat1, lon1, i + 1, j + 1), lat1, lon1); gc[k0 + 3] = Cloudy(Ground(w, lat1, lon0, i, j + 1), lat1, lon0);
+                    continue;
+                }
                 float cl = CloudAt(Dir(latC, lonC), latC);
                 if (cl > 0.66f) Quad(cv, cn, cc, ct, Dir(lat0, lon0), Dir(lat0, lon1), Dir(lat1, lon1), Dir(lat1, lon0), cl > 0.72f ? Pal.Cream[4] : Pal.Cream[3], 1.025f);
             }
             clouds = Build("EarthClouds", cv, cn, cc, ct);
             return Build("Earth", gv, gn, gc, gt);
+        }
+
+        static Color32 Cloudy(Color32 ground, float lat, float lon)
+        {
+            float t = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 0.76f, CloudAt(Dir(lat, lon), lat)));
+            return Color32.Lerp(ground, Pal.Cream[4], t * 0.92f);
         }
 
         static void Quad(List<Vector3> v, List<Vector3> n, List<Color32> c, List<int> t, Vector3 a, Vector3 b, Vector3 d, Vector3 e, Color32 col, float r)
@@ -361,6 +382,102 @@ namespace MadMax.Designs
             m.SetVertices(v); m.SetNormals(n); m.SetColors(c); m.SetTriangles(t, 0);
             m.RecalculateBounds();
             return m;
+        }
+
+        // ------------------------------------------------------------------ HD (HD pack on)
+        static Mesh RocksHD()
+        {
+            var b = new MadMax.Rendering.HDShapes();
+            var r = new System.Random(4242);
+            for (int i = 0; i < 70; i++)
+            {
+                float a = (float)r.NextDouble() * Mathf.PI * 2f, d = 7f + Mathf.Sqrt((float)r.NextDouble()) * (Radius - 12f);
+                float x = Mathf.Cos(a) * d, z = Mathf.Sin(a) * d;
+                if (Wild(x, z) < 0.9f) continue;
+                float rad = (1.2f + Mathf.Pow((float)r.NextDouble(), 2f) * 5f) * 0.16f;
+                var c = new Vector3(x, Height(x, z) + rad * 0.3f, z);
+                int lumps = 2 + (int)(r.NextDouble() * 3);
+                for (int k = 0; k < lumps; k++)
+                {
+                    var o = c + new Vector3((float)(r.NextDouble() - 0.5) * rad, (float)(r.NextDouble() - 0.5) * rad * 0.4f, (float)(r.NextDouble() - 0.5) * rad);
+                    var rr = new Vector3(rad * (0.7f + (float)r.NextDouble() * 0.4f), rad * (0.45f + (float)r.NextDouble() * 0.3f), rad * (0.7f + (float)r.NextDouble() * 0.4f));
+                    b.Ellipsoid(o, rr, Pal.Fur[2 + k % 2], 9, 6, false, Quaternion.Euler((float)r.NextDouble() * 30f, (float)r.NextDouble() * 360f, (float)r.NextDouble() * 30f));
+                }
+            }
+            return b.ToMesh("MoonRocksHD");
+        }
+
+        /// <summary>HD scrap rocket: the same layout as the voxel one (along +Z, origin at the hull bottom) from tubes and plates.</summary>
+        static Mesh RocketHD()
+        {
+            const float s = 0.12f, L = 72f, R = 8f;
+            var b = new MadMax.Rendering.HDShapes();
+            var axis = new Vector3(0f, R * s, 0f);
+            // hull: 18-voxel drums of patched rust / bare metal, seam rings, rivet bands
+            for (int k = 0; k < 4; k++)
+            {
+                float z0 = k * 18f, z1 = Mathf.Min(L, z0 + 18f);
+                var col = Pal.Hash(k, 1, 0, 9) > 0.55f ? Pal.Rust[3] : Pal.Chrome[2];
+                b.Tube(axis + Vector3.forward * z0 * s, axis + Vector3.forward * z1 * s, R * s, R * s, col, 18);
+                b.Tube(axis + Vector3.forward * (z0 - 0.4f) * s, axis + Vector3.forward * (z0 + 0.4f) * s, (R + 0.25f) * s, (R + 0.25f) * s, Pal.Metal[1], 18);
+            }
+            b.Tube(axis + Vector3.forward * 6f * s, axis + Vector3.forward * 12f * s, (R + 0.12f) * s, (R + 0.12f) * s, Pal.Ochre[4], 18);   // hazard band
+            // nose: tapering rings, crumpled crimson
+            for (int k = 0; k < 8; k++)
+            {
+                float a = k / 8f, c = (k + 1) / 8f;
+                float ra = R * (1f - a * a * 0.92f), rc = R * (1f - c * c * 0.92f);
+                b.Tube(axis + new Vector3(Mathf.Sin(a * 3f) * 0.8f * s, 0f, (L + a * 22f) * s), axis + new Vector3(Mathf.Sin(c * 3f) * 0.8f * s, 0f, (L + c * 22f) * s), ra * s, rc * s, k < 2 ? Pal.Ochre[4] : Pal.Crimson[2 + (k & 1)], 18);
+            }
+            b.Ellipsoid(axis + new Vector3(Mathf.Sin(3f) * 0.8f * s, 0f, (L + 22f) * s), Vector3.one * R * 0.09f * s, Pal.Crimson[2], 8, 5);
+            // the bell, scorched
+            b.Tube(axis, axis - Vector3.forward * 8f * s, 3f * s, 7.4f * s, Pal.Black[2], 16, false);
+            // fins
+            for (int f = 0; f < 4; f++)
+            {
+                float ang = f * 90f;
+                var dir = Quaternion.Euler(0f, 0f, ang) * Vector3.right;
+                var o = axis + dir * (R + 4f) * s + Vector3.forward * 7f * s;
+                b.Plate(o, new Vector3(8f * s, 0.8f * s, 15f * s), Pal.Crimson[2], Quaternion.LookRotation(Vector3.forward, Quaternion.Euler(0f, 0f, 90f) * dir), 6, Pal.Metal[1]);
+            }
+            // the hatch ramp down to the ground, the dark opening
+            b.Box(new Vector3((R - 0.2f) * s, 7f * s, 36f * s), new Vector3(0.6f * s, 8f * s, 12f * s), Pal.Black[0], 0.1f * s);
+            b.Plate(new Vector3((R + 6f) * s, 0.5f * s, 36f * s), new Vector3(12f * s, 0.6f * s, 12f * s), Pal.Metal[2], Quaternion.Euler(0f, 0f, -25f), 8, Pal.Rust[2]);
+            // welded scrap: a patch plate and the spare tyre
+            b.Plate(new Vector3(-(R + 0.6f) * s, 9f * s, 52f * s), new Vector3(7f * s, 0.6f * s, 9f * s), Pal.Rust[2], Quaternion.Euler(0f, 0f, 90f), 6, Pal.Chrome[1]);
+            var tyre = new Vector3(0f, (R + R + 1f) * s, 20f * s);
+            for (int k = 0; k < 14; k++)
+            {
+                float a0 = k * Mathf.PI * 2f / 14f, a1 = (k + 1) * Mathf.PI * 2f / 14f;
+                b.Tube(tyre + new Vector3(0f, Mathf.Sin(a0), Mathf.Cos(a0)) * 2.7f * s, tyre + new Vector3(0f, Mathf.Sin(a1), Mathf.Cos(a1)) * 2.7f * s, 1.1f * s, 1.1f * s, Pal.Tire[1], 8);
+            }
+            return b.ToMesh("ScrapRocketHD");
+        }
+
+        static Mesh LanderHD()
+        {
+            const float s = 0.14f;
+            var b = new MadMax.Rendering.HDShapes();
+            var body = new Vector3(0f, 18f * s, 0f);
+            b.Box(body, new Vector3(20f, 13f, 20f) * s, Pal.Ochre[4], 1.2f * s, Quaternion.Euler(0f, 45f, 0f));
+            b.Box(body, new Vector3(20f, 12.6f, 20f) * s, Pal.Bronze[3], 1.2f * s);
+            b.Box(new Vector3(0f, 25.5f * s, 0f), new Vector3(15f, 1.6f, 15f) * s, Pal.Chrome[2], 0.4f * s);
+            for (int k = 0; k < 4; k++)
+            {
+                float sx = (k & 1) == 0 ? 1f : -1f, sz = k < 2 ? 1f : -1f;
+                b.Tube(new Vector3(sx * 8f, 16f, sz * 8f) * s, new Vector3(sx * 17f, 1f, sz * 17f) * s, 1.1f * s, 0.9f * s, Pal.Chrome[2], 8);
+                b.Tube(new Vector3(sx * 9f, 13f, sz * 9f) * s, new Vector3(sx * 13f, 6f, sz * 13f) * s, 0.6f * s, 0.6f * s, Pal.Chrome[1], 6);
+                b.Ellipsoid(new Vector3(sx * 17f, 0.4f, sz * 17f) * s, new Vector3(3f, 0.6f, 3f) * s, Pal.Chrome[2], 12, 4, true);
+            }
+            for (float y = 2f; y < 16f; y += 3f) b.Tube(new Vector3(13.5f, y, -2.5f) * s, new Vector3(13.5f, y, 2.5f) * s, 0.35f * s, 0.35f * s, Pal.Chrome[2], 6);
+            b.Tube(new Vector3(13.5f, 1f, -3f) * s, new Vector3(13.5f, 16f, -3f) * s, 0.4f * s, 0.4f * s, Pal.Chrome[1], 6);
+            b.Tube(new Vector3(13.5f, 1f, 3f) * s, new Vector3(13.5f, 16f, 3f) * s, 0.4f * s, 0.4f * s, Pal.Chrome[1], 6);
+            b.Tube(new Vector3(-22f, 0f, 6f) * s, new Vector3(-22f, 23f, 6f) * s, 0.35f * s, 0.3f * s, Pal.Chrome[3], 6);
+            b.Tube(new Vector3(-22f, 23f, 6f) * s, new Vector3(-12f, 23f, 6f) * s, 0.25f * s, 0.25f * s, Pal.Chrome[3], 6);
+            b.Box(new Vector3(-16.5f, 19.5f, 6f) * s, new Vector3(9.5f, 5.5f, 0.2f) * s, Pal.Cream[4], 0.05f * s);
+            b.Box(new Vector3(-19.2f, 21f, 5.85f) * s, new Vector3(4f, 2.6f, 0.15f) * s, Pal.PaleBlue[3], 0.03f * s);
+            for (int k = 0; k < 3; k++) b.Box(new Vector3(-16.5f, 17.6f + k * 1.8f, 5.85f) * s, new Vector3(9.4f, 0.8f, 0.12f) * s, Pal.Pink[4], 0.02f * s);
+            return b.ToMesh("OldLanderHD");
         }
     }
 }

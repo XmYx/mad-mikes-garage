@@ -236,7 +236,7 @@ Shader "MadMax/HDLit"
                 half4 tangentWS : TEXCOORD2; float2 uv : TEXCOORD3; half4 color : COLOR; half fog : TEXCOORD4;
                 float3 positionOS : TEXCOORD5; half wear : TEXCOORD6; float3 carveWS : TEXCOORD7;
                 #if defined(_TERRAIN)
-                half4 splat0 : TEXCOORD8; half4 splat1 : TEXCOORD9;
+                half4 splat0 : TEXCOORD8; half4 splat1 : TEXCOORD9; float2 road : TEXCOORD10;
                 #endif
             };
 
@@ -255,7 +255,8 @@ Shader "MadMax/HDLit"
                 o.wear = saturate(i.wear.x);
                 o.fog = ComputeFogFactor(o.positionCS.z);
                 #if defined(_TERRAIN)
-                o.splat0 = i.splat0; o.splat1 = i.splat1;
+                o.splat0 = i.splat0; o.splat1 = i.splat1; o.road = i.wear;
+                o.wear = 0;
                 #endif
                 return o;
             }
@@ -348,8 +349,24 @@ Shader "MadMax/HDLit"
                 half3 nW = normalize(i.normalWS);
                 half3 n = nW;
                 #if defined(_TERRAIN)
-                TerrainSurface(i.positionWS, nW, i.splat0, i.splat1, vcol, albedo, n, smooth);
+                // ruts (vertex alpha = depth): the mud layer, darker and wetter, per pixel
+                half rut = saturate(1.0h - i.color.a);
+                half4 s1 = i.splat1;
+                if (rut > 0.01h) { half4 s0r = i.splat0 * (1.0h - rut); s1 = s1 * (1.0h - rut); s1.w += rut; i.splat0 = s0r; }
+                TerrainSurface(i.positionWS, nW, i.splat0, s1, vcol * (1.0h - rut * 0.25h), albedo, n, smooth);
                 metal = 0.0h; ao = 1.0h;
+                // highway centre line: 28 cm wide dashes, 3 m on / 3 m off, worn in patches (sharp at any distance)
+                if (i.road.x < 1.0)
+                {
+                    float aa = max(fwidth(i.road.x), 1e-4);
+                    half paintMask = (half)(1.0 - smoothstep(0.14 - aa, 0.14 + aa, abs(i.road.x)));
+                    float ph = frac(i.road.y / 6.0);
+                    float ab = max(fwidth(i.road.y) / 6.0, 1e-4);
+                    paintMask *= (half)(smoothstep(0.0, ab, ph) * (1.0 - smoothstep(0.5 - ab, 0.5 + ab, ph)));
+                    paintMask *= (half)saturate((Value3(i.positionWS * 3.1) - 0.22) * 4.0);
+                    albedo = lerp(albedo, half3(0.55h, 0.33h, 0.065h), paintMask * 0.9h);
+                    smooth = lerp(smooth, 0.4h, paintMask);
+                }
                 #else
                 if (_NormalStrength > 0.001h)
                 {

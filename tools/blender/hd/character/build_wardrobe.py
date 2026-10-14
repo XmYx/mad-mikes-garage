@@ -32,7 +32,7 @@ SPECS = {"M": ("m", "rugged", 1.0, 1.0), "M2": ("m", "lean", 1.02, 0.95), "F": (
 SKIN = 1                       # neutral tone (tinted in game)
 HAIR = 2                       # mid brown (tinted in game)
 HAT_CUT = min(v for v in G.HEADWEAR.values() if v > 0)      # the lowest crown cut fits under every hat
-OUT = os.path.join(HERE, "blend")
+OUT = os.environ.get("HD_WARDROBE_OUT", os.path.join(HERE, "blend"))
 
 
 def mat_for(key):
@@ -79,7 +79,7 @@ def build(key):
                 continue
             pn = spec["name"] if spec["name"].startswith(gid) else gid + "_" + spec["name"]
             go = BL.make_object(f"{name}_{pn}", pc["mesh"], arm,
-                                mat_for(spec["mat"]), coll, pc["weights"])
+                                mat_for(spec["mat"]), coll, pc["weights"], copy_mesh=True)   # pieces are cached by name: tshirt / tshirt_worn share one
             go["garment"] = gid
             go["slot"] = slot
             n += 1

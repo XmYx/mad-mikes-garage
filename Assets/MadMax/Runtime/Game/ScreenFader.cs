@@ -76,15 +76,16 @@ namespace MadMax.Game
         /// <summary>Pixel-art tyre wrapped in snow chains (48 px, point filtered).</summary>
         static Texture2D WheelTexture()
         {
-            const int n = 48;
-            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            bool hd = MadMax.Rendering.HDAssets.Enabled;                                       // HD: 4x the pixels, smooth filtering
+            int n = hd ? 192 : 48; float k = n / 48f;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, hd) { filterMode = hd ? FilterMode.Trilinear : FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             var clear = new Color32(0, 0, 0, 0);
             var px = new Color32[n * n];
             float c = (n - 1) * 0.5f;
             for (int y = 0; y < n; y++)
             for (int x = 0; x < n; x++)
             {
-                float dx = x - c, dy = y - c, r = Mathf.Sqrt(dx * dx + dy * dy);
+                float dx = (x - c) / k, dy = (y - c) / k, r = Mathf.Sqrt(dx * dx + dy * dy);
                 float a = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
                 Color32 col = clear;
                 if (r <= 22f && r > 14f)
@@ -102,11 +103,11 @@ namespace MadMax.Game
                 // chain: cross links over the tread every 45 degrees, oval links around the sidewall
                 bool crossLink = Mathf.Repeat(a + 8f, 45f) < 5f && r > 14f && r <= 23f;
                 bool ringLink = Mathf.Abs(r - 17f) < 1.1f && Mathf.Repeat(a, 15f) < 10f;
-                if (crossLink || ringLink) col = ((x + y) & 1) == 0 ? new Color32(210, 200, 170, 255) : new Color32(150, 140, 110, 255);
+                if (crossLink || ringLink) col = (((int)(x / k) + (int)(y / k)) & 1) == 0 ? new Color32(210, 200, 170, 255) : new Color32(150, 140, 110, 255);
                 px[y * n + x] = col;
             }
             tex.SetPixels32(px);
-            tex.Apply(false);
+            tex.Apply(hd);
             return tex;
         }
 

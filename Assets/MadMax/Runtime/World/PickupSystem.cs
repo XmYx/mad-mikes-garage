@@ -30,12 +30,13 @@ namespace MadMax.World
         Material material;
         Inventory inventory;
 
-        public void Init(Material mat, Inventory inv) { material = mat; inventory = inv; Instance = this; }
+        public void Init(Material mat, Inventory inv) { material = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat; inventory = inv; Instance = this; }
         void OnDestroy() { if (Instance == this) Instance = null; foreach (var m in meshes) if (m) Destroy(m); }
 
         Mesh MeshFor(ResourceType t)
         {
             if (meshes[(int)t]) return meshes[(int)t];
+            if (MadMax.Rendering.HDBits.On) return meshes[(int)t] = MadMax.Rendering.HDBits.Pickup(t);
             var g = new VoxelGrid();
             switch (t)
             {

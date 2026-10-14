@@ -97,6 +97,7 @@ namespace MadMax.World
 
         static Vector3[] vb; static Vector3[] nb; static Color32[] cb; static int[] ib;
         static Vector4[] s0b, s1b;                                   // HD terrain: class weights per vertex (uv2, uv3)
+        static Vector2[] r1b;                                        // HD terrain: (distance to a highway's centre line, distance along it) per vertex (uv1)
         static Color32[] cellCol; static byte[] cellCls;             // HD terrain: one chunk's cells before blending to corners
         /// <summary>HD terrain mesh (HDTerrain): smooth normals, corner-blended colours and class weights.</summary>
         bool hdMesh;
@@ -123,7 +124,7 @@ namespace MadMax.World
             if (vb == null)
             {
                 vb = new Vector3[N * N * 6]; nb = new Vector3[vb.Length]; cb = new Color32[vb.Length]; ib = new int[vb.Length];
-                s0b = new Vector4[vb.Length]; s1b = new Vector4[vb.Length]; cellCol = new Color32[N * N]; cellCls = new byte[N * N];
+                s0b = new Vector4[vb.Length]; s1b = new Vector4[vb.Length]; r1b = new Vector2[vb.Length]; cellCol = new Color32[N * N]; cellCls = new byte[N * N];
                 for (int i = 0; i < ib.Length; i++) ib[i] = i;
             }
         }
@@ -872,14 +873,15 @@ namespace MadMax.World
                 int k = j * V + i;
                 // corners in the order the flat path writes them: v00 v01 v11 / v00 v11 v10
                 Corner(ch, i, j, k, n); Corner(ch, i, j + 1, k + V, n + 1); Corner(ch, i + 1, j + 1, k + V + 1, n + 2);
-                vb[n + 3] = vb[n]; nb[n + 3] = nb[n]; cb[n + 3] = cb[n]; s0b[n + 3] = s0b[n]; s1b[n + 3] = s1b[n];
-                vb[n + 4] = vb[n + 2]; nb[n + 4] = nb[n + 2]; cb[n + 4] = cb[n + 2]; s0b[n + 4] = s0b[n + 2]; s1b[n + 4] = s1b[n + 2];
+                vb[n + 3] = vb[n]; nb[n + 3] = nb[n]; cb[n + 3] = cb[n]; s0b[n + 3] = s0b[n]; s1b[n + 3] = s1b[n]; r1b[n + 3] = r1b[n];
+                vb[n + 4] = vb[n + 2]; nb[n + 4] = nb[n + 2]; cb[n + 4] = cb[n + 2]; s0b[n + 4] = s0b[n + 2]; s1b[n + 4] = s1b[n + 2]; r1b[n + 4] = r1b[n + 2];
                 Corner(ch, i + 1, j, k + 1, n + 5);
                 n += 6;
             }
             ch.mesh.SetVertices(vb);
             ch.mesh.SetNormals(nb);
             ch.mesh.SetColors(cb);
+            ch.mesh.SetUVs(1, r1b);
             ch.mesh.SetUVs(2, s0b);
             ch.mesh.SetUVs(3, s1b);
             ch.mesh.SetTriangles(ib, 0);
@@ -910,7 +912,10 @@ namespace MadMax.World
                 if (cls < 4) w0[cls] += 1f; else if (cls < 8) w1[cls - 4] += 1f;
             }
             float inv = 1f / Mathf.Max(1, cnt);
-            cb[n] = new Color32((byte)(r * inv), (byte)(g * inv), (byte)(b * inv), 255);
+            // ruts: the depth of the deformation in alpha (HDLit blends mud in per pixel); highway centre line: uv1
+            float rut = Mathf.Clamp01(-ch.d[k] / 0.12f);
+            cb[n] = new Color32((byte)(r * inv), (byte)(g * inv), (byte)(b * inv), (byte)(255 - rut * 255f));
+            r1b[n] = new Vector2(ch.paved[k] && ch.road[k] > 0.45f && ch.pave[k] == 0 ? ch.dist[k] : 99f, ch.along[k]);
             s0b[n] = w0 * inv; s1b[n] = w1 * inv;                                                  // snow = 1 - the rest
         }
 
@@ -1047,7 +1052,7 @@ namespace MadMax.World
                     col = Asphalt[hs < 0.15f ? 0 : hs < 0.8f ? 1 : 2 + (hs > 0.95f ? 1 : 0)];
                     float cr = Mathf.PerlinNoise(gx * 0.9f + 17f, gz * 0.9f + 3f);
                     if (Mathf.Abs(cr - 0.5f) < 0.02f) col = Crack;
-                    if (dist < 0.14f && Mathf.Repeat(ch.along[k], 6f) < 3f && Hash(gi + 7, gj) > 0.25f) col = Line;
+                    if (!hdMesh && dist < 0.14f && Mathf.Repeat(ch.along[k], 6f) < 3f && Hash(gi + 7, gj) > 0.25f) col = Line;   // HD: the shader paints it
                 }
                 else
                 {

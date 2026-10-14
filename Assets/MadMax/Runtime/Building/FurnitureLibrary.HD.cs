@@ -18,7 +18,12 @@ namespace MadMax.Building
             if (go.TryGetComponent<PoweredLight>(out var pl))
             {
                 var bulb = v.Object("Bulb");
-                if (bulb && bulb.TryGetComponent<Renderer>(out var br)) { v.Release(br); pl.SetBulb(br); }
+                if (bulb && bulb.TryGetComponent<Renderer>(out var br))
+                {
+                    v.Release(br); pl.SetBulb(br);
+                    foreach (Transform ch in go.transform)                                      // the voxel bulb FitLamp made: the HD one replaces it
+                        if (ch.name == "Bulb" && ch.TryGetComponent<Renderer>(out var vb) && vb != br) vb.forceRenderingOff = true;
+                }
                 v.LampState = () => pl && pl.Glowing;
             }
             if (go.TryGetComponent<Placeable>(out var p) && p.dye != 0) v.SetTint(DyeTint(p.dye));

@@ -62,6 +62,24 @@ MATS = {
     "bedroll": ("2e5024", "knit", {}),
     "wood": ("93603a", "plastic", {"rough": 0.7}),
     "red_handle": ("7c1c22", "plastic", {}),
+    "poncho": ("6b3e24", "stripe", {"hex2": "a65c2e"}),
+    "hazmat": ("c48c2a", "rubber", {"rough": 0.45}),
+    "hazmat_trim": ("18171c", "rubber", {}),
+    "dive_canvas": ("a8967a", "canvas", {"grime": 0.5}),
+    "dive_brass": ("b07a34", "metal", {"hex2": "5e3a14", "metal": 0.9}),
+    "tank_yellow": ("c4a030", "metal", {"hex2": "4f4842", "metal": 0.5}),
+    "weld": ("302d33", "plastic", {"rough": 0.6}),
+    "weld_lens": ("1a2a18", "lens", {"rough": 0.05}),
+    "chitin": ("4a5220", "plastic", {"rough": 0.25, "hex2": "2a3014"}),
+    "tyre": ("1c1918", "rubber", {}),
+    "moto": ("7e261c", "plastic", {"rough": 0.2}),
+    "veil": ("dcd8c8", "cloth", {"grime": 0.2}),
+    "navy_pack": ("2c3c52", "canvas", {}),
+    "black_pack": ("232127", "canvas", {}),
+    "olive_pack": ("4a5a26", "canvas", {}),
+    "sand_pack": ("bb8a54", "canvas", {}),
+    "gunmetal": ("38332f", "metal", {"hex2": "18171c", "metal": 0.8}),
+    "suitcase": ("6b3e24", "leather", {}),
 }
 
 
@@ -803,3 +821,356 @@ GARMENTS = {
 }
 
 HEADWEAR = {"cowboy": 0.236, "sunhat": 0.232, "beanie": 0.226, "helmet": 0.216, "shemagh": 0.0}
+
+# ---------------------------------------------------------------- wave 2 (2026-10-02): every ClothingLibrary id
+FULL_BODY = TORSO + ARMS + LEGS
+
+
+def poncho(h):
+    def f(c):
+        xc, yc, zc = c.loc("Chest")
+        # a bell from the shoulders: the offset grows with the drop below the collar, open below mid-thigh
+        drop = np.clip((0.38 * c.hum.h - wy(c) + 1.2 * c.hum.h) * 0 + (0.4 - yc) / 0.55, 0, 1.6)
+        off = 0.02 + 0.09 * drop
+        G = shell(c, off, {"Chest": (0, 1), "Head": (0, 0.18), "Pelvis": (0, 1), "UpperArmL": (0, 1), "UpperArmR": (0, 1),
+                           "ForearmL": (0, 0.55), "ForearmR": (0, 0.55), "ThighL": (0, 0.45), "ThighR": (0, 0.45)})
+        G = neck_hole(c, G, 0.08, 0.02, 0.8)
+        G = np.maximum(G, -(c.F - off + 0.006))                                           # a sheet, not a solid
+        return G
+    def hood(c):
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        H_ = c.prims([P("Head", "ell", c=(0, 0.13 * s, -0.07), rad=(0.11, 0.1, 0.08), k=0.02)])
+        return np.maximum(np.maximum(H_, -(H_ + 0.008)), y - 0.2 * s)
+    return [piece("poncho", "poncho", f, TORSO + ["Head"] + ARMS + ["ThighL", "ThighR"], tris=4200, allowed=FULL_BODY + ["Head"]),
+            piece("poncho_hood", "poncho", hood, ["Head"], extra=_hat_box(h, 0.16), tris=900, allowed=["Head"], hides=False)]
+
+
+def _suit(c, off):
+    return shell(c, off, {"Chest": (0, 1), "Pelvis": (0, 1), "UpperArmL": (0, 1), "UpperArmR": (0, 1), "ForearmL": (0, 1),
+                          "ForearmR": (0, 1), "ThighL": (0, 1), "ThighR": (0, 1), "ShinL": (0, 1), "ShinR": (0, 1), "Head": (0, 0.2)})
+
+
+def hazmat(h):
+    def f(c):
+        G = neck_hole(c, _suit(c, 0.016), 0.075, 0.02, 0.9)
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        hood = np.maximum(c.F - 0.02, -0.02 - y)
+        face = np.maximum(np.maximum(np.abs(y - 0.18 * s) - 0.07, 0.03 - z), np.abs(x) - 0.075)
+        hood = np.maximum(only(c, ["Head"], hood), -face)
+        return smooth_union(G, hood, 0.02)
+    def trim(c):
+        return U(hems(c, ["ForearmL", "ForearmR"], 0.95, 0.02, 0.016), hems(c, ["ShinL", "ShinR"], 0.95, 0.02, 0.018),
+                 only(c, ["Pelvis"], np.maximum(c.F - 0.022, np.abs(c.loc("Pelvis")[1] - 0.045 * c.hum.h) - 0.016)))
+    return [piece("hazmat", "hazmat", f, FULL_BODY + ["Head"], tris=5200, allowed=FULL_BODY + ["Head"]),
+            piece("hazmat_trim", "hazmat_trim", trim, ["ForearmL", "ForearmR", "ShinL", "ShinR", "Pelvis"], tris=1200,
+                  allowed=["ForearmL", "ForearmR", "ShinL", "ShinR", "Pelvis"])]
+
+
+def dive_suit(h):
+    def f(c):
+        return neck_hole(c, _suit(c, 0.02), 0.09, 0.0, 0.6)
+    def collar(c):
+        return c.prims([P("Chest", "cyl", c=(0, 0.4 * c.hum.h, 0), r=0.15 * c.hum.w, halfh=0.02, round=0.008),
+                        P("Chest", "cyl", c=(0, 0.4 * c.hum.h, 0), r=0.105, halfh=0.04, op="sub", k=0.004)])
+    def cuffs(c):
+        return U(hems(c, ["ForearmL", "ForearmR"], 0.96, 0.024, 0.016), hems(c, ["ShinL", "ShinR"], 0.95, 0.026, 0.02))
+    return [piece("dive_suit", "dive_canvas", f, FULL_BODY + ["Head"], tris=5200, allowed=FULL_BODY + ["Head"]),
+            piece("dive_suit_collar", "dive_brass", collar, ["Chest"], tris=1200, allowed=["Chest", "Head"], hides=False, sharp=50),
+            piece("dive_suit_cuffs", "tyre", cuffs, ["ForearmL", "ForearmR", "ShinL", "ShinR"], tris=1000, allowed=["ForearmL", "ForearmR", "ShinL", "ShinR"])]
+
+
+def dive_helmet(h):
+    def dome(c):
+        s = c.hum.h
+        D = c.prims([P("Head", "sph", c=(0, 0.17 * s, 0.01), r=0.165)])
+        D = np.maximum(D, -(D + 0.01))
+        win = c.prims([P("Head", "cyl", c=(0, 0.18 * s, 0.16), r=0.065, halfh=0.05, rot=rot_x(90))]
+                      + [P("Head", "cyl", c=(sx * 0.15, 0.18 * s, 0.03), r=0.045, halfh=0.05, rot=rot_z(90)) for sx in (-1, 1)])
+        return np.maximum(D, -win)
+    def rims(c):
+        s = c.hum.h
+        return c.prims([P("Head", "tor", c=(0, 0.18 * s, 0.168), R=0.068, r=0.011, rot=rot_x(90))]
+                       + [P("Head", "tor", c=(sx * 0.158, 0.18 * s, 0.03), R=0.048, r=0.009, rot=rot_z(90)) for sx in (-1, 1)]
+                       + [P("Head", "cyl", c=(0, 0.02 * s, 0.0), r=0.17, halfh=0.022, round=0.008)])
+    def glass(c):
+        s = c.hum.h
+        return c.prims([P("Head", "cyl", c=(0, 0.18 * s, 0.155), r=0.064, halfh=0.003, rot=rot_x(90))]
+                       + [P("Head", "cyl", c=(sx * 0.145, 0.18 * s, 0.03), r=0.044, halfh=0.003, rot=rot_z(90)) for sx in (-1, 1)])
+    ex = _hat_box(h, 0.22)
+    ex = (ex[0] - np.array([0, 0.08, 0]), ex[1])
+    return [piece("dive_helmet", "dive_brass", dome, ["Head"], extra=ex, tris=2600, allowed=["Head", "Chest"], hides=False, sharp=60),
+            piece("dive_helmet_rims", "dive_brass", rims, ["Head"], extra=ex, res=FINE_H, tris=1600, allowed=["Head", "Chest"], hides=False),
+            piece("dive_helmet_glass", "glass", glass, ["Head"], extra=ex, res=FINE_H, tris=400, allowed=["Head"], hides=False, smooth=0)]
+
+
+def air_tank(h):
+    def tanks(c):
+        return c.prims([P("Chest", "cyl", c=(sx * 0.062, 0.22, -0.2), r=0.058, halfh=0.2, round=0.05) for sx in (-1, 1)])
+    def valves(c):
+        return c.prims([P("Chest", "cyl", c=(sx * 0.062, 0.45, -0.2), r=0.018, halfh=0.03, round=0.006) for sx in (-1, 1)]
+                       + [P("Chest", "cap", a=(-0.062, 0.48, -0.2), b=(0.062, 0.48, -0.2), ra=0.01, rb=0.01)])
+    ex = (np.array([-0.2, 0.95, -0.34]), np.array([0.2, 1.62, 0.0]))
+    return [piece("air_tank", "tank_yellow", tanks, ["Chest"], extra=ex, tris=1600, allowed=["Chest"], hides=False),
+            piece("air_tank_valves", "chrome", valves, ["Chest"], extra=ex, res=FINE_H, tris=600, allowed=["Chest"], hides=False, smooth=0),
+            piece("air_tank_straps", "strap", lambda c: _pack_straps(c, 0.016), ["Chest"], tris=800, allowed=["Chest"])]
+
+
+def welding_mask(h):
+    def f(c):
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        G = np.maximum(c.F - 0.045, np.maximum(np.maximum(y - 0.3 * s, 0.05 * s - y), 0.02 - z))
+        G = np.maximum(G, -(c.F - 0.035))
+        strap = np.maximum(np.maximum(c.F - 0.008, np.abs(y - 0.27 * s) - 0.012), z - 0.03)
+        return U(G, strap)
+    def lens(c):
+        s = c.hum.h
+        return c.prims([P("Head", "box", c=(0, 0.2 * s, 0.148), half=(0.05, 0.018, 0.006), round=0.003)])
+    ex = _hat_box(h, 0.16)
+    return [piece("welding_mask", "weld", f, ["Head"], extra=ex, tris=1600, allowed=["Head"], hides=False, sharp=40),
+            piece("welding_mask_lens", "weld_lens", lens, ["Head"], extra=ex, res=FINE_H, tris=200, allowed=["Head"], hides=False, smooth=0)]
+
+
+def vest_chitin(h):
+    def scales(c):
+        x, y, z = c.loc("Chest")
+        G = _vest_base(c, 0.026)
+        row = (y + 0.06) % 0.07
+        bulge = np.sqrt(np.maximum(0, 1 - ((row - 0.04) / 0.04) ** 2)) * 0.008
+        G = np.maximum(G - bulge, -(c.F - 0.018))
+        return np.maximum(G, y - 0.36 * c.hum.h)
+    def ridge(c):
+        x, y, z = c.loc("Chest")
+        return only(c, ["Chest"], np.maximum(np.maximum(c.F - 0.04, np.abs(x) - 0.012), np.maximum(-z, y - 0.34 * c.hum.h)))
+    return [piece("vest_chitin", "chitin", scales, TORSO, tris=2600, allowed=TORSO + ["UpperArmL", "UpperArmR"], smooth=1),
+            piece("vest_chitin_ridge", "chitin", ridge, ["Chest"], tris=500, allowed=["Chest"])]
+
+
+def vest_tyre(h):
+    def f(c):
+        x, y, z = c.loc("Chest")
+        G = _vest_base(c, 0.03)
+        groove = np.abs(((y + 0.01) % 0.045) - 0.0225) - 0.004
+        tread = np.abs(((np.arctan2(x, z) * 0.12) % 0.02) - 0.01) - 0.002
+        G = np.maximum(G, -np.maximum(np.maximum(groove, tread), -(c.F - 0.034)))
+        return np.maximum(G, y - 0.36 * c.hum.h)
+    return [piece("vest_tyre", "tyre", f, TORSO, tris=2800, allowed=TORSO + ["UpperArmL", "UpperArmR"], sharp=40, smooth=1),
+            piece("vest_tyre_straps", "strap", lambda c: only(c, ["Chest"], np.maximum(np.maximum(c.F - 0.036, np.abs(np.abs(c.loc("Chest")[0]) - 0.075) - 0.017), 0.33 - c.loc("Chest")[1])), ["Chest"], tris=500, allowed=["Chest"])]
+
+
+def gauntlets(h):
+    def cuff(c):
+        out = []
+        for s_ in "LR":
+            G = shell(c, 0.017, {"Forearm" + s_: (0.45, 1.0)})
+            u, L = c.along("Forearm" + s_)
+            ridges = np.abs(((u + 0.005) % 0.045) - 0.0225) - 0.003
+            out.append(np.maximum(G, -np.maximum(ridges, -(c.F - 0.02))))
+        return U(*out)
+    return gloves(h, "gauntlets", "gloves") + [piece("gauntlets_cuffs", "plate", cuff, ["ForearmL", "ForearmR"], tris=1600, allowed=["ForearmL", "ForearmR", "HandL", "HandR"], sharp=40, smooth=1)]
+
+
+def moto_helmet(h):
+    def shell_(c):
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        G = np.maximum(c.F - 0.03, 0.04 * s - y)
+        visor = np.maximum(np.maximum(np.abs(y - 0.19 * s) - 0.04, 0.02 - z), np.abs(x) - 0.08)
+        return np.maximum(np.maximum(G, -visor), -(c.F - 0.012))
+    def visor(c):
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        V = np.maximum(c.F - 0.034, np.maximum(np.maximum(np.abs(y - 0.19 * s) - 0.046, 0.0 - z), np.abs(x) - 0.088))
+        return np.maximum(V, -(c.F - 0.03))
+    ex = _hat_box(h, 0.17)
+    ex = (ex[0] - np.array([0, 0.06, 0]), ex[1])
+    return [piece("moto_helmet", "moto", shell_, ["Head"], extra=ex, tris=2200, allowed=["Head"], hides=False),
+            piece("moto_helmet_visor", "glass", visor, ["Head"], extra=ex, tris=600, allowed=["Head"], hides=False, smooth=0)]
+
+
+def bee_veil(h):
+    def veil(c):
+        x, y, z = c.loc("Head")
+        s = c.hum.h
+        r = np.sqrt(x * x + (z + 0.005) ** 2)
+        V = np.maximum(np.abs(r - 0.2) - 0.0025, np.maximum(y - 0.235 * s, -0.06 - y))
+        return V
+    hat = sunhat(h)
+    hat = [dict(pc, name=pc["name"].replace("sunhat", "bee_veil")) for pc in hat]
+    return hat + [piece("bee_veil_mesh", "veil", veil, ["Head"], extra=_hat_box(h, 0.24), tris=1600, allowed=["Head", "Chest"], hides=False, smooth=0)]
+
+
+def leather_boots(h):
+    return boots(h, "leather_boots", "leather_brown", 0.78)
+
+
+def leather_cuirass(h):
+    def f(c):
+        G = _vest_base(c, 0.022)
+        x, y, z = c.loc("Chest")
+        G = np.maximum(G, y - 0.37 * c.hum.h)
+        return U(G, hem(c, "Pelvis", 0.3, 0.026, 0.01))
+    def laces(c):
+        x, y, z = c.loc("Chest")
+        cross_ = np.abs(np.abs(x) - 0.012 * (1 + np.cos((y % 0.04) / 0.04 * 6.283))) - 0.002
+        return only(c, ["Chest"], np.maximum(np.maximum(c.F - 0.026, cross_), np.maximum(-z, np.abs(y - 0.18) - 0.15)))
+    return [piece("leather_cuirass", "leather_brown", f, TORSO + ["Head"], tris=2400, allowed=TORSO + ["UpperArmL", "UpperArmR"], sharp=40),
+            piece("leather_cuirass_laces", "strap", laces, ["Chest"], res=FINE_H, tris=800, allowed=["Chest"], smooth=0)]
+
+
+def leather_chaps(h):
+    def f(c):
+        out = []
+        for s_ in "LR":
+            G = shell(c, 0.014, {"Thigh" + s_: (0.05, 1), "Shin" + s_: (0, 0.9)})
+            x, y, z = c.loc("Thigh" + s_)
+            out.append(G)
+        return U(*out)
+    def fringe(c):
+        out = []
+        for s_ in "LR":
+            x, y, z = c.loc("Shin" + s_)
+            side = np.abs(x) - 0.05
+            out.append(only(c, ["Shin" + s_, "Thigh" + s_], np.maximum(np.maximum(c.F - 0.03, np.abs(side) - 0.01), -(c.F - 0.012))))
+        return U(*out)
+    return [piece("leather_chaps", "leather_brown", f, LEGS, tris=2400, allowed=LEGS + ["Pelvis"]),
+            piece("leather_chaps_fringe", "leather_brown", fringe, LEGS, tris=1200, allowed=LEGS)]
+
+
+def _belt_band(c, off=0.016, w=0.024):
+    x, y, z = c.loc("Pelvis")
+    return only(c, ["Pelvis", "Chest", "ThighL", "ThighR"], np.maximum(c.F - off, np.abs(y - 0.045 * c.hum.h) - w))
+
+
+def work_belt(h):
+    pcs = toolbelt(h)
+    return [dict(pc, name=pc["name"].replace("toolbelt", "work_belt")) for pc in pcs if "handles" not in pc["name"]]
+
+
+def gun_belt(h):
+    def holster(c):
+        w = c.hum.w
+        return c.prims([P("ThighR", "box", c=(0.075, -0.07, 0.0), half=(0.022, 0.085, 0.045), round=0.012, rot=rot_x(-8))])
+    def gun(c):
+        return c.prims([P("ThighR", "box", c=(0.077, 0.02, -0.005), half=(0.014, 0.04, 0.016), round=0.005, rot=rot_x(-25)),
+                        P("ThighR", "cyl", c=(0.077, -0.015, 0.02), r=0.012, halfh=0.012, round=0.003, rot=rot_z(90))])
+    ex = (np.array([0.02, 0.55, -0.15]), np.array([0.32, 1.1, 0.18]))
+    return [piece("gun_belt", "leather_brown", _belt_band, ["Pelvis"], tris=900, allowed=["Pelvis", "Chest"]),
+            piece("gun_belt_holster", "belt", holster, ["ThighR"], extra=ex, tris=600, allowed=["ThighR", "Pelvis"], hides=False, sym=False),
+            piece("gun_belt_pistol", "gunmetal", gun, ["ThighR"], extra=ex, res=FINE_H, tris=500, allowed=["ThighR", "Pelvis"], hides=False, sym=False, smooth=0)]
+
+
+def fanny_bag(h):
+    def bag(c):
+        return c.prims([P("Pelvis", "box", c=(0, 0.035 * c.hum.h, 0.13), half=(0.085, 0.045, 0.03), round=0.022)])
+    return [piece("fanny_bag", "black_pack", lambda c: _belt_band(c, 0.012, 0.012), ["Pelvis"], tris=700, allowed=["Pelvis", "Chest"]),
+            piece("fanny_bag_pouch", "black_pack", bag, ["Pelvis"], extra=(np.array([-0.15, 0.85, 0.0]), np.array([0.15, 1.15, 0.22])), tris=700, allowed=["Pelvis"], hides=False)]
+
+
+def back_brace(h):
+    def f(c):
+        return U(_belt_band(c, 0.012, 0.05), only(c, ["Pelvis", "Chest"], np.maximum(np.maximum(c.F - 0.016, np.abs(c.loc("Pelvis")[1] - 0.06 * c.hum.h) - 0.02), c.loc("Pelvis")[2] + 0.02)))
+    return [piece("back_brace", "black_pack", f, ["Pelvis"], tris=900, allowed=["Pelvis", "Chest"])]
+
+
+def _pack(h, name, mat, w, hgt, d, y0=0.24, frame=False, roll=None):
+    def bag(c):
+        return c.prims([P("Chest", "box", c=(0, y0, -0.12 - d), half=(w, hgt, d), round=min(0.035, d * 0.7), k=0.02),
+                        P("Chest", "box", c=(0, y0 - hgt * 0.45, -0.12 - 2 * d), half=(w * 0.75, hgt * 0.35, 0.02), round=0.015, k=0.012),
+                        P("Chest", "ell", c=(0, y0 + hgt, -0.12 - d), rad=(w, 0.035, d * 1.05), k=0.02)])
+    ex = (np.array([-w - 0.08, 0.9, -0.2 - 2.6 * d]), np.array([w + 0.08, 1.75, 0.0]))
+    out = [piece(name, mat, bag, ["Chest"], extra=ex, tris=1800, allowed=["Chest"], hides=False),
+           piece(name + "_straps", "strap" if mat != "black_pack" else "pack_dark", lambda c: _pack_straps(c, 0.016), ["Chest"], tris=800, allowed=["Chest"])]
+    if frame:
+        def tubes(c):
+            return c.prims([P("Chest", "cap", a=(sx * (w + 0.015), y0 - hgt - 0.05, -0.1), b=(sx * (w + 0.015), y0 + hgt + 0.12, -0.12), ra=0.011, rb=0.011) for sx in (-1, 1)]
+                           + [P("Chest", "cap", a=(-(w + 0.015), y0 + hgt + 0.12, -0.12), b=(w + 0.015, y0 + hgt + 0.12, -0.12), ra=0.011, rb=0.011),
+                              P("Chest", "cap", a=(-(w + 0.015), y0 - hgt - 0.05, -0.1), b=(w + 0.015, y0 - hgt - 0.05, -0.1), ra=0.011, rb=0.011)])
+        out.append(piece(name + "_frame", "chrome", tubes, ["Chest"], extra=(ex[0] - 0.05, ex[1] + 0.1), res=FINE_H, tris=900, allowed=["Chest"], hides=False, smooth=0))
+    if roll:
+        out.append(piece(name + "_roll", roll, lambda c: c.prims([P("Chest", "cyl", c=(0, y0 + hgt + 0.06, -0.12 - d), r=0.045, halfh=w + 0.02, round=0.02, rot=rot_z(90))]),
+                         ["Chest"], extra=(ex[0], ex[1] + 0.12), tris=700, allowed=["Chest"], hides=False))
+    return out
+
+
+def schoolbag(h):
+    return _pack(h, "schoolbag", "navy_pack", 0.12, 0.14, 0.055)
+
+
+def hikingpack(h):
+    return _pack(h, "hikingpack", "black_pack", 0.14, 0.22, 0.08, 0.22, roll="red_handle")
+
+
+def framepack(h):
+    return _pack(h, "framepack", "olive_pack", 0.15, 0.24, 0.09, 0.2, frame=True, roll="bedroll")
+
+
+def craftpack(h):
+    return _pack(h, "craftpack", "sand_pack", 0.13, 0.17, 0.07)
+
+
+def leather_satchel(h):
+    return _pack(h, "leather_satchel", "leather_brown", 0.12, 0.11, 0.045, 0.27)
+
+
+def _shoulder_bag(h, name, mat, back=False, w=0.12, hh=0.09, d=0.04):
+    def strap(c):
+        xc, yc, zc = c.loc("Chest")
+        G = np.maximum(c.F - 0.014, np.abs(0.55 * (xc + 0.15) + 0.83 * (yc - 0.4)) - 0.016)
+        return only(c, ["Chest", "Pelvis"], G)
+    def bag(c):
+        if back:
+            return c.prims([P("Chest", "box", c=(0.04, 0.16, -0.14), half=(w, hh, d), round=0.03, rot=rot_z(-35), k=0.02)])
+        return c.prims([P("Pelvis", "box", c=(0.17 * c.hum.w, 0.0, 0.02), half=(d, hh, w), round=0.025, rot=rot_y(-10), k=0.02)])
+    ex = (np.array([-0.3, 0.75, -0.3]), np.array([0.32, 1.35, 0.25]))
+    return [piece(name + "_strap", mat, strap, ["Chest"], tris=800, allowed=["Chest", "Pelvis"], sym=False),
+            piece(name, mat, bag, ["Chest"] if back else ["Pelvis"], extra=ex, tris=1200, allowed=["Chest", "Pelvis", "ThighR"], hides=False, sym=False)]
+
+
+def shoulder_bag(h):
+    return _shoulder_bag(h, "shoulder_bag", "navy_pack")
+
+
+def sling_bag(h):
+    return _shoulder_bag(h, "sling_bag", "black_pack", back=True, w=0.1, hh=0.13, d=0.045)
+
+
+def canvas_satchel(h):
+    return _shoulder_bag(h, "canvas_satchel", "sand_pack", w=0.13, hh=0.1, d=0.04)
+
+
+def _hand_bag(h, name, mat, prims_fn):
+    ex = (np.array([0.0, 0.25, -0.4]), np.array([0.45, 1.0, 0.4]))
+    return [piece(name, mat, lambda c: c.prims(prims_fn(c)), ["HandR"], extra=ex, tris=1600, allowed=["HandR", "ForearmR"], hides=False, sym=False)]
+
+
+def duffel(h):
+    return _hand_bag(h, "duffel", "olive_pack", lambda c: [P("HandR", "cyl", c=(0, -0.21, 0), r=0.12, halfh=0.26, round=0.08, rot=rot_x(90), k=0.02),
+                                                          P("HandR", "tor", c=(0, -0.06, 0), R=0.045, r=0.01, rot=rot_x(90))])
+
+
+def suitcase(h):
+    return _hand_bag(h, "suitcase", "suitcase", lambda c: [P("HandR", "box", c=(0, -0.26, 0), half=(0.055, 0.18, 0.25), round=0.015, k=0.01),
+                                                           P("HandR", "tor", c=(0, -0.07, 0), R=0.04, r=0.01, rot=rot_x(90))])
+
+
+GARMENTS.update({
+    "poncho": (poncho, "Outer"), "hazmat": (hazmat, "Outer"), "dive_suit": (dive_suit, "Outer"), "dive_helmet": (dive_helmet, "Head"),
+    "air_tank": (air_tank, "Pack"), "welding_mask": (welding_mask, "Face"), "vest_chitin": (vest_chitin, "Vest"), "vest_tyre": (vest_tyre, "Vest"),
+    "gauntlets": (gauntlets, "Hands"), "moto_helmet": (moto_helmet, "Head"), "bee_veil": (bee_veil, "Head"), "leather_boots": (leather_boots, "Feet"),
+    "leather_cuirass": (leather_cuirass, "Vest"), "leather_chaps": (leather_chaps, "Shins"), "work_belt": (work_belt, "Belt"), "gun_belt": (gun_belt, "Belt"),
+    "fanny_bag": (fanny_bag, "Belt"), "back_brace": (back_brace, "Belt"), "schoolbag": (schoolbag, "Pack"), "hikingpack": (hikingpack, "Pack"),
+    "framepack": (framepack, "Pack"), "craftpack": (craftpack, "Pack"), "leather_satchel": (leather_satchel, "Pack"),
+    "shoulder_bag": (shoulder_bag, "Shoulder"), "sling_bag": (sling_bag, "Shoulder"), "canvas_satchel": (canvas_satchel, "Shoulder"),
+    "duffel": (duffel, "Hand"), "suitcase": (suitcase, "Hand"),
+})
+HEADWEAR.update({"dive_helmet": 0.0, "moto_helmet": 0.0, "bee_veil": 0.232})
+
+# HD_GARMENTS=id,id: build only these (previews of new garments)
+import os as _os
+if _os.environ.get("HD_GARMENTS"):
+    _keep = set(_os.environ["HD_GARMENTS"].split(","))
+    GARMENTS = {k: v for k, v in GARMENTS.items() if k in _keep}
+

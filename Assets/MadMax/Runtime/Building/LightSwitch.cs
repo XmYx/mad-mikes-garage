@@ -228,9 +228,10 @@ namespace MadMax.Building
             var lv = new GameObject("Lever", typeof(MeshFilter), typeof(MeshRenderer));
             lv.transform.SetParent(go.transform, false);
             lv.transform.localPosition = new Vector3(0f, 0.06f, 0f);
-            lv.GetComponent<MeshFilter>().sharedMesh = leverMesh;
+            bool hd = MadMax.Rendering.HDBits.On;
+            lv.GetComponent<MeshFilter>().sharedMesh = hd ? MadMax.Rendering.HDBits.Lever() : leverMesh;
             var r = lv.GetComponent<MeshRenderer>();
-            r.sharedMaterial = mat; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.sharedMaterial = hd ? MadMax.Rendering.HDShapes.Solid : mat; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
     }
 }

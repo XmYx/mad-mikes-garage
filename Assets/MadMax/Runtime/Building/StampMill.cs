@@ -18,6 +18,7 @@ namespace MadMax.Building
         /// <summary>One stamp: stem, tappet collar and a heavy shoe (origin at the shoe's foot).</summary>
         static Mesh StampMesh()
         {
+            if (MadMax.Rendering.HDBits.On) return MadMax.Rendering.HDBits.Stamp();
             if (stampMesh) return stampMesh;
             var g = new VoxelGrid().Mat((byte)MadMax.Items.ResourceType.Iron);
             g.Box(-1, 0, -1, 1, 2, 1, Pal.Ramp(Pal.Metal, 3, 4411));                        // shoe
@@ -37,7 +38,7 @@ namespace MadMax.Building
                 s.transform.SetParent(transform, false);
                 s.transform.localPosition = new Vector3(StampX[i], RestY, 0f);
                 s.GetComponent<MeshFilter>().sharedMesh = StampMesh();
-                s.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                s.GetComponent<MeshRenderer>().sharedMaterial = MadMax.Rendering.HDBits.On ? MadMax.Rendering.HDShapes.Solid : mat;
                 stamps[i] = s.transform;
             }
         }

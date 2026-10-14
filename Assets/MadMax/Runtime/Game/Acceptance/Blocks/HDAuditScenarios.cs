@@ -83,6 +83,23 @@ namespace MadMax.Game.Acceptance
             yield return null;
             if (rig) { rig.mode = ViewMode.ThirdPerson; yield return new WaitForSeconds(1f); c.Screenshot("hd_audit_third"); yield return null; }
 
+            // wildlife the first audit found in voxels: spawn each and count the HD part meshes on its rig
+            foreach (var sp in new[] { "lizard", "scorpion", "rat", "crow", "snake" })
+            {
+                var def = MadMax.Animals.AnimalLibrary.Get(sp);
+                if (def == null) { c.Note(sp + ": no such species"); continue; }
+                var pos = at + new Vector3(3f, 0f, 2f); pos.y = MadMax.World.DeformableTerrain.Instance.Height(pos.x, pos.z);
+                var an = MadMax.Animals.Animal.Spawn(def, pos, 0f, g.propMaterial, "t:" + sp);
+                yield return null;
+                int hd = 0, vox = 0;
+                foreach (var r in an.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r.name == "HD") hd++;
+                    else if (r.enabled && !r.forceRenderingOff) vox++;
+                }
+                c.Check(hd > 0 && vox == 0, $"{sp}: {hd} HD part meshes, {vox} voxel parts still drawn (catalog {(MadMax.Rendering.HDAssets.Has(MadMax.Rendering.HDDomain.Animal, sp) ? "has it" : "missing")})");
+                Object.Destroy(an.gameObject);
+            }
             var cars = new List<VehicleDriver>();
             foreach (var want in new[] { "MonsterTruck", "Sedan", "Pickup", "Interceptor" })
                 foreach (var v in g.Fleet) if (v && v.driveable && v.name.StartsWith(want) && cars.Count < 2 && !cars.Contains(v)) { cars.Add(v); break; }
@@ -102,6 +119,33 @@ namespace MadMax.Game.Acceptance
                 yield return new WaitForSeconds(0.5f);
             }
             if (cars.Count == 0) c.Note("no car in the fleet: cabin skipped");
+            // every ClothingLibrary id has an HD garment on every body shape
+            var cat = HDCharacterCatalog.Instance;
+            if (cat)
+            {
+                var missing = new List<string>();
+                foreach (var shape in cat.shapes)
+                    foreach (var d in ClothingLibrary.All)
+                        if (!HDHuman.HasGarment(cat, shape, d.id) && !missing.Contains(d.id)) missing.Add(d.id + "@" + shape);
+                c.Check(missing.Count == 0, "every garment has an HD mesh on every body shape" + (missing.Count > 0 ? ": missing " + string.Join(", ", missing.Take(20)) : ""));
+            }
+            // the sky: night (moon, stars) and a cloudy day, looking up in first person (a raised third-person view sits
+            // low behind the player and frames the back)
+            if (rig)
+            {
+                float h0 = MadMax.World.DayNight.Hours;
+                rig.mode = ViewMode.FirstPerson;
+                rig.LookToward(g.Player.transform.forward + Vector3.up * 0.6f);
+                MadMax.World.DayNight.SetHours(22.5f);
+                yield return new WaitForSeconds(1.5f);
+                c.Screenshot("hd_audit_sky_night");
+                yield return null;
+                MadMax.World.DayNight.SetHours(15f);
+                yield return new WaitForSeconds(1.5f);
+                c.Screenshot("hd_audit_sky_day");
+                yield return null;
+                MadMax.World.DayNight.SetHours(h0);
+            }
             if (rig) rig.mode = mode0;
             s.vector = vec; s.Apply(g);
             c.Check(true, "audit done");

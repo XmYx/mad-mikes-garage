@@ -270,8 +270,9 @@ namespace MadMax.Game
                     bobberMesh = MadMax.Voxel.VoxelMesher.Build(vg, "Bobber");
                 }
                 bobberGo = new GameObject("Bobber", typeof(MeshFilter), typeof(MeshRenderer));
-                bobberGo.GetComponent<MeshFilter>().sharedMesh = bobberMesh;
-                bobberGo.GetComponent<MeshRenderer>().sharedMaterial = GetComponent<MeshRenderer>().sharedMaterial;
+                bool hd = MadMax.Rendering.HDBits.On;
+                bobberGo.GetComponent<MeshFilter>().sharedMesh = hd ? MadMax.Rendering.HDBits.Bobber() : bobberMesh;
+                bobberGo.GetComponent<MeshRenderer>().sharedMaterial = hd ? MadMax.Rendering.HDShapes.Solid : GetComponent<MeshRenderer>().sharedMaterial;
                 bobberGo.transform.localScale = Vector3.one * 0.6f;
                 line = bobberGo.AddComponent<LineRenderer>();
                 line.sharedMaterial = Fx.TransparentMaterial(null);

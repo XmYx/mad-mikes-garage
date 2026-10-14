@@ -40,7 +40,7 @@ namespace MadMax.Building
             go.transform.SetParent(transform, false);
             go.transform.localPosition = soil;
             plantMesh = go.GetComponent<MeshFilter>();
-            go.GetComponent<MeshRenderer>().sharedMaterial = GetComponent<MeshRenderer>().sharedMaterial;
+            go.GetComponent<MeshRenderer>().sharedMaterial = CropVisuals.Material(GetComponent<MeshRenderer>().sharedMaterial);
         }
 
         /// <summary>What is over the plot: open sky, a greenhouse's glass, or a solid roof.</summary>
@@ -163,8 +163,9 @@ namespace MadMax.Building
             c.transform.SetParent(transform, false);
             c.transform.localPosition = soil + new Vector3(Random.Range(-0.3f, 0.3f), 0.05f, Random.Range(-0.3f, 0.3f));
             c.transform.localRotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-            c.GetComponent<MeshFilter>().sharedMesh = crowMesh;
-            c.GetComponent<MeshRenderer>().sharedMaterial = GetComponent<MeshRenderer>().sharedMaterial;
+            bool hd = MadMax.Rendering.HDBits.On;
+            c.GetComponent<MeshFilter>().sharedMesh = hd ? MadMax.Rendering.HDBits.Crow() : crowMesh;
+            c.GetComponent<MeshRenderer>().sharedMaterial = hd ? MadMax.Rendering.HDShapes.Solid : GetComponent<MeshRenderer>().sharedMaterial;
             return c;
         }
 

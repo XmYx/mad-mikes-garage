@@ -21,6 +21,7 @@ namespace MadMax.Vehicles
             if (meshes.TryGetValue(id, out var m) && m) return m;                 // meshes die with play mode
             var g = Grid(id);
             if (g == null || g.Count == 0) return null;
+            if (MadMax.Rendering.HDBits.On) return meshes[id] = MadMax.Rendering.HDBits.Decal(g, id);   // HD: painted, not studs
             g.Bevel(0.12f, 0.12f);
             m = VoxelMesher.Build(g, "Decal_" + id, 0.04f);
             meshes[id] = m;
