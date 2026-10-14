@@ -26,6 +26,7 @@ namespace MadMax.Building
         {
             if (!Powered) { g.Toast("THE COMPRESSOR NEEDS POWER"); return; }
             busyUntil = Time.time + 2.5f;
+            PieceMotion.Use(gameObject, "pump", 2.5f);                                             // the piston thumps
             if (!secondary)
             {
                 if (!g.Wearing("air_tank")) { g.Toast("WEAR AN AIR TANK TO FILL IT"); return; }

@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "furniture"))
 import hdkit as K  # noqa: E402
 from hdkit import Asset, Vector, Matrix  # noqa: E402
 from vbuild import VB, rubble  # noqa: E402
+import cozy as Z  # noqa: E402
 
 
 def L(i, v):
@@ -175,6 +176,18 @@ def guard_hut0():
         de.box2("steel_dark", (L(x, v), L(22, v), L(0, v)), (H(x, v), H(23, v), H(0, v)), bevel=0.004)
     de.box2(K.wood("", "x"), (L(-8, v), C(11, v), C(-9, v)), (H(8, v), C(11, v) + 0.04, C(-7, v)), bevel=0.006)        # counter inside the slit
     de.cyl("steel_dark", 0.08, 0.2, (C(6, v), H(0, v) + 0.1, C(6, v)), "y", 14, 0.008)                               # stove
+    # lived-in: a lantern by the door, a mug and a radio on the counter, a stool, a calendar on the wall, a door mat
+    Z.lantern(a, (C(6, v), C(17, v), H(10, v) + 0.16), "Lamp", bracket_to=(C(6, v), C(19, v), H(10, v)))
+    from fcommon import mug  # noqa: E402
+    mug(de, "enamel", (C(-5, v), C(11, v) + 0.04, C(-8, v)), 0.035, 0.08)
+    de.box2("black", (C(2, v), C(11, v) + 0.04, C(-8.6, v)), (C(5, v), C(11, v) + 0.2, C(-7.6, v)), bevel=0.01)
+    de.cyl("chrome", 0.025, 0.012, (C(3.8, v), C(11, v) + 0.12, C(-7.6, v) + 0.006), "z", 10, 0.002)
+    de.cyl(K.wood("dark", "y"), 0.15, 0.04, (C(-2, v), C(5.5, v), C(-5, v)), "y", 12, 0.006)                       # stool
+    for k in range(3):
+        an = k * 2.09
+        de.rod(K.wood("dark", "y"), (C(-2, v) + math.cos(an) * 0.11, H(0, v), C(-5, v) + math.sin(an) * 0.11), (C(-2, v) + math.cos(an) * 0.08, C(5.5, v), C(-5, v) + math.sin(an) * 0.08), 0.015, 5)
+    de.box2("paper", (C(-9.4, v), C(12, v), C(2, v)), (C(-9.3, v), C(16, v), C(5, v)), bevel=0)                    # calendar
+    Z.doormat(de, 0.0, H(0, v), H(10, v) + 0.3, 0.6, 0.4)
     return a
 
 
@@ -318,6 +331,9 @@ def stall(kind):
         m = canvas if k % 2 == 0 else "cloth_cream"
         cl.quad(m, (x0, H(30, v), L(-16, v)), (x1, H(30, v), L(-16, v)), (x1, H(30 - 24 // 6, v), H(8, v)), (x0, H(30 - 24 // 6, v), H(8, v)), 0.012)
         cl.box2(m, (x0, H(26, v) - 0.14, H(8, v) - 0.012), (x1, H(26, v), H(8, v)), bevel=0.002)
+    Z.string_lights(a, [(L(-15, v), H(26, v) - 0.16, H(8, v) + 0.02), (H(15, v), H(26, v) - 0.16, H(8, v) + 0.02)], 12, "Lamp", sag=0.12)
+    title = {"fuel": "pump_red", "parts": "navy", "food": "green", "salvage": "rust", "scrap": "steel_dark", "build": "ochre"}.get(kind, "navy")
+    Z.sign_board(a, 0.0, H(26, v) - 0.48, H(8, v) + 0.03, 1.1, 0.26, "cloth_cream", title, 1, True, 5, seed=len(kind))
     r = K.rng(len(kind) * 7)
     if kind == "fuel":
         for i in range(4):                                  # jerry cans

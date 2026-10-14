@@ -5,7 +5,7 @@ namespace MadMax.Vehicles
 {
     /// <summary>Roof machine gun: trains toward the aim point, fires 9 rounds/s while LMB is held. Belts of 20 rounds
     /// (ammo_mg) feed from the pack; the barrel heats up and must cool after ~30 rounds of continuous fire.</summary>
-    public class MountedGun : VehicleWeapon
+    public class MountedGun : VehicleWeapon, MadMax.Building.IPlaceState
     {
         public const string Ammo = "ammo_mg";
         public const int PerBelt = 20;
@@ -15,6 +15,10 @@ namespace MadMax.Vehicles
         bool warned;
 
         void Start() { mount = transform.Find("mount"); gun = mount ? mount.Find("gun") : null; }
+
+        /// <summary>The belt in the feed (saved with the part).</summary>
+        public string SaveState() => rounds > 0 ? rounds.ToString() : null;
+        public void LoadState(string s) { if (int.TryParse(s, out int n)) rounds = Mathf.Clamp(n, 0, PerBelt); }
 
         public override string Status
         {
@@ -50,6 +54,7 @@ namespace MadMax.Vehicles
             MadMax.Audio.Sfx.Play("shot_mg", muzzle, 0.6f, Random.Range(0.95f, 1.05f), 120f, 0.03f);
             var fx = DebrisSystem.Instance;
             if (fx) fx.EmitPuff(muzzle + dir * 0.2f, new Color32(255, 214, 120, 255), 0.06f, dir * 3f, 0.06f);
+            GunFx.Report(muzzle, dir, gun.right);
             if (MadMax.Npc.NpcDirector.Instance) MadMax.Npc.NpcDirector.Instance.Noise(muzzle, 90f);
         }
     }

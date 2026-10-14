@@ -78,7 +78,7 @@ for a base, and away from the masts the signal fades into hiss.
 - Three save slots plus an autosave. A map and journal with waypoints and road routing.
 - A daily race board (road race, bike trial, air race, arena) and a long quest called The Last Engine.
 - A campaign of 17 chapters plus 24 side stories, three personal threads and The Last Engine in five parts, all of which run in sandbox worlds too: choices are remembered, most problems have a peaceful, a clever and a forceful answer, and nothing is on a timer.
-- Views: isometric, tilt-shift, top-down, third person, first person, hood and bumper cameras. The pixel-art renderer can also switch to full-resolution "vector" mode.
+- Views: isometric, tilt-shift, top-down, third person, first person, hood and bumper cameras. The pixel-art renderer can also switch to full-resolution "vector" mode. New games open in the overhead view: a perspective camera high above you that climbs with speed, looks ahead along the road and turns with the car.
 - Rebindable controls, gamepad support, colour-blind palette, HUD scaling and separate volume channels.
 
 | | |

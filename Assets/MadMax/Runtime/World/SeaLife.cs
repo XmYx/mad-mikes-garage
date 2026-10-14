@@ -58,7 +58,7 @@ namespace MadMax.World
         {
             var g = MadMax.Game.WastelandGame.Instance;
             var t = DeformableTerrain.Instance;
-            if (!g || !g.Player || !t || t.World == null || Application.isBatchMode) return;
+            if (!g || !g.Ready || !g.Player || !t || t.World == null || Application.isBatchMode) return;   // not while loading (the player still at the origin)
             if (!mat) mat = t.worldPropMaterial ? t.worldPropMaterial : g.propMaterial;
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
             float dt = Time.deltaTime;
@@ -75,7 +75,7 @@ namespace MadMax.World
             {
                 var o = Random.insideUnitCircle * Range;
                 float x = focus.x + o.x, z = focus.z + o.y;
-                float lvl = t.WaterLevel(x, z);
+                float lvl = t.WaterLevelNoLoad(x, z);
                 if (float.IsNaN(lvl)) continue;
                 float bed = t.HeightNoLoad(x, z);
                 if (lvl - bed < 1.5f) continue;

@@ -6,17 +6,18 @@ using UnityEngine.InputSystem;
 
 namespace MadMax.Game
 {
-    public enum ViewMode { Isometric, TiltShift, ThirdPerson, FirstPerson, TopDown, Hood, Bumper }
+    public enum ViewMode { Isometric, TiltShift, ThirdPerson, FirstPerson, TopDown, Hood, Bumper, Overhead }
 
     /// <summary>All views render through the PixelArtCamera. Works for vehicles and the on-foot player.
-    /// Scroll / +/- zoom, Z/C rotate and PgUp/PgDn tilt (iso, tilt-shift, top-down; RMB drag does both there), mouse
-    /// look (RMB in vehicles, free on foot), V cycles views. Vehicles add the hood and bumper cameras.</summary>
+    /// Scroll / +/- zoom, Z/C rotate and PgUp/PgDn tilt (iso, tilt-shift, top-down, overhead; RMB drag does both there),
+    /// mouse look (RMB in vehicles, free on foot), V cycles views. Vehicles add the hood and bumper cameras. Overhead is the
+    /// default: a perspective camera high above the target (GTA 1/2 style) that climbs with speed and leads the travel.</summary>
     [DefaultExecutionOrder(-90)]
     public class CameraRig : MonoBehaviour
     {
         public PixelArtCamera pixel;
         public Material tiltShiftMaterial;
-        public ViewMode mode = ViewMode.Isometric;
+        public ViewMode mode = ViewMode.Overhead;
 
         [Header("Isometric (orthographic)")]
         public float isoPitch = 35f;
@@ -32,6 +33,18 @@ namespace MadMax.Game
         [Header("Top-down (orthographic, straight down)")]
         public Vector2 topSizeRange = new Vector2(5f, 40f);
         public float topSize = 14f;
+
+        [Header("Overhead (perspective, almost straight down)")]
+        public float overFov = 40f;
+        public float overPitch = 78f;                    // degrees below the horizon (90 = straight down)
+        public float overFootHeight = 27f;               // camera height above the walker (~38 m of ground across a 16:9 screen)
+        public float overCarHeight = 33f;                // above a standing car (scaled by its length)
+        public float overSpeedHeight = 30f;              // extra height at overSpeedFull
+        public float overSpeedFull = 33f;                // m/s (~120 km/h)
+        public Vector2 overZoomRange = new Vector2(0.45f, 2.6f);
+        public float overZoom = 1f;
+        [Tooltip("Driving: the view turns lazily with the vehicle's heading so the road runs up the screen (a manual turn pauses it).")]
+        public bool overFollowHeading = true;
 
         [Header("Third person")]
         public float thirdFov = 55f;
@@ -52,7 +65,7 @@ namespace MadMax.Game
         public float LookPitch => mode == ViewMode.FirstPerson || mode == ViewMode.Hood || mode == ViewMode.Bumper ? lookPitch : mode == ViewMode.ThirdPerson ? orbitPitch - 12f : 20f;
 
         /// <summary>Views looking down on the scene: the mouse cursor aims and picks, cutaways are on.</summary>
-        public bool TopDownView => mode == ViewMode.Isometric || mode == ViewMode.TiltShift || mode == ViewMode.TopDown;
+        public bool TopDownView => mode == ViewMode.Isometric || mode == ViewMode.TiltShift || mode == ViewMode.TopDown || mode == ViewMode.Overhead;
         /// <summary>Views that aim through the screen centre.</summary>
         public bool CrosshairView => !TopDownView;
         /// <summary>Extra pitch (degrees) on the iso and tilt-shift views: PgUp/PgDn or a vertical RMB drag.</summary>
@@ -71,6 +84,11 @@ namespace MadMax.Game
         InteriorSpace cutawayInterior;
         float targetScale = 1f;
         float yaw = 45f, orbitYaw, orbitPitch = 12f, lookYaw, lookPitch;
+        float overYaw, overHeight, overDist;            // overhead: north up unless turned (Z/C, RMB drag); smoothed height
+        float overManual;                               // seconds a manual turn holds off the heading follow
+        /// <summary>Overhead telemetry (tests): the camera's smoothed height above the focus and its lead ahead of the target.</summary>
+        public float OverheadHeight => overHeight;
+        public Vector3 OverheadLead => overLead;
 
         /// <summary>Automation: turn the third-person / first-person view toward a world direction (on foot).</summary>
         public void LookToward(Vector3 dir)
@@ -79,7 +97,7 @@ namespace MadMax.Game
             orbitYaw = lookYaw = y;
             orbitPitch = Mathf.Clamp(p + 4f, -10f, 70f); lookPitch = Mathf.Clamp(p, -80f, 80f);
         }
-        Vector3 smoothFocus, lastTargetPos, velocity, filteredTarget, lastCamPos;
+        Vector3 smoothFocus, lastTargetPos, velocity, filteredTarget, lastCamPos, overLead, overFocus;
         float travelFraming;
         Quaternion lastCamRot = Quaternion.identity;
         Vector3 rawCamPos;
@@ -128,7 +146,7 @@ namespace MadMax.Game
         /// <summary>Screen shake scaled by impact strength (m/s above the damage threshold).</summary>
         public void Shake(float strength) { if (GameSettings.Current.cameraShake) shake = Mathf.Min(1f, shake + strength * 0.08f); }
 
-        static readonly ViewMode[] Order = { ViewMode.Isometric, ViewMode.TiltShift, ViewMode.TopDown, ViewMode.ThirdPerson, ViewMode.FirstPerson, ViewMode.Hood, ViewMode.Bumper };
+        static readonly ViewMode[] Order = { ViewMode.Overhead, ViewMode.Isometric, ViewMode.TiltShift, ViewMode.TopDown, ViewMode.ThirdPerson, ViewMode.FirstPerson, ViewMode.Hood, ViewMode.Bumper };
 
         /// <summary>Hood and bumper camera spots (target-local) from the body mesh: on the bonnet just ahead of the
         /// windscreen, and low on the front bumper.</summary>
@@ -178,7 +196,8 @@ namespace MadMax.Game
             if (pad != null) zoom += ((pad.dpad.down.isPressed ? 1f : 0f) - (pad.dpad.up.isPressed ? 1f : 0f)) * Time.deltaTime * 8f;
             if (zoom != 0f) ApplyZoom(zoom);
 
-            yaw += ((Controls.Held(Controls.Act.CamRight) ? 1f : 0f) - (Controls.Held(Controls.Act.CamLeft) ? 1f : 0f)) * 90f * Time.deltaTime;
+            float turn = ((Controls.Held(Controls.Act.CamRight) ? 1f : 0f) - (Controls.Held(Controls.Act.CamLeft) ? 1f : 0f)) * 90f * Time.deltaTime;
+            if (mode == ViewMode.Overhead) { overYaw += turn; if (turn != 0f) overManual = 4f; } else yaw += turn;
 
             // cursor: locked for on-foot free look, Esc releases, click re-locks
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) cursorReleased = false;
@@ -200,7 +219,7 @@ namespace MadMax.Game
                 if (mouse != null && mouse.rightButton.isPressed && !aim && !glass && !WastelandGame.RadialBlocksLook) drag = mouse.delta.ReadValue() * 0.25f * gs.mouseSensitivity;
                 if (pad != null && !pad.leftTrigger.isPressed && !(game && game.Current)) drag += pad.rightStick.ReadValue() * 90f * Time.deltaTime * gs.mouseSensitivity;
                 if (gs.invertY) drag.y = -drag.y;
-                yaw += drag.x;
+                if (mode == ViewMode.Overhead) { overYaw += drag.x; if (drag.x != 0f) overManual = 4f; } else yaw += drag.x;
                 tilt = Mathf.Clamp(tilt - drag.y * 0.5f + ((Controls.Held(Controls.Act.CamTiltUp) ? 1f : 0f) - (Controls.Held(Controls.Act.CamTiltDown) ? 1f : 0f)) * 40f * Time.deltaTime, -25f, 40f);
             }
             if (mode == ViewMode.FirstPerson || mode == ViewMode.Hood || mode == ViewMode.Bumper)
@@ -225,6 +244,7 @@ namespace MadMax.Game
                 case ViewMode.ThirdPerson: thirdDistance = Mathf.Clamp(thirdDistance * Mathf.Pow(1.1f, steps), thirdDistanceRange.x, thirdDistanceRange.y); break;
                 case ViewMode.FirstPerson: case ViewMode.Hood: case ViewMode.Bumper: fpsFov = Mathf.Clamp(fpsFov + steps * 4f, fpsFovRange.x, fpsFovRange.y); break;
                 case ViewMode.TopDown: topSize = Mathf.Clamp(topSize * Mathf.Pow(1.12f, steps), topSizeRange.x, topSizeRange.y); break;
+                case ViewMode.Overhead: overZoom = Mathf.Clamp(overZoom * Mathf.Pow(1.12f, steps), overZoomRange.x, overZoomRange.y); break;
             }
         }
 
@@ -272,6 +292,11 @@ namespace MadMax.Game
                 float focusDepth = mode == ViewMode.TiltShift ? tiltDistance : 60f;
                 RenderSettings.fogStartDistance = focusDepth - 12f;
                 RenderSettings.fogEndDistance = focusDepth - 12f + 12f / Mathf.Max(0.02f, mistAmount * 0.5f);
+                if (mode == ViewMode.Overhead)                                                 // a thinner veil: the ground stays readable from up high
+                {
+                    RenderSettings.fogStartDistance = overDist * 0.75f;
+                    RenderSettings.fogEndDistance = overDist * 0.75f + 18f / Mathf.Max(0.02f, mistAmount * 0.5f);
+                }
             }
             MadMax.World.Atmosphere.SkyVisible = perspectiveFog;
             cam.backgroundColor = OccluderFade.Underground ? new Color(0.045f, 0.032f, 0.026f) : sky;   // earth around an underground cutaway
@@ -281,6 +306,7 @@ namespace MadMax.Game
                 fade.cutMode = mode == ViewMode.ThirdPerson ? 1 : TopDownView ? 2 : 0;
             }
             pixel.postMaterial = mode == ViewMode.TiltShift ? tiltShiftMaterial : null;
+            GraphicsQuality.ViewBlur(CrosshairView);
             bool fps = mode == ViewMode.FirstPerson;
             if (fps && Time.unscaledTime > glassScan) { glassScan = Time.unscaledTime + 1f; ShowGlass(true); CollectGlass(vehicle ? target : null); }   // doors come and go
             ShowGlass(!fps);
@@ -329,6 +355,39 @@ namespace MadMax.Game
                     ct.position = pos;
                     pixel.SetTruePosition(pos);
                     ViewYaw = yaw;
+                    break;
+                }
+                case ViewMode.Overhead:
+                {
+                    cam.orthographic = false;
+                    cam.fieldOfView = overFov;
+                    // height: on foot low, cars higher by length, climbing with speed (fast) and settling back (slowly)
+                    float speed = vehicle ? Mathf.Abs(vehicle.ForwardSpeed) : new Vector3(velocity.x, 0f, velocity.z).magnitude;
+                    float want = vehicle ? overCarHeight * Mathf.Sqrt(targetScale) + overSpeedHeight * Mathf.SmoothStep(0f, 1f, speed / overSpeedFull) : overFootHeight;
+                    if (player && player.Interior) want = Mathf.Min(want, 16f);
+                    want *= overZoom * Mathf.Clamp(GameSettings.Current.overheadHeight, 0.6f, 1.6f) * (BinocularsTool.Looking ? 1.8f : 1f);
+                    overHeight = snapNext || overHeight <= 0f ? want : Mathf.Lerp(overHeight, want, 1f - Mathf.Exp(-(want > overHeight ? 1.6f : 0.55f) * dt));
+                    // driving forward: swing lazily round behind the heading (faster the faster it goes)
+                    overManual -= dt;
+                    if (vehicle && overFollowHeading && GameSettings.Current.headingFollow && overManual <= 0f && vehicle.ForwardSpeed > 4f && !vehicle.aircraft)
+                    {
+                        var hf = Vector3.ProjectOnPlane(target.forward, Vector3.up);
+                        if (hf.sqrMagnitude > 0.01f)
+                            overYaw = Mathf.LerpAngle(overYaw, Mathf.Atan2(hf.x, hf.z) * Mathf.Rad2Deg, 1f - Mathf.Exp(-0.6f * Mathf.Clamp01((vehicle.ForwardSpeed - 4f) / 14f) * dt));
+                    }
+                    float pitch = Mathf.Clamp(overPitch + tilt * 0.5f, 55f, 90f);
+                    var r = Quaternion.Euler(pitch, overYaw, 0f);
+                    // lead: half a second of travel, at most half the view's half height (the car stays well in frame)
+                    float halfView = overHeight * Mathf.Tan(overFov * 0.5f * Mathf.Deg2Rad);
+                    var flatV = new Vector3(velocity.x, 0f, velocity.z);
+                    var ahead = Vector3.ClampMagnitude(flatV * (vehicle ? 0.55f : 0.25f), halfView * (vehicle ? 0.5f : 0.2f));
+                    overLead = snapNext ? ahead : Vector3.Lerp(overLead, ahead, 1f - Mathf.Exp(-2.2f * dt));
+                    var f = filteredTarget + Vector3.up * (player ? 0.9f : 0.6f) + overLead;
+                    overFocus = snapNext ? f : Vector3.Lerp(overFocus, f, 1f - Mathf.Exp(-9f * dt));
+                    overDist = overHeight / Mathf.Sin(pitch * Mathf.Deg2Rad);
+                    cam.nearClipPlane = Mathf.Max(0.3f, overDist * 0.1f); cam.farClipPlane = overDist + 220f;
+                    ct.SetPositionAndRotation(overFocus - r * Vector3.forward * overDist, r);
+                    ViewYaw = overYaw;
                     break;
                 }
                 case ViewMode.Hood:
@@ -390,7 +449,7 @@ namespace MadMax.Game
             lastCamPos = ct.position; lastCamRot = ct.rotation;
             if (shake > 0.001f)
             {
-                float a = shake * shake * (mode == ViewMode.Isometric ? isoSize * 0.05f : mode == ViewMode.TopDown ? topSize * 0.03f : 0.25f);
+                float a = shake * shake * (mode == ViewMode.Isometric ? isoSize * 0.05f : mode == ViewMode.TopDown ? topSize * 0.03f : mode == ViewMode.Overhead ? overHeight * 0.012f : 0.25f);
                 ct.position += ct.rotation * new Vector3(Random.Range(-a, a), Random.Range(-a, a), 0f);
                 shake = Mathf.MoveTowards(shake, 0f, dt * 2.5f);
             }
@@ -407,7 +466,7 @@ namespace MadMax.Game
             Shader.SetGlobalFloat(SeaId, MadMax.World.WorldGen.SeaLevel + MadMax.World.Weather.LakeRise);
             if (!t) return;
             var p = ct.position;
-            float wl = t.WaterLevel(p.x, p.z);
+            float wl = t.WaterLevelNoLoad(p.x, p.z);                                              // a high iso camera stands over unloaded ground
             bool dry = (player && player.Interior && player.Interior.airtight) || MadMax.Building.AirPocket.Contains(p);
             bool cameraUnder = !float.IsNaN(wl) && p.y < wl - 0.05f && !dry;
             if (cameraUnder)
@@ -439,7 +498,7 @@ namespace MadMax.Game
         {
             var t = DeformableTerrain.Instance;
             if (!t) return p;
-            float h = t.Height(p.x, p.z) + groundClearance;
+            float h = t.HeightNoLoad(p.x, p.z) + groundClearance;                                 // the same where loaded; no chunk made for a far camera
             if (p.y < h) p.y = h;
             return p;
         }

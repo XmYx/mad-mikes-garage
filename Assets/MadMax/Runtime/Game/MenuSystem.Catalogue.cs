@@ -375,7 +375,7 @@ namespace MadMax.Game
             int x = frame.x, y = frame.y, w = frame.width, h = frame.height;
             int qy = y + h - footer;
             c.Line(x + 7, qy, x + w - 8, qy, MadMax.Voxel.Pal.PanelEdge);
-            string status = "READY WHEN YOU ARE";
+            string status = station && station.watts > 0f ? "READY WHEN YOU ARE - DRAWS " + Mathf.RoundToInt(station.watts) + " W" : "READY WHEN YOU ARE";
             float progress = 0f;
             if (station && station.Current != null)
             {
@@ -383,7 +383,7 @@ namespace MadMax.Game
                 var recipe = RecipeLibrary.Get(job.recipe);
                 progress = Mathf.Clamp01(job.progress);
                 int seconds = recipe != null ? Mathf.CeilToInt((1f - progress) * RecipeLibrary.Seconds(recipe) / Mathf.Max(0.01f, job.speed)) : 0;
-                status = (station.Powered ? "MAKING " : "PAUSED - NO POWER: ") + (recipe != null ? recipe.name : "...") + "  " + seconds + " S  [" + station.queue.Count + "/8]";
+                status = (station.Powered ? "MAKING " : "PAUSED - NO POWER (NEEDS " + Mathf.RoundToInt(station.watts) + " W): ") + (recipe != null ? recipe.name : "...") + "  " + seconds + " S  [" + station.queue.Count + "/8]";
             }
             else if (station && station.TrayCount > 0) status = "FINISHED GOODS IN THE TRAY - COLLECT OUTSIDE THIS MENU";
             else if (!station && game.HandCurrent != null)

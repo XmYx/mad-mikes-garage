@@ -24,7 +24,7 @@ namespace MadMax.Animals
     /// Kept animals (tamed, bought young, bred) are saved; once a day they eat from a trough near home (or what you
     /// fed them), lay and give milk when fed, grow up, breed in pairs, and starve when forgotten. Loud noises and horns
     /// scatter what hears them. Authority only, like the NPCs.</summary>
-    public class AnimalDirector : MonoBehaviour
+    public partial class AnimalDirector : MonoBehaviour
     {
         public static AnimalDirector Instance { get; private set; }
 
@@ -78,6 +78,7 @@ namespace MadMax.Animals
             var focus = game.Current ? game.Current.transform.position : game.Player.transform.position;
             UpdateWild(focus);
             UpdateVillages(focus);
+            UpdateTownLife(focus);                                                               // crows on the squares, rats and strays in the alleys
             if ((vultureT -= 1f) <= 0f) { vultureT = 12f; UpdateVultures(focus); }
         }
 
@@ -369,6 +370,7 @@ namespace MadMax.Animals
         /// <summary>A loud noise at <paramref name="at"/> heard within <paramref name="radius"/> m.</summary>
         public void Noise(Vector3 at, float radius)
         {
+            MadMax.Game.Attention.Ping(at, MadMax.Game.Attention.Kind.Sound, radius);
             float r2 = radius * radius;
             for (int i = Animal.All.Count - 1; i >= 0; i--)
             {

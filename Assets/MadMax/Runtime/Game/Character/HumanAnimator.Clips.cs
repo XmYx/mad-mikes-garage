@@ -39,7 +39,12 @@ namespace MadMax.Game
         /// <summary>One tick of the animator: clips when installed, the procedural poses otherwise.</summary>
         public void Tick(float dt, State s)
         {
-            if (rig.Limp) return;                                                               // physics poses a ragdoll
+            if (rig.Limp) { chestAdd = headAdd = Quaternion.identity; return; }                 // physics poses a ragdoll
+            // last tick's look / nod additions come off first: the procedural poses slerp from the current rotation
+            if (addChest && addChest == rig.Bone(BodyPart.Chest)) addChest.localRotation *= Quaternion.Inverse(chestAdd);
+            if (addHead && addHead == rig.Bone(BodyPart.Head)) addHead.localRotation *= Quaternion.Inverse(headAdd);
+            chestAdd = headAdd = Quaternion.identity;
+            FeelBegin(dt, ref s);
             if (HumanClips.Enabled && HumanClips.Get("idle") != null && HumanClips.Get("walk") != null && HumanClips.Get("run") != null)
             {
                 if (!UsingClips) curValid = false;
@@ -51,9 +56,30 @@ namespace MadMax.Game
                 UsingClips = false;
                 BaseClip = null;
                 TickProcedural(dt, s);
+                if (Bind()) ApplyFootIK(dt, s.grounded && !s.sitting && !s.lying && !s.prone && !s.groundSit && FootIK && NearCamera(25f));
             }
-            ApplyLookAt(dt);
+            SteadyHead(dt, s);
+            if (!face) face = rig.GetComponent<HumanFace>();
+            // where to look: what code asks for (talking), else the attention (aim, danger, sounds, things, glances),
+            // else what the player could use / the camera's aim; nothing while lying or prone
+            var auto = face ? face.AutoLook : null;
+            if (Attention != null) Attention.Tick(dt, s, auto);
+            var look = LookAt ?? (Attention != null && Attention.Target.HasValue ? Attention.Target : auto);
+            if ((s.lying || s.prone) && !LookAt.HasValue) look = null;
+            if (Attention != null && Attention.Shifted && face && !LookAt.HasValue) face.Blink();
+            ApplyLookAt(dt, look, s);
+            TalkNods(dt, s);
+            ChewAndShiver(s);
+            HitLean(s);
+            if (face)
+            {
+                face.Target = look;
+                face.Talking = s.talking;
+                face.Stress = Mathf.Max(s.stress, Mathf.Max(Mathf.Max(s.limpL, s.limpR), Mathf.Max(s.armHurtL, s.armHurtR)) * 0.7f);
+            }
         }
+
+        HumanFace face;
 
         static HumanClip Clip(string n) => HumanClips.Get(n);
 
@@ -148,8 +174,14 @@ namespace MadMax.Game
             }
             else if (s.lying && Clip("lie") is HumanClip lie)
             {
-                Acc(lie, time / lie.length, 1f);
+                var lc = s.lyingSide ? Clip("lie_side") ?? lie : lie;                           // asleep: on the side
+                Acc(lc, time / lc.length, 1f);
                 airW = 0f;
+            }
+            else if (s.prone || s.groundSit)
+            {
+                if (!LowClips(dt, s)) { TickProcedural(dt, s); curValid = false; return; }
+                airW = 0f; airT = 0f; landT = 9f; wasGrounded = true;
             }
             else
             {
@@ -160,7 +192,8 @@ namespace MadMax.Game
 
             // write: smoothed towards the targets (state changes blend, clips stay crisp)
             bool acting = s.tool.HasValue || actW > 0.05f;
-            float k = 1f - Mathf.Exp(-(acting ? 40f : 24f) * dt);
+            float k = snapNext ? 1f : 1f - Mathf.Exp(-(acting ? 40f : 24f) * dt);
+            snapNext = false;
             for (int i = 0; i < N; i++)
             {
                 cur[i] = Quaternion.Slerp(cur[i], tgt[i], k);
@@ -176,31 +209,48 @@ namespace MadMax.Game
 
         void Locomotion(float dt, State s, float move, float run)
         {
-            // stride phase exactly as the procedural gait (footstep events unchanged)
-            float stride = Mathf.Lerp(1.35f, 2.3f, run);
-            float prev = phase;
-            phase += s.speed / stride * Mathf.PI * 2f * dt;
-            if (Mathf.Sign(Mathf.Sin(prev)) != Mathf.Sign(Mathf.Sin(phase)) && s.grounded && move > 0.2f) Footstep?.Invoke(Mathf.Sin(phase) > 0f);
-            if (phase > 1000f) phase -= Mathf.PI * 200f;
-            float u = phase / (Mathf.PI * 2f);                 // the clips start at the left heel strike: the footstep events fire there
-
             crouchW = Mathf.MoveTowards(crouchW, s.crouching ? 1f : 0f, dt * 5f);
             float a = Mathf.Clamp01(s.speed / 1.0f), b = Mathf.InverseLerp(2.0f, 3.6f, s.speed), c = Mathf.InverseLerp(4.6f, 5.6f, s.speed);
             var sprint = Clip("sprint") ?? Clip("run");
             float stand = 1f - crouchW;
-            UpdateIdle(dt, s.speed < 0.15f, s.hold == null && !s.carrying && !s.tool.HasValue);
+            var tiredIdle = Clip("tired"); var tiredWalk = Clip("tired_walk");
+            float ti = tiredIdle != null ? tiredW : 0f, tw = tiredWalk != null ? tiredW : 0f;
+            var crouchWalk = Clip("crouch_walk");
+            float cmove = Mathf.Clamp01(s.speed / 0.8f);
+
+            // stride phase: one cycle = the metres the dominant gait clip covers (speed × length, blended by weight),
+            // so the planted feet don't skate; footstep events at the heel strikes (left u = 0, right u = 0.5)
+            float hgt = pelvisBase / 0.94f;
+            float ws = 0f, st = 0f;
+            StrideOf(Clip("walk"), a * (1f - b) * stand * (1f - tw), 1.4f, ref ws, ref st);
+            StrideOf(tiredWalk, a * (1f - b) * stand * tw, 1.155f, ref ws, ref st);
+            StrideOf(Clip("run"), a * b * (1f - c) * stand, 2.81f, ref ws, ref st);
+            StrideOf(sprint, a * b * c * stand, 3.48f, ref ws, ref st);
+            StrideOf(crouchWalk, crouchW * cmove, 0.95f, ref ws, ref st);
+            float stride = (ws > 0.01f ? st / ws : 1.4f) * hgt;
+            float prev = phase;
+            phase += s.speed / Mathf.Max(0.3f, stride) * Mathf.PI * 2f * dt;
+            if (Mathf.Sign(Mathf.Sin(prev)) != Mathf.Sign(Mathf.Sin(phase)) && s.grounded && move > 0.2f) { bool left = Mathf.Sin(phase) > 0f; Footstep?.Invoke(left); HeelStrike(left, s); }
+            if (phase > 1000f) phase -= Mathf.PI * 200f;
+            float u = phase / (Mathf.PI * 2f);                 // the clips start at the left heel strike: the footstep events fire there
+            lastStride = stride;
+
+            // idle variants only standing at ease (not talking, aiming, acting, out of breath)
+            bool busy = s.talking || s.aiming || s.action != null || tiredW > 0.5f;
+            UpdateIdle(dt, s.speed < 0.15f && !busy, s.hold == null && !s.carrying && !s.tool.HasValue, busy, s);
             float wIdle = (1f - a) * stand;
-            if (idlePrev != null && idleFade < 1f) { Acc(idlePrev, idlePrevT / idlePrev.length, wIdle * (1f - idleFade)); Acc(idleCur, idleT / idleCur.length, wIdle * idleFade); }
-            else Acc(idleCur, idleT / idleCur.length, wIdle);
-            Acc(Clip("walk"), u, a * (1f - b) * stand);
+            if (idlePrev != null && idleFade < 1f) { Acc(idlePrev, idlePrevT / idlePrev.length, wIdle * (1f - idleFade) * (1f - ti)); Acc(idleCur, idleT / idleCur.length, wIdle * idleFade * (1f - ti)); }
+            else Acc(idleCur, idleT / idleCur.length, wIdle * (1f - ti));
+            Acc(tiredIdle, time / (tiredIdle != null ? tiredIdle.length : 1f), wIdle * ti);
+            Acc(Clip("walk"), u, a * (1f - b) * stand * (1f - tw));
+            Acc(tiredWalk, u, a * (1f - b) * stand * tw);
             Acc(Clip("run"), u, a * b * (1f - c) * stand);
             Acc(sprint, u, a * b * c * stand);
             if (crouchW > 0f)
             {
-                var ci = Clip("crouch_idle"); var cw = Clip("crouch_walk");
-                float cm = Mathf.Clamp01(s.speed / 0.8f);
-                Acc(ci, time / (ci != null ? ci.length : 1f), crouchW * (1f - cm));
-                Acc(cw, u, crouchW * cm);
+                var ci = Clip("crouch_idle");
+                Acc(ci, time / (ci != null ? ci.length : 1f), crouchW * (1f - cmove));
+                Acc(crouchWalk, u, crouchW * cmove);
             }
 
             // air: jump (rising), fall; land on touchdown
@@ -222,9 +272,9 @@ namespace MadMax.Game
                 Over(land, landT / land.length, lw * lw * (1f - 0.5f * move), true);
             }
 
-            // turning banks the chest, a hurt leg swings and bends less and the hips drop on it, the head follows the aim
-            float bank = Mathf.Clamp(s.turnRate * 0.05f, -8f, 8f) * move;
-            Post(BodyPart.Chest, 0, 0, -bank);
+            // set off / stop / step round, lean into turns and slopes, out of breath (HumanAnimator.Feel);
+            // a hurt leg swings and bends less and the hips drop on it, the head follows the aim
+            FeelClips(s, move);
             Limp(BodyPart.ThighL, BodyPart.ShinL, BodyPart.FootL, s.limpL);
             Limp(BodyPart.ThighR, BodyPart.ShinR, BodyPart.FootR, s.limpR);
             float sp = Mathf.Sin(phase);
@@ -243,25 +293,30 @@ namespace MadMax.Game
         }
 
         static readonly string[] IdleVariants = { "idle_shift", "idle_look" };
-        static readonly string[] FreeVariants = { "idle_shift", "idle_look", "idle_shift", "idle_look", "idle_stretch", "idle_neck", "idle_hips" };
 
-        void UpdateIdle(float dt, bool idle, bool freeHands)
+        void UpdateIdle(float dt, bool idle, bool freeHands, bool busy, State s)
         {
             idleT += dt; idlePrevT += dt;
             idleFade = Mathf.MoveTowards(idleFade, 1f, dt / 0.8f);
             if (idleCur == null) { idleCur = Clip("idle"); idleT = 0f; }
-            if (!idle) { idleNext = Mathf.Max(idleNext, idleT + 4f); return; }
+            if (!idle)
+            {
+                idleNext = Mathf.Max(idleNext, idleT + 4f);
+                // talking, aiming, acting: a variant in progress gives way to plain breathing
+                if (busy && forcedIdle == null && idleCur != null && idleCur.name != "idle" && idleFade >= 1f && Clip("idle") is HumanClip back)
+                { idlePrev = idleCur; idlePrevT = idleT; idleCur = back; idleT = 0f; idleFade = 0f; }
+                if (forcedIdle == null) return;
+            }
             if (idleT < idleNext || idleFade < 1f) return;
-            // a variant now and then: shift the weight, look around; back to breathing
-            // with empty hands also a stretch, a rub of the neck, hands on the hips
-            var pool = freeHands ? FreeVariants : IdleVariants;
-            string next = forcedIdle ?? (idleCur.name != "idle" ? "idle" : pool[rnd.Next(pool.Length)]);
+            // a variant now and then (every 6-16 s), picked by context: hot, cold, carrying a pack, else shift the
+            // weight, look around, scratch; with empty hands also a stretch, a rub of the neck, hands on the hips
+            string next = forcedIdle ?? (idleCur.name != "idle" ? "idle" : PickIdle(s, freeHands));
             forcedIdle = null;
             var c = Clip(next);
             if (c == null) { idleNext = idleT + 8f; return; }
             idlePrev = idleCur; idlePrevT = idleT;
             idleCur = c; idleT = 0f; idleFade = 0f;
-            idleNext = c.name == "idle" ? 6f + (float)rnd.NextDouble() * 8f : c.length * (0.6f + (float)rnd.NextDouble() * 0.4f);
+            idleNext = c.name == "idle" ? 6f + (float)rnd.NextDouble() * 10f : c.length * (0.6f + (float)rnd.NextDouble() * 0.4f);
         }
 
         void Overlays(float dt, State s, float move, float run)
@@ -271,7 +326,7 @@ namespace MadMax.Game
             if (want != null)
             {
                 if (actClip != want) { actClip = want; actW = Mathf.Min(actW, 0.3f); }
-                actW = Mathf.MoveTowards(actW, 1f, dt * 10f);
+                actW = snapNext ? 1f : Mathf.MoveTowards(actW, 1f, dt * 10f);
                 actT = s.actionT >= 0f ? Remap(s.actionT, s.actionHit, want.hit) : time / want.length;
             }
             else
@@ -478,19 +533,79 @@ namespace MadMax.Game
         }
 
         // ------------------------------------------------------------------ look at
-        void ApplyLookAt(float dt)
+        Vector3 lookLag;
+        float nodW;
+        Transform addChest, addHead;
+        Quaternion chestAdd = Quaternion.identity, headAdd = Quaternion.identity;
+
+        /// <summary>Turns toward the look target: the chest takes a quarter of the turn, the head about two thirds and
+        /// lags a little behind (HumanFace's eyes get there first and cover the rest).</summary>
+        void ApplyLookAt(float dt, Vector3? target, State s)
         {
-            if (LookAt.HasValue) lastLook = LookAt.Value;
-            lookW = Mathf.MoveTowards(lookW, LookAt.HasValue ? 1f : 0f, dt * 3f);
+            if (target.HasValue) lastLook = target.Value;
+            if (lookW <= 0.001f) lookLag = lastLook;
+            lookW = Mathf.MoveTowards(lookW, target.HasValue ? 1f : 0f, dt * 3f);
             if (lookW <= 0.001f) return;
-            var head = rig.Bone(BodyPart.Head); var chest = rig.Bone(BodyPart.Chest);
-            if (!head || !chest) return;
-            var d = Quaternion.Inverse(chest.rotation) * (lastLook - head.position);
+            var head = rig.Bone(BodyPart.Head); var chest = rig.Bone(BodyPart.Chest); var pelvis = rig.Bone(BodyPart.Pelvis);
+            if (!head || !chest || !pelvis) return;
+            lookLag = Vector3.Lerp(lookLag, lastLook, 1f - Mathf.Exp(-7f * dt));
+            var dp = Quaternion.Inverse(pelvis.rotation) * (lookLag - head.position);
+            float yawP = Mathf.Atan2(dp.x, dp.z) * Mathf.Rad2Deg;
+            if (Mathf.Abs(yawP) > 115f) return;                                  // behind: don't wring the neck
+            float pitchP = -Mathf.Atan2(dp.y, new Vector2(dp.x, dp.z).magnitude) * Mathf.Rad2Deg;
+            // the chest, unless the arms are busy aiming or swinging
+            float cw = lookW * (1f - Mathf.Max(aimW, actW)) * (!s.sitting || s.lounging ? 1f : s.riding ? 0.4f : 0f);   // hands on a wheel stay on it
+            if (cw > 0.001f)
+            {
+                var add = Quaternion.Euler(Mathf.Clamp(pitchP * 0.15f, -6f, 8f), Mathf.Clamp(yawP * 0.25f, -25f, 25f), 0f);
+                chestAdd = Quaternion.Slerp(Quaternion.identity, add, cw);
+                chest.localRotation *= chestAdd;
+                addChest = chest;
+            }
+            var d = Quaternion.Inverse(chest.rotation) * (lookLag - head.position);
             float yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
-            if (Mathf.Abs(yaw) > 115f) return;                                   // behind: don't wring the neck
             float pitch = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
-            var want = Quaternion.Euler(Mathf.Clamp(pitch, -30f, 35f), Mathf.Clamp(yaw, -70f, 70f), 0f);
-            head.localRotation = Quaternion.Slerp(head.localRotation, want, lookW * 0.85f);
+            var want = Quaternion.Euler(Mathf.Clamp(pitch * 0.85f, -30f, 35f), Mathf.Clamp(yaw * 0.87f, -70f, 70f), 0f);
+            head.localRotation = Quaternion.Slerp(head.localRotation, want, lookW * 0.9f);
+        }
+
+        /// <summary>A blow's direction over the flinch / stagger clip: the chest gives way from the side it came from (back
+        /// from the front, forward from behind, bent away and twisted from a side), the head snaps with it.</summary>
+        void HitLean(State s)
+        {
+            float m = s.hitFrom.magnitude;
+            if (s.hitT <= 0f || s.hitT >= 1f || m < 0.05f) return;
+            var chest = rig.Bone(BodyPart.Chest); var head = rig.Bone(BodyPart.Head);
+            if (!chest) return;
+            float w = Mathf.Clamp01(s.hitT * 8f) * (1f - s.hitT) * (1f - s.hitT) * Mathf.Min(m, 1.6f);
+            var f = new Vector3(s.hitFrom.x, 0f, s.hitFrom.z).normalized;
+            var add = Quaternion.Euler(-f.z * 16f * w, f.x * 14f * w, f.x * 11f * w);
+            chest.localRotation *= add;
+            chestAdd = addChest == chest ? chestAdd * add : add;
+            addChest = chest;
+            if (!head) return;
+            var hadd = Quaternion.Euler(-f.z * 12f * w, f.x * 18f * w, f.x * 7f * w);
+            head.localRotation *= hadd;
+            headAdd = addHead == head ? headAdd * hadd : hadd;
+            addHead = head;
+        }
+
+        /// <summary>Talking: small nods in bursts with the phrasing, a brow-raising lift of the chin now and then, a slow
+        /// tilt (Head bone only, over whatever the talk_a/b overlay and the look-at set).</summary>
+        void TalkNods(float dt, State s)
+        {
+            nodW = Mathf.MoveTowards(nodW, s.talking && !s.lying ? 1f : 0f, dt * 2.5f);
+            if (nodW <= 0.001f) return;
+            var head = rig.Bone(BodyPart.Head);
+            if (!head) return;
+            float t = time;
+            float burst = Mathf.Max(0f, Mathf.Sin(t * 0.93f + 0.4f));
+            float nod = Mathf.Sin(t * 12.6f) * 2.4f * burst * burst;
+            float ph = Mathf.Repeat(t, 3.7f) / 0.55f;                             // the "eyebrows up" beat
+            float lift = ph < 1f ? -4.5f * Mathf.Sin(ph * Mathf.PI) : 0f;
+            headAdd = Quaternion.Euler((nod + lift) * nodW, Mathf.Sin(t * 0.53f) * 2f * nodW, Mathf.Sin(t * 0.71f) * 2.5f * nodW);
+            head.localRotation *= headAdd;
+            addHead = head;
         }
     }
 }

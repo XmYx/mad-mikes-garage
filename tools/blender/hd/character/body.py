@@ -6,7 +6,7 @@ from hdlib import Prim, rot_x, rot_y, rot_z
 SKIN_TONES = [("e9c09a", "f5d2ae", "c99a72"), ("c98e62", "dba478", "a8734c"),
               ("8e5a38", "a56c46", "6e4228"), ("5a3620", "6e442a", "422616")]       # HumanDesign.SkinTones
 HAIR_COLORS = ["1c1512", "4a2c18", "8a5a2a", "c8a060", "b0b0b0", "8a2a1a"]          # HumanDesign.HairColors
-HAIR_STYLES = ["Bald", "Buzz", "Short", "Mohawk", "Ponytail", "Long"]                 # HairStyle enum
+HAIR_STYLES = ["Bald", "Buzz", "Short", "Mohawk", "Ponytail", "Long", "Undercut"]     # HairStyle enum
 
 FACES = {
     # name: (sex, overrides)
@@ -184,10 +184,30 @@ def hair_field(style, x, y, z, Fh, h=1.0):
     if style == "Short":
         return cap
     if style == "Ponytail":
-        tail = Prim("Head", "cap", a=(0, 0.21, -0.098), b=(0, 0.075, -0.128), ra=0.023, rb=0.011).eval(x, y, z)
+        # the tail follows the HairA chain (hdlib.chain_groups) down to the shoulders, so its bones bend it evenly
+        pts = [(0, 0.206, -0.101), (0, 0.162, -0.122), (0, 0.112, -0.131), (0, 0.062, -0.134), (0, 0.016, -0.13)]
+        rad = [0.024, 0.021, 0.017, 0.013, 0.007]
+        tail = None
+        for i in range(4):
+            seg = Prim("Head", "cap", a=pts[i], b=pts[i + 1], ra=rad[i], rb=rad[i + 1]).eval(x, y, z)
+            tail = seg if tail is None else np.minimum(tail, seg)
+        tail = tail + 0.0016 * np.sin(70 * x + 24 * z) * np.clip((0.2 - y) / 0.05, 0, 1)        # loose strands
         tie = Prim("Head", "tor", c=(0, 0.205, -0.098), R=0.017, r=0.007, rot=rot_x(70)).eval(x, y, z)
         knot = Prim("Head", "sph", c=(0, 0.215, -0.095), r=0.024).eval(x, y, z)
         return np.minimum(np.minimum(cap, tail), np.minimum(tie, knot))
+    if style == "Undercut":
+        # clipped sides and back, a longer top and one heavy lock swept to the right over the brow (HairF chain)
+        buzz = np.maximum(Fh - 0.0035 - 0.0006 * np.sin(60 * np.arctan2(x, z) + 80 * y), R)
+        top_th = 0.006 + 0.012 * np.clip((y - 0.235) / 0.06, 0, 1) + clumps
+        top = np.maximum(Fh - top_th, np.maximum(0.232 - y + 0.06 * np.clip(-z / 0.1, 0, 1), np.abs(x) - 0.058))
+        pts = [(-0.012, 0.302, 0.02), (0.002, 0.297, 0.042), (0.026, 0.27, 0.083), (0.046, 0.24, 0.101)]
+        rad = [0.022, 0.02, 0.015, 0.006]
+        lock = None
+        for i in range(3):
+            seg = Prim("Head", "cap", a=pts[i], b=pts[i + 1], ra=rad[i], rb=rad[i + 1]).eval(x, y, z)
+            lock = seg if lock is None else np.minimum(lock, seg)
+        lock = np.maximum(lock, 0.6 * (Fh - 0.02))                                  # flattened onto the brow
+        return np.minimum(np.minimum(buzz, top), lock)
     if style == "Long":
         th2 = 0.011 + 0.012 * np.clip((y - 0.19) / 0.11, 0, 1)
         shell = np.maximum(Fh - th2, 0.13 - y)
@@ -200,10 +220,18 @@ def hair_field(style, x, y, z, Fh, h=1.0):
 
 
 def beard_field(kind, x, y, z, Fh, h=1.0):
-    """kind 2 = full beard (mesh). Stubble (1) is painted on the skin."""
-    if kind < 2:
+    """kind 2 = full beard, 1 = stubble (a speckled shell a few millimetres over the jaw; also painted on the skin)."""
+    if kind < 1:
         return None
     y = y / h
+    if kind == 1:
+        R = np.maximum(y - 0.172, 0.01 - z)
+        R = np.maximum(R, 0.085 - y - 0.03 * (z > 0.03))
+        lips = Prim("Head", "ell", c=(0, 0.1355, 0.095), rad=(0.03, 0.017, 0.03)).eval(x, y, z)
+        R = np.maximum(R, -lips)
+        speck = np.sin(613 * x + 11) * np.sin(571 * y + 3) * np.sin(587 * z + 7)                  # ~1 cm dots, patchy
+        th = 0.0002 + 0.0016 * np.clip(speck * 1.6 + 0.2, 0, 1)
+        return np.maximum(Fh - th, R)
     th = 0.007 + 0.012 * np.clip((0.14 - y) / 0.06, 0, 1)
     R = np.maximum(y - 0.176, 0.005 - z)                       # below the cheekbones, in front of the ears
     R = np.maximum(R, 0.07 - y - 0.03 * (z > 0.03))            # not down the neck

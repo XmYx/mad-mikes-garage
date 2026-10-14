@@ -16,8 +16,12 @@ Loops repeat their first key at t = 1. Clip metadata: speed (m/s the cycle was a
 impact moment for actions; the game maps it onto the tool's strikeAt), gait (cycle starts at left heel strike).
 """
 import math
+import os
+import sys
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 PARTS = ["Pelvis", "Chest", "Head", "UpperArmL", "UpperArmR", "ForearmL", "ForearmR", "HandL", "HandR",
          "ThighL", "ThighR", "ShinL", "ShinR", "FootL", "FootR"]
@@ -526,6 +530,62 @@ IDLE_HIPS = [
     (0.66, {"Chest": (1, 0, 0), "UpperArmL": (43, 26, -17), "UpperArmR": (43, -26, 17), "ForearmL": (-86, 0, 0), "ForearmR": (-86, 0, 0), "HandL": (2, 0, 30), "HandR": (2, 0, -30), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True}),
     (0.8, {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4), "ThighL": (0, 0, -3), "ThighR": (0, 0, 3), "FootL": (0, -6, 3), "FootR": (0, 6, -3)}, {"ground": True})]
 
+# ---------------------------------------------------------------- use animations (WastelandGame.UseAnim / PlayerCharacter.Transit)
+# Transitions keep the pelvis offset at 0 (or the lie offset): the game moves the root along its own path (to the seat,
+# onto the bed) and compensates the clip's pelvis offset, so the hips travel where they should.
+SIT_MID = flat_feet(add(STAND, {"ThighL": (-45, 0, -6), "ShinL": (70, 0, 0), "ThighR": (-45, 0, 6), "ShinR": (70, 0, 0), "Chest": (30, 0, 0), "Head": (-16, 0, 0),
+                                "UpperArmL": (-38, 0, -12), "UpperArmR": (-38, 0, 12), "ForearmL": (-34, 0, 0), "ForearmR": (-34, 0, 0)}))
+SIT_LOW = flat_feet(add(STAND, {"ThighL": (-78, 0, -6), "ShinL": (82, 0, 0), "ThighR": (-76, 0, 8), "ShinR": (80, 0, 0), "Chest": (18, 0, 0), "Head": (-8, 0, 0),
+                                "UpperArmL": (-30, 0, -14), "UpperArmR": (-30, 0, 14), "ForearmL": (-46, 0, 0), "ForearmR": (-48, 0, 0)}))
+SIT_DOWN = [(0.0, STAND, {"pelvis": (0, 0, 0)}), (0.4, SIT_MID, {"pelvis": (0, 0, 0)}), (0.75, SIT_LOW, {"pelvis": (0, 0, 0)}), (1.0, LOUNGE, {"pelvis": (0, 0, 0)})]
+# hands push on the thighs, the chest swings forward over the feet, up
+UP_PUSH = add(LOUNGE, {"ThighL": (4, 0, 0), "ThighR": (2, 0, 0), "ShinL": (6, 0, 0), "ShinR": (12, 0, 0), "Chest": (34, 0, 0), "Head": (-24, 0, 0),
+                       "UpperArmL": (8, 0, -4), "UpperArmR": (10, 0, 4), "ForearmL": (-20, 0, 0), "ForearmR": (-18, 0, 0)})
+UP_MID = flat_feet(add(STAND, {"ThighL": (-40, 0, -6), "ShinL": (60, 0, 0), "ThighR": (-40, 0, 6), "ShinR": (60, 0, 0), "Chest": (26, 0, 0), "Head": (-14, 0, 0),
+                               "UpperArmL": (-16, 0, -12), "UpperArmR": (-16, 0, 12), "ForearmL": (-30, 0, 0), "ForearmR": (-30, 0, 0)}))
+STAND_UP = [(0.0, LOUNGE, {"pelvis": (0, 0, 0)}), (0.3, UP_PUSH, {"pelvis": (0, 0, 0)}), (0.65, UP_MID, {"pelvis": (0, 0, 0)}), (1.0, STAND, {"pelvis": (0, 0, 0)})]
+# sat on the edge of a bed, then back onto it while the legs swing up (the game turns the root a quarter round)
+LIE_ELBOWS = {"Pelvis": (-34, 0, 0), "Chest": (-14, 0, 0), "Head": (10, 0, 0), "ThighL": (-62, 0, -6), "ThighR": (-58, 0, 6), "ShinL": (52, 0, 0), "ShinR": (60, 0, 0),
+              "FootL": (6, 0, 0), "FootR": (8, 0, 0), "UpperArmL": (36, 0, -18), "UpperArmR": (36, 0, 18), "ForearmL": (-50, 0, 0), "ForearmR": (-50, 0, 0)}
+LIE_SETTLE = {"Pelvis": (-72, 0, 0), "Chest": (-6, 0, 0), "Head": (2, 0, 4), "ThighL": (-22, 0, -6), "ThighR": (-26, 0, 4), "ShinL": (24, 0, 0), "ShinR": (30, 0, 0),
+              "FootL": (24, -6, 0), "FootR": (26, 8, 0), "UpperArmL": (16, 0, -16), "UpperArmR": (10, 0, 16), "ForearmL": (-30, 0, 0), "ForearmR": (-38, 0, 0)}
+LIE_BACK = [(0.0, LOUNGE, {"pelvis": (0, 0, 0)}), (0.35, LIE_ELBOWS, {"pelvis": (0, -0.26, 0)}), (0.7, LIE_SETTLE, {"pelvis": (0, -0.62, 0)}),
+            (1.0, LIE_P, {"pelvis": (0, -0.8, 0)})]
+# down on the right knee to work at something low (traps, the sluice, a carcass, a garden bed), and back up
+KNEEL_P = dict(WELD_P)
+KNEEL_P.update({"Chest": (32, 0, 0), "Head": (10, 0, 0), "UpperArmR": (-34, 0, 4), "ForearmR": (-44, 0, 0), "HandR": (0, 0, -10),
+                "UpperArmL": (-52, 0, 18), "ForearmL": (-48, 0, 0), "HandL": (0, 0, 10)})   # the left arm clears the raised left knee
+KNEEL_USE = [(0.0, STAND, {"ground": True}), (0.3, KNEEL_P, {"ground": True}),
+             (0.5, add(KNEEL_P, {"UpperArmR": (6, 6, 0), "ForearmR": (-10, 0, 0), "UpperArmL": (-4, 0, 0), "Chest": (3, 2, 0)}), {"ground": True}),
+             (0.7, add(KNEEL_P, {"UpperArmR": (-6, -4, 0), "UpperArmL": (-2, 0, 0), "ForearmL": (-6, 0, 0), "Chest": (2, -2, 0)}), {"ground": True}),
+             (1.0, STAND, {"ground": True})]
+# a recoil starter: crouch, the left hand on the machine, the right on the handle low by it; a hard yank up and back
+CORD_LOW = flat_feet(add(STAND, {"ThighL": (-62, 0, -10), "ShinL": (86, 0, 0), "ThighR": (-30, 0, 10), "ShinR": (70, 0, 0), "Chest": (40, 10, 0), "Head": (-20, 0, 0),
+                                 "UpperArmL": (-58, 0, 16), "ForearmL": (-40, 0, 0), "UpperArmR": (-30, 0, 6), "ForearmR": (-20, 0, 0), "HandR": (0, 0, -20)}))
+CORD_YANK = flat_feet(add(STAND, {"ThighL": (-34, 0, -10), "ShinL": (50, 0, 0), "ThighR": (-10, 0, 10), "ShinR": (36, 0, 0), "Chest": (18, -26, 0), "Head": (-10, 12, 0),
+                                  "UpperArmL": (-62, 0, 16), "ForearmL": (-36, 0, 0), "UpperArmR": (-24, -20, 34), "ForearmR": (-112, 0, 0), "HandR": (0, 0, -30)}))
+PULL_CORD = [(0.0, STAND, {"ground": True}), (0.38, CORD_LOW, {"ground": True}), (0.55, CORD_YANK, {"ground": True}),
+             (0.72, add(CORD_YANK, {"Chest": (4, 6, 0)}), {"ground": True}), (1.0, STAND, {"ground": True})]
+# both hands on a pump handle at waist height: two strokes
+PUMP_UP = flat_feet(add(STAND, {"ThighL": (-14, 0, -4), "ShinL": (20, 0, 0), "ThighR": (-4, 0, 4), "ShinR": (12, 0, 0), "Chest": (14, 0, 0), "Head": (-8, 0, 0),
+                                "UpperArmL": (-84, 0, 18), "ForearmL": (-34, 0, 0), "UpperArmR": (-86, 0, -14), "ForearmR": (-34, 0, 0)}))
+PUMP_DOWN = flat_feet(add(STAND, {"ThighL": (-30, 0, -4), "ShinL": (44, 0, 0), "ThighR": (-18, 0, 4), "ShinR": (36, 0, 0), "Chest": (34, 0, 0), "Head": (-20, 0, 0),
+                                  "UpperArmL": (-40, 0, 16), "ForearmL": (-22, 0, 0), "UpperArmR": (-42, 0, -12), "ForearmR": (-22, 0, 0)}))
+PUMP = [(0.0, STAND, {"ground": True}), (0.2, PUMP_UP, {"ground": True}), (0.4, PUMP_DOWN, {"ground": True}), (0.6, PUMP_UP, {"ground": True}),
+        (0.8, PUMP_DOWN, {"ground": True}), (1.0, STAND, {"ground": True})]
+# the hand comes up to the mouth (bite / sip), twice, and down
+REST_ARMS = {"Chest": (1, 0, 0), "UpperArmL": (-2, 0, -9), "UpperArmR": (-2, 0, 9), "ForearmL": (-12, 0, 0), "ForearmR": (-14, 0, 0), "HandL": (0, 0, 4), "HandR": (0, 0, -4)}
+EAT_P = add(REST_ARMS, {"UpperArmR": (-38, 0, -18), "ForearmR": (-124, 0, 0), "HandR": (0, 0, -16), "Head": (6, 0, 0), "Chest": (4, 0, 0)})
+EAT = [(0.0, REST_ARMS, {}), (0.3, EAT_P, {}), (0.45, add(EAT_P, {"Head": (6, 0, 0), "ForearmR": (6, 0, 0)}), {}),
+       (0.6, EAT_P, {}), (0.75, add(EAT_P, {"Head": (6, 0, 0), "ForearmR": (6, 0, 0)}), {}), (1.0, REST_ARMS, {})]
+DRINK_P = add(REST_ARMS, {"UpperArmR": (-64, 0, -12), "ForearmR": (-112, 0, 0), "HandR": (0, 0, -40), "Head": (-24, 0, 0), "Chest": (-6, 0, 0)})
+DRINK = [(0.0, REST_ARMS, {}), (0.3, DRINK_P, {}), (0.7, add(DRINK_P, {"Head": (-6, 0, 0), "UpperArmR": (-8, 0, 0)}), {}), (1.0, REST_ARMS, {})]
+# in the driver's seat, bent down under the dash at the ignition wires (upper body over sit_drive)
+WIRES = {"Chest": (32, 0, 0), "Head": (22, 0, 0), "UpperArmR": (-28, 0, 4), "ForearmR": (-40, 0, 0), "HandR": (0, 0, -30),
+         "UpperArmL": (-32, 0, 10), "ForearmL": (-44, 0, 0), "HandL": (0, 0, 30)}
+HOTWIRE = [(0.0, WIRES, {}), (0.3, add(WIRES, {"HandR": (0, 0, 40), "HandL": (0, 0, -20), "UpperArmR": (4, 0, 0)}), {}),
+           (0.55, add(WIRES, {"HandR": (0, 0, -10), "Head": (4, 6, 0)}), {}), (0.8, add(WIRES, {"HandL": (0, 0, 30), "UpperArmL": (4, 0, 0)}), {})]
+
 CLIPS = {
     # name: length (s), loop, mask, keys, meta
     "idle": dict(length=4.0, loop=True, mask="full", keys=IDLE),
@@ -567,8 +627,18 @@ CLIPS = {
     "idle_stretch": dict(length=6.0, loop=True, mask="full", keys=IDLE_STRETCH),
     "idle_neck": dict(length=5.0, loop=True, mask="full", keys=IDLE_NECK),
     "idle_hips": dict(length=6.0, loop=True, mask="full", keys=IDLE_HIPS),
+    "sit_down": dict(length=0.6, loop=False, mask="full", keys=SIT_DOWN),
+    "stand_up": dict(length=0.55, loop=False, mask="full", keys=STAND_UP),
+    "lie_back": dict(length=0.8, loop=False, mask="full", keys=LIE_BACK),
+    "kneel_use": dict(length=1.2, loop=False, mask="full", keys=KNEEL_USE, hit=0.5),
+    "pull_cord": dict(length=1.0, loop=False, mask="full", keys=PULL_CORD, hit=0.55),
+    "pump": dict(length=1.4, loop=False, mask="full", keys=PUMP, hit=0.8),
+    "eat": dict(length=1.0, loop=False, mask="upper", keys=EAT),
+    "drink": dict(length=1.0, loop=False, mask="upper", keys=DRINK),
+    "hotwire": dict(length=1.2, loop=True, mask="upper", keys=HOTWIRE),
     **HOLDS,
 }
+
 
 
 def resolve_key(pose, opts):
@@ -579,8 +649,36 @@ def resolve_key(pose, opts):
     else:
         pel = np.array([opts.get("pelvis_x", 0.0), 0.0, 0.0])
     if opts.get("ground"):
-        pel[1] = REST_FLOOR - foot_low(full, (pel[0], 0, pel[2])) + opts.get("lift", 0.0)
+        pel[1] = opts.get("floor", 0.0) + REST_FLOOR - foot_low(full, (pel[0], 0, pel[2])) + opts.get("lift", 0.0)
     return full, pel
+
+
+def extras(c, frames):
+    """Per-frame / event extras of a dense clip (clipkit.Dense) for the game JSON: rootX/rootZ/rootYaw, door,
+    eventNames/eventTimes."""
+    out = {}
+    if c.get("root"):
+        assert len(c["root"]) == frames, (len(c["root"]), frames)
+        out["rootX"] = [round(r[0], 5) for r in c["root"]]
+        out["rootZ"] = [round(r[1], 5) for r in c["root"]]
+        out["rootYaw"] = [round(r[2], 3) for r in c["root"]]
+    if c.get("door") is not None:
+        assert len(c["door"]) == frames
+        out["door"] = [round(v, 4) for v in c["door"]]
+    if c.get("ground") is not None and not isinstance(c.get("ground"), bool):
+        assert len(c["ground"]) == frames
+        out["ground"] = [round(v, 4) for v in c["ground"]]
+    if c.get("events"):
+        out["eventNames"] = [e[0] for e in c["events"]]
+        out["eventTimes"] = [round(float(e[1]), 4) for e in c["events"]]
+    return out
+
+
+# the 2026-10 revamp (locomotion, prone, ground sit / lie, chair, car, idles, reactions): clips_life.py builds them with
+# clipkit (IK-planted feet, footstep gaits, root motion); same names replace the older entries above
+import clips_life  # noqa: E402
+
+CLIPS.update(clips_life.build(sys.modules[__name__]))
 
 
 if __name__ == "__main__":

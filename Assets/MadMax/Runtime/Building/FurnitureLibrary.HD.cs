@@ -15,6 +15,8 @@ namespace MadMax.Building
             if (!go || string.IsNullOrEmpty(id)) return null;
             var v = HDVisual.Dress(go, HDDomain.Furniture, id, flags);
             if (!v) return null;
+            foreach (Transform ch in go.transform)                                                  // city pieces: the voxel glow mesh (the HD model has its own lamps)
+                if (ch.name == "Lens" && ch.TryGetComponent<Renderer>(out var lr)) lr.forceRenderingOff = true;
             if (go.TryGetComponent<PoweredLight>(out var pl))
             {
                 var bulb = v.Object("Bulb");

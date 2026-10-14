@@ -34,7 +34,10 @@ namespace MadMax.Game
 
         public abstract void Strike(PlayerCharacter user);
 
-        public bool TwoHanded => style == ToolStyle.Overhead || style == ToolStyle.Grind || style == ToolStyle.Gun || style == ToolStyle.Thrust;
+        /// <summary>Held in one hand whatever its style (a knife's thrust, a crutch).</summary>
+        public bool oneHanded;
+
+        public bool TwoHanded => !oneHanded && (style == ToolStyle.Overhead || style == ToolStyle.Grind || style == ToolStyle.Gun || style == ToolStyle.Thrust);
 
         /// <summary>Held by a long handle in both hands: the animator keeps the left hand on it (null = no second grip).</summary>
         public virtual Transform SecondGrip => null;

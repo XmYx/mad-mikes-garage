@@ -134,17 +134,18 @@ namespace MadMax.World
         {
             if (!Nearest(x, z, out float along, out float lat)) return 0f;
             float bed = HeightAt(along);
-            float w = 1f - Mathf.Clamp01((Mathf.Abs(lat) - BedWidth) / Shoulder);
+            float sh = Mathf.Clamp(4f + Mathf.Abs(bed - h) * 3.2f, Shoulder, 60f);               // the shoulder widens with the cut / fill (~20°)
+            float w = 1f - Mathf.Clamp01((Mathf.Abs(lat) - BedWidth) / sh);
             if (lat > 0f)
                 for (int k = 0; k < docks.Length; k++)
                 {
                     // the dock yard: flat out to the foot of the ramp on the right
                     float e = Mathf.Max(Gap(along, docks[k]) - DockHalf, lat - (halfWidth + DockOut));
-                    float wd = 1f - Mathf.Clamp01(e / 10f);
+                    float wd = 1f - Mathf.Clamp01(e / Mathf.Clamp(4f + Mathf.Abs(HeightAt(docks[k]) - h) * 3.2f, 10f, 50f));
                     if (wd > w) { w = wd; bed = HeightAt(docks[k]); }
                 }
             if (w <= 0f) return 0f;
-            w = w * w * (3f - 2f * w);
+            w = Mathf.Lerp(w, w * w * (3f - 2f * w), 0.35f);                                    // mostly linear: the gentlest bank for its width
             h = Mathf.Lerp(h, bed, w);
             if (w > 0.85f && s.feature == 0) s.feature = 6;                                   // packed gravel: no props or cover
             s.roadDist = Mathf.Min(s.roadDist, Mathf.Max(0f, Mathf.Abs(lat) - BedWidth));

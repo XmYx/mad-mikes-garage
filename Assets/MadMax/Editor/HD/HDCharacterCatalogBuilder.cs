@@ -52,6 +52,8 @@ namespace MadMax.EditorTools
             var order = new List<string>();
             var dedupe = new HashSet<string>();
             var shapes = new HashSet<string>();
+            var chains = new List<HDCharacterCatalog.ChainBone>();
+            var chainShapes = new HashSet<string>();
             int assets = 0;
             try
             {
@@ -72,7 +74,7 @@ namespace MadMax.EditorTools
                     var model = AssetDatabase.LoadAssetAtPath<GameObject>(side.ModelPath);
                     if (!model) { Debug.LogWarning("[HD] character model not imported: " + side.ModelPath); continue; }
                     assets++;
-                    Collect(side, model, known, srcs, order, dedupe, shapes, complete);
+                    Collect(side, model, known, srcs, order, dedupe, shapes, complete, chains, chainShapes);
                 }
                 if (srcs.Count == 0) { if (verbose) Debug.LogWarning("[HD] no character meshes found under " + dir); return false; }
 
@@ -81,6 +83,7 @@ namespace MadMax.EditorTools
                 cat.builtAt = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm");
                 cat.shapes.AddRange(shapes);
                 cat.shapes.Sort(System.StringComparer.Ordinal);
+                cat.chains.AddRange(chains);
                 var subAssets = new List<Object>();
                 var added = new HashSet<Object>();
                 foreach (var k in order) { cat.pieces.Add(srcs[k].piece); foreach (var m in srcs[k].piece.lods) if (m && added.Add(m)) subAssets.Add(m); }
@@ -124,7 +127,7 @@ namespace MadMax.EditorTools
                 AssetDatabase.SaveAssets();
                 AssetDatabase.ImportAsset(OutPath);
                 HDCharacterCatalog.Reload();
-                Debug.Log($"[HD] character catalogue: {assets} assets, {cat.pieces.Count} pieces, shapes {string.Join(",", cat.shapes)}, {cat.covers.Count} covers -> {OutPath}");
+                Debug.Log($"[HD] character catalogue: {assets} assets, {cat.pieces.Count} pieces, shapes {string.Join(",", cat.shapes)}, {cat.covers.Count} covers, {cat.chains.Count} chain bones -> {OutPath}");
                 return true;
             }
             finally { EditorUtility.ClearProgressBar(); }
@@ -156,11 +159,17 @@ namespace MadMax.EditorTools
         }
 
         static void Collect(HDSidecar side, GameObject model, HashSet<string> known, Dictionary<string, Src> srcs, List<string> order,
-                            HashSet<string> dedupe, HashSet<string> shapes, HashSet<string> complete)
+                            HashSet<string> dedupe, HashSet<string> shapes, HashSet<string> complete,
+                            List<HDCharacterCatalog.ChainBone> chains, HashSet<string> chainShapes)
         {
             var root = model.transform;
             var bones = new Dictionary<string, Transform>();
-            foreach (var t in model.GetComponentsInChildren<Transform>(true)) if (System.Array.IndexOf(Bones, t.name) >= 0 && !bones.ContainsKey(t.name)) bones[t.name] = t;
+            var chainT = new Dictionary<string, Transform>();
+            foreach (var t in model.GetComponentsInChildren<Transform>(true))
+            {
+                if (System.Array.IndexOf(Bones, t.name) >= 0 && !bones.ContainsKey(t.name)) bones[t.name] = t;
+                else if (ClothDynamics.IsChainBone(t.name) && !chainT.ContainsKey(t.name)) chainT[t.name] = t;
+            }
             string shape = Shape(bones, root, out bool female);
             if (shape == null) { Debug.LogWarning("[HD] " + side.asset + ": no HumanRig bones"); return; }
             if (complete.Contains(shape)) { Debug.Log("[HD] " + side.asset + ": shape " + shape + " already has a full wardrobe, skipped"); return; }
@@ -177,6 +186,15 @@ namespace MadMax.EditorTools
             // turned (or mirrored): measure and bake the correction into joints and meshes
             var fix = Facing(bones, heads, root, model.GetComponentsInChildren<SkinnedMeshRenderer>(true), side.asset);
             if (!fix.isIdentity) foreach (var k in new List<string>(heads.Keys)) heads[k] = fix.MultiplyPoint3x4(heads[k]);
+            // dangle chains (ClothDynamics): joints in the same corrected root space; rest offsets per shape, once
+            foreach (var kv in chainT) heads[kv.Key] = fix.MultiplyPoint3x4(RootSpace(kv.Value, root).GetColumn(3));
+            if (chainT.Count > 0 && chainShapes.Add(shape))
+                foreach (var kv in chainT)
+                {
+                    var par = kv.Value.parent;
+                    if (!par || !heads.ContainsKey(par.name) || par.name == "Root") continue;     // a chain must hang off a known bone
+                    chains.Add(new HDCharacterCatalog.ChainBone { shape = shape, name = kv.Key, parent = par.name, offset = heads[kv.Key] - heads[par.name] });
+                }
 
             // variants per garment come from the main piece's material (tshirt in m_tshirt_worn = the worn t-shirt)
             var variantOf = new Dictionary<string, string>();
@@ -418,9 +436,12 @@ namespace MadMax.EditorTools
             return copy;
         }
 
+        /// <summary>The HumanRig bone a model bone binds to: body bones and dangle-chain bones by name, anything else
+        /// (chain tips, bones of unknown chains) falls back to the nearest such bone above it.</summary>
         static string GameBone(Transform t)
         {
-            for (var x = t; x; x = x.parent) if (System.Array.IndexOf(Bones, x.name) >= 0) return x.name;
+            for (var x = t; x; x = x.parent)
+                if (System.Array.IndexOf(Bones, x.name) >= 0 || ClothDynamics.IsChainBone(x.name) && !x.name.EndsWith("_tip")) return x.name;
             return "Root";
         }
 

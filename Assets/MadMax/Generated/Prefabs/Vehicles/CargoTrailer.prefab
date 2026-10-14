@@ -124,6 +124,7 @@ MonoBehaviour:
   brakeForce: 4000
   handbrakeGrip: 0.4
   drag: 0.45
+  yawAssist: 1
   steerInput: 0
   throttleInput: 0
   brakeInput: 0
@@ -153,6 +154,7 @@ MonoBehaviour:
   oil: 0
   coolant: 0
   additive: 0
+  settled: 0
   usesCoolant: 0
   oilInFuel: 0
   consumption: 3
@@ -645,7 +647,7 @@ Transform:
   m_LocalScale: {x: -1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 601157548455976243}
+  - {fileID: 8327631475413320382}
   m_Father: {fileID: 8705716432149602930}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6610650211011988630
@@ -663,7 +665,7 @@ MonoBehaviour:
   accepts: 0
   maxSizeClass: 4
   mirrored: 1
-  current: {fileID: 5823995482198214582}
+  current: {fileID: 3104370092259629115}
 --- !u!1 &3485586868680505943
 GameObject:
   m_ObjectHideFlags: 0
@@ -1154,7 +1156,7 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5878664738293361486, guid: a08f15cf7f0460f5f9933e287d9051e4, type: 3}
   m_PrefabInstance: {fileID: 794415400936797312}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &6467885895588804221
+--- !u!1001 &2451232369664371184
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1215,15 +1217,10 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a08f15cf7f0460f5f9933e287d9051e4, type: 3}
---- !u!4 &601157548455976243 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5878664738293361486, guid: a08f15cf7f0460f5f9933e287d9051e4, type: 3}
-  m_PrefabInstance: {fileID: 6467885895588804221}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &5823995482198214582 stripped
+--- !u!114 &3104370092259629115 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 653152774559887819, guid: a08f15cf7f0460f5f9933e287d9051e4, type: 3}
-  m_PrefabInstance: {fileID: 6467885895588804221}
+  m_PrefabInstance: {fileID: 2451232369664371184}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
@@ -1231,3 +1228,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e23d66ca9911c1f1784409e672c68d9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MadMax.Vehicles.VehiclePart
+--- !u!4 &8327631475413320382 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5878664738293361486, guid: a08f15cf7f0460f5f9933e287d9051e4, type: 3}
+  m_PrefabInstance: {fileID: 2451232369664371184}
+  m_PrefabAsset: {fileID: 0}

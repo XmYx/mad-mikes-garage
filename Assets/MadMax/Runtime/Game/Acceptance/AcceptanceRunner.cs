@@ -132,6 +132,8 @@ namespace MadMax.Game.Acceptance
             foreach (var s in AcceptanceScenarios.All())
                 if (Array.IndexOf(s.Suites, suite) >= 0 && Matches(s.Id, filter, true) && !Matches(s.Id, skip, false)) all.Add(s);
             Debug.Log($"[acceptance] {all.Count} scenarios" + (skip != null ? " (skipping " + skip + ")" : "") + (reuse ? " (quick: worlds reused)" : ""));
+            if (all.Count == 0)                                                               // an unknown suite or a filter that matches nothing must not pass
+                lock (gate) results.Add(new ScenarioContext { id = "run.empty", outcome = Outcome.Blocked, reason = $"no scenario in suite '{suite}' matches '{filter}'" });
 
             // data-only checks first: they need no world
             foreach (var s in all) if (!s.NeedsWorld) yield return RunOne(s);
@@ -202,14 +204,18 @@ namespace MadMax.Game.Acceptance
             Debug.Log("[acceptance] ▶ " + s.Id);
             IEnumerator it = null;
             try { it = s.Run(c); } catch (Exception e) { c.Check(false, "threw on start: " + e.Message); }
+            // nested IEnumerators (helpers) are stepped here rather than handed to Unity, so the scenario timeout and the
+            // run deadline also stop a helper that never ends
+            var stack = new Stack<IEnumerator>();
             while (it != null)
             {
                 bool more;
                 try { more = it.MoveNext(); }
                 catch (Exception e) { c.Check(false, "threw: " + e.GetType().Name + ": " + e.Message); break; }
-                if (!more) break;
+                if (!more) { if (stack.Count == 0) break; it = stack.Pop(); continue; }
                 if (Time.realtimeSinceStartup - c.startedAt > s.Timeout) { c.Check(false, $"timeout after {s.Timeout:0} s"); break; }
                 if (Time.realtimeSinceStartup - runStart > runTimeout) { c.Check(false, "run deadline reached"); break; }
+                if (it.Current is IEnumerator nested) { stack.Push(it); it = nested; continue; }
                 yield return it.Current;
             }
             c.seconds = Time.realtimeSinceStartup - c.startedAt;
@@ -223,6 +229,7 @@ namespace MadMax.Game.Acceptance
         {
             Time.timeScale = 1f;
             WastelandGame.MachineInput = default;
+            Controls.ReleaseInjected();
             var g = WastelandGame.Instance;
             if (!g) return;
             try                                                                                       // a scenario that broke the world must not end the run
@@ -257,6 +264,8 @@ namespace MadMax.Game.Acceptance
             sb.Append("{\n  \"suite\": ").Append(Q(suite)).Append(",\n  \"state\": ").Append(Q(state)).Append(",\n  \"exit\": ").Append(code);
             sb.Append(",\n  \"build\": ").Append(Q(Application.version)).Append(",\n  \"platform\": ").Append(Q(Application.platform.ToString()));
             sb.Append(",\n  \"seed\": ").Append(WastelandGame.Instance ? WastelandGame.Instance.seed : -1);
+            sb.Append(",\n  \"commit\": ").Append(Q(Environment.GetEnvironmentVariable("MADMAX_COMMIT")));
+            sb.Append(",\n  \"settings\": ").Append(Q(JsonUtility.ToJson(GameSettings.Current)));
             sb.Append(",\n  \"profile\": ").Append(Q(Profile.Dir)).Append(",\n  \"isolated\": ").Append(Profile.Isolated ? "true" : "false");
             sb.Append(",\n  \"counts\": { \"pass\": ").Append(pass).Append(", \"fail\": ").Append(fail).Append(", \"blocked\": ").Append(blocked).Append(" },\n  \"scenarios\": [\n");
             for (int i = 0; i < results.Count; i++)

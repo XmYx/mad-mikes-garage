@@ -12,6 +12,10 @@ from hdkit import Vector, Matrix
 class VB:
     def __init__(self, asset, vs):
         self.a, self.vs = asset, vs
+        self.curtain = None          # material key / Material: curtains drawn back inside every glazed window
+                                     # (objects Curtain_<n>, pivot on the rod: PieceMotion sways them, their cloth glows
+                                     # warm through _LampOn at night)
+        self.n_curtains = 0
 
     # voxel index -> metres --------------------------------------------------------------------------
     def lo(self, i):
@@ -131,6 +135,8 @@ class VB:
         if share > 0.62:
             p0, p1 = P(U0 + ft * 0.5, V0 + ft * 0.5, -0.004), P(U1 - ft * 0.5, V1 - ft * 0.5, 0.004)
             gl.box2("glass", tuple(map(min, p0, p1)), tuple(map(max, p0, p1)), bevel=0)
+            if self.curtain is not None:
+                self.curtains(P, U0, U1, V0, V1, seed + u0 * 3 + v0)
             if U1 - U0 > 0.3:
                 p0, p1 = P(mid - 0.015, V0, -0.01), P(mid + 0.015, V1, 0.02)
                 de.box2(fm, tuple(map(min, p0, p1)), tuple(map(max, p0, p1)), bevel=0.0)
@@ -152,6 +158,32 @@ class VB:
                 cen = tuple((a + b) / 2 for a, b in zip(lo_, hi_))
                 size = tuple(b - a for a, b in zip(lo_, hi_))
                 de.box(K.wood("light", "x" if side in (0, 2) else "z"), size, cen, r=(0, 0, ang) if side in (0, 2) else (ang, 0, 0), bevel=0.0)
+
+    def curtains(self, P, U0, U1, V0, V1, seed):
+        """Two gathered curtain panels drawn back to the jambs + a valance, just inside the wall (inner face)."""
+        r = K.rng(int(seed) & 0xffff)
+        d = -self.vs * 0.5 - 0.03
+        self.n_curtains += 1
+        cu = self.a.p("Curtain_%d" % self.n_curtains, "Cloth", pivot=P((U0 + U1) / 2, V1 + 0.08, d), mover=True)
+        W_ = U1 - U0
+        top, bot = V1 + 0.04, V0 - 0.08
+        for side in (0, 1):
+            pw = W_ * r.uniform(0.22, 0.3)
+            a0, a1 = (U0 - 0.04, U0 - 0.04 + pw) if side == 0 else (U1 + 0.04 - pw, U1 + 0.04)
+            n = 4
+            secs = []
+            for k in range(4):                         # vertical sections; the panel narrows at a tie-back
+                v = top + (bot - top) * k / 3
+                pinch = 0.55 if k == 2 else 1.0
+                ua, ub = (a0, a0 + (a1 - a0) * pinch) if side == 0 else (a1 - (a1 - a0) * pinch, a1)
+                front = [P(ua + (ub - ua) * i / n, v, d - (0.025 if i % 2 else 0.0) * pinch) for i in range(n + 1)]
+                back = [P(ua + (ub - ua) * i / n, v, d + 0.008 - (0.025 if i % 2 else 0.0) * pinch) for i in reversed(range(n + 1))]
+                secs.append(front + back)
+            cu.loft(self.curtain, secs)
+        p0, p1 = P(U0 - 0.06, V1 - 0.06, d - 0.03), P(U1 + 0.06, V1 + 0.06, d)       # valance
+        cu.box2(self.curtain, tuple(map(min, p0, p1)), tuple(map(max, p0, p1)), bevel=0.0)
+        p0, p1 = P(U0 - 0.08, V1 + 0.07, d + 0.004), P(U1 + 0.08, V1 + 0.085, d - 0.012)   # rod
+        self.detail("Wood").box2("brass", tuple(map(min, p0, p1)), tuple(map(max, p0, p1)), bevel=0.0)
 
     # slabs, stairs, roofs ---------------------------------------------------------------------------
     def slab(self, w, l, y, byte, mat, holes=(), cut=None):

@@ -19,11 +19,32 @@ namespace MadMax.Game.Acceptance
             return p;
         }
 
+        int holdFrames;
+        /// <summary>The frame the action was released (holds only; -1 = still held).</summary>
+        public int ReleasedFrame { get; private set; } = -1;
+
+        /// <summary>Presses and holds the action for <paramref name="frames"/> frames, then releases it (Down, Held, Up).</summary>
+        public static ActionPress Hold(Controls.Act a, int frames)
+        {
+            var p = Press(a);
+            p.holdFrames = Mathf.Max(1, frames);
+            return p;
+        }
+
         void Update()
         {
+            if (holdFrames > 0)
+            {
+                if (Frame < 0) { Controls.InjectHold(act, true); Frame = Time.frameCount; return; }
+                if (ReleasedFrame >= 0) { Destroy(gameObject); return; }
+                if (Time.frameCount - Frame >= holdFrames) { Controls.InjectHold(act, false); ReleasedFrame = Time.frameCount; }
+                return;
+            }
             if (Frame >= 0) { Destroy(gameObject); return; }
             Controls.Inject(act);
             Frame = Time.frameCount;
         }
+
+        void OnDestroy() { if (holdFrames > 0 && ReleasedFrame < 0) Controls.InjectHold(act, false); }
     }
 }

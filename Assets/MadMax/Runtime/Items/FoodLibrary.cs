@@ -62,6 +62,9 @@ namespace MadMax.Items
                 F("food_herbs", "HERBS", 2, 0, 20, H("4a8030"), 0f, 4f),
                 F("food_sunseeds", "SUNFLOWER SEEDS", 8, -2, 0, H("3a3020")),
                 F("food_coconut", "COCONUT", 12, 14, 60, H("6a4a2a")),
+                F("food_pear", "PEAR", 9, 6, 35, H("a8b040")),
+                F("food_olives", "OLIVES", 7, -1, 0, H("4a5a24")),
+                F("food_walnuts", "WALNUTS", 14, -2, 0, H("8a6a3a")),
                 F("food_stew", "VEGETABLE STEW", 60, 10, 40, H("8a5a2a"), 0f, 8f),
                 F("food_soup", "TOMATO SOUP", 40, 20, 30, H("a83020"), 0f, 5f),
                 F("food_pie", "PUMPKIN PIE", 55, 0, 40, H("d09040")),
@@ -142,6 +145,9 @@ namespace MadMax.Items
                 Tree("sapling_apple", "APPLE TREE", 14, 6, H("3a6a24"), H("c02c20"), 40, ("food_apple", 3, 6)),
                 Tree("sapling_pine", "PINE", 16, 0, H("1e3020"), H("1e3020"), 40),
                 Tree("sapling_palm", "PALM", 18, 10, H("367024"), H("6a4a2a"), 44, ("food_coconut", 1, 3)),
+                Tree("sapling_pear", "PEAR TREE", 15, 6, H("3a6424"), H("a8b040"), 40, ("food_pear", 3, 6)),
+                Tree("sapling_olive", "OLIVE TREE", 20, 8, H("6a7a50"), H("4a5a24"), 34, ("food_olives", 4, 8)),
+                Tree("sapling_walnut", "WALNUT TREE", 22, 9, H("2e5a20"), H("8a6a3a"), 46, ("food_walnuts", 3, 6)),
             };
         }
 

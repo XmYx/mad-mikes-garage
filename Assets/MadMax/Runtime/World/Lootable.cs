@@ -37,7 +37,18 @@ namespace MadMax.World
         public readonly List<string> extra = new List<string>();
         /// <summary>Padlocked: needs a crowbar (pried open noisily) before it can be searched.</summary>
         public bool locked;
-        void OnEnable() => MadMax.Game.WastelandGame.LootSpots.Add(this);
+        void OnEnable()
+        {
+            MadMax.Game.WastelandGame.LootSpots.Add(this);
+            // stores out in the fallout are hot: the geiger counter leads to them
+            var w = DeformableTerrain.Instance ? DeformableTerrain.Instance.World : null;
+            if (w != null && !GetComponent<Hazard>())
+            {
+                var p = transform.position;
+                float r = w.Radiation(p.x, p.z);
+                if (r > 0.05f) { var h = gameObject.AddComponent<Hazard>(); h.radiation = Mathf.Min(0.4f, 0.1f + r * 0.3f); h.radius = 3f; }
+            }
+        }
         void OnDisable() => MadMax.Game.WastelandGame.LootSpots.Remove(this);
 
         /// <summary>Lockers and crates in towns and bunkers are sometimes padlocked (deterministic per key).</summary>

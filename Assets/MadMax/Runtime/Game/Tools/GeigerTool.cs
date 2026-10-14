@@ -19,7 +19,15 @@ namespace MadMax.Game
             if (!g || g.World == null) { Reading = -1f; return; }
             var p = transform.position;
             float dose = g.World.Radiation(p.x, p.z);
-            foreach (var h in Hazard.All) if (h) dose += h.radiation * Mathf.Clamp01(1f - Vector3.Distance(h.transform.position, p) / 8f);
+            // a hot spot reads louder with the probe pointed at it: sweep to find the loot or the barrel
+            var fwd = g.Player ? g.Player.transform.forward : transform.forward;
+            foreach (var h in Hazard.All)
+            {
+                if (!h) continue;
+                var to = h.transform.position - p; to.y = 0f;
+                float aim = to.sqrMagnitude > 0.25f ? 0.45f + 0.55f * Mathf.Max(0f, Vector3.Dot(fwd, to.normalized)) : 1f;
+                dose += h.radiation * aim * Mathf.Clamp01(1f - Vector3.Distance(h.transform.position, p) / 8f);
+            }
             // uranium deposits glow faintly through the ground
             float ore = g.World.OreAt(p.x, p.z, out var kind);
             if (kind == MadMax.Items.ResourceType.UraniumOre) dose += ore * 0.35f;

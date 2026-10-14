@@ -65,7 +65,7 @@ namespace MadMax.Building
                 if (!n || !n.Alive || (n.transform.position - at).sqrMagnitude > 9f || !Inside(n.transform.position + Vector3.up * 0.4f)) continue;
                 if (!Ready(n, spikes ? 0.9f : 1.2f)) continue;
                 n.ApplyHit(n.transform.position + Vector3.up, transform.forward, spikes ? 0.45f : 0.12f, 0.2f, gameObject);
-                if (spikes) Wear(1);
+                if (spikes || Random.value < 0.25f) Wear(1);                                         // wire gets torn by struggling raiders too
             }
             // vehicles ramming the line
             foreach (var v in g.AllVehicles)

@@ -159,7 +159,7 @@ namespace MadMax.Game
             var op = SceneManager.LoadSceneAsync(scene);
             while (!op.isDone) yield return null;
             // world generation runs in the game's Start: wait for it, then a couple of frames so everything is drawn
-            float timeout = Time.realtimeSinceStartup + 30f;
+            float timeout = Time.realtimeSinceStartup + 90f;                     // the load spreads its work over frames: never cut it short
             while ((!WastelandGame.Instance || !WastelandGame.Instance.Ready) && Time.realtimeSinceStartup < timeout) yield return null;
             yield return null; yield return null;
             spinning = false;
@@ -176,7 +176,7 @@ namespace MadMax.Game
         IEnumerator InWhenReady()
         {
             alpha = target = 1f; spinning = true;
-            float timeout = Time.realtimeSinceStartup + 30f;
+            float timeout = Time.realtimeSinceStartup + 90f;                     // the load spreads its work over frames: never cut it short
             while ((!WastelandGame.Instance || !WastelandGame.Instance.Ready) && Time.realtimeSinceStartup < timeout) yield return null;
             yield return null;
             spinning = false; target = 0f;

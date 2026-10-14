@@ -195,11 +195,14 @@ def make_object(name, me, arm_ob, material, coll=None, weights=None, copy_mesh=F
         me.materials.clear()
         me.materials.append(material)
     if arm_ob is not None:
-        if weights is not None and [g.name for g in ob.vertex_groups][:len(H.PARTS)] != H.PARTS:
+        names = H.BONES[:weights.shape[1]] if weights is not None else None
+        if weights is not None and [g.name for g in ob.vertex_groups][:len(names)] != names:
             ob.vertex_groups.clear()
-            for j, p in enumerate(H.PARTS):
-                vg = ob.vertex_groups.new(name=p)
+            for j, p in enumerate(names):
                 col = weights[:, j]
+                if j >= len(H.PARTS) and not (col > 0.001).any():
+                    continue                      # chain bones only where they carry weight
+                vg = ob.vertex_groups.new(name=p)
                 for val in np.unique(np.round(col[col > 0.001], 3)):
                     vg.add(np.nonzero(np.abs(col - val) < 0.0005)[0].tolist(), float(val), "REPLACE")
         elif weights is not None:
@@ -244,19 +247,36 @@ def build_hair(hum, style, cut=None):
     if style == "Bald":
         return None
     name = f"hair_{style}" + (f"_cut{cut:.3f}" if cut else "")
-    lo, hi = head_box(hum, 0.18 if style in ("Long", "Ponytail") else 0.06)
+    lo, hi = head_box(hum, 0.2 if style in ("Long", "Ponytail") else 0.06)
     def f(c):
         x, y, z = c.loc("Head")
         G = B.hair_field(style, x, y, z, c.F, hum.h)
         if cut:
             G = np.maximum(G, y - cut * hum.h)
         return G
-    return hum.piece(name, f, lo, hi, FINE_H, tris=2600 if style in ("Long", "Ponytail") else 1800, allowed=["Head"], hides=False, inner=0.001)
+    return hum.piece(name, f, lo, hi, FINE_H, tris=HAIR_TRIS.get(style, 1800), allowed=HAIR_BONES.get(style, ["Head"]),
+                     hides=False, inner=0.001)
+
+
+# hair lengths swing on the hdlib dangle chains (scalp release: the roots stay on the head)
+_A = ["HairA1", "HairA2", "HairA3", "HairA4"]
+_F = ["HairF1", "HairF2"]
+HAIR_BONES = {"Long": ["Head"] + _A + ["HairB1", "HairB2", "HairB3", "HairB4", "HairC1", "HairC2", "HairC3", "HairC4"] + _F,
+              "Ponytail": ["Head"] + _A + _F, "Mohawk": ["Head", "HairF1"], "Undercut": ["Head"] + _F, "Short": ["Head"] + _F}
+HAIR_TRIS = {"Long": 3200, "Ponytail": 2800, "Undercut": 2200}
 
 
 def build_beard(hum, kind):
-    if kind < 2:
+    if kind < 1:
         return None
+    if kind == 1:
+        # stubble: a thin speckled shell, fine grid over the jaw only
+        y0 = hum.Wb["Head"][1, 3]
+        lo, hi = np.array([-0.105, y0 + 0.06 * hum.h, -0.03]), np.array([0.105, y0 + 0.19 * hum.h, 0.135])
+        def fs(c):
+            x, y, z = c.loc("Head")
+            return B.beard_field(1, x, y, z, c.F, hum.h)
+        return hum.piece("beard_stubble", fs, lo, hi, 0.0011, tris=2400, allowed=["Head"], hides=False, inner=0.0003, smooth=1)
     lo, hi = head_box(hum)
     def f(c):
         x, y, z = c.loc("Head")

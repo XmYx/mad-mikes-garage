@@ -39,12 +39,14 @@ namespace MadMax.Game
                 pulled = rb; hookAt = hit.point; holder = user; pullUntil = Time.time + 1.6f;
                 MadMax.Audio.Sfx.Play("hit_metal", hit.point, 0.5f, 1.4f);
                 g.Toast("REELING IT IN");
+                g.WearTool(id, 0.006f);
                 return;
             }
             if (!user.Zip(hit.point, hit.normal)) { g.Toast("THE HOOK SLIPS"); return; }
             hookAt = hit.point; holder = user;
             MadMax.Audio.Sfx.Play("hit_metal", hit.point, 0.5f, 1.7f);
             g.Stats?.Practice(Skill.Athletics, 1f);
+            g.WearTool(id, 0.01f);                                                              // the rope frays with every climb
         }
 
         void FixedUpdate()

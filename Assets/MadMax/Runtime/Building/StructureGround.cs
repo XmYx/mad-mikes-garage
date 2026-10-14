@@ -7,7 +7,7 @@ namespace MadMax.Building
     /// analytically; this adds the upright decks on top so vehicles can drive up ramps and park on foundations.</summary>
     public static class StructureGround
     {
-        struct Deck { public Object owner; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; public Transform live; public System.Func<Vector3, Vector3> velocity; public List<Vector3> poly; }
+        struct Deck { public Object owner; public Collider collider; public bool sloped; public Matrix4x4 toLocal, toWorld; public Vector4 size; public Vector3 centre; public float reach2; public Transform live; public System.Func<Vector3, Vector3> velocity; public List<Vector3> poly; public Rigidbody carrier; }
         static readonly List<Deck> decks = new List<Deck>();
         static readonly int[] nearBuf = new int[16];
         static readonly HashSet<(Collider, Rigidbody)> ignored = new HashSet<(Collider, Rigidbody)>();
@@ -18,7 +18,14 @@ namespace MadMax.Building
         public static void Add(Placeable p, Vector4 size)
         {
             Remove(p);
-            if (p.transform.up.y < 0.9f || p.GetComponentInParent<Rigidbody>()) return;       // only upright decks on the ground
+            var body = p.GetComponentInParent<Rigidbody>();
+            if (body && !body.GetComponent<MadMax.World.CityHost>())
+            {
+                // built on a vehicle (a moving base): carried along, level with the vehicle's floor
+                if (Vector3.Dot(p.transform.up, body.transform.up) > 0.9f) AddMovingDeck(p, p.transform, p.GetComponent<Collider>(), size, Carried(body), body);
+                return;
+            }
+            if (p.transform.up.y < 0.9f || body) return;                                          // only upright decks on the ground
             AddDeck(p, p.transform, p.GetComponent<Collider>(), size);
         }
 
@@ -31,11 +38,27 @@ namespace MadMax.Building
 
         /// <summary>A deck that moves (the rolling city, its gangway): its frame is read from <paramref name="t"/> on every
         /// query and <paramref name="velocity"/> gives the deck's own velocity at a point, so tyres grip relative to it.</summary>
-        public static void AddMovingDeck(Object owner, Transform t, Collider collider, Vector4 size, System.Func<Vector3, Vector3> velocity)
+        public static void AddMovingDeck(Object owner, Transform t, Collider collider, Vector4 size, System.Func<Vector3, Vector3> velocity, Rigidbody carrier = null)
         {
             float r = Mathf.Sqrt(size.x * size.x + size.y * size.y) + 2.5f;
-            decks.Add(new Deck { owner = owner, collider = collider, sloped = size.z != size.w, size = size, reach2 = r * r, live = t, velocity = velocity });
+            decks.Add(new Deck { owner = owner, collider = collider, sloped = size.z != size.w, size = size, reach2 = r * r, live = t, velocity = velocity, carrier = carrier });
         }
+
+        /// <summary>A flat polygon deck riding on a vehicle (frame spans built on a moving base).</summary>
+        public static void AddMovingPolygonDeck(Object owner, Transform t, Collider collider, List<Vector3> corners, Rigidbody carrier)
+        {
+            float r = 0f;
+            foreach (var c in corners) r = Mathf.Max(r, new Vector2(c.x, c.z).magnitude);
+            r += 2.5f;
+            decks.Add(new Deck { owner = owner, collider = collider, size = new Vector4(r, r, 0f, 0f), reach2 = r * r, poly = new List<Vector3>(corners), live = t, velocity = Carried(carrier), carrier = carrier });
+        }
+
+        /// <summary>Velocity of a point riding on <paramref name="body"/> (zero once it is gone).</summary>
+        public static System.Func<Vector3, Vector3> Carried(Rigidbody body) => at => body ? body.GetPointVelocity(at) : Vector3.zero;
+
+        /// <summary>The vehicle carrying the deck the last successful <see cref="Top"/> found (null for a fixed deck):
+        /// the wheels standing on it push it down and back.</summary>
+        public static Rigidbody LastBody { get; private set; }
 
         /// <summary>A flat deck over a polygon (local x/z corners, local y = 0 the top): frame spans.</summary>
         public static void AddPolygonDeck(Object owner, Transform t, Collider collider, List<Vector3> corners)
@@ -68,6 +91,7 @@ namespace MadMax.Building
                 else if (!ReferenceEquals(d.live, null)) continue;                                   // a moving deck whose object is gone
                 float dx = at.x - d.centre.x, dz = at.z - d.centre.z;
                 if (dx * dx + dz * dz > d.reach2) continue;
+                if (body && d.carrier == body) continue;                                          // a moving base never stands on its own decks
                 if (body && d.sloped && d.collider) Ignore(d.collider, body);
                 if (body && near < nearBuf.Length) nearBuf[near++] = i;
                 var l = d.toLocal.MultiplyPoint3x4(at);
@@ -78,6 +102,7 @@ namespace MadMax.Building
                 height = top.y; found = true;
                 normal = d.toWorld.MultiplyVector(new Vector3(0f, 2f * d.size.y, d.size.z - d.size.w)).normalized;
                 LastVelocity = d.velocity != null ? d.velocity(top) : Vector3.zero;
+                LastBody = d.carrier;
             }
             // carried by a deck: the body no longer snags on the edges of the decks around it (lips, seams)
             if (found) for (int k = 0; k < near; k++) { var c = decks[nearBuf[k]].collider; if (c) Ignore(c, body); }

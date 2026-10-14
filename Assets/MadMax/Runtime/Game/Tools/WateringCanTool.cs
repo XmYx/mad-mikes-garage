@@ -23,6 +23,7 @@ namespace MadMax.Game
                 MadMax.Audio.Sfx.Play("sizzle", at, 0.8f, 1f, 20f);
                 Spray(at, 10);
                 g.Toast("DOUSED THE FLAMES");
+                g.WearTool(id, 0.004f);
                 return;
             }
             int watered = 0;
@@ -36,6 +37,7 @@ namespace MadMax.Game
                 Spray(at, 6);
                 g.Stats.Practice(MadMax.RPG.Skill.Farming, 0.3f * watered);
                 g.Toast("WATERED " + watered + (watered == 1 ? " BED" : " BEDS"));
+                g.WearTool(id, 0.002f);
                 return;
             }
             if (terrain && terrain.WaterDepth(at.x, at.z) > 0.08f)

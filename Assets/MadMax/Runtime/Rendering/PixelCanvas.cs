@@ -20,10 +20,13 @@ namespace MadMax.Rendering
         public Texture2D texture;
 
         /// <summary>One recorded line of text (HD text: drawn by <see cref="HudTextGraphic"/> over the canvas).</summary>
-        public struct TextRun { public int x, y, scale; public Color32 color; public string text; }
+        public struct TextRun { public int x, y, scale; public Color32 color; public string text; public float fx, fy, fs; }
         /// <summary>Non-null: <see cref="Text"/> records runs here instead of drawing pixels (the HUD's HD font); a later
         /// opaque rect over half a run hides it, as it would cover the pixels.</summary>
         public List<TextRun> runs;
+        /// <summary>Non-null (HD HUD): crisp vector shapes drawn by <see cref="HudVectorGraphic"/> under (back) and over
+        /// (front) the pixel image; <see cref="Panel"/> becomes a vector panel while <see cref="HudVector.on"/>.</summary>
+        public HudVector vec;
 
         public PixelCanvas(int width, int height, int resolution = 1) { Resize(width, height, resolution); }
 
@@ -36,9 +39,21 @@ namespace MadMax.Rendering
             texture = new Texture2D(pw, ph, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PixelCanvas" };
         }
 
-        public void Clear(Color32 c) { Array.Fill(px, c); runs?.Clear(); }
+        public void Clear(Color32 c)
+        {
+            if (c.r == 0 && c.g == 0 && c.b == 0 && c.a == 0) Array.Clear(px, 0, px.Length); else Array.Fill(px, c);
+            runs?.Clear(); vec?.Clear();
+        }
 
-        public void Upload() { texture.SetPixels32(px); texture.Apply(false); }
+        public void Upload() { texture.SetPixelData(px, 0); texture.Apply(false); }
+
+        /// <summary>Make a logical rect transparent (an HD panel shows the vector layer beneath).</summary>
+        public void ClearRect(int x, int y, int rw, int rh)
+        {
+            int fx0 = Mathf.Max(0, x * res), fx1 = Mathf.Min(pw, (x + rw) * res), fy0 = Mathf.Max(0, y * res), fy1 = Mathf.Min(ph, (y + rh) * res);
+            if (fx1 <= fx0) return;
+            for (int fy = fy0; fy < fy1; fy++) Array.Clear(px, (ph - 1 - fy) * pw + fx0, fx1 - fx0);
+        }
 
         public void Set(int x, int y, Color32 c)
         {
@@ -105,7 +120,7 @@ namespace MadMax.Rendering
 
         public void Rect(int x, int y, int rw, int rh, Color32 c)
         {
-            if (runs != null && c.a >= 180 && rw * rh >= 12) Cover(x, y, rw, rh);
+            if ((runs != null || vec != null) && c.a >= 180 && rw * rh >= 12) Cover(x, y, rw, rh);
             for (int j = y; j < y + rh; j++) for (int i = x; i < x + rw; i++) Set(i, j, c);
         }
 
@@ -117,11 +132,21 @@ namespace MadMax.Rendering
 
         public void Panel(int x, int y, int rw, int rh)
         {
+            if (vec != null && vec.on) { VPanel(x, y, rw, rh); return; }
             Rect(x + 2, y + 2, rw, rh, new Color32(8, 12, 12, 100));
             var fill = Pal.Panel; fill.a = 235;
             Rect(x, y, rw, rh, fill);
             Frame(x, y, rw, rh, Pal.PanelEdge);
             for (int i = x + 1; i < x + rw - 1; i++) Set(i, y + 1, Pal.PanelLight);
+        }
+
+        /// <summary>HD HUD panel: covers what was drawn under it (pixels, text, front shapes), then a rounded vector panel
+        /// with a soft shadow, a gradient fill, an edge and a top highlight on the back layer.</summary>
+        public void VPanel(float x, float y, float rw, float rh, float radius = 2.6f, byte alpha = 235)
+        {
+            Cover(Mathf.RoundToInt(x), Mathf.RoundToInt(y), Mathf.RoundToInt(rw), Mathf.RoundToInt(rh));
+            ClearRect(Mathf.CeilToInt(x + 0.5f), Mathf.CeilToInt(y + 0.5f), Mathf.FloorToInt(rw - 1f), Mathf.FloorToInt(rh - 1f));
+            vec.Panel(x, y, rw, rh, radius, alpha);
         }
 
         public void Line(int x0, int y0, int x1, int y1, Color32 c)
@@ -171,18 +196,54 @@ namespace MadMax.Rendering
 
         void Cover(int x, int y, int rw, int rh)
         {
+            vec?.Cover(x, y, rw, rh);
+            if (runs == null) return;
             for (int i = runs.Count - 1; i >= 0; i--)
             {
                 var r = runs[i];
                 int tw = TextWidth(r.text, r.scale), th = 5 * r.scale;
+                if (r.fs > 0f) { tw = Mathf.CeilToInt(TextWidthF(r.text, r.fs)); th = Mathf.CeilToInt(5f * r.fs); }
                 int ox = Mathf.Max(0, Mathf.Min(x + rw, r.x + tw) - Mathf.Max(x, r.x)), oy = Mathf.Max(0, Mathf.Min(y + rh, r.y + th) - Mathf.Max(y, r.y));
                 if (ox * oy * 2 >= tw * th) runs.RemoveAt(i);
             }
         }
 
+        public static float TextWidthF(string s, float size) => (s.Length * 4 - 1) * size;
+
+        /// <summary>Text at a fractional position and size (HD HUD). With the HD font it is a smooth run with a fine drop
+        /// shadow; with the pixel font it snaps to whole pixels and scales.</summary>
+        public float TextF(float x, float y, string s, Color32 c, float size = 1f, bool shadow = true)
+        {
+            if (string.IsNullOrEmpty(s)) return 0f;
+            if (runs == null) return Text(Mathf.RoundToInt(x), Mathf.RoundToInt(y), s, c, Mathf.Max(1, Mathf.RoundToInt(size)), shadow);
+            s = Upper(s);
+            int ix = Mathf.FloorToInt(x), iy = Mathf.FloorToInt(y), sc = Mathf.Max(1, Mathf.CeilToInt(size));
+            if (shadow)
+            {
+                float o = Mathf.Max(0.3f, 0.28f * size);
+                runs.Add(new TextRun { x = ix, y = iy, scale = sc, color = new Color32(6, 4, 2, (byte)Mathf.Min(200, c.a)), text = s, fx = x + o, fy = y + o, fs = size });
+            }
+            runs.Add(new TextRun { x = ix, y = iy, scale = sc, color = c, text = s, fx = x, fy = y, fs = size });
+            return s.Length * 4 * size;
+        }
+
+        static readonly Dictionary<string, string> upper = new Dictionary<string, string>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => upper.Clear();
+        /// <summary>Upper case without a new string per frame for repeated labels (cache grows only with distinct texts).</summary>
+        static string Upper(string s)
+        {
+            bool lower = false;
+            for (int i = 0; i < s.Length && !lower; i++) lower = char.IsLower(s[i]);
+            if (!lower) return s;
+            if (upper.Count > 4096) upper.Clear();
+            if (!upper.TryGetValue(s, out var u)) upper[s] = u = s.ToUpperInvariant();
+            return u;
+        }
+
         public int Text(int x, int y, string s, Color32 c, int scale = 1, bool shadow = true)
         {
-            s = s.ToUpperInvariant();
+            s = Upper(s);
             if (runs != null)
             {
                 if (shadow) runs.Add(new TextRun { x = x + scale, y = y + scale, scale = scale, color = new Color32(10, 5, 3, 220), text = s });

@@ -37,7 +37,11 @@
   "mask": "full",
   "hit": -1.0,
   "speed": 1.4,
-  "keyError": 0.0
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.500"
+  ]
  },
  {
   "name": "run",
@@ -47,7 +51,11 @@
   "mask": "full",
   "hit": -1.0,
   "speed": 3.9,
-  "keyError": 0.0
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.500"
+  ]
  },
  {
   "name": "sprint",
@@ -57,12 +65,16 @@
   "mask": "full",
   "hit": -1.0,
   "speed": 5.8,
-  "keyError": 0.0
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.500"
+  ]
  },
  {
   "name": "crouch_idle",
-  "frames": 90,
-  "length": 3.0,
+  "frames": 120,
+  "length": 4.0,
   "loop": true,
   "mask": "full",
   "hit": -1.0,
@@ -71,13 +83,17 @@
  },
  {
   "name": "crouch_walk",
-  "frames": 36,
-  "length": 1.2,
+  "frames": 28,
+  "length": 0.95,
   "loop": true,
   "mask": "full",
   "hit": -1.0,
   "speed": 1.0,
-  "keyError": 0.0
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.500"
+  ]
  },
  {
   "name": "jump",
@@ -131,8 +147,8 @@
  },
  {
   "name": "sit_drive",
-  "frames": 180,
-  "length": 6.0,
+  "frames": 210,
+  "length": 7.0,
   "loop": true,
   "mask": "full",
   "hit": -1.0,
@@ -141,8 +157,8 @@
  },
  {
   "name": "sit",
-  "frames": 180,
-  "length": 6.0,
+  "frames": 270,
+  "length": 9.0,
   "loop": true,
   "mask": "full",
   "hit": -1.0,
@@ -171,8 +187,8 @@
  },
  {
   "name": "lie",
-  "frames": 150,
-  "length": 5.0,
+  "frames": 180,
+  "length": 6.0,
   "loop": true,
   "mask": "full",
   "hit": -1.0,
@@ -390,6 +406,105 @@
   "keyError": 0.0
  },
  {
+  "name": "sit_down",
+  "frames": 25,
+  "length": 0.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "stand_up",
+  "frames": 27,
+  "length": 0.85,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "lie_back",
+  "frames": 25,
+  "length": 0.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "kneel_use",
+  "frames": 37,
+  "length": 1.2,
+  "loop": false,
+  "mask": "full",
+  "hit": 0.5,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "pull_cord",
+  "frames": 31,
+  "length": 1.0,
+  "loop": false,
+  "mask": "full",
+  "hit": 0.55,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "pump",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "full",
+  "hit": 0.8,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "eat",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "bite@0.170",
+   "bite@0.530"
+  ]
+ },
+ {
+  "name": "drink",
+  "frames": 67,
+  "length": 2.2,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "sip@0.340",
+   "swallow@0.440",
+   "swallow@0.600"
+  ]
+ },
+ {
+  "name": "hotwire",
+  "frames": 36,
+  "length": 1.2,
+  "loop": true,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
   "name": "hold_side",
   "frames": 90,
   "length": 3.0,
@@ -568,5 +683,539 @@
   "hit": -1.0,
   "speed": 0.0,
   "keyError": 0.0
+ },
+ {
+  "name": "tired_walk",
+  "frames": 32,
+  "length": 1.05,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 1.1,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.500"
+  ]
+ },
+ {
+  "name": "walk_start",
+  "frames": 31,
+  "length": 1.0,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepR@0.500",
+   "stepL@1.000"
+  ],
+  "root": true
+ },
+ {
+  "name": "walk_stop",
+  "frames": 23,
+  "length": 0.75,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.587"
+  ],
+  "root": true
+ },
+ {
+  "name": "run_stop",
+  "frames": 23,
+  "length": 0.75,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.000",
+   "stepR@0.267",
+   "stepL@0.693"
+  ],
+  "root": true
+ },
+ {
+  "name": "turn_l90",
+  "frames": 23,
+  "length": 0.75,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.453",
+   "stepR@0.827",
+   "stepL@0.987"
+  ],
+  "root": true
+ },
+ {
+  "name": "turn_r90",
+  "frames": 23,
+  "length": 0.75,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepR@0.453",
+   "stepL@0.827",
+   "stepR@0.987"
+  ],
+  "root": true
+ },
+ {
+  "name": "idle_scratch",
+  "frames": 79,
+  "length": 2.6,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "idle_wipe_brow",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "wipe@0.300"
+  ]
+ },
+ {
+  "name": "idle_check_pack",
+  "frames": 79,
+  "length": 2.6,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "idle_shiver",
+  "frames": 90,
+  "length": 3.0,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.233",
+   "stepR@0.483",
+   "stepL@0.733",
+   "stepR@0.983"
+  ]
+ },
+ {
+  "name": "tired",
+  "frames": 72,
+  "length": 2.4,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "startle",
+  "frames": 37,
+  "length": 1.2,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "startle_l",
+  "frames": 37,
+  "length": 1.2,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "shield_eyes",
+  "frames": 67,
+  "length": 2.2,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "hold@0.300",
+   "release@0.750"
+  ]
+ },
+ {
+  "name": "point",
+  "frames": 49,
+  "length": 1.6,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "point@0.280"
+  ]
+ },
+ {
+  "name": "cover_head",
+  "frames": 49,
+  "length": 1.6,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "covered@0.140"
+  ]
+ },
+ {
+  "name": "car_enter",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepR@0.192",
+   "stepL@0.354",
+   "seated@0.550",
+   "legs_in@0.833"
+  ]
+ },
+ {
+  "name": "car_exit",
+  "frames": 76,
+  "length": 2.5,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.128",
+   "stepL@0.392",
+   "stepR@0.424",
+   "standing@0.688",
+   "stepL@0.780",
+   "stepR@0.920"
+  ]
+ },
+ {
+  "name": "car_enter_high",
+  "frames": 85,
+  "length": 2.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepR@0.150",
+   "stepL@0.196",
+   "stepL@0.429",
+   "stepR@0.614",
+   "stepL@0.804",
+   "seated@0.857"
+  ]
+ },
+ {
+  "name": "car_exit_high",
+  "frames": 85,
+  "length": 2.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.057",
+   "stepL@0.268",
+   "stepR@0.357",
+   "stepL@0.482",
+   "stepR@0.643",
+   "stepL@0.804",
+   "stepR@0.929"
+  ]
+ },
+ {
+  "name": "car_close_door",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_shut@0.607"
+  ]
+ },
+ {
+  "name": "car_open_door",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.214"
+  ]
+ },
+ {
+  "name": "car_enter_r",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.192",
+   "stepR@0.354",
+   "seated@0.550",
+   "legs_in@0.833"
+  ]
+ },
+ {
+  "name": "car_exit_r",
+  "frames": 76,
+  "length": 2.5,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.128",
+   "stepR@0.392",
+   "stepL@0.424",
+   "standing@0.688",
+   "stepR@0.780",
+   "stepL@0.920"
+  ]
+ },
+ {
+  "name": "car_enter_high_r",
+  "frames": 85,
+  "length": 2.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "stepL@0.150",
+   "stepR@0.196",
+   "stepR@0.429",
+   "stepL@0.614",
+   "stepR@0.804",
+   "seated@0.857"
+  ]
+ },
+ {
+  "name": "car_exit_high_r",
+  "frames": 85,
+  "length": 2.8,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.057",
+   "stepR@0.268",
+   "stepL@0.357",
+   "stepR@0.482",
+   "stepL@0.643",
+   "stepR@0.804",
+   "stepL@0.929"
+  ]
+ },
+ {
+  "name": "car_close_door_r",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_shut@0.607"
+  ]
+ },
+ {
+  "name": "car_open_door_r",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "upper",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "door_open@0.214"
+  ]
+ },
+ {
+  "name": "sit_ground",
+  "frames": 270,
+  "length": 9.0,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "sit_ground_down",
+  "frames": 43,
+  "length": 1.4,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "seated@0.600"
+  ]
+ },
+ {
+  "name": "sit_ground_up",
+  "frames": 46,
+  "length": 1.5,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "standing@0.800"
+  ]
+ },
+ {
+  "name": "lie_down",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "seated@0.396",
+   "lying@0.833"
+  ],
+  "root": true
+ },
+ {
+  "name": "lie_up",
+  "frames": 73,
+  "length": 2.4,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "seated@0.396",
+   "standing@0.875"
+  ],
+  "root": true
+ },
+ {
+  "name": "lie_side",
+  "frames": 150,
+  "length": 5.0,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "prone_idle",
+  "frames": 150,
+  "length": 5.0,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0
+ },
+ {
+  "name": "go_prone",
+  "frames": 34,
+  "length": 1.1,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "knees@0.409",
+   "down@0.864"
+  ]
+ },
+ {
+  "name": "prone_up",
+  "frames": 37,
+  "length": 1.2,
+  "loop": false,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.0,
+  "keyError": 0.0,
+  "events": [
+   "standing@0.833"
+  ]
+ },
+ {
+  "name": "crawl",
+  "frames": 36,
+  "length": 1.2,
+  "loop": true,
+  "mask": "full",
+  "hit": -1.0,
+  "speed": 0.55,
+  "keyError": 0.0,
+  "events": [
+   "elbowL@0.320",
+   "kneeR@0.370",
+   "elbowR@0.820",
+   "kneeL@0.870"
+  ]
  }
 ]

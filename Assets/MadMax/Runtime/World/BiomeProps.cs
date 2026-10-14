@@ -16,6 +16,7 @@ namespace MadMax.World
             public VoxelGrid grid;
             public Mesh mesh;
             public float size;
+            internal VoxelMesher.MeshData data;            // made on any thread; the mesh comes from it on the main thread
         }
 
         static Dictionary<string, Template> templates;
@@ -35,14 +36,37 @@ namespace MadMax.World
         {
             g.PruneUnsupported();
             g.Bevel();
-            return new Template { id = id, grid = g, mesh = VoxelMesher.Build(g, id, size), size = size };
+            return new Template { id = id, grid = g, data = VoxelMesher.BuildData(g, size), size = size };
+        }
+
+        static bool Alive()
+        {
+            if (templates == null) return false;
+            foreach (var t in templates.Values) if (!t.mesh) return false;
+            return true;
         }
 
         static void Ensure()
         {
-            if (templates != null) { bool ok = true; foreach (var t in templates.Values) if (!t.mesh) { ok = false; break; } if (ok) return; }
-            templates = new Dictionary<string, Template>();
-            void Add(Template t) => templates[t.id] = t;
+            if (Alive()) return;
+            var made = TakePrewarmed() ?? MakeTemplates();
+            PropRemesher.Prebake(Meshes(made));                                                 // colliders cooked now, not at the first house
+            templates = made;
+        }
+
+        /// <summary>The meshes of freshly made templates (main thread; the data was packed where it was made).</summary>
+        static List<Mesh> Meshes(Dictionary<string, Template> made)
+        {
+            var meshes = new List<Mesh>(made.Count);
+            foreach (var t in made.Values) { if (!t.mesh) t.mesh = VoxelMesher.ToMesh(t.data, t.id); t.data = null; meshes.Add(t.mesh); }
+            return meshes;
+        }
+
+        /// <summary>Grids and mesh data of every template (pure: also runs on a worker, <see cref="Prewarm"/>).</summary>
+        static Dictionary<string, Template> MakeTemplates()
+        {
+            var made = new Dictionary<string, Template>();
+            void Add(Template t) => made[t.id] = t;
             for (int i = 0; i < 3; i++) Add(T("Pine" + i, PineTree(i, 36 + i * 6), 0.16f));
             for (int i = 0; i < 2; i++) Add(T("Palm" + i, PalmTree(i, 44 + i * 6), 0.12f));
             for (int i = 0; i < 3; i++) Add(T("Bush" + i, Bush(i, 4 + i, i == 2 ? Leaf : i == 1 ? Scrub : Pine), 0.1f));
@@ -60,8 +84,8 @@ namespace MadMax.World
             Add(T("GasPump0", GasPumpGrid(), 0.08f));
             foreach (var ore in OreRamps.Keys) for (int v = 0; v < 2; v++) Add(T("Ore_" + ore + v, OreRock(ore, v), 0.12f));
             AddLandmarkTemplates(Add);
-            var meshes = new List<Mesh>(); foreach (var t in templates.Values) meshes.Add(t.mesh);
-            PropRemesher.Prebake(meshes);                                                   // colliders cooked now, not at the first house
+            AddTownTemplates(Add);                                                          // town plans' street furniture and pieces
+            return made;
         }
 
         // ------------------------------------------------------------------ ore outcrops
@@ -106,6 +130,8 @@ namespace MadMax.World
         }
 
         public static VoxelGrid TemplateGrid(string id) { Ensure(); return templates.TryGetValue(id, out var t) ? t.grid : null; }
+        /// <summary>Voxel size of a template (0: not one of these).</summary>
+        public static float TemplateSize(string id) { Ensure(); return templates.TryGetValue(id, out var t) ? t.size : 0f; }
 
         // ------------------------------------------------------------------ vegetation
 
@@ -408,9 +434,10 @@ namespace MadMax.World
 
         static List<Placement> Layout(WorldGen world, Settlement st)
         {
-            if (layoutSeed != world.seed) { layouts.Clear(); layoutSeed = world.seed; }
+            if (layoutSeed != world.seed) { layouts.Clear(); layoutChunks.Clear(); decorChunks.Clear(); layoutSeed = world.seed; }
             if (layouts.TryGetValue(st.index, out var list)) return list;
             list = new List<Placement>();
+            if (st.plan != null) { PlanLayout(st, list); layouts[st.index] = list; return list; }   // town plans (the layouts below: worlds without one)
             var rnd = new System.Random(st.index * 7919 ^ world.seed);
             bool Free(Vector2 p, float clear) => world.Sample(p.x, p.y).roadDist > clear;
             // searchable furniture and lights inside a building: offsets in metres in the building's frame
@@ -539,6 +566,13 @@ namespace MadMax.World
         /// <summary>Spawn biome vegetation and any settlement pieces that fall inside this chunk.</summary>
         public static void Populate(DeformableTerrain terrain, Vector2Int c, Transform parent, Material mat, System.Random rnd, Lookup legacy)
         {
+            foreach (var _ in PopulateSteps(terrain, c, parent, mat, rnd, legacy)) { }
+        }
+
+        /// <summary><see cref="Populate"/> in steps (streamed chunks spread it over frames): after the wild props, after
+        /// the landmarks and after every settlement piece. Same pieces, same order, same keys.</summary>
+        public static IEnumerable<int> PopulateSteps(DeformableTerrain terrain, Vector2Int c, Transform parent, Material mat, System.Random rnd, Lookup legacy)
+        {
             Ensure();
             var world = terrain.World;
             var store = terrain.DestructionState;
@@ -610,22 +644,30 @@ namespace MadMax.World
                 }
             }
 
+            yield return 0;
+            if (!parent) yield break;                                                              // streamed out meanwhile
             PopulateLandmarks(terrain, c, parent, mat, legacy);
+            yield return 0;
 
             // ---- settlement pieces whose anchor is in this chunk
             foreach (var st in world.settlements)
             {
                 if (Mathf.Abs(st.pos.x - cx) > st.radius + 20f || Mathf.Abs(st.pos.y - cz) > st.radius + 20f) continue;
                 var list = Layout(world, st);
-                for (int i = 0; i < list.Count; i++)
+                var inChunk = LayoutIn(st, list, c);
+                if (inChunk == null) continue;
+                foreach (int i in inChunk)
                 {
                     var pl = list[i];
-                    if (DeformableTerrain.ChunkOf(new Vector3(pl.pos.x, 0, pl.pos.y)) != c) continue;
                     if (world.YardWeight(pl.pos.x, pl.pos.y) > 0.05f) continue;                       // the start yard stays clear (index kept: save keys)
+                    if (!parent) yield break;                                                          // streamed out meanwhile
                     if (pl.id == "Loot" || pl.id == "Light") { SpawnExtra(terrain, st, i, pl, parent, mat); continue; }
                     float y = terrain.Height(pl.pos.x, pl.pos.y) + (pl.dynamic ? 0.08f : -0.1f);
-                    var d = SpawnById(terrain, pl.id, pl.id.TrimEnd('0', '1', '2', '3'), parent, mat, new Vector3(pl.pos.x, y, pl.pos.y), pl.yaw, pl.dynamic, store, $"s{st.index},{i}", legacy);
+                    string nm = pl.id.StartsWith("ParkTree") || pl.id.StartsWith("Pine") ? "Tree" : pl.id.StartsWith("Hedge") || pl.id.StartsWith("Bush") ? "Bush" : pl.id.TrimEnd('0', '1', '2', '3');
+                    var d = SpawnById(terrain, pl.id, nm, parent, mat, new Vector3(pl.pos.x, y, pl.pos.y), pl.yaw, pl.dynamic, store, $"s{st.index},{i}", legacy);
                     if (!d) continue;
+                    if (!BreakablePole.ForProp(d, pl.id)) StreetFurniture.For(d, pl.id);                // poles snap, street furniture gives way to cars
+                    if (pl.id == "BurnBarrel0") d.gameObject.AddComponent<BurnBarrel>().gang = pl.table == "gang";
                     if (pl.crate)
                     {
                         d.shatterBelow = 0.6f; d.impactThreshold = 2.5f;
@@ -640,8 +682,11 @@ namespace MadMax.World
                         pump.stock = 40f + (float)new System.Random(st.index * 31 + i).NextDouble() * 360f;
                         pump.nozzle = new Vector3(0.5f, 0.8f, 0.15f);
                     }
+                    yield return 0;
                 }
             }
+            if (!parent) yield break;
+            PopulateTownDecor(terrain, c, parent, mat);                                            // trash and litter of the town plans, batched
             TownLights.Populate(terrain, c, parent, mat);                                         // street lamps, house lights (lights block)
         }
 
@@ -660,6 +705,7 @@ namespace MadMax.World
                 TownLights.CityLamp(go, st.index, i);
                 return;
             }
+            if (MadMax.Building.SalvageDesigns.Removed.Contains("L" + st.index + "," + i)) return;   // taken apart for good
             var def = MadMax.Building.FurnitureLibrary.Get(pl.visual ?? "shelf");
             var lg = new GameObject("LootSpot", typeof(MeshFilter), typeof(MeshRenderer));
             lg.transform.SetParent(parent, true);
@@ -676,7 +722,8 @@ namespace MadMax.World
 
         static bool IsBuilding(string id) => id.StartsWith("Farmhouse") || id.StartsWith("BrickHouse") || id.StartsWith("Tower") || id.StartsWith("Shop")
                                              || id.StartsWith("Shack") || id.StartsWith("Haystack") || id.StartsWith("GasPump") || id.StartsWith("Fence")
-                                             || id.StartsWith("GuardHut") || id.StartsWith("Tank") || id.StartsWith("Column") || id.StartsWith("CarStack");
+                                             || id.StartsWith("GuardHut") || id.StartsWith("Tank") || id.StartsWith("Column") || id.StartsWith("CarStack")
+                                             || id.StartsWith("Warehouse");
 
         static DestructibleVoxels SpawnById(DeformableTerrain terrain, string id, string name, Transform parent, Material mat, Vector3 pos, float yaw, bool dyn, Dictionary<string, VoxelGrid> store, string key, Lookup legacy)
         {
@@ -698,6 +745,7 @@ namespace MadMax.World
                 FloraBlocker.Add(d.gameObject);
                 Overgrowth.Attach(d, grid, size, key, terrain.World.BiomeAt(pos.x, pos.z));
             }
+            else if (!dyn && IsTownPiece(id)) FloraBlocker.Add(d.gameObject);
             return d;
         }
     }

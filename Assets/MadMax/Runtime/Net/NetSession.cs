@@ -23,7 +23,9 @@ namespace MadMax.Net
         ActorSpawn, ActorGone, ActorHit, Strike, WorldState, VehicleLooks,
         ItemSpawn, ItemMove, ItemTake, ItemGone, ItemGrant, WorkPose,                     // protocol 4 (NetSession.Items)
         VehicleStore,                                                                      // vehicle compartments (NetSession.Storage)
-        Spill                                                                              // protocol 5: ground spills (NetSession.Spills)
+        Spill,                                                                             // protocol 5: ground spills (NetSession.Spills)
+        RigSpawn, ToolPose, Crush, Carry, TakenApart,                                      // protocol 6: moving bases, tool poses, lifters, salvage (NetSession.Tools)
+        Knock                                                                              // protocol 7: poles snapped, street furniture knocked loose (NetSession.Knock)
     }
 
     /// <summary>
@@ -38,7 +40,7 @@ namespace MadMax.Net
     public partial class NetSession : MonoBehaviour
     {
         public static NetSession Instance { get; private set; }
-        public const int ProtocolVersion = 5;
+        public const int ProtocolVersion = 7;
         public const ushort DefaultPort = 7777;
         public const ushort HostPlayerId = 1;
 
@@ -195,6 +197,7 @@ namespace MadMax.Net
             bool local = Simulates(v);
             if (rep.active == !local) return;
             rep.SetActive(!local);
+            if (local && RigVehicle.OnStands(v)) v.Body.isKinematic = true;                  // a moving base on its stands stays put
             if (local) v.Body.WakeUp();
         }
 
@@ -246,12 +249,13 @@ namespace MadMax.Net
                         {
                             var type = (Msg)reader.Byte();
                             int size = reader.UShort();
-                            int start = len - reader.Remaining;
+                            int start = reader.Position;
                             try { Handle(conn, type); }
                             catch (Exception e) { Debug.LogWarning($"[Net] {type}: {e.Message}"); }
-                            // skip to the next message whatever the handler consumed
-                            int consumed = len - reader.Remaining - start;
-                            if (consumed < size) reader.Bytes(size - consumed);
+                            // on to the next message whatever the handler consumed (an over-read never shifts the rest)
+                            int consumed = reader.Position - start;
+                            if (consumed > size) Debug.LogWarning($"[Net] {type}: read {consumed} of {size} bytes");
+                            reader.Seek(start + size);
                         }
                         break;
                     case NetworkEvent.Type.Disconnect:
@@ -267,6 +271,7 @@ namespace MadMax.Net
             if ((metaTimer += Time.deltaTime) >= 1f) { metaTimer = 0f; SendMetaForDriven(); SendLooks(); }
             if (IsServer && (worldStateTimer += Time.deltaTime) >= 10f) { worldStateTimer = 0f; SendWorldState(); }
             TickItems();
+            TickTools();
             Flush();
         }
 
@@ -505,6 +510,7 @@ namespace MadMax.Net
                 case Msg.Ready when IsServer:
                     peer.ready = true;
                     ItemsPeerReady();
+                    ToolsPeerReady();
                     if (game) peer.avatar = SpawnAvatar(peer.id, peer.name, peer.look, peer.outfit);
                     // introduce everyone to the newcomer, and the newcomer to everyone
                     if (Mode == NetMode.Host && game.Player)
@@ -512,7 +518,11 @@ namespace MadMax.Net
                     foreach (var o in peers)
                         if (o != peer && o.ready) { var oo = o; Frame(peer.batch, Msg.PlayerJoined, w => { w.UShort(oo.id); w.String(oo.name); WriteLook(w, oo.look, oo.outfit); }); }
                     Reliable(Msg.PlayerJoined, w => { w.UShort(peer.id); w.String(peer.name); WriteLook(w, peer.look, peer.outfit); }, except: peer);
-                    Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.BaseTemperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); }, only: peer);
+                    {
+                        int storm = 0; float left = 0f, total = 0f;                               // the same fields as SendWeather: a joiner mid-storm sees it
+                        if (Storms.Instance) Storms.Instance.SaveState(out storm, out left, out total);
+                        Reliable(Msg.Weather, w => { w.Bool(Weather.Raining); w.Float(Weather.Wetness); w.Float(Weather.Snow); w.Float(Weather.BaseTemperature); w.Float(Weather.LakeRise); w.Float(DayNight.Hours); w.Int(DayNight.Day); w.Byte((byte)storm); w.Float(left); w.Float(total); }, only: peer);
+                    }
                     game.Toast(peer.name + " JOINED");
                     break;
                 case Msg.Denied:
@@ -643,6 +653,14 @@ namespace MadMax.Net
                 case Msg.VehicleLooks: ReadVehicleLooks(r, peer); break;
                 case Msg.VehicleStore: ReadVehicleStore(r, peer); break;
                 case Msg.Spill: ReadSpill(r, peer); break;
+                case Msg.Knock: ReadKnock(r, peer); break;
+                case Msg.RigSpawn:
+                case Msg.ToolPose:
+                case Msg.Crush:
+                case Msg.Carry:
+                case Msg.TakenApart:
+                    HandleTools(type, r, peer);
+                    break;
                 case Msg.ItemSpawn:
                 case Msg.ItemMove:
                 case Msg.ItemTake:
@@ -958,7 +976,7 @@ namespace MadMax.Net
                         uint nid = r.UInt(); string id = r.String(); ushort vid = r.UShort(); var lp = r.Pos(); var lr = r.Rot();
                         var v = Vehicle(vid);
                         var parent = v ? v.transform : game.Build.Structures;
-                        var placed = FurnitureLibrary.Spawn(id, parent, lp, lr, game.propMaterial);
+                        var placed = PlaceableById(nid) ? null : FurnitureLibrary.Spawn(id, parent, lp, lr, game.propMaterial);   // idempotent (a rig's first frame came with RigSpawn)
                         if (placed) placed.netId = nid;
                         if (IsServer) Reliable(Msg.Placed, w => { w.UInt(nid); w.String(id); w.UShort(vid); w.Pos(lp); w.Rot(lr); }, except: from);
                         break;
@@ -981,7 +999,7 @@ namespace MadMax.Net
                     case Msg.VehicleSpawn:
                     {
                         ushort vid = r.UShort(); string design = r.String(); var p = r.Pos(); var rot = r.Rot();
-                        if (!Vehicle(vid)) game.SpawnVehicleRemote(design, vid, p, rot);
+                        if (!Vehicle(vid)) { game.SpawnVehicleRemote(design, vid, p, rot); UpdateAuthority(Vehicle(vid)); }
                         if (IsServer) Reliable(Msg.VehicleSpawn, w => { w.UShort(vid); w.String(design); w.Pos(p); w.Rot(rot); }, except: from);
                         break;
                     }

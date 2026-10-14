@@ -77,8 +77,18 @@ namespace MadMax.Items
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
                 w.Body = rb;
             }
+            float hot = HotRadiation(key);
+            if (hot > 0f) { var h = go.AddComponent<MadMax.World.Hazard>(); h.radiation = hot; h.radius = 3f; }   // the geiger finds it
             w.Refresh();
             return w;
+        }
+
+        /// <summary>Radiation an item or resource gives off on the ground (uranium ore, glowing fish); 0 = none.</summary>
+        public static float HotRadiation(string key)
+        {
+            if (key == "res:" + (int)ResourceType.UraniumOre) return 0.25f;
+            if (key == "food_fish_glow" || key == "food_glowfish_cooked") return 0.12f;
+            return 0f;
         }
 
         /// <summary>After the count changed: label, prompt, mass.</summary>

@@ -68,7 +68,7 @@ namespace MadMax.Game.Acceptance
             c.Metric("lean_right", rightLean, "deg"); c.Metric("lean_left", leftLean, "deg");
             c.Metric("turn_right", turnR, "deg"); c.Metric("turn_back", turnBack, "deg");
             if (!bal.sidecar) c.Check(rightLean < -6f && leftLean > 4f, $"D leans it right, A left ({rightLean:0} / {leftLean:0} deg)");
-            if (!bal.sidecar) c.Check(rightLean > -40f && leftLean < 40f, $"the lean stays near the asked-for ~21 deg (no overshoot: {rightLean:0} / {leftLean:0} deg)");
+            if (!bal.sidecar) c.Check(rightLean > -40f && leftLean < 40f, $"(knocks {bal.Knocks}) the lean stays near the asked-for ~21 deg (no overshoot: {rightLean:0} / {leftLean:0} deg)");
             c.Check(turnR > 4f && turnBack < -4f, $"it turns right, then back left ({turnR:0} / {turnBack:0} deg)");
             if (!c.Check(!bal.Crashed && g.Current == v, "the rider stays on through the bends")) { c.Note("crash: " + bal.LastCrash); yield break; }
 

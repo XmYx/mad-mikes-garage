@@ -554,8 +554,15 @@ def _b_rubber(m, nt, b, col="1c1918"):
     g, sep, _ = _geo(nt)
     n1 = _noise(nt, g.outputs["Position"], 6.0, 2.0)
     c = _ramp(nt, n1.outputs["Fac"], [(0.0, "121010"), (0.45, col), (0.7, "282322")])
-    c, r = _weather(nt, c, 0.86, WEAR, rust=False, dust_h=0.75, up=False)
-    _set(nt, b, c, r)
+    # tyres turn: an even, light dust film (a height gradient would be baked onto one side of a rolling wheel and
+    # washed the whole tyre out to the body colour)
+    if WEAR > 0:
+        n2 = _noise(nt, g.outputs["Position"], 9.0, 2.0)
+        f = _math(nt, "MULTIPLY", _math(nt, "ADD", 0.12, _math(nt, "MULTIPLY", n2.outputs["Fac"], 0.18)), WEAR)
+        c = _mix(nt, f, c, rc.srgb("8a7462"))
+        _set(nt, b, c, _mixf(nt, f, 0.86, 0.95))
+    else:
+        _set(nt, b, c, 0.86)
 
 
 def _b_wood(m, nt, b, seed=0.0):

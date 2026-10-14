@@ -92,7 +92,8 @@ namespace MadMax.World
             var toSun = elev > 0f ? SunDirection : MoonDirection.y > 0f ? MoonDirection : SunDirection;
             var flat = new Vector3(toSun.x, 0f, toSun.z);
             if (flat.sqrMagnitude < 1e-4f) flat = Vector3.forward;
-            float el = Mathf.Max(8f, Mathf.Asin(Mathf.Clamp(toSun.y, -1f, 1f)) * Mathf.Rad2Deg);
+            // ...and never steeper than 58°: from above, objects keep a readable shadow at noon (the sky's sun disc stays true)
+            float el = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(toSun.y, -1f, 1f)) * Mathf.Rad2Deg, 8f, 58f);
             var dir = Quaternion.AngleAxis(-el, Vector3.Cross(Vector3.up, flat.normalized)) * flat.normalized;
             sun.transform.rotation = Quaternion.LookRotation(-dir);
             sun.color = Color.Lerp(Color.Lerp(Pal.SunDay, Pal.SunDusk, Mathf.Clamp01(1f - elev * 2.5f)), Pal.MoonLight, Darkness);

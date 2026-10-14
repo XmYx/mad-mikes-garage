@@ -369,7 +369,7 @@ namespace MadMax.Game
                     case "tool_crowbar": tip.localPosition = new Vector3(0, -14f * S, 0.08f); m.power = 0.55f; m.carveRadius = 0.1f; m.swingDuration = 0.55f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; m.pries = true; break;
                     case "tool_spear": tip.localPosition = new Vector3(0, -30f * S, 0); m.power = 0.55f; m.carveRadius = 0.08f; m.hitRadius = 0.25f; m.swingDuration = 0.6f; m.style = ToolStyle.Thrust; m.strikeAt = 0.5f; m.bleeds = 0.4f; break;
                     case "tool_nail_bat": tip.localPosition = new Vector3(0, -13f * S, 0); m.power = 0.75f; m.carveRadius = 0.12f; m.swingDuration = 0.55f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; m.bleeds = 0.35f; break;
-                    case "tool_knife": tip.localPosition = new Vector3(0, -9f * S, 0.05f); m.power = 0.35f; m.carveRadius = 0.06f; m.hitRadius = 0.3f; m.swingDuration = 0.32f; m.style = ToolStyle.Thrust; m.strikeAt = 0.5f; m.bleeds = 0.6f; break;
+                    case "tool_knife": tip.localPosition = new Vector3(0, -9f * S, 0.05f); m.power = 0.35f; m.carveRadius = 0.06f; m.hitRadius = 0.3f; m.swingDuration = 0.32f; m.style = ToolStyle.Thrust; m.oneHanded = true; m.strikeAt = 0.5f; m.bleeds = 0.6f; break;
                     case "tool_leaf_blade": tip.localPosition = new Vector3(0, -16f * S, 0.05f); m.power = 0.9f; m.carveRadius = 0.12f; m.swingDuration = 0.65f; m.style = ToolStyle.Slash; m.strikeAt = 0.5f; m.bleeds = 0.5f; m.woodMult = 1.5f; break;
                     default: tip.localPosition = new Vector3(0, -14f * S, 0.1f); m.power = 1f; m.carveRadius = 0.2f; m.swingDuration = 1.0f; m.style = ToolStyle.Overhead; m.strikeAt = 0.62f; break;
                 }

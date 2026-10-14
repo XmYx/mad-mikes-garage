@@ -30,6 +30,15 @@ namespace MadMax.Building
         public readonly List<Job> queue = new List<Job>();
         /// <summary>Finished items waiting for the crafter.</summary>
         public readonly Inventory tray = new Inventory();
+        /// <summary>Average make (0 crude .. 2 fine) of each item id waiting in the tray (saved with it).</summary>
+        public readonly Dictionary<string, float> trayMake = new Dictionary<string, float>();
+
+        /// <summary>Note the make of <paramref name="n"/> new items in the tray (averaged with what already waits there).</summary>
+        public void AddTrayMake(string id, int had, int n, int q)
+        {
+            float old = trayMake.TryGetValue(id, out var m) ? m : q;
+            trayMake[id] = (old * had + q * n) / Mathf.Max(1, had + n);
+        }
         UtilityNode node;
         float fxT;
 
@@ -152,12 +161,17 @@ namespace MadMax.Building
             var sb = new StringBuilder();
             foreach (var j in queue) sb.Append(j.recipe).Append(':').Append(j.progress.ToString("0.###", CultureInfo.InvariantCulture)).Append(':').Append(j.speed.ToString("0.##", CultureInfo.InvariantCulture)).Append(':').Append((int)j.paidFuel).Append(':').Append(j.costMult.ToString("0.###", CultureInfo.InvariantCulture)).Append(';');
             sb.Append('\u001d').Append(InventoryCodec.Encode(tray));
+            if (trayMake.Count > 0)
+            {
+                sb.Append('\u001d');
+                foreach (var kv in trayMake) sb.Append(kv.Key).Append('=').Append(kv.Value.ToString("0.##", CultureInfo.InvariantCulture)).Append(';');
+            }
             return sb.ToString();
         }
 
         public void LoadState(string s)
         {
-            queue.Clear();
+            queue.Clear(); trayMake.Clear();
             if (string.IsNullOrEmpty(s)) return;
             var halves = s.Split('\u001d');
             foreach (var e in halves[0].Split(';'))
@@ -173,6 +187,12 @@ namespace MadMax.Building
                 queue.Add(new Job { recipe = p[0], progress = prog, speed = sp > 0f ? sp : 1f, paidFuel = fuel, costMult = mult });
             }
             if (halves.Length > 1) InventoryCodec.Decode(tray, halves[1]);
+            if (halves.Length > 2)
+                foreach (var e in halves[2].Split(';'))
+                {
+                    int k = e.IndexOf('=');
+                    if (k > 0 && float.TryParse(e.Substring(k + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out var q)) trayMake[e.Substring(0, k)] = q;
+                }
         }
     }
 }

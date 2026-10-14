@@ -33,7 +33,7 @@ namespace MadMax.Building
             if (s.roadDist < 2.5f) { why = "ROAD"; return false; }
             if (Paved(t, c)) { why = "PAVED"; return false; }
             if (t.WaterDepth(c.x, c.z) > 0.05f || s.shore > 0.3f) { why = "WATER"; return false; }
-            if (s.feature != 0) { why = "ROCK OR CONCRETE"; return false; }
+            if (!MadMax.World.WorldGen.Tillable(s.feature)) { why = "ROCK OR CONCRETE"; return false; }
             if (t.Normal(c.x, c.z).y < 0.93f) { why = "TOO STEEP"; return false; }
             if (BedAt(c)) { why = "ALREADY TILLED"; return false; }
             c.y = t.Height(c.x, c.z);

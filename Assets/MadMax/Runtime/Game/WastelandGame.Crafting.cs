@@ -30,7 +30,9 @@ namespace MadMax.Game
             return (c == ItemCategory.Tool || c == ItemCategory.Weapon || c == ItemCategory.Clothing) && ItemQuality.ContainsKey(id);
         }
 
-        void AddMade(string id, int n, int q)
+        void AddMade(string id, int n, int q) => AddMade(id, n, (float)q);
+
+        void AddMade(string id, int n, float q)
         {
             int have = Inventory.GetItem(id);
             if (q >= 0) ItemQuality[id] = (QualityOf(id) * have + q * n) / Mathf.Max(1, have + n);
@@ -66,7 +68,11 @@ namespace MadMax.Game
             {
                 case OutputKind.Item:
                     if (near) AddMade(r.output, r.amount, q);
-                    else { station.tray.AddItem(r.output, r.amount); if (q >= 0) ItemQuality[r.output] = (QualityOf(r.output) + q) * 0.5f; }
+                    else
+                    {
+                        if (q >= 0) station.AddTrayMake(r.output, station.tray.GetItem(r.output), r.amount, q);   // the pack's make changes only when it is collected
+                        station.tray.AddItem(r.output, r.amount);
+                    }
                     break;
                 case OutputKind.Resource:
                     if (near) Inventory.Add(r.outputResource, r.amount); else station.tray.Add(r.outputResource, r.amount);
@@ -110,7 +116,8 @@ namespace MadMax.Game
             using var feed = Inventory.Source("MADE");
             int n = 0;
             var items = new List<KeyValuePair<string, int>>(st.tray.Items);
-            foreach (var kv in items) if (kv.Value > 0) { Inventory.AddItem(kv.Key, kv.Value); n += kv.Value; }
+            foreach (var kv in items) if (kv.Value > 0) { AddMade(kv.Key, kv.Value, st.trayMake.TryGetValue(kv.Key, out var mk) ? mk : -1f); n += kv.Value; }
+            st.trayMake.Clear();
             for (int t = 1; t < ResourceInfo.Count; t++)
             {
                 int a = st.tray.Get((ResourceType)t);

@@ -23,9 +23,10 @@ namespace MadMax.Game.Acceptance
             foreach (var h in HarnessScenarios.All()) yield return h;                  // suite "harness" only
             var g = WastelandGame.Instance;
             var names = new List<string>();
-            if (g != null && g.vehiclePrefabs != null) foreach (var p in g.vehiclePrefabs) if (p) names.Add(p.name);
+            if (g != null && g.vehiclePrefabs != null) { foreach (var p in g.vehiclePrefabs) if (p) names.Add(p.name); }
             else if (g == null) names.AddRange(MadMax.Designs.VehicleDesigns.ModelCarNames);
             foreach (var n in names) if (!MobilityScenarios.OwnSuite(n)) yield return new VehicleDrive(n);   // bikes, aircraft: mobility.*
+            foreach (var a in AuditScenarios1013.All()) yield return a;
             yield return new MachineSoilRoundTrip();
             yield return new HillHold("Sedan", 12f, 17f);
             yield return new CarsSeparate();
@@ -46,6 +47,8 @@ namespace MadMax.Game.Acceptance
             foreach (var s in StoryVoiceTests.All()) yield return s;
             foreach (var s in ItemsScenarios.All()) yield return s;
             foreach (var s in AnimScenarios.All()) yield return s;
+            foreach (var s in UseAnimScenarios.All()) yield return s;
+            foreach (var s in PieceMotionScenarios.All()) yield return s;
             foreach (var s in RoadsScenarios.All()) yield return s;
             foreach (var s in MetalScenarios.All()) yield return s;
             foreach (var s in HusbandryScenarios.All()) yield return s;
@@ -67,6 +70,8 @@ namespace MadMax.Game.Acceptance
             foreach (var s in ScheduledScenarios1012.All()) yield return s;
             foreach (var s in ScheduledScenarios1013.All()) yield return s;
             foreach (var s in ScheduledScenarios1014.All()) yield return s;
+            foreach (var s in FaceScenarios.All()) yield return s;
+            foreach (var s in ClothScenarios.All()) yield return s;
             foreach (var s in CityScenarios.All()) yield return s;
             foreach (var s in FixScenarios1009.All()) yield return s;
             foreach (var s in FrameScenarios.All()) yield return s;
@@ -86,6 +91,19 @@ namespace MadMax.Game.Acceptance
             foreach (var s in HDScenarios.All()) yield return s;
             foreach (var s in HDCharacterScenarios.All()) yield return s;
             foreach (var s in HDAuditScenarios.All()) yield return s;
+            foreach (var s in FeelScenarios.All()) yield return s;
+            foreach (var s in HudScenarios.All()) yield return s;                             // HD HUD + damage view
+            foreach (var s in AnimRevampScenarios.All()) yield return s;
+            foreach (var s in GuardScenarios.All()) yield return s;
+            foreach (var s in MapScenarios.All()) yield return s;
+            foreach (var s in MapLandScenarios.All()) yield return s;
+            foreach (var s in SalvageAnythingScenarios.All()) yield return s;
+            foreach (var s in RigScenarios.All()) yield return s;
+            foreach (var s in LifterScenarios.All()) yield return s;
+            foreach (var s in DashboardScenarios.All()) yield return s;
+            foreach (var s in TownPlanScenarios.All()) yield return s;
+            foreach (var s in RailScenarios.All()) yield return s;
+            foreach (var s in DriveThroughScenarios.All()) yield return s;                     // GTA-style towns: kerbs, islands, snapping poles
         }
 
         public static IEnumerable<string> Ids() => All().Select(s => s.Id);
@@ -247,6 +265,15 @@ namespace MadMax.Game.Acceptance
             if (to20 >= 0f) c.Metric("to_20_kmh", to20, "s");
             if (!c.Check(ahead > 4f, $"drives forward from rest ({ahead:0.0} m in 5 s)")) c.Note("touching: " + TestWorld.Contacts(v) + "; " + TestWorld.State(v));
 
+            // steer: full lock under part throttle turns the heading
+            float yaw0 = v.transform.eulerAngles.y;
+            v.throttleInput = 0.6f; v.steerInput = 1f;
+            yield return new WaitForSeconds(1.5f);
+            v.steerInput = 0f;
+            float turned = Mathf.Abs(Mathf.DeltaAngle(yaw0, v.transform.eulerAngles.y));
+            c.Metric("turn_1_5s", turned, "deg");
+            c.Check(turned > 8f, $"steers ({turned:0} degrees in 1.5 s at full lock)");
+
             // brake to a stop
             v.throttleInput = 0f; v.brakeInput = 1f;
             var pb = v.transform.position; t0 = Time.time;
@@ -282,12 +309,38 @@ namespace MadMax.Game.Acceptance
         static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
         public override float Timeout => 120f;
 
+        /// <summary>The procedural load has a surface and sits inside its tool (within the tool's renderer bounds).</summary>
+        static void SoilInside(ScenarioContext c, SoilHeap heap, string what)
+        {
+            var tool = heap.transform.parent;
+            Bounds tb = default; bool any = false;
+            foreach (var r in tool.GetComponentsInChildren<Renderer>(false))
+                if (r.gameObject != heap.gameObject) { if (!any) { tb = r.bounds; any = true; } else tb.Encapsulate(r.bounds); }
+            var hb = heap.WorldBounds;
+            c.Metric("soil_tris_" + what, heap.Triangles, "");
+            tb.Expand(0.25f);
+            c.Check(heap.Triangles > 20 && any && tb.Contains(hb.min) && tb.Contains(hb.max), $"the {what} load is shaped inside the {what} ({heap.Triangles} tris, load {hb.min:F2}..{hb.max:F2}, {what} {tb.min:F2}..{tb.max:F2})");
+        }
+
         public override IEnumerator Run(ScenarioContext c)
         {
             var g = c.Game;
             var ex = TestWorld.Vehicle("Excavator"); var truck = TestWorld.Vehicle("DumpTruck");
             if (!ex || !truck) { c.Block("excavator or dump truck missing from the fleet"); yield break; }
             if (!TestWorld.Pad(12f, out var pad)) { c.Block("no pad"); yield break; }
+            // the work area (the excavator drives ~14 m ahead, the tipper parks beyond its front) clear of the parked fleet
+            int cleared = 0;
+            foreach (var other in Object.FindObjectsByType<VehicleDriver>(FindObjectsSortMode.None))
+            {
+                if (other == ex || other == truck || other == g.Current || other.transform.parent) continue;
+                var off = other.transform.position - pad; off.y = 0f;
+                if (off.magnitude > 34f || Vector3.Dot(off, Vector3.forward) < -8f) continue;
+                var away = pad + new Vector3(Mathf.Sign(off.x + 0.01f) * 46f + off.x * 0.3f, 0f, off.z);
+                away.y = DeformableTerrain.Instance.Height(away.x, away.z) + 0.6f;
+                other.Body.isKinematic = true; other.Body.position = away; other.transform.position = away;
+                cleared++;
+            }
+            if (cleared > 0) c.Fixture($"moved {cleared} parked vehicles out of the excavator's work area");
             yield return TestWorld.Place(c, ex, pad, Vector3.forward, 2f);
             var m = ex.GetComponent<Machine>();
             g.Enter(ex);
@@ -319,6 +372,11 @@ namespace MadMax.Game.Acceptance
             if (!c.Check(m.load > 0.2f, $"bucket fills ({m.load:0.00} m3)")) yield break;
             var heap = ex.GetComponentsInChildren<SoilHeap>(false).FirstOrDefault();
             c.Check(heap && heap.gameObject.activeInHierarchy, "soil is visible in the bucket");
+            yield return null; yield return null;
+            if (heap) SoilInside(c, heap, "bucket");
+            if (g.cameraRig) { g.cameraRig.mode = ViewMode.ThirdPerson; g.cameraRig.LookToward(ex.transform.forward + Vector3.down * 0.35f); }
+            yield return new WaitForSeconds(0.6f);
+            c.Screenshot("soil_bucket"); yield return null;
 
             // raise, then park the tipper under the bucket (disclosed)
             t0 = Time.time;
@@ -355,6 +413,8 @@ namespace MadMax.Game.Acceptance
             c.Check(Mathf.Abs(added - Mathf.RoundToInt(expected)) <= 1, $"bed received the bucket's soil ({added} of {expected:0.0} units)");
             var bedHeap = truck.GetComponentsInChildren<SoilHeap>(false).FirstOrDefault();
             c.Check(bedHeap && bedHeap.gameObject.activeInHierarchy, "soil is visible in the tipper bed");
+            if (bedHeap) SoilInside(c, bedHeap, "bed");
+            c.Screenshot("soil_bed"); yield return null;
 
             // tip it out behind the truck
             g.Exit(); yield return new WaitForSeconds(0.3f);

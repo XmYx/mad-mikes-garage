@@ -301,7 +301,7 @@ namespace MadMax.Vehicles
             Container target = null; float best = reach;
             foreach (var c in Container.All)
             {
-                if (!c || c.worn || c == store) continue;
+                if (!TakesSoil(c)) continue;
                 float d = Vector3.Distance(LoadPoint(c), tip);
                 if (d < best && c.Weight + units * ItemCatalog.ResourceWeight(type) <= c.capacity) { best = d; target = c; }
             }
@@ -316,6 +316,17 @@ namespace MadMax.Vehicles
             Clods(tip, type, Mathf.Clamp(units, 6, 18), 0.5f, Vector3.down * 2f);
             MadMax.Audio.Sfx.Play("dig", tip, 0.7f, Random.Range(0.8f, 1f), 40f, 0.2f);
             held = 0f;
+        }
+
+        /// <summary>Loose soil goes into a tipper bed or a placed bin (also one built on a moving base), never a car's boot,
+        /// a trailer's cargo hold, a loose item (crushed bales) or this machine's own store.</summary>
+        bool TakesSoil(Container c)
+        {
+            if (!c || c.worn || c == store || c.GetComponentInParent<WorldItem>()) return false;
+            var on = c.GetComponentInParent<VehicleDriver>();
+            if (!on) return true;
+            if (on.TryGetComponent<Machine>(out var tm) && tm.store == c) return true;
+            return c.GetComponentInParent<Placeable>();
         }
 
         /// <summary>Where a container takes a load: a tipper's bed centre, else the container itself.</summary>
@@ -423,7 +434,7 @@ namespace MadMax.Vehicles
             Container target = null; float best = 4f;
             foreach (var c in Container.All)
             {
-                if (!c || c.worn || c == store || c.GetComponentInParent<VehicleDriver>()) continue;
+                if (!TakesSoil(c)) continue;
                 float d = Vector3.Distance(c.transform.position, behind);
                 if (d < best) { best = d; target = c; }
             }
@@ -464,10 +475,10 @@ namespace MadMax.Vehicles
                     HeapOn(ref rearHeap, Seg(Rear, "bucket"), new Vector3(0, -4f, 1f), SoilHeap.Shape.Bucket, new Vector3Int(3, 2, 2))?.Set(rearLoad / RearCapacity, rearType);
                     break;
                 case Kind.Dozer:
-                    HeapOn(ref heap, Seg(tool, "blade"), new Vector3(0, 0, 8f), SoilHeap.Shape.Blade, new Vector3Int(16, 7, 5))?.Set(load / 1.2f, loadType);
+                    HeapOn(ref heap, Seg(tool, "blade"), new Vector3(0, 0, 8f), SoilHeap.Shape.Blade, new Vector3Int(16, 7, 5))?.Set(load / 1.2f, loadType, load);
                     break;
                 case Kind.DumpTruck:
-                    if ((bedScan -= Time.deltaTime) <= 0f && store)
+                    if (ScansBed && (bedScan -= Time.deltaTime) <= 0f && store)
                     {
                         bedScan = 0.5f; float units = 0f, best = 0f; bedType = ResourceType.None;
                         for (int t = 1; t < ResourceInfo.Count; t++)
@@ -489,7 +500,8 @@ namespace MadMax.Vehicles
             {
                 float speed = driver ? Mathf.Abs(driver.ForwardSpeed) : 0f;
                 trickle = Mathf.Lerp(1.2f, 0.25f, Mathf.Clamp01(speed / 4f)) / full;
-                if (speed > 0.8f || Random.value < 0.3f) Clods(heap.transform.position + Vector3.up * 0.1f, loadType, 1 + (full > 0.9f ? 1 : 0), 0.3f, Vector3.zero);
+                var top = heap.WorldBounds; if (heap.Triangles == 0) top = new Bounds(heap.transform.parent.position, Vector3.zero);
+                if (speed > 0.8f || Random.value < 0.3f) Clods(new Vector3(top.center.x, top.max.y + 0.05f, top.center.z), loadType, 1 + (full > 0.9f ? 1 : 0), 0.3f, Vector3.zero);
             }
         }
 

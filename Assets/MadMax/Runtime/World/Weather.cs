@@ -133,9 +133,9 @@ namespace MadMax.World
             var t = DeformableTerrain.Instance;
             var ct = cam.transform;
             Vector3 o = ct.position;
-            float gy = t ? t.Height(o.x, o.z) : 0f;
+            float gy = t ? t.HeightNoLoad(o.x, o.z) : 0f;                                         // up to 400 m out: never generate a chunk for it
             var centreRay = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            if (centreRay.direction.y < -0.05f) { float d = (gy - o.y) / centreRay.direction.y; if (d > 0f && d < 400f) { var g = centreRay.GetPoint(d); gy = t ? t.Height(g.x, g.z) : gy; } }
+            if (centreRay.direction.y < -0.05f) { float d = (gy - o.y) / centreRay.direction.y; if (d > 0f && d < 400f) { var g = centreRay.GetPoint(d); gy = t ? t.HeightNoLoad(g.x, g.z) : gy; } }
             float h = FallHeight(snowing), top = gy + h;
             float reach = cam.orthographic ? 400f : Mathf.Clamp(RenderSettings.fog ? RenderSettings.fogEndDistance : 80f, 30f, 90f);
             var q = Quaternion.Euler(0f, ct.eulerAngles.y, 0f); var inv = Quaternion.Inverse(q);
@@ -192,7 +192,7 @@ namespace MadMax.World
                 if (s != Season)
                 {
                     Season = s;
-                    MadMax.Game.WastelandGame.Instance?.Toast(SeasonNames[s] + " IS HERE - " + MadMax.Npc.Market.SeasonNews(s));
+                    if (MadMax.Game.WastelandGame.Instance) MadMax.Game.WastelandGame.Instance.Toast(SeasonNames[s] + " IS HERE - " + MadMax.Npc.Market.SeasonNews(s));
                     string fish = MadMax.Npc.Market.FishNews(s);
                     MadMax.Audio.RadioNetwork.Flash(SeasonNames[s] + " MARKETS: " + MadMax.Npc.Market.SeasonNews(s) + (fish != null ? ". " + fish : ""), 120f);
                 }

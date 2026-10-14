@@ -33,6 +33,7 @@ namespace MadMax.Game
         public string ignition;            // VehicleIgnition: "where,hotwired,id" (null = key in the ignition)
         public bool iced;                  // VehicleSystems.tankIced (a winter wreck's tank, until thawed)
         public string storage;             // VehicleStorage compartments (trunk, glovebox, back seat...)
+        public string rig;                 // RigVehicle layout: a built moving base's frame, mounts, seat, tanks (null = a designed vehicle)
         public string fluids;              // VehicleSystems blends: fuel tank, sump, coolant (null = pure, from tank)
         public List<string> dents = new List<string>();   // "relative/path\u001f" + DeformableMesh state
     }
@@ -124,6 +125,8 @@ namespace MadMax.Game
         public List<string> blockFluids = new List<string>();                // fluids block: hand containers' contents ("id\u001flitres\u001fmix")
         public List<string> blockBags = new List<string>();                  // worn bags' contents, back strain (WastelandGame.Bags)
         public List<string> blockCity = new List<string>();                  // the rolling city: its timetable clock (WastelandGame.Cities)
+        public List<string> blockSalvage = new List<string>();               // learned designs, world things taken apart, city fixtures removed (SalvageDesigns)
+        public List<string> blockRail = new List<string>();                  // railway: player track, points, timetable clocks, free trains (WastelandGame.Rail)
         public List<string> blockQuarters = new List<string>();              // flats rented / bought aboard the cities (WastelandGame.Quarters)
         public List<string> records = new List<string>();               // Racing best times, "hang"
         public bool wrecksPlanned; public List<int> wrecksPending = new List<int>();   // wrecks not spawned yet
@@ -148,6 +151,9 @@ namespace MadMax.Game
         public const int Slots = 4;                                  // 0 autosave + 3
         /// <summary>The slot the running game was loaded from / last saved to (autosaves go to 0 regardless).</summary>
         public static int Slot = 1;
+        /// <summary>The running game was loaded from / saved to <see cref="Slot"/> (false for a new run: permadeath then
+        /// leaves the other runs' slots alone).</summary>
+        public static bool SlotOwned;
 
         public static string PathOf(int slot) => System.IO.Path.Combine(Profile.Dir,
             slot == 0 ? "wasteland_autosave.json" : slot == 1 ? "wasteland_save.json" : "wasteland_save_" + slot + ".json");
@@ -179,7 +185,7 @@ namespace MadMax.Game
 
         public static void Delete(int slot)
         {
-            foreach (var f in new[] { PathOf(slot), PathOf(slot) + ".meta" }) if (File.Exists(f)) File.Delete(f);
+            foreach (var f in new[] { PathOf(slot), PathOf(slot) + ".meta", PathOf(slot) + ".bak" }) if (File.Exists(f)) File.Delete(f);
         }
 
         public static SaveData Pending;
@@ -193,7 +199,7 @@ namespace MadMax.Game
         public static bool PendingHost;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reset() { Pending = null; SkipMenu = false; PendingRules = null; PendingCharacter = null; PendingLook = null; PendingOutfit = null; PendingHost = false; Slot = 1; }
+        static void Reset() { Pending = null; SkipMenu = false; PendingRules = null; PendingCharacter = null; PendingLook = null; PendingOutfit = null; PendingHost = false; Slot = 1; SlotOwned = false; }
 
         public static void Write(SaveData data) => Write(data, Slot, null);
 

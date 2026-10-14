@@ -82,6 +82,7 @@ namespace MadMax.Net
             {
                 var w = g.SpawnWorldItem(key, count, q, pos, rot, car ? car.transform : null);
                 w.netId = id; w.placed = placed;
+                MadMax.Vehicles.LifterKit.RestoreBale(w);                                          // a crushed bale keeps its look
                 if (w.Body) { if (placed) w.Body.Sleep(); else w.Body.linearVelocity = vel; }
                 return w;
             }

@@ -67,6 +67,9 @@ namespace MadMax.Designs
             foreach (var p in UtilitiesParts()) yield return p;
             foreach (var p in MedMineParts()) yield return p;
             foreach (var p in DefenceParts()) yield return p;
+            foreach (var p in RigParts()) yield return p;
+            foreach (var p in LiftersParts()) yield return p;
+            foreach (var p in CarParts()) yield return p;
         }
 
         static PartDesign Make(string key, PartCategory c, VoxelGrid g, float mass, int size = 1, float radius = 0)

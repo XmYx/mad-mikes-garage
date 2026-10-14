@@ -11,13 +11,65 @@ namespace MadMax.Audio
     public class VehicleAudio : MonoBehaviour
     {
         public const float Range = 80f;
+        const int FitsPerFrame = 2;
+        /// <summary>Vehicles whose synth voices run at once (the driven one always): the synths render on the audio
+        /// thread, and too many of them starve the mixer (every sound stutters).</summary>
+        public const int MaxVoicedVehicles = 4;
+        static int fitFrame = -1, fitsThisFrame, rankFrame = -1;
+        static readonly System.Collections.Generic.List<VehicleAudio> all = new System.Collections.Generic.List<VehicleAudio>();
+        static readonly VehicleAudio[] voiced = new VehicleAudio[MaxVoicedVehicles];
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { fitFrame = -1; fitsThisFrame = 0; rankFrame = -1; all.Clear(); System.Array.Clear(voiced, 0, voiced.Length); }
+
+        void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+
+        /// <summary>Once a frame: the driven vehicle, then the nearest others, get the voices.</summary>
+        static void Rank()
+        {
+            if (rankFrame == Time.frameCount) return;
+            rankFrame = Time.frameCount;
+            System.Array.Clear(voiced, 0, voiced.Length);
+            var g = MadMax.Game.WastelandGame.Instance;
+            var lp = Sfx.ListenerPosition;
+            int n = 0;
+            for (int i = all.Count - 1; i >= 0; i--) if (!all[i]) all.RemoveAt(i);
+            if (g && g.Current) foreach (var a in all) if (a.car == g.Current) { voiced[n++] = a; break; }
+            while (n < MaxVoicedVehicles)
+            {
+                VehicleAudio best = null; float bd = Range * Range;
+                foreach (var a in all)
+                {
+                    if (!a.isActiveAndEnabled) continue;
+                    bool taken = false;
+                    for (int k = 0; k < n; k++) if (voiced[k] == a) { taken = true; break; }
+                    if (taken) continue;
+                    float d = (a.transform.position - lp).sqrMagnitude * (a.hadVoice ? 0.64f : 1f);   // the one already heard keeps it unless ~20 % farther
+                    if (d < bd) { bd = d; best = a; }
+                }
+                if (!best) break;
+                voiced[n++] = best;
+            }
+        }
+
+        bool hadVoice;
+
+        bool Voiced()
+        {
+            Rank();
+            hadVoice = false;
+            for (int k = 0; k < voiced.Length; k++) if (voiced[k] == this) { hadVoice = true; break; }
+            return hadVoice;
+        }
 
         VehicleDriver car;
         VehicleSystems sys;
         VehicleChassis chassis;
-        SynthVoice exhaustVoice, bayVoice, tyreVoice;
+        SynthVoice exhaustVoice, bayVoice, tyreVoice, drivelineVoice;
         EngineSynth engine;
         TyreSynth tyres;
+        DrivelineSynth driveline;
+        int lastGear = -99; bool lastReverse; float lastDrive, lashAt;
         VehiclePart exhaustPart, enginePart;
         string fitted;
         float silentFor = 99f;
@@ -36,8 +88,8 @@ namespace MadMax.Audio
             if (chassis) chassis.Changed += Refit;
         }
 
-        void OnDestroy() { if (chassis) chassis.Changed -= Refit; }
-        void OnDisable() { if (exhaustVoice) exhaustVoice.SetActive(false); if (bayVoice) bayVoice.SetActive(false); if (tyreVoice) tyreVoice.SetActive(false); }
+        void OnDestroy() { if (chassis) chassis.Changed -= Refit; all.Remove(this); }
+        void OnDisable() { if (exhaustVoice) exhaustVoice.StopNow(); if (bayVoice) bayVoice.StopNow(); if (tyreVoice) tyreVoice.StopNow(); if (drivelineVoice) drivelineVoice.StopNow(); }
 
         void Refit() => fitted = null;
 
@@ -71,6 +123,9 @@ namespace MadMax.Audio
             if (tyres == null) tyres = new TyreSynth(seed * 31u);        // also after a play-mode script reload
             if (!tyreVoice) tyreVoice = SynthVoice.Create(transform, "TyreAudio", new Vector3(0f, 0.3f, 0f), tyres, 70f);
             else tyreVoice.synth = tyres;
+            if (driveline == null) driveline = new DrivelineSynth(seed * 17u);
+            if (!drivelineVoice) drivelineVoice = SynthVoice.Create(transform, "DrivelineAudio", new Vector3(0f, 0.35f, 0f), driveline, 35f);
+            else drivelineVoice.synth = driveline;
         }
 
         Bounds BodyBounds()
@@ -103,16 +158,54 @@ namespace MadMax.Audio
                 engine.clog = Mathf.Clamp01(1f - sys.airFilter * 1.4f);
             }
             float exDamage = exhaustPart ? Mathf.Clamp01(exhaustPart.damage) : 0f;
-            engine.leak = Mathf.Clamp01(exDamage * 1.2f - 0.1f);                                     // a blowing joint grows with the dents
+            // a battered engine blows one manifold port (always the same one for this engine); a dented exhaust
+            // splits along the pipe and muffler — the two sound in different places
+            float bay = enginePart ? Mathf.Clamp01((enginePart.damage - 0.45f) * 1.6f) : 0f;
+            engine.leak = Mathf.Clamp01(bay + exDamage * 0.25f);
+            engine.leakCyl = bay > 0f ? (int)((uint)(enginePart.partId.GetHashCode() ^ GetHashCode()) % (uint)Mathf.Max(1, eng.Spec != null ? eng.Spec.cylinders : 4)) : -1;
+            engine.leakPipe = Mathf.Clamp01(exDamage * 1.2f - 0.1f);                                 // a blowing joint grows with the dents
             engine.mufflerDamage = exDamage;
+        }
+
+        /// <summary>Gearbox, diff and clutch (<see cref="DrivelineSynth"/>): whine with the shafts, judder while the
+        /// clutch slips, clunks on a shift, on engaging drive / reverse and on the slack taken up when the throttle
+        /// reverses at speed. Engine-driven road vehicles only (not aircraft, boats or pedals).</summary>
+        void Driveline(EngineStats eng, bool running, float speed, bool inside, float master)
+        {
+            if (driveline == null || !drivelineVoice) return;
+            bool has = eng && engine != null && !car.aircraft;
+            float drive = car.DriveCommand > 0.02f ? car.DriveCommand : -Mathf.Clamp01(car.brakeInput + (speed > 2f && car.DriveCommand <= 0.02f ? 0.4f : 0f));
+            if (has)
+            {
+                if (lastGear != -99 && (car.Gear != lastGear || car.Reversing != lastReverse) && running)
+                    driveline.Clunk(car.Reversing != lastReverse ? (speed < 1f ? 0.7f : 1f) : car.manual ? 0.55f : 0.35f);
+                if (speed > 3f && Mathf.Sign(drive) != Mathf.Sign(lastDrive) && Mathf.Abs(drive - lastDrive) > 0.5f && Time.time - lashAt > 0.6f)
+                { lashAt = Time.time; driveline.Clunk(0.3f + (enginePart ? enginePart.damage * 0.3f : 0f)); }
+            }
+            lastGear = car.Gear; lastReverse = car.Reversing; lastDrive = drive;
+            driveline.inputRpm = has && car.Coupling > 0.05f ? car.Rpm * Mathf.Clamp01(car.Coupling * 1.5f) : 0f;
+            driveline.shaftRpm = has ? car.ShaftRpm : 0f;
+            driveline.drive = drive;
+            driveline.slip = has ? 1f - car.Coupling : 0f;
+            driveline.reverse = car.Reversing; driveline.first = !car.Reversing && car.Gear == 1;
+            driveline.wear = Mathf.Clamp01((car.steerPull != 0f ? 0.3f : 0f) + (enginePart ? enginePart.damage * 0.4f : 0f));
+            drivelineVoice.gain = (inside ? 0.9f : 0.6f) * master;
+            drivelineVoice.Source.spatialBlend = inside ? 0.4f : 1f;
+            drivelineVoice.SetActive(has && (speed > 0.5f || running));
         }
 
         void Update()
         {
             if (!car || Application.isBatchMode) return;
-            bool near = Sfx.HasListener && (Sfx.ListenerPosition - transform.position).sqrMagnitude < Range * Range && Time.timeScale > 0f;
+            bool near = Sfx.HasListener && (Sfx.ListenerPosition - transform.position).sqrMagnitude < Range * Range && Time.timeScale > 0f && Voiced();
             Sfx.Loop(this, "fire", sys && sys.Burning ? 0.8f : 0f, 1f, 30f);
             if (!near) { OnDisable(); return; }
+            if (!exhaustVoice)
+            {                                                                                   // first fit: a few vehicles a frame (each voice rewires the DSP graph)
+                if (fitFrame != Time.frameCount) { fitFrame = Time.frameCount; fitsThisFrame = 0; }
+                if (fitsThisFrame >= FitsPerFrame) return;
+                fitsThisFrame++;
+            }
             Fit();
 
             float master = MadMax.Game.GameSettings.Current.sfxVolume * MadMax.Game.GameSettings.Current.vehicleVolume;
@@ -142,6 +235,7 @@ namespace MadMax.Audio
             tyreVoice.gain = 0.55f * master;
             tyreVoice.Source.spatialBlend = inside ? 0.5f : 1f;
             tyreVoice.SetActive(speed > 0.3f || car.TyreSqueal > 0.01f || car.TyreMud > 0.1f);
+            Driveline(eng, running, speed, inside, master);
         }
     }
 }

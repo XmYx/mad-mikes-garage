@@ -21,7 +21,7 @@ namespace MadMax.Npc
     /// director leaves alone. They follow the player (on foot, in the passenger seat, or driving a second vehicle behind
     /// them), wait where told, guard a claimed base (counted in its defence), fight what threatens the player and carry
     /// a 25 kg pack. Recruited by charisma or for pay; one, two with CHA 7, three with CHA 9. Authority only; saved.</summary>
-    public static class Companions
+    public static partial class Companions
     {
         public static readonly List<Npc> Live = new List<Npc>();
         static List<CompanionSave> pending;
@@ -102,12 +102,14 @@ namespace MadMax.Npc
             MedicDrill(g);
             MorningRoutine(g);
             CheckIns(g);
+            Deliveries(g);                                                                         // cars driven to the waypoint (Companions.Keys)
             if (pending == null || !g.Player || !DeformableTerrainReady()) return;
             var list = pending; pending = null;
             foreach (var s in list)
             {
                 var p = (s.id != null && s.id.StartsWith("cast:") && g.World != null ? MadMax.Story.StoryCast.Profile(s.id.Substring(5), g.World.seed) : null)   // story cast keep their authored name and looks
                         ?? NpcProfile.Make(s.id, (NpcRole)s.role, s.seed, s.kind);
+                if (s.id != null && s.id.StartsWith("guard:")) Factions.GuardKit(p);                // a faction guard keeps the gun and vest
                 if (NpcRegistry.IsDead(p.id)) continue;
                 var pos = s.order == 0 ? g.Player.transform.position - g.Player.transform.forward * 2.5f + g.Player.transform.right * (Live.Count - 1) : s.position;
                 var t = MadMax.World.DeformableTerrain.Instance;
@@ -185,7 +187,7 @@ namespace MadMax.Npc
 
         // ------------------------------------------------------------------ walkie-talkie orders (2026-10-09)
 
-        public enum Order { Come, Hold, BringCar }
+        public enum Order { Come, Hold, BringCar, ToWaypoint }
         /// <summary>A spare fleet car must be this close to a companion for BRING A CAR.</summary>
         public const float CarReach = 40f;
         /// <summary>The last order heard over the radio and how many answered (tests).</summary>
@@ -211,7 +213,7 @@ namespace MadMax.Npc
                 if (c.Driving) continue;
                 foreach (var v in g.Fleet)
                 {
-                    if (!v || v == g.Current || v.aiDriven || !v.driveable || v.Occupied) continue;
+                    if (!v || v == g.Current || v.aiDriven || !v.driveable || v.Occupied || !CanStart(c, v)) continue;   // the key: in it, or in their pack
                     float d = (v.transform.position - c.transform.position).sqrMagnitude;
                     if (d < bd) { bd = d; best = v; }
                 }
@@ -239,11 +241,15 @@ namespace MadMax.Npc
                         var car = CarFor(g, n);
                         if (!car) break;
                         n.order = 0; n.TakeWheel(car); carSent = true; k++; break;
+                    case Order.ToWaypoint:
+                        if (carSent || !g.HasWaypoint) break;
+                        if (SendToWaypoint(g, n)) { carSent = true; k++; }
+                        break;
                 }
             }
             LastOrder = o; LastAnswered = k;
             MadMax.Audio.Sfx.Play2D("beep", 0.4f, 1.1f);
-            g.Toast(k == 0 ? "RADIO: STATIC. NOBODY ANSWERS" : o == Order.Come ? "RADIO: \"ON OUR WAY.\"" : o == Order.Hold ? "RADIO: \"HOLDING HERE.\"" : "RADIO: \"BRINGING IT ROUND.\"");
+            g.Toast(k == 0 ? "RADIO: STATIC. NOBODY ANSWERS" : o == Order.Come ? "RADIO: \"ON OUR WAY.\"" : o == Order.Hold ? "RADIO: \"HOLDING HERE.\"" : o == Order.ToWaypoint ? "RADIO: \"TAKING IT TO YOUR MARK.\"" : "RADIO: \"BRINGING IT ROUND.\"");
             return k;
         }
 
@@ -509,7 +515,6 @@ namespace MadMax.Npc
             g.Toast(best.KnownName + " GOES TO SEE TO " + patient.KnownName);
         }
 
-        static int IndexOf(IReadOnlyList<VehicleDriver> list, VehicleDriver v) { for (int i = 0; i < list.Count; i++) if (list[i] == v) return i; return -1; }
 
         static bool DeformableTerrainReady() => MadMax.World.DeformableTerrain.Instance && MadMax.World.DeformableTerrain.Instance.World != null;
 
@@ -523,7 +528,7 @@ namespace MadMax.Npc
                 d.companions.Add(new CompanionSave
                 {
                     id = p.id, role = (int)p.role, seed = p.seed, kind = p.kind, order = n.order, position = n.transform.position, post = n.home,
-                    pack = n.pack ? n.pack.SaveState() : null, vehicle = n.Driving ? IndexOf(g.Fleet, n.DrivenCar) : -1
+                    pack = n.pack ? n.pack.SaveState() : null, vehicle = n.Driving ? g.SavedFleetIndex(n.DrivenCar) : -1
                 });
             }
             if (pending != null) d.companions.AddRange(pending);

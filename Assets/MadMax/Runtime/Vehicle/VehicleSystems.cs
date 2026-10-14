@@ -159,8 +159,55 @@ namespace MadMax.Vehicles
             return take;
         }
 
+        // ---- water settling in the fuel tank: it sinks to the bottom of a parked tank over a few game hours and
+        // the drain plug lets it out first (the tank cleaned without siphoning it all); driving stirs it back in
+        /// <summary>Share (0..1) of the tank's water lying at the bottom.</summary>
+        public float settled;
+        /// <summary>Game hours for the water in a parked tank to settle out.</summary>
+        public const float SettleHours = 4f;
+        static readonly System.Func<ResourceType, float> aqueousOnly = t => FluidMix.Family(t) == FluidFamily.Aqueous ? 1f : 0f;
+        static readonly System.Func<ResourceType, float> notAqueous = t => FluidMix.Family(t) == FluidFamily.Aqueous ? 0f : 1f;
+
+        /// <summary>Litres of water lying at the bottom of the fuel tank.</summary>
+        public float SettledWater => fuelMix.Empty ? 0f : fuelMix.Of(FluidFamily.Aqueous) * fuel * settled;
+
+        void Settle(float dt)
+        {
+            float water = fuelMix.Empty ? 0f : fuelMix.Of(FluidFamily.Aqueous);
+            if (water <= 0.0005f || fuel < 0.05f) { settled = 0f; return; }
+            bool still = !Started && Mathf.Abs(driver.ForwardSpeed) < 0.3f;
+            float hour = Mathf.Max(1f, MadMax.World.DayNight.DayMinutes) * 60f / 24f;          // real seconds per game hour
+            settled = still ? Mathf.Min(1f, settled + dt / (SettleHours * hour)) : Mathf.Max(0f, settled - dt * Mathf.Abs(driver.ForwardSpeed) * 0.02f - (Started ? dt / 60f : 0f));
+        }
+
+        /// <summary>Open the drain plug under the fuel tank for up to <paramref name="litres"/>: the settled water runs out
+        /// first, then the tank's blend. <paramref name="drawn"/> is what came out. Returns the litres.</summary>
+        public float DrainPlug(float litres, FluidMix drawn)
+        {
+            float have = fuel;
+            float take = Mathf.Min(litres, have);
+            if (take <= 0f || fuelMix.Empty) return Draw(FluidSystem.Fuel, litres, drawn);
+            float aq = fuelMix.Of(FluidFamily.Aqueous);
+            float sett = aq * have * settled, wOut = Mathf.Min(take, sett), rest = take - wOut;
+            var water = fuelMix.Clone(); water.Evaporate(have, have, notAqueous);               // the aqueous part alone
+            if (wOut > 0f)
+            {
+                float left = fuelMix.Evaporate(have, wOut / Mathf.Max(aq, 1e-4f), aqueousOnly);   // the water off the bottom
+                have = left;
+            }
+            drawn.Clear();
+            if (wOut > 0f) drawn.CopyFrom(water);
+            if (rest > 0f) drawn.Blend(wOut, fuelMix, rest);
+            have = Mathf.Max(0f, have - rest);
+            float aqLeft = fuelMix.Empty ? 0f : fuelMix.Of(FluidFamily.Aqueous) * have;
+            settled = aqLeft > 1e-4f ? Mathf.Clamp01((sett - wOut) / aqLeft) : 0f;
+            if (have < 0.001f) { have = 0f; fuelMix.Clear(); }
+            fuel = have;
+            return take;
+        }
+
         /// <summary>The three blends as one string (saved in <c>VehicleSave.fluids</c>, sent with the vehicle meta).</summary>
-        public string FluidState() => "f=" + fuelMix.Save() + "|o=" + oilMix.Save() + "|c=" + coolantMix.Save();
+        public string FluidState() => "f=" + fuelMix.Save() + "|o=" + oilMix.Save() + "|c=" + coolantMix.Save() + (settled > 0.01f ? "|s=" + settled.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "");
 
         public void LoadFluidState(string s)
         {
@@ -169,7 +216,11 @@ namespace MadMax.Vehicles
             {
                 if (part.Length < 2 || part[1] != '=') continue;
                 var v = part.Substring(2);
-                switch (part[0]) { case 'f': fuelMix.Load(v); break; case 'o': oilMix.Load(v); break; case 'c': coolantMix.Load(v); break; }
+                switch (part[0])
+                {
+                    case 'f': fuelMix.Load(v); break; case 'o': oilMix.Load(v); break; case 'c': coolantMix.Load(v); break;
+                    case 's': float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out settled); break;
+                }
             }
         }
         public bool usesCoolant = true;
@@ -430,6 +481,8 @@ namespace MadMax.Vehicles
         public float OilFraction => oilInFuel || oilCapacity <= 0 ? 1f : oil / oilCapacity;
         public float CoolantFraction => !usesCoolant || coolantCapacity <= 0 ? 1f : coolant / coolantCapacity;
 
+        float floodCheck, floodLevel = float.NaN;
+
         void FixedUpdate()
         {
             float dt = Time.fixedDeltaTime;
@@ -459,6 +512,7 @@ namespace MadMax.Vehicles
                 }
             }
             if (tankIced && MadMax.World.Weather.Temperature > 1f) Thaw(dt / AirThawSeconds);
+            Settle(dt);                                                                                    // water sinks in a parked tank
             var f = Fault.None;
             var ep = engine ? engine.GetComponent<VehiclePart>() : null;
             float engineDamage = ep ? ep.damage : 0f;
@@ -524,7 +578,12 @@ namespace MadMax.Vehicles
             // intake under water: the engine drowns (and hydrolocks if it keeps turning)
             var terrain = MadMax.World.DeformableTerrain.Instance;
             var ePos = engine.transform.position;
-            float lvl = terrain ? terrain.WaterLevel(ePos.x, ePos.z) : float.NaN;
+            // a parked (kinematic) wreck far off doesn't move: its water line is looked up once a second, and never makes
+            // the chunk under it load (NoLoad = the same value where the ground is loaded)
+            float lvl;
+            bool still = !driver.Occupied && !driver.aiDriven && driver.Body && driver.Body.isKinematic;
+            if (!still || (floodCheck -= dt) <= 0f) { floodCheck = 1f; floodLevel = lvl = terrain ? terrain.WaterLevelNoLoad(ePos.x, ePos.z) : float.NaN; }
+            else lvl = floodLevel;
             if ((snorkelCheck -= dt) <= 0f) { snorkelCheck = 1f; snorkel = GetComponentInChildren<Snorkel>(); }
             float intake = snorkel && snorkel.Mounted ? Mathf.Max(ePos.y + 0.2f, snorkel.Intake.y) : ePos.y + 0.2f;      // a snorkel breathes high
             bool flooded = !sealedHull && !float.IsNaN(lvl) && intake < lvl;
@@ -791,7 +850,13 @@ namespace MadMax.Vehicles
         }
 
         /// <summary>External heat (a fire next to or under the vehicle).</summary>
-        public void Heat(float amount) { heatSoak += amount * (TryGetComponent<VehicleArmor>(out var a) ? a.FireFactor : 1f); Thaw(amount * 1.5f); }
+        public void Heat(float amount)
+        {
+            var a = TryGetComponent<VehicleArmor>(out var arm) ? arm : null;
+            heatSoak += amount * (a ? a.FireFactor : 1f);                                     // the plates take the heat first (and char)
+            if (a) a.Scorch(amount);
+            Thaw(amount * 1.5f);
+        }
 
         /// <summary>The tank and lines of a wreck that sat out the winter are iced: nothing siphons out and the engine
         /// won't catch until it is thawed (a fire beside it, a gas torch on the tank, air above freezing). Saved.</summary>

@@ -48,6 +48,6 @@ namespace MadMax.Items
 
         /// <summary>Field and garden produce brought in at the harvest (village chores, autumn stock).</summary>
         public static bool Harvest(string id) => id == "food_corn" || id == "food_potato" || id == "food_pumpkin" || id == "food_cabbage" || id == "food_carrot"
-            || id == "food_beet" || id == "food_tomato" || id == "food_apple" || id == "crop_wheat";
+            || id == "food_beet" || id == "food_tomato" || id == "food_apple" || id == "crop_wheat" || id == "food_pear" || id == "food_walnuts" || id == "food_olives";
     }
 }

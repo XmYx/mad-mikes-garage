@@ -35,7 +35,8 @@ namespace MadMax.Game
                 if (now - r.last < 0.15f && r.last > r.born) col = Text;                            // a merge flashes the row
                 col.a = a;
                 var dim = Dim; dim.a = a;
-                canvas.Rect(x - 2 + dx, y - 1, w + 2, ItemFeedRow, new Color32(8, 10, 10, (byte)(140 * (1f - gone))));
+                if (HD) V.Fill(x - 2 + dx, y - 1, w + 3, ItemFeedRow - 0.5f, 3f, new Color32(8, 10, 10, (byte)(150 * (1f - gone))), true);
+                else canvas.Rect(x - 2 + dx, y - 1, w + 2, ItemFeedRow, new Color32(8, 10, 10, (byte)(140 * (1f - gone))));
                 int isz = ItemFeedIcon * canvas.res;
                 if (r.icon == null || r.icon.Length != isz * isz) r.icon = ItemFeedIconFor(r, canvas.res);   // HD HUD: icons at screen detail
                 canvas.Blit(x + dx, y, ItemFeedIcon, r.icon);

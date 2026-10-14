@@ -207,6 +207,10 @@ namespace MadMax.Animals
             var focus = g.Current ? g.Current.transform.position : g.Player.transform.position;
             if (state == State.Ridden && (!g.Player.Sitting || g.Player.SeatedOn != seat)) { state = State.Stay; order = 2; home = transform.position; Mounted = null; }
             if (state != State.Ridden && (transform.position - focus).sqrMagnitude > 170f * 170f) return;     // far away (a distant pen): frozen
+            // level of detail: calm animals beyond 45 m move and animate every 2nd frame, beyond 90 m every 4th (staggered)
+            int every = LodInterval(focus);
+            if (every > 1 && (Time.frameCount + lodSlot) % every != 0) { lodDt = Mathf.Min(lodDt + dt, 0.25f); return; }
+            dt = Mathf.Min(dt + lodDt, 0.25f); lodDt = 0f;
             if ((thinkT -= dt) <= 0f)
             {
                 thinkT = 0.2f + Random.value * 0.1f;
@@ -219,6 +223,18 @@ namespace MadMax.Animals
             Animate(dt);
             if (voice && call != null && !call.Busy) voice.SetActive(false);
             if ((runT -= dt) <= 0f) runT = RunOver(g) ? 0f : 0.1f;
+        }
+
+        float lodDt;
+        int lodSlot = -1;
+
+        int LodInterval(Vector3 focus)
+        {
+            if (state == State.Ridden || state == State.Charge || state == State.Attack || state == State.Stalk || state == State.Circle
+                || state == State.Flee || state == State.Follow || Time.time < hurtUntil) return 1;
+            if (lodSlot < 0) lodSlot = (key != null ? key.GetHashCode() : GetEntityId().GetHashCode()) & 0x7fff;
+            float d2 = (transform.position - focus).sqrMagnitude;
+            return d2 < 45f * 45f ? 1 : d2 < 90f * 90f ? 2 : 4;
         }
 
         void SetMove(Vector3 dir, float sp) { dir.y = 0f; moveDir = dir; moveSpeed = dir.sqrMagnitude > 0.0001f ? sp * Gait : 0f; }
@@ -251,10 +267,10 @@ namespace MadMax.Animals
         bool Senses(WastelandGame g, Vector3 focus, float d, bool onFoot, bool inCar)
         {
             var p = g.Player;
-            float see = Def.sight * (inCar ? 1.3f : p.Crouching ? 0.5f : 1f) * (Def.nocturnal ? 1f : Mathf.Lerp(1f, 0.55f, DayNight.Darkness));
+            float see = Def.sight * (inCar ? 1.3f : p.Prone ? 0.3f : p.Crouching ? 0.5f : 1f) * (Def.nocturnal ? 1f : Mathf.Lerp(1f, 0.55f, DayNight.Darkness));
             if (d < see) return true;
             float v = p.Velocity.magnitude;
-            float noise = inCar ? 20f + Mathf.Abs(g.Current.ForwardSpeed) * 2.5f : p.Sliding || (p.run && v > 3f) ? 16f : p.Crouching ? 2.5f : v > 0.5f ? 7f : 3f;
+            float noise = inCar ? 20f + Mathf.Abs(g.Current.ForwardSpeed) * 2.5f : p.Sliding || (p.run && v > 3f) ? 16f : p.Prone ? 1.5f : p.Crouching ? 2.5f : v > 0.5f ? 7f : 3f;
             if (d < noise * Def.hearing / 40f) return true;
             if (!onFoot || Def.smell <= 0f) return false;
             var w = Fx.Wind; w.y = 0f;
@@ -322,7 +338,7 @@ namespace MadMax.Animals
         {
             float f = Def.sight * 0.5f;
             if (inCar) f *= 1.4f + Mathf.Abs(g.Current.ForwardSpeed) * 0.05f;
-            else if (g.Player.Crouching) f *= 0.55f;
+            else if (g.Player.Crouching || g.Player.Prone) f *= g.Player.Prone ? 0.4f : 0.55f;
             if (Def.tameable) f *= 1f - trust * 0.9f;
             // half won over by a calm approach: it lets a crouched or still person come within arm's reach for the treat
             // (at 50 % trust the flight distance above still kept the player ~6 m out, beyond the 2.2 m reach to feed it)
@@ -1028,7 +1044,7 @@ namespace MadMax.Animals
             }
             if (Def.rideable && Adult)
             {
-                if (saddled) return "[E] RIDE THE " + Label + "  [T] SADDLEBAGS";
+                if (saddled) return "[E] RIDE THE " + Label + "  [T] SADDLEBAGS  (" + Controls.Name(Controls.Act.Run) + "+[T] " + OrderLabel + ")";
                 return g.Inventory.GetItem("use_saddle") > 0 ? "[E] SADDLE THE " + Label + "  [T] " + OrderLabel : Label + " (NEEDS A SADDLE)  [T] " + OrderLabel;
             }
             if (stock > 0 && Def.product != null) return "[E] " + (Def.product == "food_egg" ? "COLLECT EGGS" : "MILK THE " + Label) + " (" + stock + ")  [T] " + OrderLabel;
@@ -1045,7 +1061,7 @@ namespace MadMax.Animals
             if (secondary)
             {
                 if (!owned) return;
-                if (Def.rideable && saddled && Adult) { if (bags) g.Menus.OpenContainer(bags); return; }
+                if (Def.rideable && saddled && Adult && !Controls.Held(Controls.Act.Run)) { if (bags) g.Menus.OpenContainer(bags); return; }   // run + [T]: orders
                 order = (order + 1) % 3;
                 if (order == 0) home = transform.position;
                 g.Toast(Label + (order == 1 ? " FOLLOWS YOU" : order == 2 ? " STAYS" : Def.guard ? " GUARDS THIS PLACE" : " ROAMS HERE"));

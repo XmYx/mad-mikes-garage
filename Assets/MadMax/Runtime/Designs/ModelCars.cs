@@ -24,6 +24,7 @@ namespace MadMax.Designs
             public Color32[] paint = Pal.Cream;
             public float rust = 0.2f;
             public bool airCooled;
+            public bool spats, cowl;   // rear wheel spats (BX); black cowl line under the windscreen (Multipla)
             public int seed = 700;
         }
 
@@ -118,6 +119,12 @@ namespace MadMax.Designs
             if (hoodY == int.MaxValue) hoodY = belt - 3;
             g.label = 0;
 
+            // ---- windscreen cowl: the lowest row of the windscreen becomes a black line (Multipla's two-tier front)
+            if (m.cowl)
+                foreach (var p in new List<Vector3Int>(g.voxels.Keys))
+                    if (p.z > H("roofFZ") && IsGlass(g.voxels[p]) && !(g.voxels.TryGetValue(p + Vector3Int.down, out var below) && IsGlass(below)))
+                        g.Set(p, plastic);
+
             g.RelabelWhere((p, v) => IsGlass(v) && v.label == 0, "glass");
             g.Bevel();
             for (int i = 0; i < doors.Count; i++)
@@ -134,6 +141,21 @@ namespace MadMax.Designs
             design.body = g.Extract("body", Vector3Int.zero);
             design.glass = g.Extract("glass", Vector3Int.zero);
             design.driver = g.Extract("driver", Vector3Int.zero);
+
+            // ---- rear wheel spats: the skin outboard of the tyre's sidewall stays over the upper half of the rear wheel
+            if (m.spats)
+            {
+                int wx = H("wheelX"), wy = H("wheelY"), wz = H("wheelZR");
+                const float r = 3.9f;                                                  // wheel_compact radius (voxels)
+                foreach (var p in new List<Vector3Int>(design.body.voxels.Keys))
+                {
+                    if (Mathf.Abs(p.x) < wx + 3 || p.y < wy || p.y >= belt - 1) continue;
+                    float dz = Mathf.Abs(p.z - wz);
+                    if (dz > r + 2.3f) continue;
+                    design.archKeep.Add(p);
+                    if (p.y == wy || dz > r + 1.3f) { var v = design.body.voxels[p]; v.color = Pal.Black[0]; design.body.voxels[p] = v; }   // panel gap round the spat
+                }
+            }
 
             // ---- sockets (standard layout; bumpers are part of these bodies, the sockets stay as swap targets)
             design.Socket("wheel_front", PartCategory.Wheel, H("wheelX"), H("wheelY"), H("wheelZF"), m.wheel, true);
@@ -154,7 +176,7 @@ namespace MadMax.Designs
         // ================================================================== the cars (real dimensions in cars.py)
         public static VehicleDesign Fiat126p() => ModelCar(new ModelSpec
         {
-            file = "fiat126p", name = "Fiat126p", key = "fiat126p", mass = 600f, drive = VehicleDriver.Drive.Rear, airCooled = true, fuel = 21f,
+            file = "fiat126p", name = "Fiat126p", key = "fiat126p", mass = 600f, drive = VehicleDriver.Drive.Rear, airCooled = true, engine = "engine_twin_air", fuel = 21f,
             gears = new[] { 3.25f, 2.07f, 1.36f, 0.97f }, finalDrive = 4.8f, brake = 8000f, travel = 0.2f, paint = Pal.Crimson, rust = 0.3f, seed = 701
         });
         public static VehicleDesign Renault5() => ModelCar(new ModelSpec
@@ -165,7 +187,7 @@ namespace MadMax.Designs
         public static VehicleDesign CitroenBX() => ModelCar(new ModelSpec
         {
             file = "citroen_bx", name = "CitroenBX", key = "citroen_bx", mass = 950f, fuel = 52f, travel = 0.26f, frequency = 1.4f,
-            paint = Pal.Cream, rust = 0.25f, seed = 703
+            paint = Pal.Cream, rust = 0.25f, seed = 703, spats = true
         });
         public static VehicleDesign CitroenXM() => ModelCar(new ModelSpec
         {
@@ -183,7 +205,7 @@ namespace MadMax.Designs
         });
         public static VehicleDesign Fiat500() => ModelCar(new ModelSpec
         {
-            file = "fiat500", name = "Fiat500", key = "fiat500", mass = 500f, drive = VehicleDriver.Drive.Rear, airCooled = true, fuel = 21f,
+            file = "fiat500", name = "Fiat500", key = "fiat500", mass = 500f, drive = VehicleDriver.Drive.Rear, airCooled = true, engine = "engine_twin_air", fuel = 21f,
             gears = new[] { 3.7f, 2.07f, 1.3f, 0.87f }, finalDrive = 5.1f, brake = 7000f, travel = 0.2f, paint = Pal.PaleBlue, rust = 0.3f, seed = 707
         });
         public static VehicleDesign Peugeot205() => ModelCar(new ModelSpec
@@ -209,7 +231,7 @@ namespace MadMax.Designs
         });
         public static VehicleDesign FiatMultipla() => ModelCar(new ModelSpec
         {
-            file = "fiat_multipla", name = "FiatMultipla", key = "fiat_multipla", mass = 1300f, fuel = 63f, paint = Pal.Olive, rust = 0.2f, seed = 713
+            file = "fiat_multipla", name = "FiatMultipla", key = "fiat_multipla", mass = 1300f, fuel = 63f, paint = Pal.Olive, rust = 0.2f, seed = 713, cowl = true
         });
 
         /// <summary>Every Blender-modelled car (builder list, fleet and wrecks).</summary>

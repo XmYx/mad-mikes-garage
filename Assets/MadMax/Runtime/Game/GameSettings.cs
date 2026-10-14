@@ -17,7 +17,7 @@ namespace MadMax.Game
         public int shadows = 3;          // 0 off, 1 low, 2 medium, 3 high, 4 ultra (GraphicsQuality.ShadowNames)
         public bool bloom = true;        // (format 3 and older; see bloomLevel)
         public int bloomLevel = 1;       // 0 off, 1 soft, 2 strong
-        public int antiAliasing = 2;     // GraphicsQuality.AntiAliasNames (full resolution only): off, FXAA, SMAA, TAA, MSAA 2/4/8x
+        public int antiAliasing = 0;     // GraphicsQuality.AntiAliasNames (default off) (full resolution only): off, FXAA, SMAA, TAA, MSAA 2/4/8x
         public int upscaler;             // GraphicsQuality.UpscalerNames: native, STP, FSR 1, DLSS (Windows + NVIDIA)
         public int renderScale = 5;      // index into GraphicsQuality.RenderScales (100 %)
         public int ambientOcclusion = 2; // off, low, medium, high (GTAO)
@@ -35,7 +35,7 @@ namespace MadMax.Game
         public bool lineOfSight = true;  // hide objects the character cannot see
         public bool intro = true;        // boot film + flyover; off = straight to the neon sign and menu
         public int version;              // settings format (see Load migration)
-        const int CurrentVersion = 4;
+        const int CurrentVersion = 5;
         public float radioVolume = 0.8f; // master gain for all radios
         public float sfxVolume = 1f;     // sound effects
         public bool blood = true;        // blood bursts and stains on injuries
@@ -64,8 +64,9 @@ namespace MadMax.Game
         public int hudFont;              // 0 auto (HD text with full-resolution rendering), 1 pixel font, 2 HD text
         /// <summary>HUD and menu text drawn smooth (HudTextGraphic) instead of the 3x5 pixel font.</summary>
         public bool HDText => hudFont == 2 || (hudFont == 0 && (vector || hdHud));
-        public bool hdHud;               // HD HUD: icons, gauges and text at screen detail (the layout stays the pixel HUD's)
+        public bool hdHud = true;        // HD HUD (default for new settings files): vector panels, gauges, glyphs and text at screen detail, the 3D damage view (the layout stays the pixel HUD's)
         public bool hdMap = true;        // HD MAP: the world map page at screen detail, smooth terrain colours
+        public bool minimapNorthUp;      // MINIMAP: false = HEADING UP (turns with the camera's view), true = NORTH UP
         public int autosaveMinutes = 10; // 0 off
         // audio
         public float ambientVolume = 1f;
@@ -74,6 +75,9 @@ namespace MadMax.Game
         // handling assists
         public bool simFlight;           // raw flight model: no rate commands, auto-level, bank or AoA limits
         public bool vintageSidecar;      // outfits pull to the chair and lift it like the real thing
+        public bool steerAssist = true;  // STEERING ASSIST: VehicleDriver.yawAssist for the player's car
+        public bool headingFollow = true;   // OVERHEAD FOLLOWS HEADING: the overhead view swings behind a driven car
+        public float overheadHeight = 1f;   // OVERHEAD HEIGHT: multiplies the overhead camera's height (0.6..1.6)
 
         public static readonly string[] LightNames = { "VEHICLES ONLY", "LOW", "HIGH" };
         public static readonly int[] AutosaveChoices = { 0, 5, 10, 20, 30 };
@@ -107,9 +111,11 @@ namespace MadMax.Game
             {
                 // graphics options: three shadow levels became five, bloom an intensity; the effects start at their defaults
                 s.shadows = s.shadows >= 2 ? 3 : s.shadows; s.bloomLevel = s.bloom ? 1 : 0;
-                s.antiAliasing = 2; s.renderScale = 5; s.ambientOcclusion = 2; s.reflections = 1; s.textureFilter = 2;
-                s.version = CurrentVersion; s.Save();
+                s.antiAliasing = 0; s.renderScale = 5; s.ambientOcclusion = 2; s.reflections = 1; s.textureFilter = 2;
+                s.version = 4; s.Save();
             }
+            // v5: motion blur and anti-aliasing off by default (smearing in the overhead view, soft pixels)
+            if (s.version < 5) { s.motionBlur = false; s.antiAliasing = 0; s.hdHud = true; s.version = 5; s.Save(); }   // + the HD HUD on
             return s;
         }
 
@@ -154,6 +160,7 @@ namespace MadMax.Game
                 rig.pixel.snapToTexels = !vector;
             }
             Shader.SetGlobalFloat("_MadMaxDither", dither ? 1f : 0f);
+            Shader.SetGlobalFloat("_MadMaxSmoothLight", vector ? 1f : 0f);         // voxel props shade like the HD assets at full resolution
             LightBudget.Detail = lightDetail;
             LineOfSight.Enabled = lineOfSight;
 

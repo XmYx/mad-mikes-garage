@@ -18,6 +18,12 @@ namespace MadMax.Game
             canvas.Panel(x, y, w, h);
             canvas.Text(x + (w - lw) / 2, y + 3, label, walking ? Dim : Text);
             int bx = x + 4, bw = w - 8;
+            if (HD)
+            {
+                if (walking && game.WorkProgress <= 0f) V.Fill(bx + (Mathf.Sin(Time.time * 4f) * 0.5f + 0.5f) * (bw - 6), y + 11, 6f, 3f, 1.5f, Dim);
+                else HBar(bx, y + 11, bw, 3f, game.WorkProgress, Amber);
+                return;
+            }
             canvas.Rect(bx, y + 11, bw, 3, new Color32(20, 12, 8, 220));
             int fill = Mathf.RoundToInt(bw * Mathf.Clamp01(game.WorkProgress));
             if (fill > 0) canvas.Rect(bx, y + 11, fill, 3, Amber);

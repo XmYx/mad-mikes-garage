@@ -43,7 +43,7 @@ namespace MadMax.Game
 
         public static readonly string[] DifficultyNames = { "EASY", "NORMAL", "HARD", "BRUTAL" };
         public static readonly string[] KitNames = { "NOTHING", "BASIC", "FULL WORKSHOP" };
-        public static readonly string[] StartNames = { "THE YARD", "ABOARD THE OLD DOWNTOWN", "ABOARD THE INDUSTRIAL CITY" };
+        public static readonly string[] StartNames = { "THE YARD", "ABOARD THE ROLLING CITY", "ABOARD THE RUST-WORKS CITY" };
         public static readonly string[] FleetNames = { "FULL FLEET", "SCAVENGER", "TRABANT", "ON FOOT" };
         public static readonly string[] WeatherNames = { "NEVER RAINS", "RARE", "NORMAL", "STORMY" };
         public static readonly string[] SeasonNames = { "SUMMER", "AUTUMN", "WINTER", "SPRING" };

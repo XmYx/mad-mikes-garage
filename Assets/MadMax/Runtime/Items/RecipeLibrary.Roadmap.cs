@@ -50,7 +50,9 @@ namespace MadMax.Items
             yield return Sew("skull_mask", "SKULL MASK", "RAIDERS MISTAKE YOU FOR KIN", new[] { ("trophy_skull", 1) }, (C, 1));
             yield return Sew("schoolbag", "SCHOOL BAG", "HOLDS 10 KG ON YOUR BACK", null, (C, 4));
             yield return Sew("hikingpack", "HIKING PACK", "HOLDS 26 KG, HIP STRAP", null, (C, 8), (Rb, 1));
-            yield return Sew("framepack", "TOURIST FRAME PACK", "HOLDS 40 KG, THE FRAME TAKES THE WEIGHT", null, (C, 8), (ResourceType.Aluminium, 2));
+            var framepack = Sew("framepack", "TOURIST FRAME PACK", "HOLDS 40 KG, THE FRAME TAKES THE WEIGHT", null, (C, 8), (ResourceType.Aluminium, 2));
+            framepack.knowledge = "bp_framepack";                                                       // the blueprint found in bunkers
+            yield return framepack;
             // ---- 4. vehicle attachments: ammunition for mounted weapons
             var mg = Itm("ammo_mg", "MG BELT X2", RecipeCategory.Weapons, "gunsmith", "ammo_mg", 2, "20 ROUNDS EACH FOR A ROOF MG", null, (Cu, 1), (S, 1), (ResourceType.Gunpowder, 1));
             mg.knowledge = "read_book_gunsmith";

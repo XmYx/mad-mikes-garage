@@ -317,6 +317,7 @@ namespace MadMax.Game
             j.debug = $"{kind} {Name(v)}{(j.part ? " " + j.part.partId : "")}: {j.debug}, walk {Flat(Player.transform.position, spot):0.00} m{(j.inPlace ? " (in place)" : "")}, {j.duration:0.0} s";
             WorkDebug = j.debug;
             if (Refuelling) StopRefuel(null);
+            if (use != null) EndUse(use, use.applied);                                                // a use animation hands over to the job
             Player.AutoWalk = Vector3.zero;
             job = j;
             if (!ExternalInput) Hints.Show("work_at_vehicle", "WORK TAKES A MOMENT: MOVE OR PRESS THE KEY AGAIN TO STOP (SETTINGS: WORK ANIMATION)");
@@ -325,6 +326,7 @@ namespace MadMax.Game
 
         partial void AnimUpdate()
         {
+            UseAnimUpdate();                                                                          // reaching, kneeling, pumping at pieces (WastelandGame.UseAnim)
             float dt = Time.deltaTime;
             CloseHoods(dt);
             var mouse = UnityEngine.InputSystem.Mouse.current; var pad = UnityEngine.InputSystem.Gamepad.current;

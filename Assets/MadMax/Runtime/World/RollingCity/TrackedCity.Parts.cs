@@ -25,7 +25,7 @@ namespace MadMax.World
             public int[] floorModule;
             public CityKit extras;
             /// <summary>Game-space offset of storey f's module origin from the deck origin.</summary>
-            public Vector3 FloorAt(Plan plan, int f) => plan.Kit().P(block.cx, block.cy, block.z0 + f * Storey);
+            public Vector3 FloorAt(Plan plan, int f) => plan.P(block.cx, block.cy, block.z0 + f * Storey);
         }
 
         public class Built
@@ -116,8 +116,9 @@ namespace MadMax.World
         }
 
         // ------------------------------------------------------------------ light fixtures (modelbench/lib/lights.py)
-        static void StreetLamp(CityKit A, Vector3 b, float facing)
+        internal static void StreetLamp(CityKit A, Vector3 b, float facing)
         {
+            var mk = A.BeginMark("city_lamp_post");
             var f = new Vector3(Mathf.Cos(facing), Mathf.Sin(facing), 0);
             A.Beam(CM.SteelDark, b, b + new Vector3(0, 0, 0.6f), 0.35f, -1f, true);
             A.Beam(CM.Steel, b, b + new Vector3(0, 0, 6.2f), 0.16f, -1f, true);
@@ -127,6 +128,7 @@ namespace MadMax.World
             A.Box(CM.SteelDark, new Vector3(0.75f, 0.32f, 0.18f), tip + f * 0.3f, new Vector3(0, 0, facing));
             A.Box(CM.Lamp, new Vector3(0.55f, 0.24f, 0.03f), tip + f * 0.3f - new Vector3(0, 0, 0.1f), new Vector3(0, 0, facing));
             A.LampAt(tip + f * 0.3f - new Vector3(0, 0, 0.6f), Sodium, 14f);
+            A.EndMark(mk);
         }
 
         static void Bulkhead(CityKit A, Vector3 at, float outY)
@@ -138,8 +140,9 @@ namespace MadMax.World
             A.LampAt(at + o * 0.6f, Warm, 7f);
         }
 
-        static void Searchlight(CityKit A, Vector3 p, Vector3 aim, float r = 0.9f)
+        internal static void Searchlight(CityKit A, Vector3 p, Vector3 aim, float r = 0.9f)
         {
+            var mk = A.BeginMark("city_searchlight");
             var d = (aim - p).normalized;
             A.Beam(CM.SteelDark, p - new Vector3(0, 0, 1.6f), p - new Vector3(0, 0, 0.6f), 0.6f);
             A.Box(CM.SteelDark, new Vector3(0.3f, 2 * r + 0.5f, 0.3f), p - new Vector3(0, 0, 0.6f));
@@ -148,15 +151,18 @@ namespace MadMax.World
             A.Beam(CM.SteelDark, p + d * 0.6f, p + d * 0.75f, 2 * r + 0.2f);
             A.Beam(CM.LampCyan, p + d * 0.75f, p + d * 0.8f, 2 * r - 0.15f);
             A.LampAt(p + d * 2f, Cool, 18f);
+            A.EndMark(mk);
         }
 
-        static void Flood(CityKit A, Vector3 p, Vector3 aim, Color color, float range = 12f)
+        internal static void Flood(CityKit A, Vector3 p, Vector3 aim, Color color, float range = 12f)
         {
+            var mk = A.BeginMark("city_floodlight");
             var d = (aim - p).normalized;
             A.Beam(CM.SteelDark, p - d * 0.25f, p + d * 0.15f, 0.7f, 0.55f);
             A.Beam(CM.Lamp, p + d * 0.15f, p + d * 0.19f, 0.6f, 0.45f);
             A.Beam(CM.Steel, p - new Vector3(0, 0, 0.6f), p - new Vector3(0, 0, 0.2f), 0.12f);
             A.LampAt(Vector3.Lerp(p, aim, 0.35f), color, range);
+            A.EndMark(mk);
         }
 
         // ------------------------------------------------------------------ hull, belly, end platforms, flank walls, galleries
@@ -482,8 +488,9 @@ namespace MadMax.World
             }
         }
 
-        static void Cabin(CityKit A, Rng rnd, Vector3 c, int face, float w = 3.2f, float d = 2.8f, float h = 2.6f)
+        internal static void Cabin(CityKit A, Rng rnd, Vector3 c, int face, float w = 3.2f, float d = 2.8f, float h = 2.6f)
         {
+            var mk = A.BeginMark("city_cabin");
             float x = c.x, y = c.y, z = c.z;
             var wallM = rnd.Pick(CM.Corrugated, CM.Rust, CM.Steel);
             float fy = y + face * (d / 2 + 0.03f), by = y - face * d / 2;
@@ -507,6 +514,7 @@ namespace MadMax.World
             A.Span(CM.Corrugated, x - w / 2 - 0.15f, x + w / 2 + 0.15f, y - d / 2 - 0.15f, y + d / 2 + 0.15f, z + h, z + h + 0.08f);
             A.Box(CM.Wood, new Vector3(1.2f, 0.6f, 0.5f), new Vector3(x - 0.6f, by + face * 0.4f, z + 0.25f), default, true);     // cot
             if (lit) A.LampAt(new Vector3(x, y, z + 2.0f), Warm, 5f);
+            A.EndMark(mk);
         }
 
         static void ShantyStack(CityKit A, Rng rnd, float x, float y, float z0, int floors, int face)
@@ -555,8 +563,9 @@ namespace MadMax.World
         }
 
         // ------------------------------------------------------------------ pods, pilot bridge, railings + greenery, lamps, cables
-        static void Pod(CityKit A, Rng rnd, Vector3 c, int outY, bool lit, float w = 4f, float h = 3f, float d = 3f)
+        internal static void Pod(CityKit A, Rng rnd, Vector3 c, int outY, bool lit, float w = 4f, float h = 3f, float d = 3f)
         {
+            var mk = A.BeginMark("city_pod");
             float x = c.x, y = c.y, z = c.z, r = 0.5f;
             A.Span(CM.Rust, x - w / 2 + r, x + w / 2 - r, y - d / 2, y + d / 2, z, z + h);
             A.Span(CM.Rust, x - w / 2, x + w / 2, y - d / 2, y + d / 2, z + r, z + h - r);
@@ -577,6 +586,7 @@ namespace MadMax.World
             for (int k = 0; k < 5; k++)
                 A.Cable(new Vector3(x - 1.5f + k * 0.6f, y, z), new Vector3(x - 1.2f + k * 0.5f, y - outY * (d / 2 + 1.8f), z + 0.3f), rnd.Range(0.8f, 2f), 6, 0.05f);
             if (lit) A.LampAt(new Vector3(x, y, z + 1.6f), Warm, 6f);
+            A.EndMark(mk);
         }
 
         static void Pods(Plan plan, CityKit A, Rng rnd)
@@ -657,8 +667,9 @@ namespace MadMax.World
             A.Span(CM.DeckPlate, x0 + 0.3f + n * 0.26f - 0.2f, x0 + 0.3f + n * 0.26f + 1.4f, syy - 0.6f, syy + 0.6f, fz - 0.3f, fz);
         }
 
-        static void Greenhouse(CityKit A, Vector3 c, float w = 5f, float d = 3.6f, float h = 2.2f)
+        internal static void Greenhouse(CityKit A, Vector3 c, float w = 5f, float d = 3.6f, float h = 2.2f)
         {
+            var mk = A.BeginMark("city_greenhouse");
             float x = c.x, y = c.y, z = c.z;
             A.Span(CM.ConcreteDark, x - w / 2, x + w / 2, y - d / 2, y + d / 2, z, z + 0.5f);
             A.Span(CM.Glass, x - w / 2 + 0.05f, x + w / 2 - 0.05f, y - d / 2 + 0.05f, y + d / 2 - 0.05f, z + 0.5f, z + h);
@@ -675,6 +686,7 @@ namespace MadMax.World
             foreach (int s in new[] { -1, 1 }) A.Box(CM.Glass, new Vector3(w, d / 2 * 1.08f, 0.03f), new Vector3(x, y + s * d / 4, z + h + 0.5f), new Vector3(-s * Mathf.Atan2(1f, d / 2), 0, 0));
             A.Beam(CM.Wood, new Vector3(x - w / 2, y, z + h + 1f), new Vector3(x + w / 2, y, z + h + 1f), 0.08f);
             for (int i = 0; i < 4; i++) A.Box(CM.Foliage, new Vector3(0.8f, 0.6f, 0.6f), new Vector3(x - w / 2 + 0.8f + i * 1.1f, y - d / 4, z + 0.85f));
+            A.EndMark(mk);
         }
 
         static void RoofKit(CityKit A, Rng rnd, float cx, float cy, float w, float d, float top)

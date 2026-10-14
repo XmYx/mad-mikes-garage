@@ -250,8 +250,11 @@ namespace MadMax.Game.Acceptance
             c.Check(named, $"{who}: all 15 bones named as HumanRig");
             var smrs = rig.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             bool bound = smrs.Length >= 4;
-            foreach (var r in smrs) foreach (var b in r.bones) bound &= b && allowed.Contains(b);
-            c.Check(bound, $"{who}: {smrs.Length} skinned meshes, every bone one of the rig's");
+            var headBone = rig.bones.TryGetValue(BodyPart.Head, out var hb) ? hb : null;
+            foreach (var r in smrs) foreach (var b in r.bones)
+                bound &= b && (allowed.Contains(b) || ClothDynamics.IsChainBone(b.name) && b.IsChildOf(rig.transform)   // + dangle chains
+                               || b.name.StartsWith("EyePivot") && b.parent == headBone);                            // + HumanFace eye pivots
+            c.Check(bound, $"{who}: {smrs.Length} skinned meshes, every bone one of the rig's (body, dangle chain or eye pivot)");
             c.Check(rig.HDPieces.Any(k => k.EndsWith("/Body")), $"{who}: an HD body is worn");
             // facing: the eyes sit in front of the head joint and the toes in front of the ankles (rig space, +Z forward)
             float eyes = float.NaN, toes = float.NaN;

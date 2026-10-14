@@ -23,7 +23,8 @@ namespace MadMax.Game
             ToolUp, ToolDown, ToolLeft, ToolRight, ToolA, ToolB,                // machines, cranes and aircraft (appended: saved maps keep their slots)
             Context,                                                            // context menu on what the cursor / crosshair is on (RMB tap too)
             Loot,                                                               // pin / unpin the floating loot panels
-            Craft                                                               // the HANDCRAFT menu (appended)
+            Craft,                                                              // the HANDCRAFT menu (appended)
+            Prone                                                               // go prone / crawl / get up (on foot, appended)
         }
 
         public static readonly int Count = System.Enum.GetValues(typeof(Act)).Length;
@@ -38,7 +39,8 @@ namespace MadMax.Game
             Key.Y, Key.X, Key.U, Key.R, Key.Comma, Key.Period, Key.LeftBracket, Key.RightBracket,
             Key.F9, Key.Backspace, Key.F10,
             Key.UpArrow, Key.DownArrow, Key.LeftArrow, Key.RightArrow, Key.Q, Key.E,
-            Key.Backquote, Key.L, Key.N
+            Key.Backquote, Key.L, Key.N,
+            Key.X
         };
 
         /// <summary>Labels for the CONTROLS page.</summary>
@@ -52,7 +54,8 @@ namespace MadMax.Game
             "BUILD: ROTATE", "BUILD: DISMANTLE", "BUILD: UPGRADE", "BUILD: REPAIR", "BUILD: PREV CATEGORY", "BUILD: NEXT CATEGORY", "BUILD: PREV PIECE", "BUILD: NEXT PIECE",
             "DEV: WEATHER", "DEV: DROP PART", "DEV: INSTANT REPAIR",
             "TOOL UP / NOSE", "TOOL DOWN / NOSE", "TOOL LEFT / RUDDER", "TOOL RIGHT / RUDDER", "TOOL A: CURL, GRAB / ROLL LEFT", "TOOL B: DUMP / ROLL RIGHT",
-            "CONTEXT MENU (ALSO RMB TAP)", "LOOT PANELS (PIN / UNPIN)", "HANDCRAFT (ON FOOT)"
+            "CONTEXT MENU (ALSO RMB TAP)", "LOOT PANELS (PIN / UNPIN)", "HANDCRAFT (ON FOOT)",
+            "PRONE / CRAWL (ON FOOT)"
         };
 
         static Key[] map;
@@ -60,7 +63,10 @@ namespace MadMax.Game
         static int injectedFrame = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { map = null; injectedFrame = -1; }
+        static void ResetStatics() { map = null; injectedFrame = -1; held.Clear(); releasedFrame = -1; }
+        static readonly System.Collections.Generic.HashSet<Act> held = new System.Collections.Generic.HashSet<Act>();   // injected holds (automation)
+        static Act released;
+        static int releasedFrame = -1;
 
         static Key[] Map
         {
@@ -93,6 +99,7 @@ namespace MadMax.Game
 
         public static bool Held(Act a)
         {
+            if (held.Contains(a)) return true;
             if (IsDev(a) && !LaunchOptions.Dev) return false;
             var kb = Keyboard.current; var k = Of(a);
             return kb != null && k != Key.None && kb[k].isPressed;
@@ -100,14 +107,26 @@ namespace MadMax.Game
 
         public static bool Up(Act a)
         {
+            if (releasedFrame == Time.frameCount && released == a) return true;
             var kb = Keyboard.current; var k = Of(a);
             return kb != null && k != Key.None && kb[k].wasReleasedThisFrame;
         }
 
-        static bool IsDev(Act a) => a >= Act.DevWeather && a <= Act.DevRepair;
+        public static bool IsDev(Act a) => a >= Act.DevWeather && a <= Act.DevRepair;
 
         /// <summary>Fire an action this frame as if its key was pressed (action wheel).</summary>
         public static void Inject(Act a) { injected = a; injectedFrame = Time.frameCount; }
+
+        /// <summary>Hold or release an action as if its key went down / up this frame (automation: press, hold, release
+        /// through the same Down / Held / Up queries the game reads).</summary>
+        public static void InjectHold(Act a, bool on)
+        {
+            if (on && held.Add(a)) Inject(a);
+            else if (!on && held.Remove(a)) { released = a; releasedFrame = Time.frameCount; }
+        }
+
+        /// <summary>Releases every injected hold (between acceptance scenarios).</summary>
+        public static void ReleaseInjected() { foreach (var a in held) { released = a; releasedFrame = Time.frameCount; } held.Clear(); }
 
         public static void Set(Act a, Key k)
         {

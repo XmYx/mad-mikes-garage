@@ -87,9 +87,10 @@ def wheel_key(name, tyre, rear=False):
     rr = min(rim * 0.0127 / S, R / S - 0.9)
     tread = {"Pickup": "blocks", "TowTruck": "truck", "Wrecker": "truck", "Scavenger": "blocks", "MonsterTruck": "monster",
              "DuneBuggy": "mud" if rear else "blocks", "Wagon": "blocks"}.get(name, "street")
-    rim_s = {"Interceptor": "bronze", "Coupe": "alloy", "Pickup": "steel", "TowTruck": "truck", "Wrecker": "truck",
+    rim_s = {"Interceptor": "bronze", "Coupe": "bronze", "Pickup": "steel", "TowTruck": "truck", "Wrecker": "truck",
              "Scavenger": "steel", "MonsterTruck": "beadlock", "DuneBuggy": "steel", "Wagon": "steel", "Sedan": "alloy",
-             "Peugeot206": "alloy", "Peugeot207CC": "alloy", "CitroenXM": "alloy", "LanciaYpsilon": "alloy"}.get(name, "hubcap")
+             "Peugeot206": "alloy", "Peugeot207CC": "alloy", "CitroenXM": "alloy", "LanciaYpsilon": "alloy",
+             "Fiat126p": "steel", "Renault5": "steel", "Trabant": "steel", "Peugeot205": "steel"}.get(name, "hubcap")
     H.WHEELS[key] = (R / S, n, rr, tread, rim_s)
     return key
 
@@ -131,10 +132,18 @@ def build(name, outline=False):
             roof_m = name + "_roof"
         rear = (z(rw0), z(rw1)) if rw0 - rw1 > 0.08 else None
         roofw = lerp(c["plan"], (ws1 + rw1) / 2) / S * c["roof"]
+        aline = cline = None
+        if c.get("aslope", style not in ("pickup", "truck")) and ws1 - ws0 > 0.1:
+            dz = c.get("apillar", 0.10) / S
+            aline = ((z(ws0) - dz, y(beltf(ws0))), (z(ws1) - dz, y(top(ws1))))
+        if c.get("cslope", style in ("hatch", "sedan", "rear")) and rw0 - rw1 > 0.15:
+            dz = c.get("cpillar_w", 0.10) / S
+            cline = ((z(rw0) + dz, y(beltf(rw0))), (z(rw1) + dz, y(top(rw1))))
         g = G(z(sb), z(sa), [(z(s), y(top(s))) for s in ss if sa <= s <= sb], [(z(s), y(beltf(s))) for s in ss if sa <= s <= sb],
               base_ratio=c["shoulder"], roof_ratio=c["roof"], er=max(0.3, c["ger"] / S), crown=0.3, sill=0.45, frame=0.15,
               windshield=(z(ws1), z(ws0)), rear=rear, roof=roof_zone, windows=[(z(b), z(a)) for a, b in c["windows"]],
-              open_windows=[(z(b), z(a)) for a, b in c.get("open_windows", [])], xp=roofw - 1.3, hfull=(c["H"] - beltf(ws1)) / S)
+              open_windows=[(z(b), z(a)) for a, b in c.get("open_windows", [])], xp=roofw - 1.3, hfull=(c["H"] - beltf(ws1)) / S,
+              aline=aline, cline=cline)
     # ---- bands: low = sill colour, one higher band = crease material
     low = [b for b in c["sides"] if b[1] < 0.35]
     mid = [b for b in c["sides"] if b[1] >= 0.35]
@@ -193,7 +202,7 @@ def build(name, outline=False):
     wheels = [(zF, wyF, c["tyre"][0] / S, sxF), (zRw, wyR, c.get("tyre_rear", c["tyre"])[0] / S, sxR)]
     if c.get("spat"):
         wheels[1] = wheels[1] + (y(c["spat"]),)
-    mats = dict(paint=pm, roof=roof_m if gl else pm, gpaint=(name + "_roof") if c.get("twotone") else pm, sill="plastic" if low else pm,
+    mats = dict(paint=pm, roof=roof_m if gl else pm, gpaint=pm, sill="plastic" if low else pm,
                 crease=cmat, cap=pm, seam=name + "_seam")
     accent = None
     if c.get("woody"):
@@ -203,7 +212,7 @@ def build(name, outline=False):
     sp = Spec(z0=z(LB), z1=z(0), hw=hw, planf=planf, pmin=0.5,
               bottom=[(z(s), y(h)) for s, h in c["bottom"]], top=[(z(s), y(beltf(s))) for s in ss],
               er=max(0.25, c["er"] / S), crown=max(0.1, c["crown"] / S), sill=max(1.0, sill), crease=crease, accent=accent, tubs=tubs, g=g,
-              doors=doors, hood=hood, trunk=trunk, tailgate=tail, wheels=wheels, arch=0.9 if lift == 0 else 0.9,
+              doors=doors, hood=hood, trunk=trunk, tailgate=tail, wheels=wheels, arch=c.get("arch_gap", 0.65), arch_lift=c.get("arch_lift", 0.3),
               wells=lift == 0, mats=mats, door_xmin=wi - 0.2, chamfer=0.5, ds=0.35, dent=0.12)
     # wheel arches: the body's lower edge follows each arch (radius + clearance), so the openings are part of the
     # lofted surface (no boolean); a spat (BX) stops the arch at its skirt line
@@ -211,8 +220,8 @@ def build(name, outline=False):
         base_bottom = sp.bottom
         arches = []
         for w in wheels:
-            zc, yc, R = w[0], w[1], w[2] + 0.9
-            arches.append((zc, yc + 0.5, R, w[4] if len(w) > 4 else None))
+            zc, yc, R = w[0], w[1], w[2] + c.get("arch_gap", 0.65)
+            arches.append((zc, yc + c.get("arch_lift", 0.3), R, w[4] if len(w) > 4 else None))
 
         def bottom_arch(zz, base=base_bottom, arches=arches):
             b = base(zz)
@@ -230,6 +239,15 @@ def build(name, outline=False):
     v = H.Veh(name, F.gy)
     bvh = B.build(v, sp, hash(name) % 97)
     E = dict(F=F, c=c, sp=sp, bvh=bvh, pm=pm, hw=hw, f=f, name=name, v=v)
+    # dark wheel-house liners inside the lofted arches
+    if lift == 0 and style != "buggy":
+        for w, s_ax in zip(wheels, (c["fo"], c["fo"] + c["wb"])):
+            if s_ax > LB - 0.2:
+                continue
+            zc, yc, R, sx = w[:4]
+            x_out = sp.plan(zc) - 0.3
+            x_in = max(1.0, sx - (2.4 if s_ax == c["fo"] else 0.9))
+            D.arch_liner(v, zc, yc + c.get("arch_lift", 0.3), R + c.get("arch_gap", 0.65) + 0.08, x_in, x_out, y(lerp(c["bottom"], s_ax)))
 
     # ---- lamps, grille, plates, bumpers from the reference lists
     def feats(lst, back):
@@ -259,8 +277,8 @@ def build(name, outline=False):
                     rot = Vector((0, 0, 1)).rotation_difference(n).to_euler()
                     xform(lm, p, tuple(rot))
                     D.put(v, "Lights", lm, ["chrome", "lamp_head"])
-                    q, m = D.side_point(bvh, Y + Hh * 0.35, z(0.42), sg)
-                    if q is not None:
+                    q, m = D.side_point(bvh, Y - Hh * 0.1, z(0.42), sg)
+                    if q is not None and abs(m.x) > 0.6:
                         D.put(v, "Lights", H.lamp_rect(q + Vector((sg * 0.03, 0, 0)), 3.2, Hh * 0.55, (sg, 0, 0), depth=0.4, bevel=0.2),
                               ["chrome", "lamp_head"])
             elif kind == "R" and not back:
@@ -270,7 +288,7 @@ def build(name, outline=False):
                          frame="chrome" if style in ("pickup", "truck", "wagon") or name in ("Sedan", "Coupe", "Trabant", "LanciaYpsilon") else "plastic")
             elif kind == "M" and not back:
                 p, n = D.front_point(bvh, 0, Y, sp.z1)
-                D.put(v, "Body", cyl((-Wd / 2, Y, p.z + 0.15), (Wd / 2, Y, p.z + 0.15), max(0.25, Hh / 2), 8), ["chrome"])
+                D.put(v, "Body", cyl((-Wd / 2, Y, p.z - 0.1), (Wd / 2, Y, p.z - 0.1), max(0.25, Hh / 2), 8), ["chrome"])
             elif kind == "G":
                 p, n = D.front_point(bvh, 0, Y, sp.z1, True)
                 k = max(3, int(Hh / 0.35))
@@ -299,6 +317,7 @@ def build(name, outline=False):
         belt_y = y(beltf((c["doors"][0][0] + c["doors"][0][1]) / 2)) if c["doors"] else y(beltf(gl[0]))
         D.door_dressing(v, bvh, sp, belt_y, mirror_z=z(gl[0]) - 0.9 if c["doors"] else False,
                         mirror_part="Body" if style == "truck" else None)
+        D.door_cards(v, bvh, sp, belt_y, f)
         D.wipers(v, sp, y(beltf(gl[0])) + 0.8, z(gl[0]) - 0.6, int(lerp(c["plan"], gl[0]) / S * c["shoulder"]) - 1)
         if c.get("roofRails"):
             bm, m = P.roof_rails(z(gl[1]) - z(gl[2]) - 1.0, lerp(c["plan"], 2.5) / S * c["roof"] - 1.0)
@@ -311,11 +330,13 @@ def build(name, outline=False):
         dx = -min(5, int(hw * 0.42))
         if c.get("rhd"):
             dx = -dx
-        dash_s = gl[0] + 0.30 if style not in ("truck",) else gl[0] + 0.2
+        dash_s = gl[0] + c.get("dash_back", 0.36) if style not in ("truck",) else gl[0] + 0.2
         seat_room = (top(dash_s + 0.9) - 0.07 - floor_h) / S - 5.8
+        dash_dy = min(0.0, (y(beltf(gl[0])) + 0.7) - (f + 8.2))
         D.interior(v, f, int(round(z(dash_s))), int(round(z(dash_s + 0.62))), dx, int(wi),
                    rear_bench=len(c["doors"]) > 1 or style in ("hatch", "wagon"), dash_w=min(8, int(wi) - 1),
-                   back_h=max(4.0, min(7.6, seat_room)))
+                   back_h=max(4.0, min(7.6, seat_room)), dy=dash_dy)
+        D.pedals(v, f, int(round(z(dash_s))), dx)
     if rear_engine:
         es = L - 0.45
         D.engine_at(v, "engine_2stroke", (0, min(f + 1, y(beltf(es)) - 6.8), z(es)))
@@ -333,6 +354,84 @@ def build(name, outline=False):
                 bits.append(rbox(hit + Vector((0, 0.06, 0)), (lerp(c["plan"], s) / S * 0.9, 0.12, 0.28), 0.04, 1))
         if bits:
             D.put(v, "Trunk" if trunk else "Body", join(*bits), ["void"])
+
+    if c.get("vent_panel"):                # black louvred panel on the C-pillar (BX): polygon of (s, h) on the skin
+        poly_ = c["vent_panel"]
+        bits = []
+        import bmesh
+        for sg in (1, -1):
+            pts = []
+            for s_, h_ in poly_:
+                p, n = D.side_point(bvh, y(h_), z(s_), sg)
+                pts.append(Vector((sg * (abs(p.x) + 0.08) if p is not None else sg * hw, y(h_), z(s_))))
+            bm = bmesh.new()
+            vs = [bm.verts.new(q) for q in pts]
+            f_ = bm.faces.new(vs)
+            f_.normal_update()
+            if f_.normal.x * sg < 0:
+                f_.normal_flip()
+            bmesh.ops.solidify(bm, geom=[f_], thickness=0.12)
+            bits.append(_mi(bm, 0))
+            hs = [h_ for _, h_ in poly_]
+            for i in range(1, 6):
+                hh_ = min(hs) + (max(hs) - min(hs)) * i / 6.0
+                xs_ = []
+                for (s0, h0), (s1, h1) in zip(poly_, poly_[1:] + poly_[:1]):
+                    if (h0 - hh_) * (h1 - hh_) < 0:
+                        xs_.append(s0 + (s1 - s0) * (hh_ - h0) / (h1 - h0))
+                if len(xs_) >= 2:
+                    sa, sb = min(xs_) + 0.03, max(xs_) - 0.03
+                    p, n = D.side_point(bvh, y(hh_), z((sa + sb) / 2), sg)
+                    if p is not None and sb > sa:
+                        bits.append(_mi(rbox((sg * (abs(p.x) + 0.22), y(hh_), z((sa + sb) / 2)), (0.12, 0.14, (sb - sa) / S), 0.0, 1), 1))
+        D.put(v, "Body", join(*bits), ["plastic", "plastic_grey"])
+    if c.get("spoiler_lip"):               # small lip across the hatch base
+        sl = c["spoiler_lip"]
+        hit, n = H.surface_hit(bvh, (0, 400, z(sl)), (0, -1, 0))
+        if hit is not None:
+            part = "Tailgate" if tail else "Body"
+            D.put(v, part, rbox(hit + Vector((0, 0.12, 0)), (2 * lerp(c["plan"], sl) / S * 0.9, 0.35, 1.6), 0.12, 1,
+                                rot=(math.radians(-12), 0, 0)), ["plastic"])
+    if c.get("bed") and style == "pickup":     # the gap between cab and box: dark seam down both flanks
+        gs_ = c["bed"][0] - 0.03
+        bits = []
+        for sg in (1, -1):
+            p, n = D.side_point(bvh, y(lerp(c["belt"], gs_) - 0.25), z(gs_), sg)
+            if p is not None:
+                y0, y1 = y(lerp(c["bottom"], gs_)) + 0.2, y(lerp(c["belt"], gs_)) + 0.1
+                bits.append(rbox((sg * (min(abs(p.x), hw) - 0.1), (y0 + y1) / 2, z(gs_)), (0.2, y1 - y0, 0.35), 0.0, 1))
+        hit, n = H.surface_hit(bvh, (0, 400, z(gs_)), (0, -1, 0))
+        if bits:
+            D.put(v, "Body", join(*bits), ["void"])
+    if c.get("split_grille"):               # twin-box grille: centre divider + surround bars
+        for kind, xc, hc, w, hh in c["front"]:
+            if kind == "R":
+                p, n = D.front_point(bvh, 0, y(hc), sp.z1)
+                D.put(v, "Body", join(rbox((0, y(hc), p.z + 0.25), (0.6, hh / S + 0.3, 0.5), 0.12, 1),
+                                      rbox((0, y(hc), p.z + 0.25), (w / S + 0.4, 0.3, 0.45), 0.1, 1)), ["chrome"])
+    if c.get("mudflaps"):                  # rubber flaps behind each wheel
+        flaps = []
+        for s_ax in (c["fo"], c["fo"] + c["wb"]):
+            for sg in (1, -1):
+                flaps.append(rbox(F.p(sg * (c["track"] / 2), 0.20, s_ax + c["tyre"][0] + 0.12), (2.2, 3.0, 0.15), 0.05, 1))
+        D.put(v, "Body", join(*flaps), ["rubber"])
+    if c.get("arch_flares"):               # moulded black arch eyebrows following the opening
+        for s_ax in (c["fo"], c["fo"] + c["wb"]):
+            r0 = c["tyre"][0] / S + c.get("arch_gap", 0.65) - 0.1
+            D.flare(v, F.z(s_ax), F.y(c["tyre"][0], False) + c.get("arch_lift", 0.3), r0, r0 + 1.1, lerp(c["plan"], s_ax) / S - 0.75,
+                    "plastic", thick=0.8, a0=-8, a1=188)
+    if c.get("quarter_louvre"):            # slatted air intake on the rear quarter (rear-engined cars)
+        qs, qh = c["quarter_louvre"]
+        bits = []
+        for sg in (1, -1):
+            p, n = D.side_point(bvh, y(qh), z(qs), sg)
+            if p is None:
+                continue
+            bits.append(_mi(rbox(p + Vector((sg * -0.13, 0, 0)), (0.2, 0.95, 3.8), 0.12, 1), 0))
+            for i in range(4):
+                bits.append(_mi(rbox(p + Vector((sg * -0.09, -0.33 + i * 0.22, -0.15)), (0.12, 0.08, 3.2), 0.0, 1), 1))
+        if bits:
+            D.put(v, "Body", join(*bits), ["void", "plastic"])
 
     # ---- the car's own extras (archetype details, the game's default parts)
     EXTRAS.get(name, lambda e: None)(E)
@@ -378,7 +477,7 @@ def x_interceptor(e):
     for s in (c["fo"], c["fo"] + c["wb"]):
         D.flare(v, F.z(s), F.y(c["tyre"][0], False), c["tyre"][0] / S + 1.1, c["tyre"][0] / S + 2.3, hw - 0.4, ymax=F.y(0.86))
     # Pursuit Special roof spoiler and chin spoiler
-    D.put(v, "Body", rbox(F.p(0, c["H"] + 0.02, 2.98), (2 * hw * 0.72, 0.5, 3.2), 0.2, 2, rot=(math.radians(8), 0, 0)), [pm])
+    D.put(v, "Body", rbox(F.p(0, c["H"] + 0.0, 3.05), (2 * hw * 0.70, 0.45, 3.2), 0.2, 2, rot=(math.radians(10), 0, 0)), [pm])
     D.put(v, "Body", rbox(F.p(0, 0.22, 0.12), (2 * hw - 2, 0.6, 2.0), 0.2, 1), ["plastic"])
     bm, m = P.engine("engine_v8_blower")
     D.mount(v, "Engine", "engine", "engine_v8_blower", F.p(0, 0.26, 1.15), bm, m, paint=pm)
@@ -431,10 +530,16 @@ def x_scavenger(e):
 
 def x_trabant(e):
     F, c, v, hw = e["F"], e["c"], e["v"], e["hw"]
-    bm, m = P.bumper_chrome(hw, depth=0.7, h=0.9, wrap=1.2)
-    D.mount(v, "Bumper_F", "bumper_front", "bumper_trabant_front", F.p(0, 0.32, -0.04), bm, m)
-    bm, m = P.bumper_chrome(hw, rear=True, depth=0.7, h=0.9, wrap=1.2)
-    D.mount(v, "Bumper_R", "bumper_rear", "bumper_trabant_rear", F.p(0, 0.32, c["L"] + 0.04), bm, m)
+    # black plastic-capped bumpers with the steel ends wrapping to the arches, mud flaps behind the wheels
+    bm, m = P.bumper_plastic(hw + 0.1, h=1.1, depth=1.0, wrap=1.6, mat="plastic")
+    D.mount(v, "Bumper_F", "bumper_front", "bumper_trabant_front", F.p(0, 0.38, -0.05), bm, m)
+    bm, m = P.bumper_plastic(hw + 0.1, rear=True, h=1.1, depth=1.0, wrap=1.6, mat="plastic")
+    D.mount(v, "Bumper_R", "bumper_rear", "bumper_trabant_rear", F.p(0, 0.40, c["L"] + 0.05), bm, m)
+    flaps = []
+    for s_ax in (c["fo"], c["fo"] + c["wb"]):
+        for sg in (1, -1):
+            flaps.append(rbox(F.p(sg * (c["track"] / 2), 0.20, s_ax + c["tyre"][0] + 0.10), (1.8, 2.6, 0.12), 0.05, 1))
+    D.put(v, "Body", join(*flaps), ["rubber"])
     D.engine_at(v, "engine_2stroke", F.p(0, 0.30, 0.55))
 
 
@@ -574,15 +679,20 @@ def x_buggy(e):
     D.put(v, "Body", join(*t), ["cage_black"])
     D.put(v, "Glass", join(rbox(F.p(0, 0.85, 1.14), (2 * 0.50 / S, 0.40 / S, 0.15), 0.3, 2, rot=(math.radians(-12), 0, 0))), ["glass"])
     # Manx fenders: flared fibreglass arches over the exposed wheels, running into the nose / rear deck
-    for s, tyre, a0, a1 in ((c["fo"], c["tyre"], 0, 200), (c["fo"] + c["wb"], c["tyre_rear"], -10, 180)):
-        R = tyre[0] / S + 0.9
+    # wide fibreglass fenders: a sheet from the tub side out past the tyre, with a deep rolled outer skirt
+    for s, tyre, a0, a1 in ((c["fo"], c["tyre"], -12, 196), (c["fo"] + c["wb"], c["tyre_rear"], -16, 186)):
+        R = tyre[0] / S + 1.8
         zc, yc = F.z(s), F.y(tyre[0], False)
+        x_in = lerp(c["plan"], s) / S - 0.6
+        x_out = (c["track"] / 2 + tyre[1] / 2) / S + 0.15
         for sg in (1, -1):
-            pts = []
-            for i in range(a0, a1 + 1, 8):
+            pts, pts2 = [], []
+            for i in range(a0, a1 + 1, 6):
                 a = math.radians(i)
-                pts.append((sg * (c["track"] / 2 / S - 0.3), yc + math.sin(a) * R, zc + math.cos(a) * R * 1.08))
-            D.put(v, "Body", H.sweep(pts, H.rrect(tyre[1] / S + 1.4, 0.45, 0.2, 2), up=(1, 0, 0)), [pm])
+                pts.append((sg * (x_in + x_out) / 2, yc + math.sin(a) * R, zc + math.cos(a) * R * 1.06))
+                pts2.append((sg * (x_out - 0.25), yc + math.sin(a) * (R - 0.9), zc + math.cos(a) * (R - 0.9) * 1.06))
+            D.put(v, "Body", join(H.sweep(pts, H.rrect(x_out - x_in, 0.55, 0.25, 2), up=(1, 0, 0)),
+                                  H.sweep(pts2, H.rrect(0.5, 2.3, 0.22, 2), up=(1, 0, 0))), [pm])
     D.put(v, "Hood", rbox(F.p(0, 0.69, 0.55), (6.0, 0.6, 4.4), 0.3, 2), ["void"])
     D.interior(v, int(F.y(0.40)), int(F.z(1.30)), int(F.z(1.95)), -4, 7, bucket=True, dash_w=5)
     bm, m = P.engine("engine_i4")
@@ -596,13 +706,16 @@ def x_buggy(e):
 
 def x_coupe(e):
     F, c, v, pm, bvh = e["F"], e["c"], e["v"], e["pm"], e["bvh"]
-    hit, n = H.surface_hit(bvh, (0, 400, F.z(1.0)), (0, -1, 0))
+    hit, n = H.surface_hit(bvh, (0, 400, F.z(1.05)), (0, -1, 0))
     if hit is not None:
-        D.put(v, "Hood", rbox(hit + Vector((0, 0.2, 0)), (6.0, 0.5, 9.0), 0.4, 3), [pm])                 # power bulge
-    for sg in (1, -1):
-        p, n2 = D.side_point(bvh, F.y(0.68), F.z(3.35), sg)
+        ang = math.atan2(n.z, n.y) if n is not None else 0.0
+        D.put(v, "Hood", rbox(hit + Vector((0, 0.05, 0)), (5.0, 0.45, 7.0), 0.4, 3, rot=(-ang, 0, 0)), [pm])  # power bulge
+    for sg in (1, -1):                       # fake vents on the rear quarter ahead of the rear wheel
+        p, n2 = D.side_point(bvh, F.y(0.45), F.z(2.84), sg)
         if p is not None:
-            D.put(v, "Body", join(*[rbox(p + Vector((sg * 0.05, -0.4 * i, 0.3 * i)), (0.25, 0.25, 1.6), 0.05, 1) for i in range(3)]), ["void"])
+            bits = [_mi(rbox(p + Vector((sg * -0.13, 0, 0)), (0.2, 2.6, 3.4), 0.2, 1), 0)]
+            bits += [_mi(rbox(p + Vector((sg * -0.09, -0.9 + 0.45 * i, 0.2)), (0.12, 0.14, 2.8), 0.0, 1), 1) for i in range(5)]
+            D.put(v, "Body", join(*bits), ["void", "chrome"])
     bm, m = P.bumper_chrome(e["hw"], depth=0.7, h=0.9, wrap=1.6)
     D.mount(v, "Bumper_F", "bumper_front", "bumper_chrome", F.p(0, 0.42, -0.04), bm, m)
     bm, m = P.bumper_chrome(e["hw"], rear=True, depth=0.7, h=0.9, wrap=1.6)

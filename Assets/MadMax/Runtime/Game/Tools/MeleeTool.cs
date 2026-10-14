@@ -115,7 +115,9 @@ namespace MadMax.Game
                     MadMax.Audio.Sfx.Play(hitSound, point, 0.8f, Random.Range(0.9f, 1.1f));
                     Met(Hardness(target, tgo), point);
                     target.ApplyHit(point, dir, pw * mult, carveRadius * Mathf.Sqrt(mult), user.gameObject);
-                    if (bleeds > 0f && target is MadMax.Npc.Npc victim && Random.value < bleeds) victim.Bleed(8f);
+                    bool guarded = target is MadMax.Npc.Npc gv && gv.GuardedFrame == Time.frameCount;
+                    if (guarded) Met(0.85f, point);                                                // rings off their weapon
+                    if (!guarded && bleeds > 0f && target is MadMax.Npc.Npc victim && Random.value < bleeds) victim.Bleed(8f);
                     hitSomething = true;
                     stats?.Practice(style == ToolStyle.Overhead ? MadMax.RPG.Skill.Demolition : MadMax.RPG.Skill.Melee, 2f);
                 }
@@ -126,6 +128,7 @@ namespace MadMax.Game
             if (pries && isPlayer && game.PryNearest(end)) hitSomething = true;
             if (isPlayer) game.WearTool(id, hitSomething ? wearPerHit : wearPerHit * 0.25f);
             var terrain = DeformableTerrain.Instance;
+            if (!hitSomething && digs && isPlayer && game.ShovelSand(end)) { Met(0.3f, end); return; }   // soil thrown on a fire (WastelandGame.FireSand)
             if (!hitSomething && digs && terrain && end.y - terrain.Height(end.x, end.z) < 0.45f && WastelandGame.Instance && user == WastelandGame.Instance.Player)
             {
                 WastelandGame.Instance.ShovelDig(end);

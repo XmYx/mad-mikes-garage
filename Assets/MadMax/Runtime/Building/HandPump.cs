@@ -34,6 +34,7 @@ namespace MadMax.Building
             if (litres <= 0f) { g.Toast("THE CISTERN IS FULL"); return; }
             if (taint != WaterTaint.None) { node.dirty += litres; node.taint |= taint; } else node.clean += litres;
             MadMax.Audio.Sfx.Play("pour", transform.position, 0.6f, 1.2f);
+            PieceMotion.Use(gameObject, "pump", 1.6f);                                              // the handle strokes
             g.Stats.Practice(MadMax.RPG.Skill.Survival, 0.3f);
             g.Toast("PUMPED " + litres.ToString("0") + " L" + (taint != WaterTaint.None ? " (" + WaterQuality.Word(taint) + ")" : ""));
             GetComponent<Placeable>()?.Dirty();

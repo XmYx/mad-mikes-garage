@@ -93,7 +93,7 @@ namespace MadMax.Npc
             foreach (var p in people)                                                            // one body per frame, warmed on workers
             {
                 if (p.npc || NpcRegistry.IsDead(p.id) || Vector3.Distance(World(p.anchor), me) > city.PersonReach) continue;
-                if (!HumanRig.Prewarm(p.profile.look, p.profile.outfit)) break;
+                if (!HumanRig.Prewarm(p.profile.look, p.profile.outfit, p.profile.Condition)) break;
                 Spawn(p);
                 break;
             }

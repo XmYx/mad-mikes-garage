@@ -15,8 +15,10 @@ namespace MadMax.Game
         public bool Dead => stats.health <= 0f;
         /// <summary>Seconds since the player was last hurt.</summary>
         public float SinceHurt => Time.time - lastHurt;
+        /// <summary>Seconds since a real blow (≥ 3 health at once), not the trickle of heat, thirst, smoke or bleeding.</summary>
+        public float SinceBlow => Time.time - lastBlow;
 
-        float lastSpend, lastHurt;
+        float lastSpend, lastHurt, lastBlow = -99f;
         PlayerCharacter player;
 
         void Awake() { player = GetComponent<PlayerCharacter>(); }
@@ -44,6 +46,7 @@ namespace MadMax.Game
             stats.health -= amount * GameRules.Current.DamageTaken;
             WastelandGame.Instance?.Injure(amount * GameRules.Current.DamageTaken, cause);
             lastHurt = Time.time;
+            if (amount >= 3f) lastBlow = Time.time;
             var game = WastelandGame.Instance;
             if (game)
             {
@@ -59,7 +62,8 @@ namespace MadMax.Game
             bool running = player && player.run && player.Velocity.sqrMagnitude > 4f && !player.SeatedIn;
             if (running) Spend(14f * dt * (WastelandGame.Instance ? WastelandGame.Instance.LimbStamina : 1f));   // heavy or springy prosthetics
             float regenMult = (stats.bodyTemp < 36f ? 0.6f : 1f) * (stats.hunger < 20f || stats.thirst < 20f ? 0.5f : 1f)
-                * (stats.fed ? 1.2f : 1f) * (player && player.Sitting && player.SeatedOn ? player.SeatedOn.rest : 1f);
+                * (stats.fed ? 1.2f : 1f) * (player && player.Sitting && player.SeatedOn ? player.SeatedOn.rest : 1f)
+                * (player ? player.RestFactor : 1f);                                                 // sitting / lying on the ground
             if (Time.time - lastSpend > 1.2f) stats.stamina = Mathf.Min(stats.MaxStamina, stats.stamina + (10f + stats.Attribute(Attr.Endurance) * 1.5f) * dt * regenMult);
             if (Exhausted && stats.stamina > stats.MaxStamina * 0.3f) Exhausted = false;
             bool bleeding = false; foreach (var inj in stats.injuries) if (inj.Bleeding) { bleeding = true; break; }

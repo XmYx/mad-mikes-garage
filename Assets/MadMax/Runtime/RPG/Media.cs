@@ -54,6 +54,7 @@ namespace MadMax.RPG
             B("book_first_aid", "FIELD FIRST AID", Skill.Survival, 140, 25),
             B("book_charm", "HOW TO MAKE FRIENDS AFTER THE END", Skill.Speech, 150, 25),
             B("vhs_salesman", "VHS: SUPER SALESMAN SEMINAR", Skill.Speech, 180, 30),
+            B("book_railways", "THE RAILWAYMAN'S HANDBOOK", Skill.Rail, 170, 30, "k_rail"),
         };
 
         static ResearchDef R(string id, string name, string grants, string desc, int minLevel, params (MadMax.Items.ResourceType, int)[] cost) =>
@@ -72,6 +73,7 @@ namespace MadMax.RPG
                 R("r_mounts", "WEAPON MOUNTS", "k_weapon_mounts", "VEHICLE TURRETS", 4, (S, 20)),
                 R("r_coolant", "COOLANT MIX", "k_coolant", "BREW COOLANT", 1, (G, 2), (C, 1)),
                 R("r_truck", "HEAVY PARTS", "k_truck_parts", "TRUCK RADIATORS AND STACKS", 3, (S, 14)),
+                R("r_rail", "THE IRON ROAD", "k_rail", "TRACK, POINTS, ROLLING STOCK", 2, (S, 10), (MadMax.Items.ResourceType.Iron, 4)),
             };
         }
     }

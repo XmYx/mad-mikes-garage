@@ -20,6 +20,7 @@ namespace MadMax.Game
         [HideInInspector] public float viewYaw, lookPitch;
         [HideInInspector] public bool faceView;   // first person: body follows the camera yaw
         [HideInInspector] public bool aiming;     // weapon raised (RMB): slow, steady steps
+        [HideInInspector] public bool guarding;   // melee guard up (RMB in a fight, WastelandGame.Guard): slow steps, weapon across the body
 
         public Vector3 Velocity { get; private set; }
         public HandTool Tool { get; private set; }
@@ -45,6 +46,7 @@ namespace MadMax.Game
         bool strikeNow;
         float raiseLeft, gunUpUntil;
         string reactClip;
+        Vector3 reactFrom;                         // where the last blow came from (world, toward the striker; zero = unknown)
         bool airborne;
 
         /// <summary>Carrying more than the strength-based capacity: slower, cannot run.</summary>
@@ -100,6 +102,12 @@ namespace MadMax.Game
         /// <summary>Keyframed clip played with <see cref="PoseOverride"/> (HumanClips: "pour", "wrench", "weld"...); the
         /// procedural pose stays the fallback.</summary>
         [System.NonSerialized] public string ActionClip;
+        /// <summary>Progress 0..1 of a one-shot <see cref="ActionClip"/> (use animations drive it); &lt; 0 = the clip runs on its own clock.</summary>
+        [System.NonSerialized] public float ActionT = -1f;
+        /// <summary>In a conversation (talk / trade page): the talk_a / talk_b gestures play over the upper body.</summary>
+        [System.NonSerialized] public bool Talking;
+        /// <summary>Upper-body clip while seated in a vehicle (hotwiring under the dash); null = hands on the wheel.</summary>
+        [System.NonSerialized] public string SeatedAction;
         /// <summary>Scripted walk (timed work at a vehicle): world-space heading, length = share of the walking speed,
         /// used instead of the move input while set; zero holds the player still. Tool swings wait.</summary>
         [System.NonSerialized] public Vector3? AutoWalk;
@@ -138,7 +146,7 @@ namespace MadMax.Game
         /// <summary>Swing / fire the equipped tool (faces the view direction first in first/third person).</summary>
         public void Attack(bool faceViewYaw)
         {
-            if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled || AutoWalk.HasValue) return;
+            if (!Tool || swingT >= 0f || Carried || SeatedIn || (Sitting && !(SeatedOn && SeatedOn.standing)) || Ragdolled || AutoWalk.HasValue || LowState != Low.None || Puppeted) return;
             var g = WastelandGame.Instance;
             if (g && !g.CanUse(Tool.id)) { g.Toast("NO HAND TO USE THE " + Tool.toolName + " WITH"); return; }
             if (g && Tool.TwoHanded && g.ArmBroken && g.BuiltInTool(Tool.id) == 0) { g.Toast((g.ArmLoss(true) > 0.5f || g.ArmLoss(false) > 0.5f ? "ONE GOOD HAND" : "BROKEN ARM") + ": CAN'T USE A TWO-HANDED " + Tool.toolName); return; }
@@ -181,7 +189,9 @@ namespace MadMax.Game
         // ------------------------------------------------------------------ places
         public void EnterInterior(InteriorSpace space, Vector3 local)
         {
+            ClearLow();
             Unseat();
+            if (InTransit || bedLie) { ClearTransit(); bedLie = null; bedAction = null; }
             cc.enabled = false;
             Interior = space;
             transform.SetParent(space.transform, false);
@@ -203,15 +213,14 @@ namespace MadMax.Game
         public void SitIn(VehicleDriver car)
         {
             if (Carried) DropCarried();
+            if (InTransit || bedLie) { ClearTransit(); bedLie = null; bedAction = null; }
+            ClearLow();
             Interior = null;
             cc.enabled = false;
             SeatedIn = car;
             ShowHeld(false);                                                   // hands on the wheel: the tool / prop waits
-            var eye = car.transform.Find("DriverEye");
             transform.SetParent(car.transform, false);
-            float h = Rig.appearance.height;
-            var eyeLocal = eye ? eye.localPosition : new Vector3(0.3f, 1.1f, 0f);
-            transform.localPosition = eyeLocal + new Vector3(0f, -(0.94f + 0.74f) * h, -0.1f);
+            transform.localPosition = SeatRootLocal(car, Rig.appearance.height);
             transform.localRotation = Quaternion.identity;
             swingT = -1f;
             Rig.ResetHair();
@@ -223,20 +232,33 @@ namespace MadMax.Game
         {
             if (!seat || Ragdolled) return;
             if (Carried) DropCarried();
+            ClearLow();
             Unseat();
+            var from = transform.position; var fromRot = transform.rotation;
+            ClearTransit(); bedLie = null; bedAction = null;
             seatInterior = Interior;
             Interior = null;
             transform.SetParent(null, true);
             cc.enabled = false;
             SeatedOn = seat; seatSpot = spot; Sitting = true;
+            seatLie = false;
+            if (IsLieSeat(seat) && BedFrame(seat.transform, from, H, out _, out _, out _, out var lr, out var lq))   // clinic bed, surgery table: lie on it
+            { seatLie = true; lieRootLocal = seat.transform.InverseTransformPoint(lr); lieRotLocal = Quaternion.Inverse(seat.transform.rotation) * lq; }
             swingT = -1f; vy = 0f; Velocity = Vector3.zero;
-            FollowSeat();
+            if (!BeginSit(seat, from, fromRot)) FollowSeat();                                   // walk up, turn and lower onto it (PlayerCharacter.Transit)
             Rig.ResetHair();
         }
 
         void FollowSeat()
         {
             var t = SeatedOn.transform;
+            if (seatLie)
+            {
+                var lp = t.TransformPoint(lieRootLocal); var lq = t.rotation * lieRotLocal;
+                if (anim != null && !anim.UsingClips) LieProcedural(ref lp, ref lq, H);
+                transform.SetPositionAndRotation(lp, lq);
+                return;
+            }
             var pos = t.TransformPoint(seatSpot + Vector3.down * (0.94f * Rig.appearance.height));
             // standing on a roof: upright, free to turn (first person follows the view)
             if (SeatedOn.standing) transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, faceView ? viewYaw : transform.eulerAngles.y, 0f));
@@ -246,6 +268,7 @@ namespace MadMax.Game
         public void StandUp()
         {
             if (!Sitting) return;
+            EndSeatedGesture();
             Sitting = false;
             var seat = SeatedOn; SeatedOn = null;
             float yaw = transform.eulerAngles.y;
@@ -260,6 +283,11 @@ namespace MadMax.Game
                 }
             }
             var space = seatInterior; seatInterior = null;
+            standAt = at; standYaw = yaw; standSpace = space;
+            bool began = seat && BeginStand(seat, at);                                          // push off / get up / climb down (PlayerCharacter.Transit)
+            seatLie = false;
+            if (began) return;
+            ClearTransit(); standSpace = null;
             if (space) EnterInterior(space, space.transform.InverseTransformPoint(at));
             else Teleport(at, yaw);
         }
@@ -281,13 +309,16 @@ namespace MadMax.Game
 
         public void Teleport(Vector3 pos, float yaw)
         {
+            ClearLow();
+            turnStepT = -1f;
             Unseat();
+            if (InTransit || bedLie) { ClearTransit(); bedLie = null; bedAction = null; }
             cc.enabled = false;
             Interior = null;                                                   // out of any walk-in space (its moves are cabin-local)
             transform.SetParent(null, true);
             transform.SetPositionAndRotation(pos, Quaternion.Euler(0, yaw, 0));
             cc.enabled = true;
-            vy = 0; Velocity = Vector3.zero;
+            vy = 0; Velocity = Vector3.zero; planar = Vector3.zero;
             Rig.ResetHair();
         }
 
@@ -307,11 +338,16 @@ namespace MadMax.Game
             float dt = Time.deltaTime;
             if (dt <= 0f || anim == null) return;          // anim is rebuilt with the body (lost on a domain reload)
             if (Ragdolled) return;
+            if (anim.Attention != null) anim.Attention.Suppressed = firstPerson;               // the camera rides the head
+            proneNow = proneToggle; proneToggle = false;                                   // the prone key counts only where it can act
+            if (Puppeted) { PuppetWatch(); return; }                                       // getting in / out of a vehicle (WastelandGame.Boarding)
+            if (InTransit) { TransitTick(dt); return; }                                    // sitting down, standing up, lying down, climbing to a perch
             if (Sitting) { UpdateSitting(dt); return; }
             if (SeatedIn) { UpdateSeated(dt); return; }
             if (Interior) { UpdateInterior(dt); return; }
             if (Traversing) { TraverseTick(dt); return; }                                  // vault, climb, zip (roadmap 22)
             if (ClimbTick(dt)) return;                                                     // on a ladder (roadmap 29)
+            if (LowTick(dt)) return;                                                       // prone / crawling, sitting or lying on the ground
 
             var terrain = DeformableTerrain.Instance;
             var dir = Quaternion.Euler(0, viewYaw, 0) * new Vector3(moveInput.x, 0, moveInput.y);
@@ -323,6 +359,7 @@ namespace MadMax.Game
             float speed = (canRun ? runSpeed : walkSpeed) * (stats != null ? stats.MoveSpeed : 1f);
             if (Encumbered) speed *= 0.7f;
             if (aiming) speed = Mathf.Min(speed, walkSpeed * 0.7f);
+            if (guarding) speed = Mathf.Min(speed, walkSpeed * 0.6f);
             if (game) speed *= game.InjurySpeed;
             if (Carried) speed *= 0.6f;
             if (HeavySwing) speed *= 0.3f;                                                  // feet planted for a two-handed blow
@@ -339,6 +376,8 @@ namespace MadMax.Game
             HeadUnder = !float.IsNaN(waterLvl) && waterLvl > transform.position.y + 1.6f;
             if (waterDepth > 0.2f) speed *= Mathf.Lerp(1f, 0.45f, Mathf.Clamp01(waterDepth / 1.25f));
             var horizontal = dir * speed;
+            if (dir.sqrMagnitude > 0.01f) turnStepT = -1f;                                    // moving: walk off and turn at once (no turn on the spot first)
+            else TurnStepTick(dir, dt);                                                        // standing: a turn to a danger steps round (turn_l90 / turn_r90)
             if (Sliding) horizontal = SlideVelocity(dt);
             if (Diving)
             {
@@ -391,6 +430,22 @@ namespace MadMax.Game
             jump = false;
             vy += gravity * dt;
             if (sprintJump > 0f) { sprintJump -= dt; horizontal *= 1.12f; }                     // a running leap carries further
+            // momentum: about a fifth of a second up to a run and a little less to stop, little steering in the air
+            // (instant starts and stops read as weightless); a fresh walk (after a seat, a ladder, a vault) starts from rest
+            if (Time.frameCount - walkFrame > 2) planar = Vector3.zero;
+            walkFrame = Time.frameCount;
+            bool letGo = dir.sqrMagnitude < 0.01f && cc.isGrounded && !AutoWalk.HasValue && !Crouching;
+            bool stopDrive = anim.RootDriving && letGo;
+            var travel = planar.sqrMagnitude > 0.01f ? planar.normalized : transform.forward;
+            if (Sliding) planar = horizontal;
+            else if (stopDrive) { planar = travel * anim.RootSpeed; horizontal = planar; }   // the stopping step: walk_stop / run_stop root motion
+            else
+            {
+                float ramp = !cc.isGrounded ? 7f : horizontal.sqrMagnitude > planar.sqrMagnitude ? 26f : 34f;
+                planar = Vector3.MoveTowards(planar, horizontal, ramp * dt);
+                horizontal = planar;
+            }
+            hadMoveInput = dir.sqrMagnitude >= 0.01f;
             horizontal += Carrier(dt);                                                        // riding on a vehicle bed or roof
             cc.Move((horizontal + Vector3.up * vy) * dt);
             LiftHold();                                                                       // on a city lift's platform
@@ -405,15 +460,27 @@ namespace MadMax.Game
             }
 
             Face(dir, dt, Quaternion.Euler(0, viewYaw, 0));
+            rootStopNow = !AutoWalk.HasValue && !Sliding; wantStopNow = dir.sqrMagnitude < 0.01f;   // stops step out with root motion
             Animate(dt, new Vector2(Velocity.x - carry.x, Velocity.z - carry.z).magnitude, cc.isGrounded, Velocity.y);   // riding: legs don't run
+            rootStopNow = wantStopNow = false;
         }
+
+        bool rootStopNow, wantStopNow, hadMoveInput;
+
+        Vector3 planar;          // walking velocity with momentum (see Update)
+        int walkFrame;
 
         void Face(Vector3 dir, float dt, Quaternion view)
         {
+            if (turnStepT >= 0f) return;                                                  // the turn clip's root yaw has it
             if (faceView) transform.rotation = view;
             else if (aiming) return;                                                      // top-down aiming turns us to the cursor
             else if (dir.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 1f - Mathf.Exp(-10f * dt));
+            {
+                var want = Quaternion.LookRotation(dir);
+                transform.rotation = Quaternion.Slerp(transform.rotation, want, 1f - Mathf.Exp(-14f * dt));   // swing round while setting off (the gait leans into it)
+            }
+            else FaceAttention(dt);                                                         // a danger behind: turn to it
         }
 
         void UpdateInterior(float dt)
@@ -449,14 +516,22 @@ namespace MadMax.Game
             FollowSeat();
             Velocity = Vector3.zero;
             if (SeatedOn.standing) Animate(dt, 0f, true, 0f);
-            else anim.Tick(dt, new HumanAnimator.State { sitting = true, lounging = true, lookPitch = lookPitch, grounded = true });
+            else if (seatLie) anim.Tick(dt, new HumanAnimator.State { lying = true, lookPitch = lookPitch, grounded = true });
+            else
+            {
+                var st = new HumanAnimator.State { sitting = true, lounging = true, lookPitch = lookPitch, grounded = true };
+                Ambient(ref st);
+                SeatedGestureTick(dt, ref st);                                              // eating / drinking at the table
+                TickAnim(dt, st);
+            }
         }
 
         void UpdateSeated(float dt)
         {
             Velocity = SeatedIn.Body ? SeatedIn.Body.linearVelocity : Vector3.zero;
             var bike = SeatedIn.GetComponent<BikeBalance>();                                   // astride a bike: legs down, pedalling a bicycle
-            anim.Tick(dt, new HumanAnimator.State { sitting = true, riding = bike, pedaling = bike && bike.Pedals, pedal = bike ? bike.PedalPhase : 0f, steer = SeatedIn.steerInput, lookPitch = lookPitch, grounded = true });
+            anim.Tick(dt, new HumanAnimator.State { sitting = true, riding = bike, pedaling = bike && bike.Pedals, pedal = bike ? bike.PedalPhase : 0f, steer = SeatedIn.steerInput, lookPitch = lookPitch, grounded = true,
+                action = SeatedAction != null && HumanClips.Get(SeatedAction) != null ? SeatedAction : null, actionT = -1f });   // hotwiring: bent under the dash
         }
 
         /// <summary>Dead and limp (physics ragdoll): no control, no animation.</summary>
@@ -465,17 +540,20 @@ namespace MadMax.Game
         void Animate(float dt, float hs, bool grounded, float vertical)
         {
             var gm = WastelandGame.Instance;
+            TakeAttentionReaction();                                                         // a bang close by: start, cover up
             float yaw = transform.eulerAngles.y;
             float turn = Mathf.DeltaAngle(lastYaw, yaw) / dt;
             lastYaw = yaw;
             // at rest the tool is carried in its hold (arm clip); a long gun comes up to the shoulder while aiming
             bool gunUp = Tool && Tool.style == ToolStyle.Gun && (aiming || Time.time < gunUpUntil);   // aiming, or just fired
             string hold = Tool && PoseOverride == null && !Carried && !gunUp ? ToolHolds.Clip(Tool) : null;
+            bool guardUp = guarding && Tool && swingT < 0f && PoseOverride == null && !Carried && HumanClips.Get(ToolHolds.Port) != null;
+            if (guardUp) hold = ToolHolds.Port;                                               // the weapon across the body
             ToolPose? toolPose = PoseOverride ?? (Tool && hold == null ? Tool.IdlePose : null);
             bool crouchClip = Crouching && !Sliding && HumanClips.Enabled;                   // the crouch clips bend the legs
             if ((Crouching || Sliding) && !crouchClip) toolPose = CrouchPose(toolPose);
             string action = PoseOverride.HasValue ? ActionClip : null;
-            float actionT = -1f, actionHit = 0f;
+            float actionT = action != null ? ActionT : -1f, actionHit = 0f;
             if (swingT >= 0f && Tool && PoseOverride == null)
             {
                 var st = WastelandGame.Instance ? WastelandGame.Instance.Stats : null;
@@ -505,15 +583,32 @@ namespace MadMax.Game
                 if (rt >= 1f) reactClip = null;
                 else { action = reactClip; actionT = rt; }
             }
-            anim.Tick(dt, new HumanAnimator.State
+            if (action == null && swingT < 0f && PoseOverride == null && !Carried)
+            {
+                if (turnStepT >= 0f && turnStepClip != null) { action = turnStepClip; actionT = turnStepT; }   // stepping round
+                else if (CoveringHead) toolPose = CoverPose;                                  // a blast close by: arms over the head
+                else if (ShieldingEyes && hs < 3f)
+                {
+                    // a dust storm: a hand over the eyes, scanning (shield_eyes over and over)
+                    if (HasClip("shield_eyes")) { action = "shield_eyes"; actionT = Mathf.Repeat(Time.time / HumanClips.Get("shield_eyes").length, 1f); }
+                    else toolPose = ShieldPose;
+                }
+            }
+            var pose = new HumanAnimator.State
             {
                 speed = hs, grounded = grounded, verticalSpeed = vertical, turnRate = turn, lookPitch = lookPitch,
                 carrying = Carried, tool = Carried ? null : toolPose, twoHanded = Tool && Tool.TwoHanded,
                 crouching = crouchClip, action = Carried ? null : action, actionT = actionT, actionHit = actionHit,
-                grip2 = !Tool || Carried ? null : swingT >= 0f ? Tool.SecondGrip : hold != null && Tool.HoldTwoHands ? Tool.transform : null,
+                grip2 = !Tool || Carried ? null : swingT >= 0f ? Tool.SecondGrip : hold != null && (Tool.HoldTwoHands || guardUp && Tool.TwoHanded) ? Tool.transform : null,
                 hold = swingT >= 0f ? null : hold,
-                limpL = gm ? gm.LimpL : 0f, limpR = gm ? gm.LimpR : 0f, armHurtL = gm ? gm.ArmHurtL : 0f, armHurtR = gm ? gm.ArmHurtR : 0f
-            });
+                hitFrom = reactFrom.sqrMagnitude > 0.01f ? transform.InverseTransformDirection(reactFrom) : Vector3.zero,
+                hitT = (Time.time - reactAt) / HitLeanTime,
+                talking = Talking && PoseOverride == null && swingT < 0f,
+                limpL = gm ? gm.LimpL : 0f, limpR = gm ? gm.LimpR : 0f, armHurtL = gm ? gm.ArmHurtL : 0f, armHurtR = gm ? gm.ArmHurtR : 0f,
+                aiming = aiming, rootStop = rootStopNow, wantStop = wantStopNow
+            };
+            Ambient(ref pose);
+            TickAnim(dt, pose);
             if (strikeNow && Tool)
             {
                 strikeNow = false;
@@ -545,11 +640,22 @@ namespace MadMax.Game
         public float LastHitStop { get; private set; }
 
         /// <summary>Hit by someone: a flinch over whatever the body does (a swing in progress plays on).</summary>
-        public void React(bool heavy)
+        public void React(bool heavy) => React(heavy, Vector3.zero);
+
+        /// <summary>Hit from <paramref name="from"/> (world direction toward the striker): the flinch / stagger plus the chest
+        /// giving way from that side (left, right, behind).</summary>
+        public void React(bool heavy, Vector3 from)
         {
             reactClip = heavy && HumanClips.Get("stagger") != null && swingT < 0f ? "stagger" : "flinch";
             reactAt = Time.time;
+            from.y = 0f;
+            reactFrom = from.sqrMagnitude > 0.0001f ? from.normalized * (heavy ? 1.5f : 1f) : Vector3.zero;
         }
+
+        /// <summary>How long the directional give of a blow lasts (s).</summary>
+        public const float HitLeanTime = 0.7f;
+        /// <summary>The side the last blow came from, in the body's frame (x right, z ahead; tests); zero = none.</summary>
+        public Vector3 LastHitFrom => reactFrom.sqrMagnitude > 0.01f ? transform.InverseTransformDirection(reactFrom) : Vector3.zero;
 
         /// <summary>The keyframed clip for a tool's swing (null = its procedural pose): shovels dig, hammers hammer,
         /// one-handed melee by style, guns recoil.</summary>
@@ -589,10 +695,25 @@ namespace MadMax.Game
 
         void OnFootstep(bool left)
         {
+            if (LowState == Low.Prone)
+            {
+                // a crawl: a scrape in the dirt, heard close by only
+                var at = transform.position;
+                var ts = DeformableTerrain.Instance;
+                MadMax.Audio.Sfx.Play(ts ? StepSound(at, ts.SurfaceAt(at.x, at.z)) : "step_gravel", at, 0.1f, Random.Range(0.6f, 0.75f), 8f);
+                return;
+            }
             if (!SeatedIn && !Swimming && !Interior) MadMax.World.Fx.Footprint(transform.position, transform.forward, left);   // prints in snow, sand, mud
             var terrain = DeformableTerrain.Instance;
-            if (!terrain || Interior || SeatedIn) return;
             var foot = transform.position + transform.right * (left ? -0.1f : 0.1f);
+            if (Interior && !SeatedIn)                                                            // walk-in vehicles, sea base: floors, no ground
+            {
+                string key = Physics.Raycast(foot + Vector3.up * 0.3f, Vector3.down, out var hit, 0.6f, ~0, QueryTriggerInteraction.Ignore)
+                             && hit.collider.GetComponentInParent<MadMax.Building.Placeable>() ? "step_wood" : "step_metal";
+                MadMax.Audio.Sfx.Play(key, foot, run ? 0.4f : 0.25f, Random.Range(0.9f, 1.1f), 14f);
+                return;
+            }
+            if (!terrain || Interior || SeatedIn) return;
             terrain.Deform(foot, transform.forward, transform.right, 0.16f, run ? 1400f : 900f, 0f, 0f);
             var s = terrain.SurfaceAt(foot.x, foot.z);
             MadMax.Audio.Sfx.Play(StepSound(foot, s), foot, run ? 0.45f : 0.28f, Random.Range(0.9f, 1.1f), 18f);

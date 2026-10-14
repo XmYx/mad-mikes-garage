@@ -26,6 +26,76 @@ for _c, _p in PARENT.items():
         NEIGH[_c].add(_p); NEIGH[_p].add(_c)
 NEIGH["ThighL"].add("ThighR"); NEIGH["ThighR"].add("ThighL")
 
+# ---------------------------------------------------------------- dangle chains (cloth / hair secondary motion)
+# Extra bones hung off the body bones (identity rest rotations like the rest of the rig). The game simulates them
+# (Runtime/Game/Character/ClothDynamics.cs); garments and hair list chain names in their `allowed` lists to be weighted
+# to them. A group: parent body bone, n bones from n+1 points (parent-local, game space), plus a non-deforming
+# `<last>_tip` marker bone at the end point (the FBX keeps no bone tails). Weighting (skin_weights):
+#   along  release grows along the chain (first `ramp` bones blend from the host part), coat tails, scarves, hoods
+#   rigid  everything in reach follows the first bone (packs, holsters: a hinged rigid body)
+#   scalp  release grows with the distance from the body surface (hair: the scalp stays, the lengths swing)
+# Only vertices whose body weights sit on the group's `hosts` parts are released (no sleeve follows a coat tail).
+CHAIN_ORDER = ["TailL", "TailR", "TailB", "Hood", "ScarfL", "ScarfR", "StrapL", "StrapR", "Bag", "Hose", "Holster",
+               "HairA", "HairB", "HairC", "HairF"]
+
+
+def _skirt(theta, ys, h, w):
+    """Points on the duster skirt surface (capsule r 0.17w -> 0.255 from the hips down to -0.64h), angle from +Z to +X."""
+    out = []
+    a = math.radians(theta)
+    for y in ys:
+        t = -y / (0.64 * h)
+        r = 0.17 * w + (0.255 - 0.17 * w) * t + 0.012
+        out.append((r * math.sin(a), y, -0.012 - 0.028 * t + r * math.cos(a)))
+    return out
+
+
+def chain_groups(h=1.0, w=1.0):
+    """group -> dict(parent, bones, pts (len bones + 1, parent-local), radius, mode, ramp, hosts, side)."""
+    G = {}
+    def add(name, parent, bones, pts, radius, mode="along", ramp=0.6, hosts=None, side=0):
+        G[name] = dict(parent=parent, bones=bones, pts=[np.array(p, float) for p in pts], radius=radius, mode=mode,
+                       ramp=ramp, hosts=hosts or [parent], side=side)
+    legs = ["Pelvis", "ThighL", "ThighR", "ShinL", "ShinR"]
+    ys = [-0.06 * h, -0.25 * h, -0.44 * h, -0.64 * h]
+    add("TailL", "Pelvis", ["TailL1", "TailL2", "TailL3"], _skirt(-50, ys, h, w), 0.2, ramp=0.7, hosts=legs, side=-1)
+    add("TailR", "Pelvis", ["TailR1", "TailR2", "TailR3"], _skirt(50, ys, h, w), 0.2, ramp=0.7, hosts=legs, side=1)
+    add("TailB", "Pelvis", ["TailB1", "TailB2", "TailB3"], _skirt(180, ys, h, w), 0.2, ramp=0.7, hosts=legs)
+    add("Hood", "Chest", ["Hood1", "Hood2"], [(0, 0.40 * h, -0.10), (0, 0.46 * h, -0.135), (0, 0.52 * h, -0.14)], 0.11,
+        ramp=0.5, hosts=["Chest", "Head"])
+    add("ScarfL", "Chest", ["ScarfL1", "ScarfL2"], [(0.012, 0.42 * h, 0.124), (0.012, 0.36 * h, 0.132), (0.012, 0.30 * h, 0.128)],
+        0.06, ramp=0.7, hosts=["Chest", "Head"])
+    add("ScarfR", "Chest", ["ScarfR1", "ScarfR2"], [(0.045, 0.41 * h, 0.12), (0.048, 0.33 * h, 0.13), (0.05, 0.25 * h, 0.126)],
+        0.06, ramp=0.7, hosts=["Chest", "Head"])
+    # long straps: shoulder to hip, a hip bag swings on them (and the shemagh tail down the right shoulder)
+    add("StrapL", "Chest", ["StrapL"], [(-0.13 * w, 0.40 * h, 0.0), (-0.165 * w, -0.1 * h, 0.02)], 0.16, ramp=0.5,
+        hosts=["Chest", "Pelvis", "ThighL", "ThighR"])
+    add("StrapR", "Chest", ["StrapR"], [(0.13 * w, 0.40 * h, 0.0), (0.165 * w, -0.1 * h, 0.02)], 0.16, ramp=0.5,
+        hosts=["Chest", "Pelvis", "ThighL", "ThighR"])
+    add("Bag", "Chest", ["Bag1", "Bag2"], [(0, 0.43 * h, -0.13), (0, 0.25 * h, -0.17), (0, 0.06 * h, -0.18)], 0.32,
+        mode="rigid", hosts=["Chest", "Pelvis"])
+    add("Hose", "Chest", ["Hose1", "Hose2", "Hose3"], [(0, 0.52 * h, -0.17), (0.05, 0.44 * h, -0.22), (0.09, 0.36 * h, -0.22),
+                                                        (0.1, 0.28 * h, -0.2)], 0.06, ramp=0.4, hosts=["Chest", "Head"])
+    add("Holster", "Pelvis", ["Holster1"], [(0.165 * w, 0.03 * h, 0.0), (0.17 * w, -0.17 * h, 0.0)], 0.12, mode="rigid",
+        hosts=["Pelvis", "ThighR"])
+    # hair (Head-local): A back (ponytail / long back), B left side, C right side, F fringe / crest front
+    add("HairA", "Head", ["HairA1", "HairA2", "HairA3", "HairA4"],
+        [(0, 0.212 * h, -0.104), (0, 0.162 * h, -0.122), (0, 0.112 * h, -0.131), (0, 0.062 * h, -0.134), (0, 0.012 * h, -0.13)],
+        0.13, mode="scalp", ramp=0, hosts=["Head"])
+    for nm, sx in (("HairB", -1), ("HairC", 1)):
+        add(nm, "Head", [nm + str(i) for i in range(1, 5)],
+            [(sx * 0.08, 0.2 * h, -0.012), (sx * 0.086, 0.15 * h, -0.026), (sx * 0.089, 0.1 * h, -0.036), (sx * 0.09, 0.05 * h, -0.044),
+             (sx * 0.09, 0.0, -0.05)], 0.13, mode="scalp", ramp=0, hosts=["Head"], side=sx)
+    add("HairF", "Head", ["HairF1", "HairF2"], [(0.0, 0.298 * h, 0.04), (0.026, 0.27 * h, 0.083), (0.046, 0.24 * h, 0.103)],
+        0.12, mode="scalp", ramp=0.7, hosts=["Head"])
+    return G
+
+
+CHAIN_BONES = [b for g in CHAIN_ORDER for b in chain_groups()[g]["bones"]]
+BONES = PARTS + CHAIN_BONES                     # weight columns
+BI = {n: i for i, n in enumerate(BONES)}
+CHAIN_GROUP = {b: g for g in CHAIN_ORDER for b in chain_groups()[g]["bones"]}
+
 # game -> blender
 GB = np.array([[-1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
 
@@ -62,7 +132,21 @@ def skeleton(h=1.0, w=1.0):
         "ShinR": ("ThighR", (0, -0.43 * h, 0), 0.43 * h, -1),
         "FootL": ("ShinL", (0, -0.43 * h, 0), 0.08 * h, -1),
         "FootR": ("ShinR", (0, -0.43 * h, 0), 0.08 * h, -1),
+        **chain_skeleton(h, w),
     }
+
+
+def chain_skeleton(h=1.0, w=1.0):
+    """Chain bones as skeleton entries: name -> (parent, offset (parent-local), length, tail vector (head-relative))."""
+    out = {}
+    for g in CHAIN_ORDER:
+        spec = chain_groups(h, w)[g]
+        pts, par = spec["pts"], spec["parent"]
+        for k, b in enumerate(spec["bones"]):
+            off = pts[0] if k == 0 else pts[k] - pts[k - 1]
+            tail = pts[k + 1] - pts[k]
+            out[b] = (par if k == 0 else spec["bones"][k - 1], tuple(off), float(np.linalg.norm(tail)), tuple(tail))
+    return out
 
 
 def unity_euler(x, y, z):
@@ -81,7 +165,7 @@ def fk(skel, pose=None, pelvis_offset=(0, 0, 0)):
     """World 4x4 matrices (game space) per part. pose: part -> (x, y, z) Unity Euler degrees."""
     pose = pose or {}
     W = {}
-    for p in PARTS:
+    for p in PARTS + [b for b in CHAIN_BONES if b in skel]:
         par, off, _, _ = skel[p]
         M = np.eye(4)
         M[:3, 3] = off
@@ -411,24 +495,35 @@ def polish(verts_g, quads, name, target_tris, smooth=2, keep=None, sym=True, kee
 
 
 # ---------------------------------------------------------------- skinning
-def skin_weights(P, prims, W, allowed=None, tau=0.012, cut=0.045):
-    """Per-vertex weights over PARTS from the raw part distances: nearest part + its neighbours, soft falloff."""
+def skin_weights(P, prims, W, allowed=None, tau=0.012, cut=0.045, tau_chain=0.03):
+    """Per-vertex weights over BONES (body PARTS + dangle chains) from the raw part distances: nearest part + its
+    neighbours, soft falloff; chain bones in `allowed` take over released vertices (see chain_groups)."""
     D = eval_points(P, prims, W)
-    if allowed is not None:
-        mask = np.array([p in allowed for p in PARTS])
+    surf = D.min(1)                                           # distance from the body surface (scalp release)
+    chains = [a for a in (allowed or []) if a in CHAIN_GROUP and a in W]
+    body = None if allowed is None else [a for a in allowed if a in PI]
+    if body is not None:
+        for c in chains:
+            par = chain_parent(c)
+            if par not in body:
+                body.append(par)
+    if body is not None:
+        mask = np.array([p in body for p in PARTS])
         D[:, ~mask] = 9.0
     best = D.argmin(1)
-    Wt = np.zeros_like(D)
+    Wt = np.zeros((len(P), len(BONES)))
     for i, p in enumerate(PARTS):
         rows = best == i
         if not rows.any():
             continue
-        cand = [i] + [PI[n] for n in NEIGH[p] if allowed is None or n in allowed]
+        cand = [i] + [PI[n] for n in NEIGH[p] if body is None or n in body]
         dm = D[rows][:, [i]]
         for j in cand:
             dd = D[rows, j] - dm[:, 0]
             Wt[rows, j] = np.where(dd < cut, np.exp(-dd / tau), 0)
     Wt /= Wt.sum(1, keepdims=True)
+    if chains:
+        Wt = _chain_weights(P, Wt, W, chains, surf, tau_chain)
     # keep the 3 strongest
     order = np.argsort(-Wt, 1)
     Wt[np.arange(len(Wt))[:, None], order[:, 3:]] = 0
@@ -436,10 +531,78 @@ def skin_weights(P, prims, W, allowed=None, tau=0.012, cut=0.045):
     return Wt
 
 
+def chain_parent(bone):
+    """The body part a chain bone hangs from."""
+    return chain_groups()[CHAIN_GROUP[bone]]["parent"]
+
+
+def _smooth(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def _chain_weights(P, Wt, W, chains, surf, tau_c):
+    groups = chain_groups()
+    n = len(P)
+    dist = np.full((n, len(chains)), 9.0)
+    along = np.zeros((n, len(chains)))
+    for c, b in enumerate(chains):
+        spec = groups[CHAIN_GROUP[b]]
+        k = spec["bones"].index(b)
+        Wb = W[b]
+        a = Wb[:3, 3]
+        tail = W[b][:3, :3] @ (spec["pts"][k + 1] - spec["pts"][k])
+        L2 = float(tail @ tail)
+        t = np.clip(((P - a) @ tail) / L2, -1.0, 1.0)
+        q = a + np.clip(t, 0, 1)[:, None] * tail
+        d = np.linalg.norm(P - q, axis=1)
+        if spec["side"]:
+            Wp = W[spec["parent"]]
+            lx = ((P - Wp[:3, 3]) @ Wp[:3, :3])[:, 0]
+            d = np.where(lx * spec["side"] < -0.004, 9.0, d)       # the other side of a slit / parting
+        dist[:, c] = d
+        along[:, c] = k + t
+    dmin = dist.min(1)
+    near = dist.argmin(1)
+    C = np.where(dist < 8.0, np.exp(-(dist - dmin[:, None]) / tau_c), 0.0)
+    C /= np.maximum(C.sum(1, keepdims=True), 1e-9)
+    rel = np.zeros(n)
+    for c, b in enumerate(chains):
+        rows = near == c
+        if not rows.any():
+            continue
+        spec = groups[CHAIN_GROUP[b]]
+        R = spec["radius"]
+        infl = np.clip((R - dist[rows, c]) / (0.3 * R), 0, 1)
+        host = Wt[rows][:, [BI[h] for h in spec["hosts"]]].sum(1)
+        u = along[rows, c]
+        if spec["mode"] == "rigid":
+            r = np.ones(rows.sum())
+        elif spec["mode"] == "scalp":
+            r = _smooth(0.015, 0.045, surf[rows]) * _smooth(-0.35, 0.4, u)
+            if spec["ramp"] > 0:                              # a fringe lock lies on the brow: released along it too
+                r = np.maximum(r, _smooth(0.0, spec["ramp"], u))
+        else:
+            r = _smooth(0.0, spec["ramp"], u)
+        rel[rows] = r * infl * host
+    # rigid groups put everything on their first bone
+    for c, b in enumerate(chains):
+        spec = groups[CHAIN_GROUP[b]]
+        if spec["mode"] == "rigid" and spec["bones"][0] != b:
+            first = chains.index(spec["bones"][0]) if spec["bones"][0] in chains else None
+            if first is not None:
+                C[:, first] += C[:, c]
+            C[:, c] = 0
+    out = Wt * (1 - rel)[:, None]
+    for c, b in enumerate(chains):
+        out[:, BI[b]] += rel * C[:, c]
+    return out
+
+
 def lbs(P, Wt, Wfrom, Wto):
-    """Linear blend skinning of game-space points from pose Wfrom to pose Wto."""
+    """Linear blend skinning of game-space points from pose Wfrom to pose Wto (chain bones: their own frames)."""
     out = np.zeros_like(P)
-    for j, p in enumerate(PARTS):
+    for j, p in enumerate(BONES[:Wt.shape[1]]):
         w = Wt[:, j]
         if not w.any():
             continue
@@ -470,6 +633,22 @@ def make_armature(name, skel, coll=None):
         b.parent = eb[par] if par else root
         b.use_connect = False
         eb[p] = b
+    # dangle chains + a `<last>_tip` marker per group (the game reads the end point from it)
+    for g in CHAIN_ORDER:
+        bones = [c for c in chain_groups()[g]["bones"] if c in skel]
+        for c in bones:
+            par, _, ln, tail = skel[c]
+            b = arm.edit_bones.new(c)
+            hd = Wr[c][:3, 3]
+            b.head = g2b(hd).tolist(); b.tail = g2b(hd + Wr[c][:3, :3] @ np.array(tail)).tolist(); b.roll = 0
+            b.parent = eb[par]; b.use_connect = False
+            eb[c] = b
+        if bones:
+            last = eb[bones[-1]]
+            tip = arm.edit_bones.new(bones[-1] + "_tip")
+            d = last.tail - last.head
+            tip.head = last.tail; tip.tail = last.tail + d.normalized() * 0.02; tip.roll = 0
+            tip.parent = last; tip.use_connect = False
     bpy.ops.object.mode_set(mode="OBJECT")
     return ob
 

@@ -84,6 +84,7 @@ namespace MadMax.Game
             }
             else Toast("ATE " + f.name);
             Stats.Practice(Skill.Survival, 1f);
+            Gesture(f.hunger <= 0f && f.thirst > 0f ? UseKind.Drink : UseKind.Eat, id);              // the hand to the mouth with it
             MedMineAte(id);                                                               // willow-bark tea
         }
 
@@ -281,8 +282,8 @@ namespace MadMax.Game
             if (MedMineUse(id)) return;                                                   // poultice, first-aid kit
             if (id == ItemIds.Canteen)
             {
-                if (Inventory.TrySpend(ResourceType.Water, 1)) Drink(45f, false);
-                else if (Inventory.TrySpend(ResourceType.DirtyWater, 1)) Drink(45f, true);
+                if (Inventory.TrySpend(ResourceType.Water, 1)) { Drink(45f, false); Gesture(UseKind.Drink, id); }
+                else if (Inventory.TrySpend(ResourceType.DirtyWater, 1)) { Drink(45f, true); Gesture(UseKind.Drink, id); }
                 else Toast("CANTEEN EMPTY: FILL AT A SINK, BARREL OR LAKE");
                 return;
             }
@@ -449,18 +450,17 @@ namespace MadMax.Game
             if (!pick) return LakeInteraction(E, T);
             Focused = pick as IInteractable ?? pick.GetComponent<IInteractable>();     // built pieces: the Placeable itself is not the interactable
             // several functions on one piece (a stove cooks and heats): [E] goes to the first that offers it, [T] likewise
-            string all = null; IInteractable eUser = null, tUser = null;
+            string all = null, ePrompt = null, tPrompt = null; IInteractable eUser = null, tUser = null;
             foreach (var it in pick.GetComponents<IInteractable>())
             {
                 string prompt = it.Prompt(this);
                 if (prompt == null) continue;
                 all = all == null ? prompt : all + "  " + prompt;
-                if (eUser == null && (prompt.Contains("[E]") || !prompt.Contains("["))) eUser = it;
-                if (tUser == null && prompt.Contains("[T]")) tUser = it;
+                if (eUser == null && (prompt.Contains("[E]") || !prompt.Contains("["))) { eUser = it; ePrompt = prompt; }
+                if (tUser == null && prompt.Contains("[T]")) { tUser = it; tPrompt = prompt; }
             }
-            if (E && eUser != null) eUser.Use(this, false);
-            if (T && tUser != null) tUser.Use(this, true);
-            if ((E || T) && pick && pick.TryGetComponent<Placeable>(out var pl)) pl.Dirty();
+            if (E && eUser != null) UseInteractable(pick, eUser, false, ePrompt);                       // the body first: reach, kneel, pump... (WastelandGame.UseAnim)
+            if (T && tUser != null) UseInteractable(pick, tUser, true, tPrompt);
             return all;
         }
 
@@ -487,7 +487,7 @@ namespace MadMax.Game
             if (terrain.WaterDepth(p.x, p.z) < 0.1f || Player.HeadUnder || MadMax.Building.AirPocket.Contains(Player.transform.position + Vector3.up * 1.5f)) return null;   // not through a diving helmet, nor in a sea base
             if (SeaInteraction(p, E, T, out string sea)) return sea;
             bool toxic = terrain.BiomeAt(p.x, p.z) == Biome.Nuclear;
-            if (E) { Drink(30f, true); if (toxic) Vitals.Hurt(8f, "TOXIC WATER"); }
+            if (E) AnimatedUse(UseKind.Kneel, p, () => { Drink(30f, true); if (toxic) Vitals.Hurt(8f, "TOXIC WATER"); });   // down on a knee, a scoop of water
             if (T) UseCanAt(null, true, MadMax.Items.FluidFamily.Aqueous);                              // water goes in a container (bottle, bucket, can)
             return "[E] DRINK" + (toxic ? " (TOXIC)" : " (DIRTY)") + (HasContainer ? "  [T] FILL A CONTAINER" : "");
         }

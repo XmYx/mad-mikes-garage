@@ -187,9 +187,13 @@ namespace MadMax.Building
             if (TryGetComponent<MeshFilter>(out var mf)) mf.sharedMesh = mesh;
             foreach (var b in GetComponents<BoxCollider>()) Destroy(b);
             if (!TryGetComponent<MeshCollider>(out var mc)) mc = gameObject.AddComponent<MeshCollider>();
+            var body = GetComponentInParent<Rigidbody>();
+            bool onVehicle = body && !body.GetComponent<MadMax.World.CityHost>();
+            mc.convex = onVehicle;                                                                     // a vehicle's compound takes convex shapes only
             mc.sharedMesh = mesh;
             StructureGround.Remove(this);
-            if (transform.up.y > 0.97f && !GetComponentInParent<Rigidbody>()) StructureGround.AddPolygonDeck(this, transform, mc, corners);
+            if (onVehicle) { if (Vector3.Dot(transform.up, body.transform.up) > 0.97f) StructureGround.AddMovingPolygonDeck(this, transform, mc, corners, body); }   // spans on a moving base carry vehicles
+            else if (transform.up.y > 0.97f && !body) StructureGround.AddPolygonDeck(this, transform, mc, corners);
         }
 
         void OnDestroy() => StructureGround.Remove(this);

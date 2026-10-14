@@ -45,12 +45,26 @@ namespace MadMax.Audio
             return v;
         }
 
+        /// <summary>Wanted or not this frame. Stopping waits <see cref="StopHold"/> s of not being wanted: every Play/Stop
+        /// rewires the DSP graph ("Flush DSP connections"), and speed thresholds flicker on settling or creeping cars.</summary>
         public void SetActive(bool on)
         {
             if (!Source) return;
-            if (on && !Source.isPlaying) Source.Play();
-            else if (!on && Source.isPlaying) Source.Stop();
+            if (on) { idleSince = -1f; if (!Source.isPlaying) Source.Play(); return; }
+            if (!Source.isPlaying) return;
+            if (idleSince < 0f) idleSince = Time.time;
+            else if (Time.time - idleSince > StopHold) { Source.Stop(); idleSince = -1f; }
         }
+
+        /// <summary>Off now (out of earshot, the owner disabled).</summary>
+        public void StopNow()
+        {
+            idleSince = -1f;
+            if (Source && Source.isPlaying) Source.Stop();
+        }
+
+        public const float StopHold = 1.5f;
+        float idleSince = -1f;
 
         void OnAudioFilterRead(float[] data, int channels)
         {

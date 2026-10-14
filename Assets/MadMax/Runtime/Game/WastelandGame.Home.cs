@@ -80,9 +80,19 @@ namespace MadMax.Game
 
         /// <summary>One "how is my base" summary per claim flag the player owns (plus the pantry), for the journal's HOME
         /// section: workshop jobs, days of food, power produced / drawn and stored, water held, pieces worn.</summary>
-        public void HomeLedger(List<string> into)
+        public void HomeLedger(List<string> into) => HomeLedger(into, null);
+
+        /// <summary>What ENTER on a HOME line does: a waypoint (<see cref="at"/>, named <see cref="what"/>) and a longer
+        /// note (<see cref="hint"/>: the worn pieces with their repair cost, what rots first).</summary>
+        public struct LedgerAction { public bool on; public Vector3 at; public string what, hint; }
+
+        /// <summary>The ledger with an action per line (<paramref name="acts"/> parallel to <paramref name="into"/>): a
+        /// stalled station → waypoint to it; WEATHERED → the pieces and their repair cost, waypoint to the worst;
+        /// PANTRY → what rots first, waypoint to the nearest preserving station (smokehouse, cannery, root cellar…).</summary>
+        public void HomeLedger(List<string> into, List<LedgerAction> acts)
         {
-            into.Clear();
+            into.Clear(); acts?.Clear();
+            void Act(Vector3 at, string what, string hint) { if (acts == null) return; while (acts.Count < into.Count - 1) acts.Add(default); acts.Add(new LedgerAction { on = true, at = at, what = what, hint = hint }); }
             var me = FocusPos;
             foreach (var claim in ClaimFlag.All)
             {
@@ -105,21 +115,102 @@ namespace MadMax.Game
                     }
                 }
                 int working = 0, ready = 0;
+                CraftingStation stall = null, done = null;
                 foreach (var st in CraftingStation.All)
                 {
                     if (!st || !claim.Inside(st.transform.position)) continue;
                     int s = StationState(st);
-                    if (s == 1) working++; else if (s == 2) stalled++; else if (s == 3) ready++;
+                    if (s == 1) working++; else if (s == 2) { stalled++; stall = st; } else if (s == 3) { ready++; done = st; }
                 }
                 int worn = BaseUpkeep.WornIn(claim);
                 into.Add("HOME " + Mathf.RoundToInt(Flat(c - me)) + " M: WORKSHOP " + working + " WORKING" + (stalled > 0 ? ", " + stalled + " STALLED" : "") + (ready > 0 ? ", " + ready + " READY" : ""));
+                if (stall) Act(stall.transform.position, stall.title + " (STALLED)", "ENTER: WAYPOINT TO THE STALLED " + stall.title + " - IT NEEDS POWER OR FUEL");
+                else if (done) Act(done.transform.position, done.title + " (READY)", "ENTER: WAYPOINT TO THE " + done.title + " - COLLECT THE TRAY WITH " + Controls.Name(Controls.Act.Second));
+                else Act(c, "HOME", "ENTER: SET A WAYPOINT HOME");
                 if (prod > 0f || use > 0f || whMax > 0f)
                     into.Add("  POWER " + Mathf.RoundToInt(prod) + " W IN / " + Mathf.RoundToInt(use) + " W OUT" + (whMax > 0f ? ", BATTERY " + Mathf.RoundToInt(100f * wh / whMax) + "%" : "") + (shed > 0 ? ", " + shed + " SHED" : ""));
                 if (waterMax > 0f) into.Add("  WATER " + Mathf.RoundToInt(water) + " / " + Mathf.RoundToInt(waterMax) + " L");
                 into.Add("  " + (worn > 0 ? worn + (worn == 1 ? " PIECE" : " PIECES") + " WEATHERED (REPAIR IN BUILD MODE)" : "EVERY PIECE SOUND"));
+                if (worn > 0) WornAction(claim, Act);
             }
             Pantry(Mathf.Max(1, Weather.DaysPerSeason), out float keeps, out float rots);
             into.Add("PANTRY " + keeps.ToString("0.#") + " DAYS THAT KEEP" + (rots >= 0.5f ? ", " + rots.ToString("0.#") + " THAT ROT FIRST" : ""));
+            if (acts != null) PantryAction(Act);
+            if (acts != null) while (acts.Count < into.Count) acts.Add(default);
+        }
+
+        /// <summary>WEATHERED: the worn pieces (worst first) with what a repair takes; waypoint to the worst.</summary>
+        void WornAction(ClaimFlag claim, System.Action<Vector3, string, string> act)
+        {
+            var worn = new List<Placeable>();
+            foreach (var p in Placeable.All) if (p && p.hits < p.MaxHits && claim.Inside(p.transform.position) && !p.GetComponentInParent<Rigidbody>()) worn.Add(p);
+            if (worn.Count == 0) return;
+            worn.Sort((a, b) => (a.hits / (float)a.MaxHits).CompareTo(b.hits / (float)b.MaxHits));
+            var sb = new System.Text.StringBuilder("WORN: ");
+            for (int i = 0; i < worn.Count && i < 6; i++)
+            {
+                var def = FurnitureLibrary.Get(worn[i].id);
+                if (def == null) continue;
+                float missing = 1f - worn[i].hits / (float)def.hits;
+                if (i > 0) sb.Append("; ");
+                sb.Append(def.name).Append(' ').Append(Words.Condition(worn[i].hits / (float)def.hits)).Append(" (");
+                bool first = true;
+                foreach (var (t, n) in def.cost) { if (!first) sb.Append(", "); first = false; sb.Append(Mathf.Max(1, Mathf.CeilToInt(n * missing * 0.5f))).Append(' ').Append(ResourceInfo.Name(t)); }
+                sb.Append(')');
+            }
+            if (worn.Count > 6) sb.Append("; +").Append(worn.Count - 6).Append(" MORE");
+            sb.Append(". ENTER: WAYPOINT TO THE WORST, ").Append(Controls.Name(Controls.Act.BuildRepair)).Append(" IN BUILD MODE REPAIRS");
+            act(worn[0].transform.position, "WORN " + (FurnitureLibrary.Get(worn[0].id)?.name ?? "PIECE"), sb.ToString());
+        }
+
+        static readonly string[] Preserving = { "smokehouse", "cannery", "drying_rack", "crock" };
+
+        /// <summary>PANTRY: what rots first in the pack and the player's stores, and the nearest owned way to keep it
+        /// (a preserving station or a root cellar / cold store); waypoint there.</summary>
+        void PantryAction(System.Action<Vector3, string, string> act)
+        {
+            var rot = new Dictionary<string, int>();
+            void Count(Inventory inv, float spoil)
+            {
+                foreach (var kv in inv.Items)
+                {
+                    var f = FoodLibrary.Get(kv.Key);
+                    if (f == null || kv.Value <= 0 || f.spoilMinutes <= 0f || spoil <= 0f || kv.Key == "food_rotten") continue;
+                    if (f.spoilMinutes / spoil >= Mathf.Max(1, Weather.DaysPerSeason) * DayNight.DayMinutes) continue;
+                    rot.TryGetValue(kv.Key, out int n); rot[kv.Key] = n + kv.Value;
+                }
+            }
+            Count(Inventory, 1f);
+            foreach (var c in Container.All) { if (!c) continue; var pl = c.GetComponent<Placeable>(); if (pl && pl.owner == Stats.name) Count(c.inventory, c.SpoilFactor); }
+            var me = FocusPos;
+            Vector3 best = Vector3.zero; string what = null; float bd = float.MaxValue;
+            foreach (var st in CraftingStation.All)
+            {
+                if (!st || System.Array.IndexOf(Preserving, st.type) < 0) continue;
+                var pl = st.GetComponent<Placeable>();
+                if (!pl || pl.owner != Stats.name) continue;
+                float d = (st.transform.position - me).sqrMagnitude;
+                if (d < bd) { bd = d; best = st.transform.position; what = st.title; }
+            }
+            foreach (var c in Container.All)
+            {
+                if (!c || c.SpoilFactor >= 0.6f) continue;
+                var pl = c.GetComponent<Placeable>();
+                if (!pl || pl.owner != Stats.name) continue;
+                float d = (c.transform.position - me).sqrMagnitude;
+                if (d < bd) { bd = d; best = c.transform.position; what = c.title; }
+            }
+            var sb = new System.Text.StringBuilder();
+            if (rot.Count == 0) sb.Append("NOTHING ROTS BEFORE THE SEASON TURNS.");
+            else
+            {
+                sb.Append("ROTS FIRST: ");
+                int i = 0;
+                foreach (var kv in rot) { if (i++ >= 6) { sb.Append(", ..."); break; } if (i > 1) sb.Append(", "); sb.Append(ItemCatalog.Name(kv.Key)).Append(" X").Append(kv.Value); }
+                sb.Append(". SMOKE IT, TIN IT, DRY IT OR PUT IT IN A ROOT CELLAR.");
+            }
+            if (what != null) { sb.Append(" ENTER: WAYPOINT TO YOUR ").Append(what); act(best, what, sb.ToString()); }
+            else { sb.Append(" BUILD A SMOKEHOUSE, CANNERY OR ROOT CELLAR."); act(Vector3.zero, null, sb.ToString()); }
         }
 
         // ------------------------------------------------------------------ wrecks from the news get picked over
@@ -149,6 +240,17 @@ namespace MadMax.Game
         /// summer and hardly at all in winter.</summary>
         public static float ScavengedShare(float age, int season) => ScavengedShare(ScavengeFrom + Mathf.Max(0f, age - ScavengeFrom) * SeasonPace(season));
 
+        /// <summary>... and by road traffic (<see cref="TrafficPace"/>): a wreck on a paved highway is stripped fastest.</summary>
+        public static float ScavengedShare(float age, int season, float traffic) => ScavengedShare(ScavengeFrom + Mathf.Max(0f, age - ScavengeFrom) * SeasonPace(season) * traffic);
+
+        /// <summary>How busy the road past a wreck is: a paved highway 1.3, a dirt track 1, off the road 0.7.</summary>
+        public float TrafficPace(Vector3 at)
+        {
+            if (World == null) return 1f;
+            var s = World.Sample(at.x, at.z);
+            return s.roadDist < 8f ? (s.paved ? 1.3f : 1f) : 0.7f;
+        }
+
         /// <summary>Winter: the tank is frozen solid with the wreck (nobody drains it).</summary>
         public static bool FuelFrozen(int season) => season == 2;
 
@@ -171,7 +273,7 @@ namespace MadMax.Game
                 if (age > 12f) { RoadWrecks.RemoveAt(i); continue; }
                 if (Flat(at - me) > 90f) continue;
                 RoadWrecks[i] = new Vector4(w.x, w.y, w.z, FoundMark - DayNight.TotalDays);
-                bool onSite = !BurnedNear(at) && age >= ScavengeFrom && age < ScavengeFrom + (ScavengeDone - ScavengeFrom) / SeasonPace(MadMax.World.Weather.Season) && dir;
+                bool onSite = !BurnedNear(at) && age >= ScavengeFrom && age < ScavengeFrom + (ScavengeDone - ScavengeFrom) / (SeasonPace(MadMax.World.Weather.Season) * TrafficPace(at)) && dir;
                 int taken = Scavenge(at, age, Mathf.RoundToInt(w.x * 31f + w.z * 7f), onSite ? scav : null);
                 if (onSite)
                 {
@@ -203,7 +305,7 @@ namespace MadMax.Game
         public int Scavenge(Vector3 at, float age, int seed, string haul = null)
         {
             int season = MadMax.World.Weather.Season;
-            float share = ScavengedShare(age, season);
+            float share = ScavengedShare(age, season, TrafficPace(at));
             if (share <= 0f) return 0;
             VehicleDriver v = null; float bd = 12f;
             foreach (var x in wrecks) if (x) { float d = Flat(x.transform.position - at); if (d < bd) { bd = d; v = x; } }

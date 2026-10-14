@@ -50,6 +50,8 @@ namespace MadMax.Vehicles
         public float brakeForce = 16000f;
         [Range(0.05f, 1f)] public float handbrakeGrip = 0.4f;
         public float drag = 0.45f;
+        [Tooltip("Player driving: the body turns at the rate the steering asks for (up to ~1 g), a released wheel settles the tail; 0 = tyres only. The handbrake hands the tail back to the tyres (drifts).")]
+        public float yawAssist = 1f;
 
         [Header("Input (set by controller)")]
         [Range(-1, 1)] public float steerInput;
@@ -67,6 +69,9 @@ namespace MadMax.Vehicles
         [Tooltip("Centre of mass offset to the right (m): sidecar outfits.")] public float comOffsetX;
         [Tooltip("Aircraft: wheels roll free (the propeller pushes, FlightModel), the gearbox never reverses.")] public bool aircraft;
         [Tooltip("Use centerOfMass instead of the body-bounds estimate.")] public bool customCom;
+        /// <summary>Wheels whose socket lies ahead of this (vehicle z, m) steer: 0 for designed vehicles; a built moving
+        /// base (<see cref="RigVehicle"/>) puts it between its front and rear axles.</summary>
+        [System.NonSerialized] public float steerAxleZ;
         public Vector3 centerOfMass;
 
         public int Gear { get; private set; } = 1;
@@ -78,6 +83,9 @@ namespace MadMax.Vehicles
         int frontWheels;
         public bool Reversing { get; private set; }
         public float Rpm { get; private set; }
+        /// <summary>Driveline telemetry (audio): clutch / converter coupling 0..1 (1 = locked up) and prop shaft rpm.</summary>
+        public float Coupling { get; private set; } = 1f;
+        public float ShaftRpm { get; private set; }
         public float ForwardSpeed { get; private set; }
         public float SpeedKmh => ForwardSpeed * 3.6f;
         /// <summary>Wheels touching the ground last physics step (diagnostics, tests).</summary>
@@ -122,6 +130,7 @@ namespace MadMax.Vehicles
             public float maxF, drive, diffSpin, vf, vs, spring;
             public bool broken;          // tyre broke traction last step (kinetic friction is lower)
             public bool deck;            // on a built deck (floor, foundation, ramp): firm, no ruts
+            public Rigidbody deckBody;   // the deck rides on a vehicle (a moving base): it takes the wheel's load back
             public float reachBase;      // body below the wheel bottom (crawler tracks, roller drums): extra ray reach
             public bool virt;            // a track road wheel between the sprocket and the idler (no part of its own)
             public Vector3 local;        // virtual road wheels: axle (inner face) in vehicle space
@@ -168,6 +177,14 @@ namespace MadMax.Vehicles
         {
             foreach (var w in wheels) if (w.part && !w.virt && w.left == left) return w.spin * Mathf.Deg2Rad * w.radius;
             return 0f;
+        }
+
+        /// <summary>Parked on a moving base that is under way: never rest-sleep (the deck would drive off beneath it).</summary>
+        bool OnMovingDeck()
+        {
+            foreach (var w in wheels)
+                if (w.deckBody && !w.deckBody.IsSleeping() && (w.deckBody.linearVelocity.sqrMagnitude > 0.01f || w.deckBody.angularVelocity.sqrMagnitude > 0.001f)) return true;
+            return false;
         }
 
         bool AllGroundedLastStep()
@@ -286,7 +303,7 @@ namespace MadMax.Vehicles
             {
                 if (s.accepts == PartCategory.Wheel)
                 {
-                    var w = new Wheel { socket = s, part = s.Current, front = s.transform.localPosition.z > 0f, left = s.Mirrored, idler = s.name.StartsWith("wheel_side") };
+                    var w = new Wheel { socket = s, part = s.Current, front = s.transform.localPosition.z > steerAxleZ, left = s.Mirrored, idler = s.name.StartsWith("wheel_side") };
                     if (w.idler) w.front = false;
                     if (w.part)
                     {
@@ -334,6 +351,9 @@ namespace MadMax.Vehicles
             return n > 0 ? sum / n : 0.4f;
         }
 
+        float prefetchT;
+        VehiclePart enginePart;
+
         void FixedUpdate()
         {
             var terrain = DeformableTerrain.Instance;
@@ -347,7 +367,7 @@ namespace MadMax.Vehicles
             float stopPedal = !manual && Reversing ? throttleInput : brakeInput;
             // an automatic held on the brake at rest is about to select reverse: only the handbrake parks it
             bool idleInput = KeepAwakeUntil <= Time.time && drivePedal < 0.01f && Mathf.Abs(steerInput) < 0.01f && (handbrake || (stopPedal > 0.1f && (manual || aiDriven || !Occupied)));
-            if (idleInput && rb.linearVelocity.sqrMagnitude < 0.02f && rb.angularVelocity.sqrMagnitude < 0.02f && AllGroundedLastStep())
+            if (idleInput && rb.linearVelocity.sqrMagnitude < 0.02f && rb.angularVelocity.sqrMagnitude < 0.02f && AllGroundedLastStep() && !OnMovingDeck())
             {
                 restTimer += dt;
                 if (restTimer > 0.4f) { if (!rb.IsSleeping()) rb.Sleep(); return; }
@@ -357,13 +377,15 @@ namespace MadMax.Vehicles
             Vector3 up = transform.up;
             var vel = rb.linearVelocity;
             ForwardSpeed = Vector3.Dot(vel, transform.forward);
+            // AI drivers roam beyond the streamed ground: the chunks ahead are made on workers before the wheels get there
+            if (aiDriven && (prefetchT -= dt) <= 0f) { prefetchT = 0.3f; terrain.PrefetchNear(rb.position + vel * 1.2f); }
 
             float speedFactor = Mathf.Lerp(1f, 0.3f, Mathf.Abs(ForwardSpeed) / 40f);
             float wantSteer = float.IsNaN(steerOverride) ? steerInput * maxSteer * speedFactor : steerOverride;
             bool touring = !aiDriven && !aircraft && float.IsNaN(steerOverride);
             if (touring)
                 steer = Mathf.SmoothDamp(steer, wantSteer + steerPull, ref steerVelocity,
-                    Mathf.Lerp(0.10f, 0.22f, Mathf.Abs(ForwardSpeed) / 30f), maxSteer * steerSpeed, dt);
+                    Mathf.Lerp(0.07f, 0.15f, Mathf.Abs(ForwardSpeed) / 30f), maxSteer * steerSpeed * 1.3f, dt);
             else { steerVelocity = 0f; steer = Mathf.MoveTowards(steer, wantSteer + steerPull, maxSteer * steerSpeed * dt); }
 
             // ---- transmission: automatic (brake at standstill = reverse) or manual (R N 1..n via ShiftUp/ShiftDown)
@@ -411,10 +433,12 @@ namespace MadMax.Vehicles
                 // up to 1.9x from a standstill in an automatic, 1.3x slipping a manual clutch hard
                 float coupling = neutral ? 1f : Mathf.Clamp01(wheelRpm * ratio / Mathf.Max(1f, launch));
                 float launchBoost = Mathf.Lerp(manual ? 1.3f : 1.9f, 1f, coupling);
+                Coupling = coupling; ShaftRpm = wheelRpm * finalDrive;
                 float freeRev = driven == 0 ? 1f : WheelSlip;
                 if (!neutral) target = Mathf.Lerp(target, engine.maxRpm, driveCmd * Mathf.Clamp01(freeRev));
                 Rpm = Mathf.Lerp(Rpm, Mathf.Min(target, engine.maxRpm), 12f * dt);
-                float health = 1f - 0.7f * Mathf.Clamp01(engine.GetComponent<VehiclePart>().damage);
+                if (enginePart == null || enginePart.gameObject != engine.gameObject) enginePart = engine.GetComponent<VehiclePart>();   // cached: not a lookup per physics step
+                float health = 1f - 0.7f * Mathf.Clamp01(enginePart ? enginePart.damage : 0f);
                 float torque = Rpm >= engine.maxRpm * 0.995f ? 0f : engine.TorqueAt(Rpm) * driveCmd * health * power * launchBoost * (tuning ? tuning.TorqueFactor(Rpm / engine.maxRpm) : 1f);
                 driveForce = neutral ? 0f : torque * ratio * efficiency / r * (Reversing ? -1f : 1f);
 
@@ -445,8 +469,17 @@ namespace MadMax.Vehicles
                 float rayLen = travel + w.radius * (w.stats ? w.stats.RadiusFactor : 1f) + Mathf.Max(0f, w.reachBase - rideHeight);
                 if (up.y < 0.25f) { w.comp = 0; continue; }
                 float gh = terrain.Height(anchor.x, anchor.z);
+                {
+                    // tyre envelope: the tread meets a kerb or step ahead of (or behind) the axle and climbs it on its
+                    // arc, instead of the suspension being slammed when the point under the centre jumps
+                    float er = w.radius * (w.stats ? w.stats.RadiusFactor : 1f), ea = er * 0.55f, elift = er - Mathf.Sqrt(er * er - ea * ea);
+                    var ef = transform.forward; ef.y = 0f; ef = ef.normalized * ea;
+                    gh = Mathf.Max(gh, Mathf.Max(terrain.Height(anchor.x + ef.x, anchor.z + ef.z), terrain.Height(anchor.x - ef.x, anchor.z - ef.z)) - elift);
+                }
                 Vector3 deckN = Vector3.up;
                 w.deck = MadMax.Building.StructureGround.Count > 0 && MadMax.Building.StructureGround.Top(anchor, ref gh, out deckN, rb);
+                w.deckBody = w.deck ? MadMax.Building.StructureGround.LastBody : null;
+                if (w.deckBody && (w.deckBody == rb || w.deckBody.isKinematic)) w.deckBody = null;
                 float t = (anchor.y - gh) / up.y;
                 if (t > rayLen) { w.comp = 0; continue; }
 
@@ -461,6 +494,7 @@ namespace MadMax.Vehicles
                 if (w.comp > travel) spring += (w.comp - travel) * k * 6f;
                 w.spring = Mathf.Clamp(spring, 0f, massPerWheel * 40f);
                 rb.AddForceAtPosition(up * w.spring, w.contact);
+                if (w.deckBody) w.deckBody.AddForceAtPosition(-up * w.spring, w.contact);          // a car parked on a moving base weighs it down
 
                 Vector3 fwd = Quaternion.AngleAxis(w.front && !Tracked ? steer : 0f, up) * transform.forward;
                 w.fwd = Vector3.ProjectOnPlane(fwd, n).normalized;
@@ -479,7 +513,7 @@ namespace MadMax.Vehicles
                 }
                 grip *= w.surf.ice > 0f ? Mathf.Lerp(1f, 0.25f, w.surf.ice) : 1f;
                 // road hazards dropped by other vehicles: oil takes the grip, caltrops puncture
-                if (MadMax.World.RoadHazards.Count > 0 && MadMax.World.RoadHazards.At(w.contact, out var hazard))
+                if ((MadMax.World.RoadHazards.Count > 0 || MadMax.World.Spills.Instance) && MadMax.World.RoadHazards.At(w.contact, out var hazard))   // dropper patches, spilled oil / fuel / ice
                 {
                     if (hazard == MadMax.World.RoadHazards.Kind.Oil) grip *= 0.22f;
                     else if (w.stats && !w.stats.Popped && Mathf.Abs(w.vf) > 1.5f && Random.value < dt * 4f) w.stats.Pop();
@@ -554,6 +588,7 @@ namespace MadMax.Vehicles
                 if (mag > w.maxF && mag > 0f) { float sc = w.maxF / mag; slip = 1f - sc; lng *= sc; lat *= sc; }
                 w.broken = slip > (w.broken ? 0.01f : 0.04f);
                 rb.AddForceAtPosition(w.fwd * lng + w.side * lat, w.contact);
+                if (w.deckBody) w.deckBody.AddForceAtPosition(-(w.fwd * lng + w.side * lat), w.contact);
 
                 float spinSlip = isDriven ? Mathf.Max((w.broken ? Mathf.Clamp01(slip * 5f) : slip) * driveCmd, w.diffSpin * driveCmd) : 0f;   // broken-loose tyres spin up
                 if ((Mathf.Abs(w.vf) > 0.3f || spinSlip > 0.05f) && !w.deck)
@@ -575,6 +610,8 @@ namespace MadMax.Vehicles
                 grounded++;
             }
 
+            YawAssist(touring, grounded, up);
+
             // anti-roll per axle
             for (int i = 0; i < wheels.Count; i++)
             for (int j = i + 1; j < wheels.Count; j++)
@@ -593,6 +630,31 @@ namespace MadMax.Vehicles
             Mud = grounded > 0 ? mudSum / grounded : 0f;
             float gi = grounded > 0 ? 1f / grounded : 0f;
             TyreSqueal = Mathf.Clamp01(squealSum * gi * 1.5f); TyreLoose = looseSum * gi; TyreMud = mudTyreSum * gi; TyreRoll = rollSum * gi;
+        }
+
+        /// <summary>Arcade yaw assist (player driving): turns the body toward the yaw rate of the steered geometry
+        /// (speed × tan(steer) / wheelbase), capped at ~1.05 g worth of turning, with limited authority, so the car answers
+        /// the wheel at once and a released wheel settles the tail. Off with the handbrake (drifts), off-road it is weaker.</summary>
+        void YawAssist(bool touring, int grounded, Vector3 up)
+        {
+            if (!touring || !occupied || handbrake || Tracked || yawAssist <= 0f || !MadMax.Game.GameSettings.Current.steerAssist || grounded < 3 || Mathf.Abs(ForwardSpeed) < 2f) return;
+            float fz = 0f, rz = 0f; int nf = 0, nr = 0;
+            foreach (var w in wheels)
+            {
+                if (!w.part || w.idler) continue;
+                float z = w.socket.transform.localPosition.z;
+                if (w.front) { fz += z; nf++; } else { rz += z; nr++; }
+            }
+            if (nf == 0 || nr == 0) return;
+            float wheelbase = Mathf.Max(1.2f, fz / nf - rz / nr);
+            float speed = ForwardSpeed;
+            float want = speed * Mathf.Tan(steer * Mathf.Deg2Rad) / wheelbase;
+            float cap = 1.05f * 9.81f / Mathf.Max(3f, Mathf.Abs(speed));
+            want = Mathf.Clamp(want, -cap, cap);
+            float now = Vector3.Dot(rb.angularVelocity, up);
+            float hard = Mathf.Lerp(0.5f, 1f, Mud < 0.3f ? 1f : 1f - Mud);                     // mud and sand: the tyres decide more
+            float accel = Mathf.Clamp((want - now) * 6f, -3f, 3f) * yawAssist * hard * Mathf.Clamp01((Mathf.Abs(speed) - 2f) / 3f);
+            rb.AddTorque(up * accel, ForceMode.Acceleration);
         }
 
         /// <summary>Ground pressure relative to a 0.32 m car tyre: wide tyres and long crawler tracks sink less.</summary>

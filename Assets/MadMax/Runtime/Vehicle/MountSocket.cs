@@ -7,7 +7,7 @@ namespace MadMax.Vehicles
     public class MountSocket : MonoBehaviour
     {
         public PartCategory accepts;
-        [Range(1, 4)] public int maxSizeClass = 4;
+        [Range(1, 5)] public int maxSizeClass = 4;
         [SerializeField] bool mirrored;
         [SerializeField] VehiclePart current;
 

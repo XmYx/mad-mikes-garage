@@ -42,6 +42,15 @@ namespace MadMax.World
             Parallel.ForEach(ids, id => Physics.BakeMesh(id, false));
         }
 
+        /// <summary><see cref="Prebake"/> without waiting (load steps yield until the task is done). The meshes must not
+        /// change or be destroyed before it completes.</summary>
+        public static Task PrebakeAsync(List<Mesh> meshes)
+        {
+            var ids = new List<EntityId>(meshes.Count);
+            foreach (var m in meshes) if (m && m.vertexCount > 0) ids.Add(m.GetEntityId());
+            return Task.Run(() => Parallel.ForEach(ids, id => Physics.BakeMesh(id, false)));
+        }
+
         static Result Work(VoxelGrid g, float size, int? groundY)
         {
             var r = new Result();

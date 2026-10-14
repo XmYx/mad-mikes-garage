@@ -28,6 +28,10 @@ sys.path.insert(0, HD)
 sys.path.insert(0, os.path.join(HD, "misc"))
 import render_common as rc  # noqa: E402
 import kit  # noqa: E402
+sys.path.insert(0, os.path.join(HD, "textures"))
+import texmat  # noqa: E402  (photo-textured materials; textures/world/*.png)
+
+TEXTURED = os.environ.get("HD_PROCEDURAL", "") != "1"     # HD_PROCEDURAL=1 rebuilds with the old procedural look
 
 PREVIEW = "/home/magix/PycharmProjects/MadMaxUnity/hd_preview"
 REF = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ref_index.json")))
@@ -141,6 +145,14 @@ def materials():
                                               var=0.16, grain=(bax, 4, 0.38 if tone != "_grey" else 0.25))
     M["flower_red"] = S("FlowerRed", hexc("c83020"), dust=0.1, rough=0.7)
     M["flower_yellow"] = S("FlowerYellow", hexc("d4b020"), dust=0.1, rough=0.7)
+    M["window_glow"] = kit.emissive("WindowGlow", hexc("ffb868"), 2.2)     # lit windows (warm, behind the curtains)
+    M["candle_flame"] = kit.emissive("CandleFlame", hexc("ffc458"), 6.0)
+    M["bulb_warm"] = kit.emissive("BulbWarm", hexc("ffd89a"), 4.0)
+    M["dial_glow"] = kit.emissive("DialGlow", hexc("ffb040"), 1.6)
+    M["wax"] = S("Wax", P("cream", 3), dust=0.05, rough=0.35, var=0.06, bump=0.1)
+    M["soot"] = S("Soot", P("black", 0), dust=0.0, rough=0.98, var=0.3, bump=0.3)
+    if TEXTURED:
+        texmat.upgrade(M)
     return M
 
 
@@ -580,6 +592,8 @@ def run_tiles(tiles, group, script_dir, blend_prefix="", cols=None):
             flag += "" if dev is None or dev <= 0.035 else " DIMS! %s vs %s" % ([round(x, 2) for x in d], ref["dims"])
             print("ASSET %-26s %6d tris  %s%s" % (a.gid, tri, [round(x, 2) for x in d], flag))
         kit.save_blend(blend)
+        if texmat.relativize(blend):                    # photo paths relative to the .blend (the repo can move)
+            kit.save_blend(blend)
         tile_rows.append({"name": tname, "label": label, "replaces": ", ".join(ids)})
         print("TILE", tname, len(assets), "%.1fs" % (time.time() - t0))
     json.dump(cov, open(cov_path, "w"), indent=1, sort_keys=True)

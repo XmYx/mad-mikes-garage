@@ -168,7 +168,7 @@ namespace MadMax.Npc
             using var feed = MadMax.Items.Inventory.Source("REWARD");
             g.Inventory.Add(MadMax.Items.ResourceType.Scrap, pay);
             if (c.chits > 0) g.Inventory.AddItem(Chit, c.chits);
-            Factions.Shift(c.faction >= 0 ? (Faction)c.faction : c.Delivery ? Faction.FuelGuild : Faction.Settlers, c.rep);
+            Factions.Shift(c.faction >= 0 ? (Faction)c.faction : c.Delivery || c.Escort ? Faction.FuelGuild : Faction.Settlers, c.rep);
             Active.Remove(c);
             MadMax.Audio.Sfx.Play2D("cash", 0.8f);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 3f);
@@ -220,6 +220,7 @@ namespace MadMax.Npc
         {
             Active.Clear(); taken.Clear();
             if (d.contracts != null) Active.AddRange(d.contracts);
+            foreach (var c in Active) if (c.Escort && !c.completed && !c.failed) c.failed = true;    // the escorted rig isn't saved: the run is over
             if (d.contractsTaken != null) foreach (var t in d.contractsTaken) taken.Add(t);
         }
     }

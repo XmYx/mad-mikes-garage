@@ -9,6 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fcommon import K, Asset, Vector, Matrix, lo, hi, c, W, knob, screws, leg_square, drawer_front, bulb, run, VS  # noqa: E402
+from fcommon import drape, pillow, folded, mug, kettle, pan, jar, candle, log_pile, image_material, decal_material  # noqa: E402
 
 
 def armchair():
@@ -27,6 +28,11 @@ def armchair():
     for x in (-4, 0, 4):                                  # tufting buttons on the back
         for y in (9, 13):
             cl.sphere("brass", 0.015, (c(x), c(y), hi(-3) + 0.005), (1, 1, 0.6), 8, 5)
+    pillow(cl, "quilt", (c(1.5), hi(6) + 0.13, c(-2.2)), 0.34, 0.12, 0.3, yaw=-12, tilt=-55)
+    cl.loft("blanket", [[(x, y + 0.01, z) for (y, z) in pts] + [(x, y - 0.01, z) for (y, z) in reversed(pts)]
+                        for x, pts in ((lo(-5), [(hi(15) - 0.12, lo(-5) - 0.025), (hi(15) + 0.015, lo(-5) + 0.02), (hi(15) + 0.012, hi(-3) + 0.02), (hi(15) - 0.2, hi(-3) + 0.03)]),
+                                       (c(-1), [(hi(15) - 0.18, lo(-5) - 0.03), (hi(15) + 0.02, lo(-5) + 0.02), (hi(15) + 0.015, hi(-3) + 0.02), (hi(15) - 0.26, hi(-3) + 0.035)]),
+                                       (c(1.5), [(hi(15) - 0.1, lo(-5) - 0.025), (hi(15) + 0.015, lo(-5) + 0.02), (hi(15) + 0.012, hi(-3) + 0.02), (hi(15) - 0.16, hi(-3) + 0.03)]))])
     return a
 
 
@@ -41,6 +47,9 @@ def bench():
         z0 = lo(-2) + k * 0.08
         w.box2(K.WOODS["x"][k % 3], (lo(-12), lo(5), z0 + 0.003), (hi(12), hi(5), z0 + 0.077), bevel=0.006)
     w.box2(W("dark", "x"), (lo(-10), lo(5) - 0.04, -0.03), (hi(10), lo(5), 0.03), bevel=0.004)
+    cl = a.p("Cloth")
+    cl.box2("cushion", (lo(-11), hi(5), lo(-2) + 0.02), (c(-1), hi(5) + 0.05, hi(2) - 0.02), bevel=0.02, segs=2)
+    folded(cl, "blanket", (c(4), hi(5), lo(-2) + 0.04), (c(9), hi(5) + 0.09, hi(2) - 0.04), 3)
     return a
 
 
@@ -62,9 +71,8 @@ def dining_table():
         x0 = lo(-12) + k * (hi(12) - lo(-12)) / 25
         cl.box2("cloth_cream" if k % 4 == 0 else "cloth_red", (x0, hi(10), lo(-2)), (x0 + (hi(12) - lo(-12)) / 25, hi(10) + 0.008, hi(2)), bevel=0)
     s.lathe("brass", [(0.0, 0.0), (0.06, 0.0), (0.06, 0.012), (0.02, 0.03), (0.018, 0.07), (0.035, 0.08), (0.035, 0.09), (0.0, 0.09)], (0, hi(10) + 0.008, 0), "y", 16)
-    w.cyl("cloth_cream", 0.018, 0.14, (0, hi(10) + 0.17, 0), "y", 10, 0.002)
-    g.lathe("flame", [(0.0, 0.0), (0.012, 0.012), (0.0, 0.05)], (0, hi(10) + 0.24, 0), "y", 8)
-    a.parts["Glass"].byte = "Wood"
+    candle(w, a.p("Flame", "Wood", pivot=(0, hi(10) + 0.098 + 0.14, 0), mover=True), (0, hi(10) + 0.098, 0), 0.02, 0.14, 4, seed=21)
+    kettle(a.p("Kettle", "Scrap", pivot=(c(-4), hi(10) + 0.008, c(-3.5)), mover=True), "enamel", (c(-4), hi(10) + 0.008, c(-3.5)), 0.07, "brass")
     for x in (-8, 8):                                     # plates and mugs
         s.cyl("enamel", 0.09, 0.012, (c(x), hi(10) + 0.006, c(4)), "y", 18, 0.004)
         s.cyl("enamel", 0.035, 0.08, (c(x) + 0.14, hi(10) + 0.04, c(4.5)), "y", 12, 0.004)
@@ -99,7 +107,8 @@ def bookshelf():
     w.box2(W("dark", "y"), (lo(-8), lo(0), lo(-3)), (hi(8), hi(24), hi(-3)), bevel=0.004)
     for y in (0, 8, 16, 24):
         w.box2(W("", "x"), (lo(-8), lo(y), lo(-2)), (hi(8), hi(y), hi(3)), bevel=0.006)
-    spines = ["rust", "cloth_olive", "cloth_pale", "cloth_cream", "rig_green", "leather", "cloth_red", "cloth_blue"]
+    spines = [image_material("TexBookSpines%d" % k, "book_spines", t, 0.7, 0.8, False, "y", offset=(0.13 * k, 0.07 * k, 0.21 * k))
+              for k, t in enumerate(((1, 1, 1), (0.8, 0.9, 1.1), (1.15, 0.9, 0.75), (0.85, 1.05, 0.85)))]
     for shelf in (1, 9, 17):
         r = K.rng(1123 + shelf)
         x = lo(-8) + 0.005
@@ -112,11 +121,15 @@ def bookshelf():
             lean = r.uniform(-4, 4) if r.random() < 0.15 else 0
             if x + wdt > hi(8) - 0.005:
                 break
-            m = spines[r.randrange(len(spines))]
-            cl.box(m, (wdt - 0.004, h, r.uniform(0.3, 0.38)), (x + wdt / 2, lo(shelf) + h / 2, 0.02), r=(0, 0, lean), bevel=0.006)
+            m = spines[r.randrange(len(spines))] if r.random() < 0.85 else r.choice(["leather", "cloth_red", "cloth_blue"])
+            cl.box(m, (wdt - 0.004, h, r.uniform(0.3, 0.38)), (x + wdt / 2, lo(shelf) + h / 2, 0.02), r=(0, 0, lean), bevel=0.004, segs=1)
             if r.random() < 0.5:
                 cl.box2("brass", (x + 0.004, lo(shelf) + h * 0.7, 0.21), (x + wdt - 0.008, lo(shelf) + h * 0.72, 0.215), bevel=0)
             x += wdt
+    s = a.p("Scrap")
+    s.box2("brass", (c(5), hi(24), c(-1)), (c(7), hi(24) + 0.16, c(1)), bevel=0.012)                  # a small clock and a jar on top
+    jar(a.p("Glass"), "glass", "brass", (c(-5), hi(24), c(0)), 0.05, 0.16, fill_m="flower_yellow")
+    candle(s, a.p("Flame", "Wood", pivot=(c(-1.5), hi(24) + 0.09, 0), mover=True), (c(-1.5), hi(24), 0), 0.022, 0.08, 4, seed=3)
     return a
 
 
@@ -162,6 +175,12 @@ def bathtub():
     fe.tube("chrome", [(lo(-10) + 0.02, c(9), 0), (lo(-10) + 0.02, c(11), 0), (c(-8), c(11), 0), (c(-8), c(10.4), 0)], 0.013, 8)
     for z in (-0.08, 0.08):
         fe.cyl("chrome", 0.012, 0.05, (lo(-10) + 0.03, c(9.5), z), "x", 8, 0.003)
+    cl = a.p("Cloth")
+    cl.loft("ticking", [[(x, y + 0.008, z) for (y, z) in pts] + [(x, y - 0.008, z) for (y, z) in reversed(pts)]
+                        for x, pts in ((c(2), [(c(4), hi(5) + 0.015), (hi(8) + 0.01, hi(5) + 0.01), (hi(8) + 0.015, hi(4) - 0.06), (hi(8) - 0.12, hi(4) - 0.1)]),
+                                       (c(6), [(c(4.5), hi(5) + 0.015), (hi(8) + 0.01, hi(5) + 0.01), (hi(8) + 0.015, hi(4) - 0.06), (hi(8) - 0.14, hi(4) - 0.11)]))])
+    s.box("wood_light_x", (0.16, 0.035, 0.06), (c(-6), hi(8) + 0.02, c(-4.5)), r=(0, 20, 0), bevel=0.01)   # scrubbing brush
+    s.box("cream", (0.08, 0.03, 0.05), (c(-3), hi(8) + 0.017, c(-4.6)), bevel=0.012)                        # soap
     return a
 
 
@@ -182,8 +201,16 @@ def kitchen_counter():
     g.box2("water", (lo(3) + 0.02, lo(10) - 0.02, lo(-3) + 0.02), (hi(9) - 0.02, lo(10) - 0.015, hi(2) - 0.02), bevel=0)
     fe.cyl("chrome", 0.016, hi(14) - hi(11), (c(6), (hi(11) + hi(14)) / 2, c(-4)), "y", 10, 0.003)
     fe.tube("chrome", [(c(6), hi(14) - 0.02, c(-4)), (c(6), hi(14) + 0.01, c(-3)), (c(6), c(13.5), c(-2))], 0.012, 8)
-    s.cyl("enamel", 0.08, 0.16, (c(-8), hi(11) + 0.08, c(-1)), "y", 14, 0.006)              # a pot and a board
+    kettle(a.p("Kettle", "Scrap", pivot=(c(-8), hi(11), c(-1)), mover=True), "enamel", (c(-8), hi(11), c(-1)), 0.075, "black")                                    # kettle, mugs, jars, a board
     w.box2(W("light", "x"), (c(-4), hi(11), c(-2)), (c(0), hi(11) + 0.02, c(1)), bevel=0.004)
+    st.box2("tiles", (lo(-12), hi(11), lo(-5) - 0.0), (hi(12), hi(14) + 0.04, lo(-5) + 0.03), bevel=0.004)   # tiled splashback
+    mug(s, "navy", (c(-4.5), hi(11), c(-3)), 0.036, 0.085)
+    mug(s, "enamel", (c(-3.3), hi(11), c(-3.4)), 0.036, 0.085)
+    lab = image_material("TexLabels", "labels", (1.0, 1.0, 1.0), 0.8, 0.32, False, "h")
+    for k, (x, fill) in enumerate(((10.3, "ochre"), (11.5, "flower_red"))):
+        jar(g, "glass", "brass", (c(x), hi(11), c(-3.5)), 0.04, 0.13, fill_m=fill, label_m=lab)
+    s.cyl("cream", 0.07, 0.03, (c(-2), hi(11) + 0.035, c(0)), "y", 12, 0.01)                    # loaf on the board
+    s.sphere("ochre", 0.07, (c(-2), hi(11) + 0.06, c(0)), (1.4, 0.7, 1.0), 12, 6)
     return a
 
 
@@ -245,6 +272,9 @@ def sewing_table():
     fe.cyl("chrome", 1.6 * VS, 0.04, (c(4) - 0.02, c(14), 0), "x", 20, 0.006)
     cl.box2("cloth_red", (lo(-8), hi(9), lo(3)), (hi(-6), hi(11), hi(4)), bevel=0.02)
     cl.cyl("cloth_red", 0.06, 0.24, (c(-7), hi(9) + 0.07, c(3.5) - 0.0), "x", 14, 0.006)
+    drape(cl, "quilt", c(-4.5), c(1.5), lo(-4), hi(4), hi(10) + 0.004, hang=0.12, t=0.008, seed=8, amp=0.01, nx=8, nz=8, sides=(True, False))
+    for k, m in enumerate(("navy", "crimson", "ochre")):
+        cl.cyl(m, 0.018, 0.04, (c(6) + k * 0.05, hi(9) + 0.02, c(3)), "y", 10, 0.002)
     return a
 
 
@@ -252,13 +282,9 @@ def wall_clock():
     a = Asset("wall_clock", "Decor")
     s = a.p("Scrap")
     s.lathe("brass", [(0.0, lo(0)), (0.5, lo(0)), (0.52, hi(0)), (0.5, hi(1)), (0.44, hi(1)), (0.43, hi(0)), (0.0, hi(0))], (0, 0, 0), "y", 40)
-    s.cyl("enamel", 0.43, 0.01, (0, hi(0) + 0.005, 0), "y", 40, 0)
-    for i in range(12):
-        an = math.radians(i * 30)
-        L = 0.06 if i % 3 == 0 else 0.03
-        s.box("black", (0.012 if i % 3 else 0.02, 0.006, L), (math.sin(an) * 0.35, hi(0) + 0.012, math.cos(an) * 0.35), r=(0, math.degrees(an), 0), bevel=0)
-    s.box("black", (0.016, 0.006, 0.2), (0.05, hi(0) + 0.018, 0.08), r=(0, 30, 0), bevel=0.002)
-    s.box("black", (0.01, 0.006, 0.3), (-0.12, hi(0) + 0.024, 0.07), r=(0, -60, 0), bevel=0.002)
+    dial = decal_material("WallClock_Dial", "clock_face", (0, hi(0) + 0.01, 0), (0.86, 0.86), plane="wall")
+    s.cyl(dial, 0.43, 0.01, (0, hi(0) + 0.005, 0), "y", 40, 0)
+    # no hands: WallClock adds its own Hour / Minute hands and turns them
     s.cyl("brass", 0.02, 0.02, (0, hi(0) + 0.02, 0), "y", 10, 0.003)
     s.add(K.kit.bm_box(0.08, 0.01, 0.006), "pump_red", Matrix.Translation((0.0, hi(0) + 0.03, 0.0)) @ K.rot(0, 200, 0))
     a.parts["Scrap"].byte = "Scrap"

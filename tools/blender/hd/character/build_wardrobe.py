@@ -55,7 +55,7 @@ def build(key):
     a = ob.data.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
     a.data.foreach_set("color", hum.body_paint(0).astype(np.float32).ravel())
     hc = MAT.make("hair_tint", B.HAIR_COLORS[HAIR], "hair", grime=0.1)
-    heads = [BL.build_brows(hum), BL.build_beard(hum, 2)]
+    heads = [BL.build_brows(hum), BL.build_beard(hum, 2), BL.build_beard(hum, 1)]
     for st in B.HAIR_STYLES:
         if st == "Bald":
             continue

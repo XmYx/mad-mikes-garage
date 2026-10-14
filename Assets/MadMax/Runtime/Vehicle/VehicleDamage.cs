@@ -65,7 +65,11 @@ namespace MadMax.Vehicles
         /// a crash keeps going with.</summary>
         public Vector3 PreImpactVelocity { get; private set; }
 
-        void FixedUpdate() { if (rb && driver && driver.Occupied) PreImpactVelocity = rb.linearVelocity; }
+        void FixedUpdate()
+        {
+            if (rb && driver && driver.Occupied) PreImpactVelocity = rb.linearVelocity;
+            if (MadMax.World.Breakaway.Active > 0 && rb && !rb.isKinematic) MadMax.World.Breakaway.Ahead(this, rb);   // poles, street furniture: give way before the contact
+        }
 
         /// <summary>Scraping along another vehicle, a wall or a rock: sparks (dust off stone, splinters off wood), a
         /// grinding loop, and paint worn to bare metal where the body rubs. Ground contacts under the wheels don't count.</summary>
@@ -121,6 +125,15 @@ namespace MadMax.Vehicles
             normal = normal.normalized;
             // landing on terrain is suspension's job, not a crash
             if (c.collider is MeshCollider && !c.rigidbody && normal.y > 0.6f) return;
+            if (MadMax.World.Breakaway.Active > 0 && MadMax.World.Breakaway.Struck(this, rb, c.collider, point, normal, dv)) return;   // it gave way: its own crunch
+            Crash(point, normal, dv, c.rigidbody);
+        }
+
+        /// <summary>A crash of <paramref name="dv"/> m/s at <paramref name="point"/> (<paramref name="normal"/> pointing out of
+        /// the vehicle's surface): sound, dents, part / wheel / frame damage, ejection. <paramref name="other"/> = the body hit.</summary>
+        public void Crash(Vector3 point, Vector3 normal, float dv, Rigidbody other)
+        {
+            if (dv < minImpactSpeed) return;
             lastHit = Time.time;
 
             float s = dv - minImpactSpeed;
@@ -132,7 +145,7 @@ namespace MadMax.Vehicles
             {
                 shield.damage += s * partDamagePerMs * 0.5f / shield.sizeClass * shield.Toughness;
                 s *= 1f - armor.absorb;
-                if (c.rigidbody && (armor.spikes > 0f || armor.ram > 0f) && c.rigidbody.TryGetComponent<VehicleDamage>(out var victim))
+                if (other && (armor.spikes > 0f || armor.ram > 0f) && other.TryGetComponent<VehicleDamage>(out var victim))
                     victim.ApplyHit(point, -normal, (armor.spikes * 1.5f + armor.ram) * dv * 0.15f, 0.5f, gameObject);
                 if (shield.damage >= 1f) { foreach (var sk in chassis.Sockets) if (sk.Current == shield) { Break(sk, normal); break; } }
             }
@@ -142,7 +155,7 @@ namespace MadMax.Vehicles
 
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
+                if (mf.name == "Driver" || VehicleDashboard.IsDash(mf) || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
                 var part = mf.GetComponentInParent<VehiclePart>();
                 if (part && part.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
@@ -207,7 +220,7 @@ namespace MadMax.Vehicles
             if (power < 0.02f) { Impact?.Invoke(power, point); return; }
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
             {
-                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform)) continue;
+                if (mf.name == "Driver" || VehicleDashboard.IsDash(mf) || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform)) continue;
                 var p = mf.GetComponentInParent<VehiclePart>();
                 if (p && p.category == PartCategory.Wheel) continue;
                 if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
@@ -239,13 +252,29 @@ namespace MadMax.Vehicles
         public void DentAt(Vector3 point, Vector3 direction, float depth, float radius)
         {
             foreach (var mf in GetComponentsInChildren<MeshFilter>())
-            {
-                if (mf.name == "Driver" || mf.name == "Dashboard" || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) continue;
-                var p = mf.GetComponentInParent<VehiclePart>();
-                if (p && p.category == PartCategory.Wheel) continue;
-                if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
-                if (DeformationScale > 0f) dm.Dent(point, direction, depth * DeformationScale, radius, maxDisplacement * Mathf.Max(1f, DeformationScale));
-            }
+                if (Dentable(mf)) DentMesh(mf, point, direction, depth, radius);
+        }
+
+        static bool Dentable(MeshFilter mf)
+        {
+            if (mf.name == "Driver" || VehicleDashboard.IsDash(mf) || MadMax.Rendering.HDModel.IsLod(mf.transform) || MadMax.Rendering.HDModel.IsBelt(mf.transform) || mf.GetComponent<MadMax.Building.Placeable>()) return false;
+            var p = mf.GetComponentInParent<VehiclePart>();
+            return !(p && p.category == PartCategory.Wheel);
+        }
+
+        /// <summary>The meshes <see cref="DentAt"/> dents, in its order (wrecks dent them one per frame).</summary>
+        public void DentTargets(System.Collections.Generic.List<MeshFilter> into)
+        {
+            into.Clear();
+            foreach (var mf in GetComponentsInChildren<MeshFilter>()) if (Dentable(mf)) into.Add(mf);
+        }
+
+        /// <summary><see cref="DentAt"/> on one of its <see cref="DentTargets"/>.</summary>
+        public void DentMesh(MeshFilter mf, Vector3 point, Vector3 direction, float depth, float radius)
+        {
+            if (!mf) return;
+            if (!mf.TryGetComponent<DeformableMesh>(out var dm)) dm = mf.gameObject.AddComponent<DeformableMesh>();
+            if (DeformationScale > 0f) dm.Dent(point, direction, depth * DeformationScale, radius, maxDisplacement * Mathf.Max(1f, DeformationScale));
         }
 
         public float SalvageLeft => salvagePool < 0f ? chassis.bodyMass / 25f : salvagePool;
@@ -296,14 +325,23 @@ namespace MadMax.Vehicles
             if (MadMax.World.DebrisSystem.Instance)
             {
                 var mf = transform.Find("Body")?.GetComponent<MeshFilter>();
-                if (mf && mf.sharedMesh)
+                if (mf && mf.sharedMesh && mf.sharedMesh.isReadable && mf.sharedMesh.vertexCount > 0)
                 {
                     var v = mf.sharedMesh.vertices; var c = mf.sharedMesh.colors32;
+                    if (c.Length < v.Length) c = new Color32[v.Length];
                     salvageChunks.Clear();
                     for (int i = 0; i < 120; i++) { int k = UnityEngine.Random.Range(0, v.Length); salvageChunks.Add(new MadMax.World.DebrisSystem.Chunk { position = mf.transform.TransformPoint(v[k]), color = c[k] }); }
                     MadMax.World.DebrisSystem.Instance.Emit(salvageChunks, 0.08f, Vector3.up);
                 }
             }
+            Scrapped?.Invoke(driver);
+            Destroy(gameObject);
+        }
+
+        /// <summary>Pressed into a bale (<see cref="GrappleCrusher"/>): gone with everything still mounted on it; what was in
+        /// its storage falls out, the game forgets it (like a vehicle stripped bare).</summary>
+        public void Crush()
+        {
             Scrapped?.Invoke(driver);
             Destroy(gameObject);
         }

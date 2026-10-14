@@ -19,7 +19,7 @@ namespace MadMax.World
     /// ports line for line, and is written in deck-local game axes (+X right, +Y up, +Z forward). Output: the visible
     /// mesh (vertex colours, weathered per tile), an emissive mesh (lamps, lit windows: an unlit material) and a
     /// collision mesh of everything flagged solid. Pure C#: safe on worker threads.</summary>
-    public sealed class CityKit
+    public sealed partial class CityKit
     {
         public readonly VoxelMesher.MeshData mesh = new VoxelMesher.MeshData();
         public readonly VoxelMesher.MeshData glow = new VoxelMesher.MeshData();
@@ -450,12 +450,14 @@ namespace MadMax.World
                 {
                     Vector3 a = Vector3.Lerp(p, q, i / (float)n), b = Vector3.Lerp(p, q, (i + 1) / (float)n);
                     if (InGap(gaps, (a + b) * 0.5f)) continue;
+                    var mk = BeginMark("city_railing");                                            // each section can be taken apart (CitySalvage)
                     Beam(CM.Steel, a, a + up, 0.06f);
                     if (i == n - 1 || InGap(gaps, Vector3.Lerp(p, q, (i + 1.5f) / n))) Beam(CM.Steel, b, b + up, 0.06f);
                     Beam(CM.Steel, a + up, b + up, 0.06f);
                     Beam(CM.Steel, a + up * 0.5f, b + up * 0.5f, 0.035f);
                     if (toe) Beam(CM.SteelDark, a + new Vector3(0, 0, 0.08f), b + new Vector3(0, 0, 0.08f), 0.02f, 0.15f);
                     SolidWall(a, b, z, z + h);
+                    EndMark(mk);
                 }
             }
         }

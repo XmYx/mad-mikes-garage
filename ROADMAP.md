@@ -49,6 +49,8 @@ lantern, pipe shotgun, molotov.
 
 *Done (late):* `GrappleTool` (roadmap 22) zips you up walls and roofs and reels loose parts / crates under 300 kg to your feet; the fishing rod, hoe and watering can shipped with roadmaps 8–10.
 
+*Audit (2026-10-13):* the geiger now reads louder pointed at a source; uranium ore / glowing fish on the ground and loot spots in the fallout are hot (`Hazard`); the grapple and watering can wear.
+
 *Ties:* crafting (repair, recipes), vehicles (welder, jack, repair kit), exploration (binoculars, geiger), parkour.
 
 ## 2. Furniture `T1`
@@ -71,7 +73,7 @@ lantern, pipe shotgun, molotov.
 *Exists:* ~17 garments in slots, warmth / cooling, layered voxel shells.
 
 - [x] **Condition**: garments tear from hits, crashes and fire; mend with cloth (sewing kit / sewing table)
-- [x] **Backpacks** (back slot): school bag +8 kg, hiking pack +18 kg, frame pack +28 kg carry capacity
+- [x] **Backpacks** (back slot): school bag 10 kg, hiking pack 26 kg, frame pack 40 kg in their own storage (see bags below)
 - [x] **Bags with their own storage** (2026-10-01): backpack, tourist frame pack, military MOLLE pack, handcrafted
       stick pack (wears out), school bag, hiking pack, leather satchel; belts (work, gun, tool belt: tools drawn from
       the hotbar; fanny bag); one-shoulder bags (shoulder bag, sling bag, canvas satchel); hand luggage (duffel,
@@ -113,6 +115,8 @@ decorative turret.
       or crosshair, B dropper, U smoke), `RoadHazards`, `SmokeScreen` (raider fire misses through it), the vehicle
       power / water bus in `UtilityGrid`, roof perch via `RoofAccess`.
 
+*Audit (2026-10-13):* the water tank part got a hose (`TankHose`: [E] fill from / [T] empty into a built water piece within 8 m, pump lake water in) so it carries water to farms; the MG keeps a part-used belt across saves; spilled oil / fuel / ice now take grip without a dropper patch around.
+
 *Ties:* combat (raiders), irrigation, base building on vehicles, economy.
 
 ## 5. Crafting `T1–T2`
@@ -128,6 +132,8 @@ decorative turret.
       the tray: [T] collect), `RecipeLibrary.Seconds`, make rolls (`WastelandGame.Crafting`: item make per id, part
       `quality` saved per socket), Y salvage page, 13 new resources (hide … uranium ore), hemp crop, meat / fish foods,
       antibiotics, painkillers, fuel additive, blueprints for the MG, flamer, harpoon, generator, searchlight, frame pack.
+
+*Audit (2026-10-13):* `bp_framepack` now gates the frame pack recipe; goods left in a station's tray keep their own make until collected (`CraftingStation.trayMake`, saved).
 
 *Ties:* every system that produces or consumes items.
 
@@ -179,6 +185,8 @@ decorative turret.
       seed make and Farming, seeds inherit a make; wheat → flour (workbench) → bread / porridge, sugar beet → sugar
       and beet ethanol, mushroom spawn → mushroom soup; seeds and garden tools in farm loot.
 
+*Audit (2026-10-13):* the watering can's fire check no longer halves fires by itself (`Fire.Douse` with 0 L is a probe).
+
 *Ties:* irrigation, animals (feed, manure), cooking, refining (biodiesel), economy.
 
 ## 9. Irrigation `T2`
@@ -195,6 +203,8 @@ decorative turret.
       faster), `DeformableTerrain.Channels` floods dug trenches connected to a lake at its level (water array + mesh,
       re-derived when chunks stream in); beds within 2.2 m of water stay wet. Build aiming passes through roofs the
       cutaway has clipped (build inside houses and greenhouses from the isometric view).
+
+*Audit (2026-10-13):* rain collectors under a roof catch nothing.
 
 *Ties:* gardening, survival (drinking, washing), furniture, refining.
 
@@ -233,6 +243,8 @@ decorative turret.
       ARMOUR page (per zone: pick material, weld / repair for iron, scrap, rubber + petrol, or strip for some back).
       Raider cars get random kits, some wrecks carry worn ones; saved per vehicle.
 
+*Audit (2026-10-13):* fire around the vehicle chars the plates (`VehicleArmor.Scorch` from `VehicleSystems.Heat`) and burnt-through ones fall off.
+
 *Ties:* raiders, tuning, crafting, welder.
 
 ## 12. Player armor `T2`
@@ -263,14 +275,24 @@ decorative turret.
       bounce off stone/metal, sparks or dust, camera jolt (`PlayerCharacter.Impact`, `MeleeTool.LastHit`); NPCs flinch,
       heavy blows stagger them back a step, a solid hit in the wind-up spoils their swing; the player flinches when
       struck. Scenario `combat.melee_feel`.
-- [ ] Blocking / parrying and directional hit reactions (left/right/behind); reactions on network proxies
+- [x] Blocking / parrying and directional hit reactions (left/right/behind); reactions on network proxies
+      *Done (2026-10-13):* `WastelandGame.Guard` — in a fight (someone hostile within 7 m) RMB / pad LT with a melee tool
+      raises the weapon across the body (`hold_port`, slower steps; RMB no longer opens the context menu then): a blow
+      from the front within 0.25 s (+ Melee skill) of raising it is parried (no harm, the striker staggers back, 1.8 s
+      before they swing again), later it is blocked for stamina (no wound, a flinch), out of stamina the guard breaks
+      (full blow, stagger, 1.4 s without guard); sides and back get through. Armed fighters catch a share of blows from
+      the front on their own weapon (`Npc.TryGuard`: raiders 25 %, bosses 40 %, proud / gruff +10 %; sledge-weight
+      blows go through) — the player's tool rings off it. Every flinch / stagger also gives way from the blow's side
+      (`HumanAnimator.State.hitFrom/hitT` → `HitLean`: back from the front, forward from behind, bent and twisted from
+      a side). Proxies: snapshot flags `FlagReact/FlagStagger/FlagGuard` replay reactions and guards on clients, a
+      client's own hit plays at once with its side, proxies now also play the swing clips. Scenario `combat.guard`.
 - [x] **Ammo crafting** (arrows, bolts, shells, cartridges; gunpowder from charcoal + sulfur + saltpeter)
 - [x] **Aim mode** (hold RMB): crosshair, shoulder aim, iso aims at the cursor
 - [x] **Reload, magazines, jams** for crude guns
 - [x] **Noise** alerts NPCs and animals
 - [x] Throwables: pipe bomb, smoke bomb, rock
       *Done:* `RangedTool` generalised (hitscan or `Projectile`; magazine rounds per gun saved in `GunRounds`, drawn
-      guns chamber a round, R reloads / clears a jam (R still cycles rain without a gun), jam chance grows with wear,
+      guns chamber a round, R reloads / clears a jam, jam chance grows with wear,
       per-weapon noise to `NpcDirector.Noise`, recoil shake, aim zoom). `Projectile`: arrows / bolts / stones / flares
       with gravity, stick where they land (arrows and bolts picked up again, stones return as stone), NPCs bleed
       (`Npc.Bleed`), flares light up, ignite dry ground and are seen 60 m off. Melee: spear and knife use the new
@@ -280,6 +302,8 @@ decorative turret.
       line shows rounds / magazine + reserve, RELOADING, JAMMED. Smoke bombs (cloud after a fuse) and rocks (a knock
       and a noise where they land that draws NPCs away; the stone can be picked up). Recipes at the workbench /
       gunsmith / chem lab (gunpowder already comes from charcoal, sulfur and compost nitre); loot and trade prices.
+
+*Audit (2026-10-13):* the knife and crutch are one-handed (`HandTool.oneHanded`).
 
 *Ties:* hunting, raiders, crafting, mining (explosives).
 
@@ -301,6 +325,8 @@ decorative turret.
       card (kW / hp, Nm, top speed from gearing, drag and rolling, weight, braking, grip) and a dyno of torque and power
       over the rev range. Kits at the garage / chem lab.
 
+*Audit (2026-10-13):* moving bases (`RigVehicle`) keep the bench's settings after their re-tune (`VehicleTuning.Rebase`).
+
 *Ties:* economy, races (NPCs), mechanics skill gates, armour weight.
 
 ## 15. Economy `T2`
@@ -321,6 +347,8 @@ decorative turret.
       them at 6 scrap. `player_stall` piece (`PlayerStall`): stock it, passers-by buy at 80 % of the local price
       (towns > roads > wilds, more people = more sales), takings in its cash box.
 
+*Audit (2026-10-13):* roadside vendors pay 10 % less as documented (was ~1 %).
+
 *Ties:* NPCs, factions, vehicles, farming, mining, refining.
 
 ## 16. Visuals `T2`
@@ -339,6 +367,8 @@ decorative turret.
       ground (shader `_Dirt` / `_DirtTop`), rain rinses and fording washes it. Headlight beam cones show in rain, fog
       and dust. Guns flash (pooled `Fx.Flash` lights) and eject brass; blasts send a shockwave ring and a dust ring.
       `Fx.Track` / `Fx.Footprint`: tyre tracks and footprints in snow, sand and mud, fading over 90 s.
+
+*Audit (2026-10-13):* roof MGs and NPC guns flash and eject brass too (`GunFx`).
 
 *Ties:* weather, environment, vehicles, weapons.
 
@@ -402,6 +432,8 @@ decorative turret.
       new cost, half the old back), [R] repair (a share of the cost for the missing condition); the status line shows
       condition and the upgrade.
 
+*Audit (2026-10-13):* barbed wire wears as raiders struggle in it; upgrades refund half of the builder's price and keep doors locked.
+
 *Ties:* factions (raids), economy, gardening, irrigation, power.
 
 ## 19. Vehicles `T2–T3`
@@ -425,11 +457,13 @@ decorative turret.
       that gang's sight range to 35 %. Horn (Y / middle mouse / right stick): people turn and the nervous jump clear,
       a trader convoy pulls over, a blocking raider gang opens the parley, a friendly gang honks back
       (`NpcDirector.Horn`; animals hook in with roadmap 23). Maintenance in `VehicleSystems`: oil life, air filter
-      (dust, dust storms) and spark plugs (petrol) wear with running hours → OIL CHANGE DUE (engine wear), AIR FILTER
-      CLOGGED (power), MISFIRING; G services with `use_oil_filter` + a sump of oil, `use_air_filter`,
+      (dust, dust storms) and spark plugs (petrol) wear with running hours → DUE A SERVICE (engine wear), SPLUTTERS UNDER
+      LOAD (clogged filter: power), MISFIRING (the HUD names symptoms); G services with `use_oil_filter` + a sump of oil, `use_air_filter`,
       `use_spark_plugs` (workbench recipes, parts traders, garage loot); dashboard lamp S; saved per vehicle.
       `PassengerSeat` on every drivable vehicle: [E] RIDE ALONG with a trader convoy (10 scrap; the convoy keeps
       driving its road) or another player's vehicle; F gets out at the door. Companions will use the same seat.
+
+*Audit (2026-10-13):* the APC stowage bin / map case and the semi's sleeper locker exist (storage matched the wrong design names).
 
 *Ties:* tuning, armour, attachments, NPCs, economy.
 
@@ -459,6 +493,8 @@ rumours, errands, haggling, parley, combat, ragdolls.
       each other. Pack traders (`NpcRole.Packer`) walk beats along the roads with a voxel pack mule (`PackAnimal`)
       selling food, medicine, ammo, filters and dyes.
 
+*Audit (2026-10-13):* town bosses spawn again in planned towns (the leader spot sat in the unplanned-town branch); a fleet car a companion drives is saved; pack traders walk a road beat; saddled animals take orders with run + [T]; a faction guard keeps gun and vest after a load.
+
 *Ties:* factions, economy, animals, base building.
 
 ## 21. Factions `T3`
@@ -485,6 +521,8 @@ rumours, errands, haggling, parley, combat, ragdolls.
       them: +60 scrap, +8 standing); Guild escort jobs (`Npc/GuildEscort`): a Guild rig in Guild colours drives the
       road to the next town, waits when you fall behind, is ambushed halfway, pays on arrival. Standings on the P
       page; saved (`SaveData.factions`).
+
+*Audit (2026-10-13):* every standing change goes through `Factions.Shift` (errands, chores, threats, raids, races, crew medics); gang ground follows their road (`RaidersByRoad`, 120 m); Guild escorts pay Guild standing once, and an escort job running at save time fails on load.
 
 *Ties:* NPCs, economy, dialogue, base raids, bounties.
 
@@ -534,9 +572,11 @@ rumours, errands, haggling, parley, combat, ragdolls.
 - [x] **Airstrips & hangar**; take off from straight roads
 - [x] **Aerial scouting**: sites and convoys show up from the air
 
+*Audit (2026-10-13):* a hard landing no longer mends the engine (negative damage below 9 m/s).
+
 *Ties:* vehicles, crafting, exploration, economy (fast deliveries).
 
-*Done:* `FlightModel` on designs with `aircraft` (`VehicleDriver.aircraft`: free-rolling gear, no reverse): per-surface aerodynamics from each surface's point velocity (angle of attack, linear lift to the stall, flat-plate lift and drag beyond it, induced + profile drag), ailerons / elevator / rudder by deflecting the surfaces, pusher thrust from engine rpm fading with airspeed, airframe drag, wind (`Fx.Wind`). The gyrocopter's rotor autorotates (tip speed follows the airflow, a pre-rotator spins it on the ground with throttle), lifts along the disc axis and the stick tilts the disc (authority grows with rotor speed). Controls: W/S throttle lever, A/D bank + coordinated rudder (nose wheel on the ground), Space pull / Ctrl push, S at idle brakes (pad: triggers, left stick, right stick pitch). Crashes > 11 m/s wreck the engine and throw the pilot (ragdoll); > 26 m/s explode. Designs `Ultralight` (flex-wing trike, tandem seats, 10 m striped wing) and `Gyrocopter` (enclosed pod, 8 m rotor, twin fins), spinning `Prop` / `Rotor` meshes (`VehicleDesign.spinners`), explicit centre of mass ahead of the main gear (`VehicleDesign.com`), parts `engine_2stroke_aero`, `wheel_aero`. Flight HUD: altitude over ground, airspeed, climb, heading, throttle, rotor rpm, artificial horizon, blinking STALL. Chase camera = the existing vehicle cameras. Airfields: new `SiteKind.Airfield` (1–9 per world, mostly desert): a 190–260 m strip graded level with painted centreline, thresholds, edges and aiming blocks (terrain features 4/5), an apron and a derelict Quonset hangar complex (rusted-through shell, radio hut with a locker — loot table `airfield` with `bp_aviation`, windsock, fuel drums) with one flying machine to find (`WastelandGame.FoundAircraft`, saved). Buildable `hangar` piece (coarse 0.16 m voxels, station `hangar`); aircraft recipes need it and the blueprint; bicycles are a workbench recipe. Straight roads work as runways. Aerial scouting above 25 m: sites, towns, convoys (raiders in red) and herds are tagged out to 250 m + 6 × altitude (≤ 1.2 km); first sightings of sites are noted (`Scouted`, saved).
+*Done:* `FlightModel` on designs with `aircraft` (`VehicleDriver.aircraft`: free-rolling gear, no reverse): per-surface aerodynamics from each surface's point velocity (angle of attack, linear lift to the stall, flat-plate lift and drag beyond it, induced + profile drag), ailerons / elevator / rudder by deflecting the surfaces, pusher thrust from engine rpm fading with airspeed, airframe drag, wind (`Fx.Wind`). The gyrocopter's rotor autorotates (tip speed follows the airflow, a pre-rotator spins it on the ground with throttle), lifts along the disc axis and the stick tilts the disc (authority grows with rotor speed). Controls: W/S throttle lever, A/D bank + coordinated rudder (nose wheel on the ground), Space pull / Ctrl push, S at idle brakes (pad: triggers, left stick, right stick pitch). Hard contacts (impact across the surface ≥ 8 m/s) damage the engine by the impact and throw the pilot (ragdoll); > 22 m/s explode. Designs `Ultralight` (flex-wing trike, tandem seats, 10 m striped wing) and `Gyrocopter` (enclosed pod, 8 m rotor, twin fins), spinning `Prop` / `Rotor` meshes (`VehicleDesign.spinners`), explicit centre of mass ahead of the main gear (`VehicleDesign.com`), parts `engine_2stroke_aero`, `wheel_aero`. Flight HUD: altitude over ground, airspeed, climb, heading, throttle, rotor rpm, artificial horizon, blinking STALL. Chase camera = the existing vehicle cameras. Airfields: new `SiteKind.Airfield` (1–9 per world, mostly desert): a 190–260 m strip graded level with painted centreline, thresholds, edges and aiming blocks (terrain features 4/5), an apron and a derelict Quonset hangar complex (rusted-through shell, radio hut with a locker — loot table `airfield` with `bp_aviation`, windsock, fuel drums) with one flying machine to find (`WastelandGame.FoundAircraft`, saved). Buildable `hangar` piece (coarse 0.16 m voxels, station `hangar`); aircraft recipes need it and the blueprint; bicycles are a workbench recipe. Straight roads work as runways. Aerial scouting above 25 m: sites, towns, convoys (raiders in red) and herds are tagged out to 250 m + 6 × altitude (≤ 1.2 km); first sightings of sites are noted (`Scouted`, saved).
 
 ---
 
@@ -670,8 +710,10 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       deletes the only file. Suggest: autosave on sleep and every N minutes (a setting), save on quit, three slots
       plus a rolling backup.
       *Done:* three save slots plus an autosave (`SaveSystem.Slots`), the previous file kept as .bak (written via a temp file; a damaged save falls back to it), a slot list with day/place, autosave every N minutes (setting), after sleeping and on quit; permadeath deletes the run's slot and the autosave.
+      *Audit (2026-10-13):* permadeath deleted slot 1 (or the last slot used this session) even when the run had never saved there: `SaveSystem.SlotOwned` (set by saving to / loading from a slot, cleared on a new game) now gates it, and `Delete` removes the `.bak` too.
 - [x] Not saved: ruts, dents, crate positions (known), storm state and lightning fires in flight.
       *Done:* ruts still healing (sparse cells, the 300 rutted chunks nearest the player) ride in `ChunkEdit.rut`; dents per mesh (`DeformableMesh.SaveState`, `VehicleSave.dents` by child path); crates pushed off their spot (`DestructibleVoxels.Moved`, applied when they stream back in); the storm in progress (`Storms.SaveState/Restore`); fires not on vehicles (`SaveData.fires`).
+      *Audit (2026-10-13):* moved crates of the previous run leaked into a new game (the unloading scene re-noted them): `DestructibleVoxels.Moved` is cleared at `Start` when no save is pending.
 
 ### Multiplayer
 - [x] **NPCs and animals are host-only.** `NpcDirector` and `AnimalDirector` run on the authority, and `Net/` has
@@ -682,16 +724,22 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       every peer rolls its own lightning, and `Fire.Ignite` broadcasts fires from any peer. Fix: host-only strikes
       replicated by position, and Dust/Rad added to `SendWeather`.
       *Done:* storms ride in the weather message (sent when one begins), clients never roll thunder: the host rolls a strike near each player (`SendStrikes`: effects run on the host, `Strike` shows the flash and bolt there).
+      *Audit (2026-10-13):* the weather sent to a joining client (`Msg.Ready`) lacked day + storm (the reader over-read into the next message): it now carries the same fields as `SendWeather`, so a mid-storm joiner gets the storm; the packet loop seeks to every message boundary (`NetReader.Seek`), so one malformed message can't shift the rest.
 - [x] Armour plates, tuning, grime, gun rounds, fish records, market state, faction standing and aircraft found at
       airfields reach other players only through the join snapshot.
+- [x] **Moving bases, lifters, machine loads and TAKE APART were host-local** (2026-10-13 systems).
+      *Done (protocol 6, `NetSession.Tools`):* `RigSpawn` starts the same base everywhere (rig pieces keep their ids in `VehicleSave.rig`, Placed is idempotent); `ToolPose` (≤ 5 Hz, on change, resent to joiners) carries machine hinges + bucket / blade / bed loads, magnet crane and grapple poses from the simulating peer; lifters only take bodies simulated here (a client asks the host for the wreck: `Carry`, returned when let go); `Crush` runs the press as a show elsewhere and removes the car, the bale is a world item; `TakenApart` removes props / spots / lamps / city fixtures everywhere (kit and learned design stay with the doer; joiners keep their own designs and waypoint).
+      Open: city timetable clocks drift between peers after local pauses (only the join snapshot sets them); loose parts the host simulates can't be lifted by a client's magnet; client-made vehicles can still clash with host vehicle ids.
 
 ### Controls
       *Done:* `WorldState` every 10 s (faction standing, market prices, fish records, aircraft found) and `VehicleLooks` (armour, tuning, paint, grime) sent by whoever simulates the vehicle when they change, relayed by the host. Gun rounds stay per player (each keeps their own).
+      *Audit (2026-10-13):* a joining client now applies the join snapshot's terrain edits, factions, market, fish records and found aircraft at once (`JoinAsClient`) instead of waiting for the first WorldState, and only the host spawns a hangar's found aircraft (clients had a duplicate).
 - [x] **Keys are overloaded by context and cannot be rebound**: G service/repair, X 4WD/dismantle, E/Q gear
       shift/take/drop part, R reload/research/weather debug, T recover/second action/parley, Shift run/wheelie/
       sprint/gallop, Space handbrake/jump/pull up. Suggest a controls page with rebinding, and moving the debug keys
       (R rain cycle, Backspace drop part, G instant repair, T recover) behind a dev flag.
       *Done:* `Game/Controls`: every gameplay key is a rebindable action (CONTROLS page, clash warnings, reset), prompts and the help sheet show the bound keys; debug keys (weather F9, drop part Backspace, instant repair F10) only with --dev (MadMax > Dev > Debug Keys); radio power moved to / (M opens the map); recover only when slow or on its side.
+      *Audit (2026-10-13):* the CONTROLS page hid every action listed after the dev keys (tool keys, CONTEXT, LOOT, HANDCRAFT) without `--dev`; it now hides only the three dev keys (`Controls.IsDev`).
 - [x] **Gamepad is partial**: driving and some menus are mapped; building, fishing, aiming, radial menus, flying
       trim and the (future) map are not.
       *Done:* hold Select for the action wheel (right stick picks; hotbar tools are on it), tap Select = map / recover; build mode on the pad (d-pad pieces, shoulders categories, Y rotate, X dismantle, RT place); top-down aiming with LT + right stick; the right stick flies the aircraft instead of turning the camera.
@@ -719,10 +767,12 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       Suggest per-surface steps (sand, mud, snow, wood and metal floors, water) from `HumanAnimator.Footstep`, and
       hooves for the horse.
       *Done:* per-surface steps for the player and nearby NPCs (road, gravel, sand, mud, snow, water, wood decks, vehicle floors) and hooves for big animals, synthesised by `Audio/ProceduralSfx` (the fallback for keys without a recorded clip).
+      *Audit (2026-10-13):* steps inside walk-in interiors (bus, houseboat, sea base) were silent; they now play metal / wood floor steps.
 - [x] **Weapons share sounds**: the pistol, rifle and roof MG reuse `shotgun` at other pitches, and the bow reuses
       `pop`/`scratch`. There are no night insects, no creak or collapse sounds for structures, and no rotor chop
       for the gyro beyond the engine synth.
       *Done:* pistols, the rifle and machine guns have their own synthesised reports, the bow twangs; crickets on warm dry nights; structures creak before they give and rumble when they collapse; the gyro's rotor slaps.
+      *Audit (2026-10-13):* the rotor and stall horn were requested from `FixedUpdate` and stuttered above 100 fps; they are requested from `Update`, and `Sfx` keeps a loop 50 ms past its last request (city lifts, magnet crane, crusher, scraping bodies request from physics too). Carcass flies follow the AMBIENT volume.
 
 ### Visuals
 - [x] **Flying sees a small world**: terrain and props only stream within the view radius (72 m by default)
@@ -740,12 +790,37 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
       page. A journal (jobs with destinations and deadlines, rumours heard, sites found or scouted) would tie them
       together.
       *Done:* JOURNAL page (Tab from the map): the jobs in hand with distances (ENTER sets a waypoint), then a notebook of rumours heard, errands and jobs taken, places found, by day (`Game/Journal`, saved).
+- [x] **HD HUD in every mode + 3D damage view** (2026-10-13): with HD HUD on (now the default for new settings) the
+      whole HUD is crisp at screen resolution in its pixel layout (HUD SIZE still scales it): rounded vector panels with
+      soft shadows, edges and highlights (`Rendering/HudVector` + two `HudVectorGraphic` layers around the pixel image;
+      `PixelCanvas.Panel` becomes a vector panel), vector glyphs (`HudGlyphs`), bar / ring / arc gauges, the HD font at
+      fractional sizes (`PixelCanvas.TextF`). Covered: header + resources, vitals (bars + ring gauges + tag chips),
+      hotbar, crosshairs, prompt list (key caps), toasts, hints, item feed, work bar, LOOT / build / rail / status pills
+      (via `Panel`), the driving cluster (rev dial with the speed inside, gear, fuel / temperature arcs, oil / coolant /
+      mud / slip bars, 4WD / LOCK / NOS chips, warning lamps), boats (throttle, rudder) and submarines (depth, ballast,
+      battery, air), the flight panel (attitude ball, airspeed, altitude, climb, heading, throttle, rotor, stall), the
+      compass strip, weather, temperature vignette and the minimap rim. Damage view (`Game/HudVehicleView`): the current
+      vehicle (or the one you could drive, on foot) rendered 3/4 into a RenderTexture by its own camera on a hidden
+      stage (proxies share the vehicle's meshes; ≤ 10 Hz while moving or changing, 1 Hz at rest), parts tinted green →
+      amber → red by damage / tyre wear / frame damage, parts lost while watching as red ghosts, empty wheel / engine
+      sockets ringed, the hidden engine marked, armour zones, a status glyph row; replaces the PARTS map. Perf: minimap
+      composed ≤ 15 Hz (cached block), `MadMax.Hud.*` profiler markers, no-garbage text caches, memcpy upload.
+      Scenario `ui.hd_hud`.
 
 ### Performance
 - [x] **New-game load is a ~4 s single frame** behind the fader: terrain around the spawn (0.7 s after
       parallelising), 36 wrecks (0.9 s), template baking and the scene switch. The spinner freezes during
       it. Suggest a loading coroutine with a progress bar, and wrecks spawned lazily as their chunks stream in.
       *Done:* `WastelandGame.Start` is a coroutine: world/terrain, vehicles and HUD are built over separate frames behind the fader, the wheel keeps turning and a progress bar fills (`ScreenFader.Progress`); Update and the directors wait for `Ready`. Wrecks are planned up front and spawned as a player comes within 220 m (`wrecksPending`, saved; scrapyard wrecks too).
+- [x] **No multi-second frames while loading** (2026-10-13, from a dev-build boot profile: 6.4 s / 3.2 s / 2.4 s / 1.2 s
+      frames): `WorldGen` is built on its own thread (16 MB stack) while the prop templates (`BiomeProps`, `PropLibrary`)
+      are made on workers; chunk data is prefetched on workers as soon as the focus is known (`DeformableTerrain.PrefetchArea`)
+      and the chunk objects are built nearest first within `WastelandGame.LoadBudgetMs` a frame (`BuildAround`), their
+      mesh colliders cooked on workers (`BakeLater`/`PollBakes`; loose props held kinematic until the collider is in; in
+      game too for chunks beyond 2 rings); fleet vehicles and yard wrecks spawn within the budget; the tracked city and the
+      megacity merge and pack their meshes on the worker and switch colliders on a budget at a time; `SettleWorld` caps
+      physics at 6 steps a frame. Every load step has a `MadMax.Start.*` marker (terrain: `MadMax.Terrain.*`, city:
+      `MadMax.City.*`). `Pal.Hex` parses hex in C# (palettes are built on workers).
 - [x] **GC near towns**: the allocation rate triples entering a settlement (chunk arrays, prop spawns, carve
       snapshots), and an incremental GC slice sometimes takes 30+ ms. Pool chunk arrays and debris lists, and try
       IL2CPP for release builds.
@@ -753,6 +828,7 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] **First chunk with a big site** (bunker, airfield hangar) still builds its objects in one 25–35 ms frame;
       spread `SiteBuilder.Populate` over frames.
       *Done:* `SiteBuilder`: the piece's collider is cooked on a worker (`Physics.BakeMesh`) once its mesh is uploaded, and pieces spawn through `SitePending`, one per frame across all sites.
+      *Audit (2026-10-13):* a far piece could be dropped (its mesh destroyed) while PhysX was still cooking it on a worker; `Prewarm` now waits for the bake.
 - [x] **Crash frames**: a car ploughing through a building spends 15–25 ms in `VehicleDamage` dents and the carve
       before the async remesh. Dent mesh updates could batch per frame.
       *Done:* `DeformableMesh.Dent` only moves the vertex targets; one snap + upload + normals per mesh in `LateUpdate`, however many contacts and hits landed that frame.
@@ -840,7 +916,8 @@ over 33 ms on a town approach to 4). The items below are what is left: suggestio
 - [x] **Road cars sat low, tyres overlapped panels.** *Done:* `rideHeight` sign fixed (it lowered the body; the tuning slider now lifts), default 0; `BuildCar` stands the body on its wheels (belt above the tyre at arch bump, +2..4 voxels of sill clearance) and adds rocker panels, side markers, fuel cap, valance, rain gutters, wipers and an aerial; `CarveWheelArches` carves to the wheel's real position plus `ArchBumpVox` and also carves the cut doors / hood; `VehicleDriver.archLift` clamps the wheel mesh inside its arch (physics travel unchanged).
 - [x] The homestead moved behind the machine row (the loader bucket reached the awning).
 - [x] **Real cars modelled in Blender**: Fiat 126p, Renault 5, Citroën BX, XM, Xantia, Lancia Ypsilon (843), Fiat 500, Peugeot 205, 206, 207 CC, 405, 406 Break, Fiat Multipla. *Done:* `tools/blender/cars.py` lofts each body from its real dimensions (profile, beltline, plan rounding, tumblehome, pillars, doors, lamps, bumpers), voxelizes it at 0.08 m with material codes and renders side / 3/4 previews; `Designs/ModelCars.cs` builds the vehicles (shell, interior, seams, cut doors and hood, sockets); new `wheel_compact` (0.31 m). They join the fleet, wrecks and garage recipes.
-- [ ] Real cars: the Blender 3/4 preview camera is off-frame; the BX rear wheel spats and the Multipla's split windscreen line are not modelled yet; engines are the generic i4 / i6 / diesel (no flat-twin for the 126p and 500).
+- [x] Real cars: the Blender 3/4 preview camera is off-frame; the BX rear wheel spats and the Multipla's split windscreen line are not modelled yet; engines are the generic i4 / i6 / diesel (no flat-twin for the 126p and 500).
+      *Done (2026-10-13):* `cars.py` previews aim at the body's centre and fit the ortho scale to the projected body (both views); BX rear wheel spats (`ModelSpec.spats`: the skin outboard of the tyre over the upper half of the rear wheel is kept by the arch carve via `VehicleDesign.archKeep`, black panel gap round it); the Multipla's windscreen base is a black cowl line (`ModelSpec.cowl`); new part `engine_twin_air` (650 cc air-cooled four-stroke twin, 70 Nm, `EngineSpec` 360° crank alternate firing, `PartLibrary.Cars.cs`) in the 126p and 500.
 
 ## 26. Quality of life & unattended acceptance playtests `T2–T3` — planned
 
@@ -879,34 +956,40 @@ establish that the player can see and understand it.
       count, rollback distance, readability constraints and performance on a named hardware/settings profile.
       Distinguish in-game time from wall time. Record baseline and target; fail on the target, not a silently
       moving average. Only explicitly reviewed changes may replace a baseline.
-- [ ] Classify outcomes as PASS, FAIL or BLOCKED, with a reason. Missing prerequisites, unexpected skips,
+- [x] Classify outcomes as PASS, FAIL or BLOCKED, with a reason. Missing prerequisites, unexpected skips,
       unsupported advertised behaviour and missing evidence cannot count as PASS for a required suite.
+      *Done (2026-10-13):* `Outcome` Pass/Fail/Blocked with a reason everywhere (`Check`/`Block`), exit 2 for blocked-only runs, junit `<skipped>` for BLOCKED, coverage BLOCKED/NOT_RUN; a run whose suite/filter matches nothing is now BLOCKED (`run.empty`), not an empty pass. Open: required vs optional suites.
 
 *Exit evidence:* a coverage report with zero unassigned advertised features; unresolved gaps stay visible.
 
 *Progress (2026-09-30):* `tools/acceptance/manifest.py` builds and checks `Assets/StreamingAssets/Acceptance/manifest.json`
-from every README feature bullet and vehicle row (51 features: 11 mapped to scenarios, 40 explicit gaps, 0 unassigned);
+from every README feature bullet and vehicle row (51 features: 11 mapped to scenarios, 40 explicit gaps, 0 unassigned; by 2026-10-13 the manifest has 56 features, 54 mapped, 2 explicit gaps: character creation, sea bases);
 runs write `coverage.json` per feature. Catalogue checks (`catalogue.recipes`, `.vehicles`, `.manifest`) are separate from
 behavioural ones: 440 recipes resolve against 22 station types, all 77 knowledge gates have a loot, trade, media or
 research source, all 52 vehicle prefabs are complete. PASS / FAIL / BLOCKED with a reason are reported. Budgets per scenario
 are still missing.
 
 ### Q1 — Reproducible runner, input and isolation
-- [ ] Add a CLI entry point and process supervisor with per-step and whole-run watchdogs. Exit code 0 means
+- [x] Add a CLI entry point and process supervisor with per-step and whole-run watchdogs. Exit code 0 means
       every required assertion passed; crashes, timeouts, assertion failures and blocked required scenarios
       exit nonzero. A separate watchdog must still report a hung Unity main thread or failed startup.
+      *Done (2026-10-13):* runner flags + per-scenario timeout + run deadline + watchdog thread (exit 3), `run.py` external kill, exit 4 infrastructure; nested helper coroutines are now stepped by the runner, so the scenario timeout stops them too; `run.py --startup` kills a player whose runner never reports (failed startup, exit 3). Open: per-step timeouts.
 - [ ] Use temporary saves, preferences, output folders and multiplayer ports; never read or overwrite the
       player's slots or autosave. Record seed, commit/build hash, scenario version, platform, settings and
       random streams. Restore input, clocks, audio settings and processes even after failure.
+      *Progress (2026-10-13):* results.json records the commit (`MADMAX_COMMIT`, set by `run.py` from git) and the settings JSON; the runner releases injected key holds between scenarios. Open: random streams, multiplayer ports, restoring settings/audio after a failure.
 - [ ] Add full press/hold/release, pointer, scroll and gamepad input through the production input path, with
       observable menu focus and readiness conditions. Keep semantic adapters for fixture setup and state
       inspection. A UI scenario must actually navigate its UI, not invoke the success method directly.
+      *Progress (2026-10-13):* `Controls.InjectHold` (Down → Held → Up through the same queries the game reads) + `ActionPress.Hold(act, frames)`; scenario `controls.hold_release`. Existing: `VirtualKeys` (real keyboard device) in `ui.pages`/`survival.conservation`, real mouse scroll in `ui.mouse_wheel`. Open: pointer position/click and gamepad injection.
 - [ ] Seed fixtures before the observed segment; disclose granted resources, teleports and clock changes in
       the report. End-to-end progression scenarios obtain resources and travel normally. Never let the road
       pilot's automatic recovery hide a mobility failure; test player recovery as a separate explicit action.
+      *Progress (2026-10-13):* fixtures are disclosed (`Fixture`, in results.json); the player's own recovery is now an explicit, measured action (`vehicle.recover_key`: roll a car onto its roof, RECOVER key, `recover_response` budget 0.5 s). Open: progression chains still grant mid-chain.
 - [ ] Emit machine-readable JSON and JUnit results, step timings, logs and replayable input traces, plus
       screenshots/state snapshots on failure. Validate the harness itself with an intentional failed assertion,
       crash and hang: each must produce a bounded nonzero result and useful evidence.
+      *Progress (2026-10-13):* results.json / junit.xml / coverage.json / step times / logs / failure screenshots, harness self-tests (`harness.*`, `tools/acceptance/selftest.py`), and `run.py` writes `replay.sh` (exact command + commit). Open: replayable input traces, state snapshots on failure, a process-crash self-test.
 
 *Exit evidence:* the same scenario passes from a cold player and repeated editor Play sessions with domain
 reload disabled; deliberately broken runs reliably fail without user input.
@@ -930,8 +1013,9 @@ fail / crash / hang), a player-build run in CI.
 - [ ] Exercise inventory, crafting, build placement, health, skills, map/waypoint, journal, garage, help and
       settings through their real controls. Cover long names/lists, empty states, queued actions and scrolling;
       measure action counts for common tasks so adding polish does not add needless steps.
-- [ ] Exercise walking, sprinting, crouching, vaulting, mantling, sliding, rolling and grappling, including low
+- [x] Exercise walking, sprinting, crouching, vaulting, mantling, sliding, rolling and grappling, including low
       ceilings, failed ledge clearance and moving platforms. Verify input release/cancel and safe landing.
+      *Done (2026-10-13):* `survival.parkour` (walk, sprint, slide, vault 0.9 m, mantle 1.8 m, refused mantle without headroom, crouch under a 1.4 m bar, roll from 4.5 m vs a flat landing, grapple, inputs released stop the move), `build.frame` ladder climb, `player.momentum`. Open: moving platforms.
 - [ ] Check all seven camera modes, pixel-height extremes, independent HUD sizes, colour-blind mode, unit
       changes, shake disabled and keyboard/gamepad rebinding. Assert essential text stays on-screen, selected
       items remain visible and warnings remain distinguishable without colour or audio alone.
@@ -943,6 +1027,7 @@ all navigation paths can be cancelled safely and saved settings survive a fresh 
 - [ ] Run every registered vehicle, including the 13 Blender cars, through spawn, enter, start, move, steer,
       stop, reverse, exit and reload. Add dedicated suites for bikes/sidecars, horses, tracked machines,
       aircraft, boats and submarines; their control models need their own acceptance criteria.
+      *Progress (2026-10-13):* `vehicle.drive.<prefab>` now also checks steering (heading change at full lock, metric `turn_1_5s`); the generated list no longer drops its fallback (a dangling `else` in `AcceptanceScenarios.All`). Dedicated suites exist: `mobility.bike.*`, `mobility.aircraft*.*`, `mobility.boat.Skiff`, `mobility.submarine`, `vehicle.crawler_mud.*`, horse riding in `animals.herds_taming`. Open: reload per vehicle, the other boats.
 - [ ] Lock in the recent fixes: machine wheel contact/body clearance, cars separating after contact, forward
       and reverse from rest, hill hold and automatic gears, ride height and tyre/arch clearance. Compare dry
       and wet slopes with suitable tyres and loads. The skinny-tyre Trabant on wet 15° sand should hold safely
@@ -950,8 +1035,9 @@ all navigation paths can be cancelled safely and saved settings survive a fresh 
 - [ ] Measure pedal/steering response, the 0.35 s forward/reverse hold, braking distance, camera settling and
       low-speed manoeuvring. Test digital and analogue input, manual/automatic transmission, damaged parts,
       cold starts, wrong/empty fuel, fluids, punctures and service. Warnings must precede avoidable stranding.
-- [ ] Fit/remove compatible parts, armour, attachments and mounted weapons; tune, paint and apply decals.
+- [x] Fit/remove compatible parts, armour, attachments and mounted weapons; tune, paint and apply decals.
       Check actual handling/weapon effects, shown stats, costs, sockets and saved/networked appearance.
+      *Done (2026-10-13):* `mobility.parts_swap` (stats, mass, wear, saved sockets), `mobility.armour_paint` (paint, decal, armour cost, reload), `mobility.weapons`, `metal.ladder` (tuning kits). Open: networked appearance.
 - [ ] Test winch, crane, towing, tanker transfer and transporter loading with conservation and attachment
       assertions across saving and streaming. Dig → visibly fill bucket → dump into tipper → unload/use soil
       must transfer the same resource quantity; visual heaps and clods must agree with useful cargo.
@@ -1007,15 +1093,17 @@ activity, and any intentional simulation/persistence limits are recorded rather 
 - [ ] Complete dialogue, trade, errands, contracts, town chains, faction reputation, companions and escorts;
       test acceptance, refusal, expiry, abandonment and reload. Check race and Last Engine objectives/rewards.
       Rewards, inventory and standing must change exactly once, including repeated interaction attempts.
-- [ ] Test combat, weapon/ammo/reload, armour, surrender/parley, alarms/defences, companion commands, taming
+- [x] Test combat, weapon/ammo/reload, armour, surrender/parley, alarms/defences, companion commands, taming
       and riding. Verify perception and wildlife reactions, friendly/hostile distinctions and corpse loot;
       threats must leave understandable feedback and a supported escape or recovery path.
+      *Done (2026-10-13):* `people.combat` (reload, jam, armour, surrender, corpse search), `combat.melee_feel`, `people.raiders` (parley / bluff), `people.defences`, `defence.ladder`, `people.companion`, `animals.herds_taming` (perception, wolves, taming, riding), `npc.fire_fight`. Open: escape/recovery-path assertions.
 - [ ] Launch a host plus two scripted clients and a separate dedicated-server suite automatically. Exercise
       joining, simultaneous trade/build/loot, travel, reconnect and authority transfer where supported, under
       declared latency/loss/duplicate-packet conditions. Assert ownership and resource conservation at authority.
-- [ ] Turn documented multiplayer limitations into explicit failing/blocked coverage entries: client dialogue
+- [x] Turn documented multiplayer limitations into explicit failing/blocked coverage entries: client dialogue
       and trading currently act on local copies; taming/riding still require the host. Close the authority gaps
       before claiming those advertised loops pass in multiplayer; never silently substitute a host-only test.
+      *Done (2026-10-13):* `online.client_trade_authority` and `online.client_taming_authority` (suite full) are always BLOCKED with the documented reason, so the coverage report shows them until the authority gaps close.
 
 *Exit evidence:* social/combat objectives pass solo, supported shared actions converge without duplication,
 and unsupported client actions remain visible in the release coverage report until implemented.
@@ -1034,6 +1122,7 @@ and unsupported client actions remain visible in the release coverage report unt
       60 fps target, median/p95/p99 frame times, worst stalls, allocations and memory after warm-up. Include
       towns, big bases, streaming, collisions/destruction, machinery and aircraft. Set explicit per-scene budgets;
       keep screenshot capture and profiler instrumentation separate from normal timing runs.
+      *Progress (2026-10-13):* `FrameStats` logs a run summary on quit (`[fps] summary`: frames after a 20 s warm-up, median / p95 / p99 / worst frame, GC count, managed / allocated / reserved memory). Open: reference machine, per-scene budgets.
 
 *Exit evidence:* rendered and audio checks pass on a graphics-capable worker, timing budgets pass on the
 reference profile, and headless simulation success is never reported as visual/audio coverage.
@@ -1084,6 +1173,10 @@ the regression. Regional weather remains deliberately deferred; this plan does n
 - [ ] **W3 — Re-run the whole loop:** scavenge → build/tune → travel/trade → conflict/dialogue → settle/produce
       → standing → farther travel, with no fixture shortcuts. Compare task budgets and consequences against Q0,
       and publish what improved and what remains unresolved rather than ticking off content volume.
+- *Audit 2026-10-13:* W0–W3 stay open: they are play-through audits (Q-stage scenarios run in the editor over whole
+  journeys), not code. Gaps the code audit closed on the way: walkable lake ice, rain in dug pits, liquids on built
+  floors, cans keeping their contents in storage, residents' seasonal work and the fishers' catch, traffic-paced wreck
+  stripping, the HOME ledger's actions, power draw on station pages.
 
 ## Acceptance findings and user requests (2026-09-30, later)
 
@@ -1145,7 +1238,7 @@ Order: A (cooking) → B (fields and tractor) → C (roads) → D (metal + parts
 - [x] **Kitchen range** (2.4 kW, a steam generator runs it; tier 1 = finer food): every stove and oven dish in triple batches in the same time (`range_*`, generated).
 - [x] **Cannery** (1.5 kW): tinned stew, meat, fish, vegetables, fruit and beans (4 tins, never spoil), bottled water. **Still** brews beer (wheat) and cider (apples).
 - [x] 17 new foods and drinks, tins priced higher by traders. Recipes 440 → 491, station types 22 → 25. Scenario `cooking.ladder` cooks one dish on every rung (6/6).
-- Found: the small generator (1.5 kW) cannot run the electric oven (2 kW) on its own — batteries or a steam generator are needed. Consider showing the draw next to the station name.
+- Found: the small generator (1.5 kW) cannot run the electric oven (2 kW) on its own — batteries or a steam generator are needed. Consider showing the draw next to the station name. *Done (2026-10-13): the crafting page footer shows READY ... DRAWS n W / PAUSED - NO POWER (NEEDS n W) (`MenuSystem.Catalogue`).*
 
 ## Storyline (storyline.md) in tandem with the depth ladders
 The campaign KEEP THE LIGHT ON is built stage by stage alongside the depth ladders: each story stage needs verbs a depth stage delivers, so they ship together. The missing-system register (`Story/Systems.cs`) is the single list of what a quest still waits for; `story.contract` reports it.
@@ -1177,7 +1270,7 @@ Order of work: N1 remainder with stage B (fields and tractor) → N2 with stages
 - [x] **Irrigation timer**: sprinklers and drip lines on its water network run only in its window (dawn and dusk / dawn / overnight; [E] cycles), unless a bed is bone dry; without a timer, midday watering costs 60 % more water (evaporation).
 - [x] **Grain silo** (1200 kg store).
 - Verified by `farming.ladder`: hoe tills a bed, sown by hand; the tractor ploughs 8 beds in one pass, seeds 8, sprays 8, and harvests 72 wheat; the timer holds at noon, lets a dry bed through, runs at dawn.
-- Open: tractors at village farms to borrow (S06), hay and feed (stage E), more orchard trees, a proper headland turn in the test (the test places the tractor back at the headland between passes).
+- Open: tractors at village farms to borrow (S06), hay and feed (stage E, done), more orchard trees (*done 2026-10-13: pear, olive, walnut — `FoodLibrary` trees + fruit, food vendors stock the saplings, they count as harvest*), a proper headland turn in the test (the test places the tractor back at the headland between passes).
 
 ### N1 complete (2026-09-30)
 - [x] **A2 THE DEAD DON'T BUY DIESEL**: the freight clerk (Holland Cross) turns your chit away; three leads in the first town (the pump's receipt spike, Mae the cook, tyre marks at the repair stall), any two will do; the receipt or a 10-scrap fee makes the clerk talk; Len Pike at his stall testifies, goes to the boss or runs (remembered). Evidence records (receipt, cook, manifest) survive losing the paper.
@@ -1266,11 +1359,11 @@ Done this pass (above, ticked): station sounds, road news on the boards, seasona
 acceptance runner's `-scenario` filter takes a comma list of prefixes. All four new scenarios pass in the editor (seed 7).
 
 ### Suggestions (tie the experience together)
-- [ ] **Harvest chores in the villages**: residents walk out to the village crop rows at harvest and to the woodpile before the first snow (`Npc` Gather mode on `Fields`/flora crop rows), and `NpcLore` errands follow (bring in the crop, split firewood) — the seasons visible in town life, not only in prices.
+- [x] **Harvest chores in the villages** (*Done (2026-10-13):* `Npc.Chores`: in the season's harvest half two in three residents walk out to the village / town-plan field rows 8-17 h with a scythe and cut them as they go (`DeformableTerrain.Trample`, the flora regrows), before the first snow they split wood at the town fire with an axe (chop sounds, chips); the errands were already `NpcLore.Chores`): residents walk out to the village crop rows at harvest and to the woodpile before the first snow (`Npc` Gather mode on `Fields`/flora crop rows), and `NpcLore` errands follow (bring in the crop, split firewood) — the seasons visible in town life, not only in prices.
 - [x] **Road news you can act on** (2026-10-02: `TownNews.MarkWreck` ties the skirmish headline to its wreck; a board's ROAD NEWS line [E] marks it — `WastelandGame.MarkNewsWreck`, pin `WRECK (NEWS)`, waypoint, `SaveData.newsPins`, cleared on arrival; scenario `towns.news_wreck_pin`): a skirmish headline on a board pins the wreck site on the map (`SpawnRoadWreck` position → `TownNews` entry → `WastelandGame.Map` pin, cleared when looted), so reading the board leads to salvage.
 - [x] **Hear the base from the road** (2026-10-02, the map half: `WastelandGame.WorkshopPins` — the player's stations > 40 m away with work show WORKING n% / NO POWER / READY (n) as chips on the map and under THE WORKSHOP AT HOME in the journal (Enter = waypoint home); scenario `base.workshop_pins`. The muffled cabin loop is still open): a powered or fired station heard from a parked car — loops through the vehicle cabin (muffled) and a HUD "WORKING" chip on claim pieces in the map, so a player away from home knows the queue is still running or has stalled for fuel/power.
 - [x] **Preserving as a winter plan** (2026-10-02: `WastelandGame.Pantry/PantryNote` — 4 s after AUTUMN / WINTER arrives, a toast + journal PLAN line counts the pack and the player's containers in days of eating, split into food that keeps through the cold at its storage spoil rate and food that rots first, and names smoking / canning / the cellar; scenario `food.winter_pantry`): the WINTER market toast could name what the player has stored vs. needs (days of food in containers by spoilage-adjusted count) and suggest the smokehouse/cannery — one hint that ties seasons, spoilage and cooking stations together.
-- [ ] **Cellar in the story**: B2/B4 (supper, residents eating at 19:00) could draw from the root cellar first and complain when stores rot — residents as the reason to keep a pantry.
+- [x] **Cellar in the story** (*Done (2026-10-13):* `Residents.TakeFood` eats from the coolest store first (root cellar / cold store by `SpoilFactor`); after supper `Residents.Larder` counts what rotted in the garage's stores since yesterday (Hester complains, journal HOME, toast) and in autumn / winter says once per season whether the larder holds to spring (`Rotted`, `LastLarder`)): B2/B4 (supper, residents eating at 19:00) could draw from the root cellar first and complain when stores rot — residents as the reason to keep a pantry.
 - [x] **Seasonal fishing** (2026-10-02: `FishDef.seasons` warm / cold / run profiles × `BiteRate(..., season, iceHole)`, cold-water fish ignore the cold penalty; under −4 °C fresh water ices over: casts become a hole cut at the edge (≤ 3.5 m, 2.6 s chop, ICE FISHING, cold-water fish ×1.4); a first-cast hint names what is biting this season; the trawl net follows the season too; scenario `fishing.seasons`): species bite rates by season (`FishLibrary.BiteRate` × season), so the summer rods at the stalls mean something and winter ice fishing (hole through `Weather.Ice`) is its own activity.
 
 
@@ -1294,20 +1387,20 @@ acceptance runner's `-scenario` filter takes a comma list of prefixes. All four 
 Contaminants add up (Σ fraction / limit > 1 = won't run). Sump: protection = 1 − 5·water − 2.5·fuel − 1.5·crude − 0.6·seed oil (oil ages faster and the engine wears below 0.95). Cooling: the COOLANT resource is a ready mix rated −37 °C, so the freezing point is −37 °C × its share (pure water 0 °C: a parked engine below it won't start, the radiator cracks 5 °C under it); fuel or oil in the radiator cut cooling, sea water corrodes it.
 
 ### Suggestions
-- [ ] Containers in storages and on the ground keep their own contents (today they share a per-id pool in the pack): a per-instance item state in `Container` / `WorldItem`.
-- [ ] Water network ends (taps, barrels, `WaterOutlet`, vehicle water tanks) and the still / refinery as siphon and pour targets; drums as vehicle cargo.
-- [ ] Settling: water sinks to the bottom of a parked tank over hours, a drain plug lets the first litres out (clean the tank without siphoning it all).
+- [x] Containers in storages and on the ground keep their own contents (*Done (2026-10-13):* `WastelandGame.CanStates`: a can moved pack → storage (any `Container`, bags and car compartments too) or dropped onto a `WorldItem` takes its litres along through a same-frame transit in the pool, and back; storage that rolls a can as loot gets an empty one; saved as `b` (placed piece id) / `w` (world item position) lines in `blockFluids`, storage that isn't a placed piece hands its litres back to the pool on save): a per-instance item state in `Container` / `WorldItem`.
+- [x] Water network ends (taps, barrels, `WaterOutlet`, vehicle water tanks) and the still / refinery as siphon and pour targets; drums as vehicle cargo. (*Done (2026-10-13):* `NetEnd` takes water back into its network (clean stays clean, dirty/sea counts dirty, refuses other liquids) and is offered at any node with a water capacity — tanks, barrels, the `cargo_water_tank` part; `StationEnd`: a still / refinery takes a pure liquid as feed (into storage within 5 m, else the pack) and gives what it made from its tray. Drums: a `storage_drum` built on a vehicle rides along and is a `StoreEnd` like any other.)
+- [x] Settling: water sinks to the bottom of a parked tank over hours, a drain plug lets the first litres out (clean the tank without siphoning it all). (*Done (2026-10-13):* `VehicleSystems.settled` (4 game hours parked, stirred back in by driving / running; saved in the fluid state `s=`), `SettledWater`, `DrainPlug`; the K radial lists DRAIN PLUG (settled water + 0.3 L, a sample when nothing settled).)
 
 ## Scheduled update (2026-10-02)
 Done this pass (ticked above under the 2026-10-01 suggestions): seasonal and ice fishing, road news that marks the wreck,
 the winter pantry plan, the home workshop on the map. Scenarios in `Acceptance/Blocks/UpdateScenarios1002.cs`.
 
 ### Suggestions (tie the experience together)
-- [ ] **Ice you can walk on**: lakes below −4 °C get a walkable ice sheet (a flat collider at the water level, thin near the shore early in winter, cracking under vehicles above a weight) — ice fishing from the middle of the lake, winter shortcuts, and a real risk for a heavy truck.
+- [x] **Ice you can walk on** (*Done (2026-10-13):* `World/LakeIce`: the lake nearest the player gets 6 m tiles (box colliders + `StructureGround` decks) at the water level below −4 °C; thickness from the frost and the winter, shore tiles thinner early on; bears 3.5 kg × cm² — creaks near it, breaks under heavier loads (vehicle falls through, floats), refreezes after half a day; not saved (derived from the weather)): lakes below −4 °C get a walkable ice sheet (a flat collider at the water level, thin near the shore early in winter, cracking under vehicles above a weight) — ice fishing from the middle of the lake, winter shortcuts, and a real risk for a heavy truck.
 - [x] **One home ledger** (2026-10-03: the journal opens with a HOME section — `WastelandGame.HomeLedger`: per owned claim the workshop (working / stalled / ready), power in / out + battery, water held, weathered pieces, and the pantry days; scenario `base.home_ledger`): a HOME page (or the journal section) that merges the workshop chips, the pantry days, the power / water balance of the claim grid and BaseUpkeep wear into one "how is my base" screen — the systems already report separately.
 - [x] **Wreck news decays** (2026-10-03: skirmish wrecks are recorded (`WastelandGame.RoadWrecks`, `NoteRoadWreck`, saved `SaveData.roadWrecks`); reached after 1.5 days they have lost parts, loose parts, storage and fuel by age (`ScavengedShare`, 85 % by day 4), between 1.5 and 4 days a scavenger is still on site (`NpcDirector.Scavengers`); scenario `towns.wreck_scavenged`): marked wrecks get picked over by other scavengers after a few days (fewer parts, a scavenger NPC on site if the player is late), so acting on the news soon pays.
-- [x] **Fish in the economy by season** (2026-10-03, the price half: `Market.FishSeason` from the weighted mean bite factor of the season — fresh fish cheap in the summer runs, dear in winter, preserved fish a third of the swing; the season flash adds `Market.FishNews`; scenario `market.fish_seasons`. Fishermen residents are still open): `Market.SeasonFactor` for fish (cheap in the summer runs, dear in winter) and fishermen residents who sell the catch of the season — the bite tables feeding prices.
-- [x] **Pantry in the residents' talk** (2026-10-03: in autumn / winter residents, leaders, shopkeepers and wanderers answer WILL MY STORES SEE ME THROUGH THE WINTER? with `Dialogue.PantryVerdict` (temper × `Pantry` days vs. the days to spring, rot warning); scenario `talk.pantry`. The B2/B4 supper hook is still open): B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
+- [x] **Fish in the economy by season** (2026-10-03, the price half: `Market.FishSeason` from the weighted mean bite factor of the season — fresh fish cheap in the summer runs, dear in winter, preserved fish a third of the swing; the season flash adds `Market.FishNews`; scenario `market.fish_seasons`. Fishermen residents *Done (2026-10-13):* see *Fishermen at the lakes*): `Market.SeasonFactor` for fish (cheap in the summer runs, dear in winter) and fishermen residents who sell the catch of the season — the bite tables feeding prices.
+- [x] **Pantry in the residents' talk** (2026-10-03: in autumn / winter residents, leaders, shopkeepers and wanderers answer WILL MY STORES SEE ME THROUGH THE WINTER? with `Dialogue.PantryVerdict` (temper × `Pantry` days vs. the days to spring, rot warning); scenario `talk.pantry`. The B2/B4 supper hook: *Done (2026-10-13):* `Residents.Larder`): B2/B4 residents and village NPCs comment on the player's stores at supper ("the larder holds" / "we'll be eating boot leather by spring") using `PantryNote` numbers.
 - [x] **Workshop alerts on the radio** (2026-10-03: the player's stations > 40 m away call the HOME FREQUENCY on lost power, power back and a finished queue (`WastelandGame.UpdateHomeRadio/HomeCall`, `RadioNetwork.Flash(..., post: false)` keeps it off the boards, journal HOME); scenario `base.home_radio`): a powered station stalling while the player is away triggers a short WasteTalk-style radio ping on the home frequency (`RadioNetwork.Flash` with `at` = the claim) — the radio as the base's voice.
 
 
@@ -1324,6 +1417,7 @@ two cabins, and lists what is not HD by shader and object (counts + captures) �
   `tools/blender/hd/terrain/make_textures.py` → `Resources/HDTerrain` (gitignored, rendered by `release.sh`).
 - [x] **Dashboards**: `DashboardHD` geometry (dials with ticks and red zone, smooth needles, seven-segment gear and
   speed, LED fuel / temperature bars, nine lamps) instead of the 64×24 canvas whenever the HD pack is on.
+  (Superseded 2026-10-13 by the data-driven instrument clusters below; `DashboardHD` is gone.)
 - [x] **First-person cabins**: `HDVehicleBuilder.FitCabin` keeps the driver eye inside the glasshouse and 18 cm under
   the roof skin (the MonsterTruck's HD seat sat behind the cab wall, its eye in the roof) and seats the gauge cluster on
   the HD dashboard surface when it is 15–60 cm ahead.
@@ -1384,15 +1478,15 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 ### Suggestions (tie the experience together)
 - [x] **Journal job list is flooded**: on day 1 the journal lists ~40 `? NAME` story-cast pins (every authored person
   as a job) before the player's real jobs — group them under one STORY line per quest, or show only quests in progress.
-- [x] **Scavengers you can deal with** (2026-10-05, the trade half: what they strip is their stock — `Trade.Hauls`, under the usual price, saved; scenario `towns.scavenger_trade`. Fighting for it when hostile is still open): the wreck scavenger offers what they stripped for trade (the removed parts go
+- [x] **Scavengers you can deal with** (2026-10-05, the trade half: what they strip is their stock — `Trade.Hauls`, under the usual price, saved; scenario `towns.scavenger_trade`. Fighting for it: *Done (2026-10-13):* at reputation ≤ `NpcDirector.ScavengerFightsBelow` (−20) the scavenger spawns hostile with a pipe club): the wreck scavenger offers what they stripped for trade (the removed parts go
   into their stock instead of vanishing), or fights for it if the player is hostile — the late arrival becomes a choice.
 - [x] **Home frequency needs a radio**: the calls reach the journal always but the radio only when one is on; a cheap
   handheld radio item (`tool_radio`) in the starting kit would make the base's voice part of every trip.
-- [ ] **Ledger with actions**: HOME lines become selectable — ENTER on a stalled station sets a waypoint, on WEATHERED
+- [x] **Ledger with actions** (*Done (2026-10-13):* `HomeLedger(lines, acts)` / `LedgerAction`: the workshop line waypoints to a stalled (else ready) station, WEATHERED lists the worn pieces worst first with their repair cost and waypoints to the worst, PANTRY names what rots first and waypoints to the nearest preserving station or cold store): HOME lines become selectable — ENTER on a stalled station sets a waypoint, on WEATHERED
   lists the pieces (and their repair cost), on PANTRY opens the cooking stations that would save the rotting food.
-- [ ] **Fishermen at the lakes**: village residents by a lake fish at dawn (Gather mode at the shore with a rod visual)
+- [x] **Fishermen at the lakes** (*Done (2026-10-13):* one resident in three is a fisher (`Npc.Fisher`): 5-9 h outside winter they sit at the nearest shore within 240 m with a rod (casts with a splash); food vendors of a settlement with open water within 260 m sell `TODAY'S CATCH` fresh fish, as much as the season's bite tables give (`Trade.Fishers`, `CatchFactor`)): village residents by a lake fish at dawn (Gather mode at the shore with a rod visual)
   and sell the catch of the season at their stall — the bite tables visible in town life.
-- [x] **Seasonal wreck salvage** (2026-10-05: `SeasonPace` summer 1.35 / winter 0.4 scales `ScavengedShare` and the scavenger's window, winter tanks stay frozen and full; scenario `towns.wreck_seasons`. Road traffic is still open): winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
+- [x] **Seasonal wreck salvage** (2026-10-05: `SeasonPace` summer 1.35 / winter 0.4 scales `ScavengedShare` and the scavenger's window, winter tanks stay frozen and full; scenario `towns.wreck_seasons`. Road traffic: *Done (2026-10-13):* `TrafficPace` — paved highway 1.3, dirt track 1, off-road 0.7 — multiplies the season's pace and the scavenger's window): winter wrecks keep their fuel frozen and their storage (nobody travels), summer ones
   are stripped fastest — scale `ScavengedShare` by season and road traffic.
 
 ## Fixes and features (2026-10-04)
@@ -1411,11 +1505,11 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
   hydraulic arm, peg, strut, spring blade, wooden foot); crafted, looted; fitted on healed stumps.
 
 ### Suggestions
-- [x] **Extinguisher item**: a fire extinguisher to beat a vehicle fire before the tank roll (2026-10-04 scheduled; sand thrown from the shovel still open).
+- [x] **Extinguisher item**: a fire extinguisher to beat a vehicle fire before the tank roll (2026-10-04 scheduled; sand thrown from the shovel: *Done (2026-10-13):* `WastelandGame.ShovelSand` — a shovel swung within 3 m of a vehicle fire throws soil from bare ground, else sand / clay / rubble from the pack, half a burst each; smothers burning pools).
 - [x] **Key rings on NPC drivers**: convoy drivers carry their car's key (loot it off the body) instead of leaving it in.
 - [~] **HD prosthetic meshes** (2026-10-09: the salvaged cyber arm is now a textured, skinned multi-part HD assembly across all four body shapes; 11 other prosthetics still use voxel props): Blender models for all twelve pieces.
 - [x] **Crutch tool**: a one-legged player hops at 30 %; a crutch (two-handed, no tools) could lift that to 55 %.
-- [x] **Prosthetics at the clinic vendor**: medical (salvage) traders stock hooks and pegs (2026-10-04 scheduled); surgeons fitting them for scrap still open.
+- [x] **Prosthetics at the clinic vendor**: medical (salvage) traders stock hooks and pegs (2026-10-04 scheduled); surgeons fitting them for scrap: *Done (2026-10-13):* salvage traders offer to fit a prosthetic from the pack on a healed stump for 25 scrap, painless (`Dialogue.Surgeon`, `WastelandGame.SurgeonFit`).
 
 ## Interface pass (2026-10-05)
 - [x] **No spoilers in player text**: condition / odds / growth / trust in words, fuel blends by smell, symptoms not
@@ -1426,7 +1520,7 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 - [x] **HD text in editor play mode** (missing CanvasRenderer).
 
 ### Suggestions
-- [ ] **Descriptions for every build piece** (`FurnitureDef.desc`): the panel reads most from the piece's id today.
+- [x] **Descriptions for every build piece** (`FurnitureDef.desc`): the panel reads most from the piece's id today. (*Done (2026-10-13):* `FurnitureLibrary.Descriptions`: a written line for all 216 base pieces; city, frame, rig, fluid and salvaged pieces carry their own `desc`; `Describe` falls back to reading the id only for anything new.)
 - [x] **survival.loop** still grants loose fuel and presses G: update it to the can-based refuel (2026-10-02 fluids).
 - [x] **Search box** in the catalogues, labelled cells sorted A–Z, filter chips (known / can make / can build), unknown recipes greyed, hover-only panel.
 - [x] **HANDCRAFT** on foot (N): simple raw-material recipes without a bench, slower, queue of 4, saved.
@@ -1437,24 +1531,24 @@ the editor world (no lake within 2.4 km of the start) — look at the lake searc
 - [x] Pour stream from any container (trails), scooping puddles, store / tap ends in the container radial
 - [x] Makeshift pool, clay pond, storage drum, pond liner, standpipe tap, transfer pump, one-way pipes
 - [x] Burning fuel pools, water douses, mud from soaked water, slick oil/ice, well taint from soaked fuel, beds drink, vehicle leaks drip
-- [ ] Spills on structure floors and vehicle decks (they land on the terrain below today)
-- [ ] Fuel / oil pipe networks (pipes carry water only; other liquids move by container, drain or drum tap)
-- [ ] Rain filling unlined dug holes (only existing pools, liners and open stores catch rain)
+- [~] Spills on structure floors and vehicle decks (they land on the terrain below today). *Structure floors done (2026-10-13):* `Spills.Cell.floor` — a pour onto a static built floor makes cells at its height (raycast `FloorAt`), nothing soaks in, it spreads and runs off the edge to the ground; saved with the floor height. Vehicle decks stay open (cells are world-fixed; a puddle on a moving deck needs carrier-local cells).
+- [ ] Fuel / oil pipe networks (pipes carry water only; other liquids move by container, drain or drum tap). *Audit 2026-10-13: left open — needs a second network kind in `UtilityGrid` (per-net blend, no mixing with water, valve/pump rules); fuel already moves store → store with the `transfer_pump`.*
+- [x] Rain filling unlined dug holes (only existing pools, liners and open stores catch rain). *Done (2026-10-13):* `DeformableTerrain.RainPits` — every 2 × 2 m block of terraformed ground dug ≥ 25 cm within 60 m has its low point catch the block's rain (`Spills`, every 5 s while it rains); the soil drinks what it can, clay pits become ponds.
 - [x] `survival.loop` refuel step goes through the can radial; A1 pays Nell's fuel in her can (story start had no container)
 
 ## Engine sound (2026-10-06)
 - [x] Engine specs (cylinders, firing angles, cycle, fuel, displacement, valvetrain, aspiration, cooling, idle by size)
 - [x] Event-driven synth: exhaust pulses, headers, pipe, muffler, tailpipe; intake; valvetrain, bearings, slap, diesel clatter, ping, accessories, forced induction
 - [x] Starter with compression rhythm, cough, catch flare, coast-down; wear, oil, misfire, cold, fuel blend, exhaust leak and muffler damage modelled proportionally
-- [ ] Per-cylinder exhaust part damage positions (a leak at the manifold vs the tailpipe sound alike today)
-- [ ] Gearbox whine / clutch / driveline clunks (not engine sources)
+- [x] Per-cylinder exhaust part damage positions (a leak at the manifold vs the tailpipe sound alike today). *Done (2026-10-13):* `EngineSynth.leakCyl` (a battered engine blows one manifold port: a tick once a cycle from that cylinder, heard in the bay) and `leakPipe` (a dented exhaust part splits the pipe: raw pulses before the muffler, heard at the tailpipe); fed by `VehicleAudio.Feed`.
+- [x] Gearbox whine / clutch / driveline clunks (not engine sources). *Done (2026-10-13):* `Audio/DrivelineSynth` (third voice per vehicle in `VehicleAudio.Driveline`): gear-mesh whine (loud in straight-cut reverse and first, worn), diff whine on the overrun, clutch judder while it slips at pull-away, clunks on shifts, engaging drive / reverse and throttle reversal at speed; telemetry `VehicleDriver.Coupling/ShaftRpm`.
 
 ## Graphics options (2026-10-06)
 - [x] Anti-aliasing (FXAA, SMAA, TAA, MSAA 2/4/8x), upscaling (STP, FSR 1, DLSS 4 on Windows/NVIDIA) with render scale
 - [x] Shadow quality (5 levels), ambient occlusion (3 levels), screen-space reflections (HDLit), bloom levels, motion blur, anisotropic filtering
-- [ ] DLSS runtime test on a Windows machine with an NVIDIA card (Linux has no NGX runtime; the path is compile-checked only at the Windows build)
-- [ ] SSR on water (needs a DepthNormals pass on the transparent water shader) and in the orthographic views (URP SSR skips orthographic cameras)
-- [ ] GTAO ambient occlusion (needs URP's `MODERN_SSAO` define)
+- [ ] DLSS runtime test on a Windows machine with an NVIDIA card (Linux has no NGX runtime; the path is compile-checked only at the Windows build) *(audit 2026-10-13: still open — needs Windows + NVIDIA hardware)*
+- [ ] SSR on water (needs a DepthNormals pass on the transparent water shader) and in the orthographic views (URP SSR skips orthographic cameras) *(audit 2026-10-13: open — orthographic is a URP limitation; the water pass needs an in-editor visual check)*
+- [ ] GTAO ambient occlusion (needs URP's `MODERN_SSAO` define) *(audit 2026-10-13: open — a ProjectSettings scripting define, not in the script copy)*
 
 ## Scheduled update (2026-10-04)
 Done this pass (ticked above): story offers in the journal (one "?" per giver, named only once met, at most the three
@@ -1511,7 +1605,7 @@ carried to the nearest town's salvage stalls. A new game now also clears the tra
 reload). Scenarios in `Acceptance/Blocks/ScheduledScenarios1006.cs`.
 
 ### Suggestions (tie the experience together)
-- [ ] **A fire is a scene, not a number**: a burning car in town draws residents with buckets and bottles (the same
+- [x] **A fire is a scene, not a number** (*Done (2026-10-13):* `WastelandGame.FireScene` — a vehicle burning inside a settlement draws up to 2 residents within 60 m with buckets/bottles (`Npc.FightFire`, 6 bursts); when it ends the town remembers: standing by within 14 m while it was saved = firefighters' disposition +6, `Helped`, town faction +2; a fire traced to the player's own molotov (`Molotov.byPlayer` → `NoteFireBomb`, within 6 m / 60 s) = −20 disposition, faction −6; raiders' fire bombs and neighbours' saves make `TownNews` (`LastFireScene`)): a burning car in town draws residents with buckets and bottles (the same
   `Npc.FightFire`), the town remembers who saved it (disposition) and who started it (molotov source) — fire becomes a
   social event.
 - [x] **Companion medic** (2026-10-07: `Companions.MedicDrill` + `Npc.Tend` — 6 s after the last hit, with no companion fighting, the nearest one with a first-aid kit (their pack or a fleet car compartment within 20 m) or bandages/splints walks over and treats bleeding wounds and fractures; scenario `npc.companion_medic`): a companion with a first-aid kit (their pack or the car's glovebox) dresses the player's
@@ -1539,7 +1633,7 @@ the GPU was nearly full from other processes and the windowed player hung during
 ### Suggestions (tie the experience together)
 - [x] **A trip heater for the road** (2026-10-08: item `use_trip_heater` (workbench; parts stalls in winter; on the TRIP KIT list in the cold): beside a cold vehicle it burns a litre from a fuel can in the pack (else the tank unless iced) and keeps the engine warm for 75 s like a block heater — coolant thawed, engine warmed, an iced tank thawing (`StartTripHeater`, `TripHeating`); scenario `vehicle.trip_heater`): a fuel-burning engine heater kit carried in the trunk (the other half of winter
   starts) — ten minutes beside a frozen car and a litre of fuel, so a winter trip needs fuel planned for the morning.
-- [ ] **Companions drive on their own key**: a companion handed a spare key (`misc_key_blank` copy) can take a fleet
+- [x] **Companions drive on their own key** (*Done (2026-10-13):* `Companions.Keys` — a companion takes a fleet car only when its key is in it / the glovebox or a key for it is in their pack (`CanStart`, gates BRING A CAR); new radio order DRIVE A CAR TO MY WAYPOINT (`Order.ToWaypoint`): a driving companion, or one with a startable car within 40 m, drives it along the roads to the waypoint (`AiDriver.DriveTo`), parks, climbs out and holds beside it (`Deliveries`, `LastDelivered`)): a companion handed a spare key (`misc_key_blank` copy) can take a fleet
   car without the player — fetch the second car from home, follow in convoy, bring the car to the player's waypoint.
 - [x] **Stolen parts leave a trail** (2026-10-08: the car breaker's gang is kept with the stolen part (`Trade.StolenBy`, saved as a `?` line); the salvage vendor with it on the stall names the gang if they trust the player (disposition ≥ 20), else [CHA 6], one try a day (`Dialogue.StolenTrail`), and the waypoint goes on that gang's nearest raider convoy (`FollowStolenTrail`); scenario `towns.stolen_trail`. Taking it back off the convoy is still open): a part STOLEN FROM YOU names the raid in the stall note and the seller's gang;
   asking the vendor who sold it (CHA) points at the car breakers' camp — buying back or taking back.
@@ -1618,7 +1712,8 @@ Not released tonight: `/` was 100 % full (1.2 GB free) and `share/` held other s
 Library/Temp on tmpfs).
 
 ### Suggestions (tie the experience together)
-- [x] **Oil-pressure needle** (2026-10-14: the sag — `VehicleSystems.OilWear` (engine damage, tired oil, low sump) pulls the pressure down at a hot idle to ~0.35 of a healthy engine's, revs bring part of it back (`OilSagAt`); the OIL lamp flickers on a worn engine at idle; the dial itself lives in the instrument-cluster work; scenario `vehicle.oil_sag`): a real gauge on the pixel and HD dashboards, with a
+- [x] **Oil-pressure needle** (2026-10-14: the sag — `VehicleSystems.OilWear` (engine damage, tired oil, low sump) pulls the pressure down at a hot idle to ~0.35 of a healthy engine's, revs bring part of it back (`OilSagAt`); the OIL lamp flickers on a worn engine at idle; scenario `vehicle.oil_sag`): a real gauge on the pixel and HD dashboards (2026-10-13: the heavy and rugged clusters
+  carry an OIL dial reading `VehicleSystems.OilPressure`), with a
   sagging needle on worn engines and low oil — the gauge tells the engine's health before a fault does.
 - [x] **Neighbours by name** (2026-10-14: the visitor is one of the town's residents (`ResidentOf`: the same spot profiles `NpcDirector` walks about, skipping the dead), named in the toast, met, disposition +5; next talk opens with the leg (`AskAfterLeg`, once, +2); saved; scenario `npc.neighbour_by_name`): the neighbour who visits the laid-up player is a real resident of that town (their
   `NpcProfile`), disposition +5 per visit, and asks after the leg next time they meet.
@@ -1652,9 +1747,13 @@ npc.medic_word, body.lie_up, towns.boss_car, npc.hitcher(_remembers), vehicle.fr
 - [ ] **A tip's cheap part**: the hitcher network's third kind — a stall in their town holds one part for the player
   at half price until the week is out.
 
+## User requests (2026-10-13: GTA-style town driving)
+- [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
+- [x] **Light and electric poles break realistically** (2026-10-13: `World/BreakablePole` on town street lamps (`TownLights`, by piece: pole / gas / cobra / solar / floodlight mast), voxel traffic lights, stop signs and old city streetlights, and rail telegraph poles (now split out of the track tiles: each its own body with its wire span, `RailKit.Pole`). Below its snap energy a hit bends it (leans away, the next hit needs less) and the car stops as on a post; above it the foot snaps, the post falls as a rigid body (120-650 kg, capsule, pivoting over the foot, away along the hit and off to the struck side), the car keeps the momentum the post's effective mass at the hit height and the snap energy don't take (≈ 85 % at 50 km/h into a highway lamp) with a moderate crunch (`VehicleDamage.Crash`, no wall stop). Lamps go dark with glass shards, live poles arc (sparks, blue flash, sizzle), wires come down (both spans), a thud and dust when it lands; at rest it is remembered (`BreakablePole.Fallen`, saved as `f:` lines in the lights block) and lies kinematic until a vehicle shoves it. Network: protocol 7 `Msg.Knock` (the peer simulating the car sends, every peer breaks its copy; unloaded pieces fall when they stream in). Open: fallen poles never despawn (cleared with a new game); no wire physics (spans just vanish).)
+
 ## User requests (2026-10-09, night: generated cities)
-- [~] **Replace the tracked cities with the Blender-generated ones** (2026-10-09: `World/RollingCity/TrackedCity*.cs` ports modelbench/lib/citygen.py line for line through `CityKit` (box/span/beam/tube/lathe/ring/loft/wing/cable/ladder/railing, generator axes → deck-local game axes, per-vertex weathered `CM` palette, glow mesh on an unlit material, collision mesh of solid spans); both circuits carry a profile (Granite Falls 104 × 54 m, Saint Rust 120 × 58 m; `CityRoute.tracked` sets deck size, deck height 26.7 m, pose chord, bed and pier gap); crawler units with trucks, trestles, slewing rings, chain drives and four belt phases; walkable panel blocks (storey modules shared per floor: corridor, stair core, flats with furniture, balconies, AC, dishes, laundry; shops on the ground floor); halls, plants, banded chimneys, crane, pipe trunk with cabin stacks, pods, pilot bridge, railings with collision walls, lamps served by `CityLights`; high docks with lattice pier, stair tower and `CityLift`; `IDeckCarrier` carries the player on lifts. Pixel mode is only the shader over the same geometry. Scenario `city.ride` passes. Open: LOD for far views, smoke per stack size, HD look check, the old voxel profiles retired from the menu text)
-- [~] **Living aboard: purchasable quarters, build permission, shops, NPCs, walkable areas** (2026-10-09: `WastelandGame.Quarters` — every flat's door sign (`FlatDoor`) rents a week or buys outright for scrap, residents' flats and shops are taken, `SaveData.blockQuarters`; `CanBuildAt` → aboard only inside a held flat (BuildMode + free frame), pieces parent to the city (mesh colliders kept on the kinematic hull) and restore with it (`PlacedSave.city`); `Npc/CityFolk` — shopkeepers behind every ground-floor counter (food/parts/salvage/build/fuel/pack/scrap), the housing clerk at the gangway (`Dialogue.Quarters` rents the cheapest free flat and pins it), residents walking `TrackedCity.RouteIn` (stair cores) between their flat and deck spots by the clock; `Npc.aboard` skips terrain pathing. Scenario `city.living`. Open: lease expiry reminders, resident schedules beyond day/night, network replication of leases)
+- [~] **Replace the tracked cities with the Blender-generated ones** (2026-10-09: `World/RollingCity/TrackedCity*.cs` ports modelbench/lib/citygen.py line for line through `CityKit` (box/span/beam/tube/lathe/ring/loft/wing/cable/ladder/railing, generator axes → deck-local game axes, per-vertex weathered `CM` palette, glow mesh on an unlit material, collision mesh of solid spans); both circuits carry a profile (Granite Falls 104 × 54 m, Saint Rust 120 × 58 m; `CityRoute.tracked` sets deck size, deck height 26.7 m, pose chord, bed and pier gap); crawler units with trucks, trestles, slewing rings, chain drives and four belt phases; walkable panel blocks (storey modules shared per floor: corridor, stair core, flats with furniture, balconies, AC, dishes, laundry; shops on the ground floor); halls, plants, banded chimneys, crane, pipe trunk with cabin stacks, pods, pilot bridge, railings with collision walls, lamps served by `CityLights`; high docks with lattice pier, stair tower and `CityLift`; `IDeckCarrier` carries the player on lifts. Pixel mode is only the shader over the same geometry. Scenario `city.ride` passes. Open: LOD for far views, smoke per stack size, HD look check. *Audit 2026-10-13:* the NEW GAME START names no longer name the retired voxel downtowns (ABOARD THE ROLLING CITY / THE RUST-WORKS CITY))
+- [~] **Living aboard: purchasable quarters, build permission, shops, NPCs, walkable areas** (2026-10-09: `WastelandGame.Quarters` — every flat's door sign (`FlatDoor`) rents a week or buys outright for scrap, residents' flats and shops are taken, `SaveData.blockQuarters`; `CanBuildAt` → aboard only inside a held flat (BuildMode + free frame), pieces parent to the city (mesh colliders kept on the kinematic hull) and restore with it (`PlacedSave.city`); `Npc/CityFolk` — shopkeepers behind every ground-floor counter (food/parts/salvage/build/fuel/pack/scrap), the housing clerk at the gangway (`Dialogue.Quarters` rents the cheapest free flat and pins it), residents walking `TrackedCity.RouteIn` (stair cores) between their flat and deck spots by the clock; `Npc.aboard` skips terrain pathing. Scenario `city.living`. Open: resident schedules beyond day/night, network replication of leases. *Done (2026-10-13):* lease reminders — a rented flat warns a day before the rent runs out and once when it has (`UpdateLeaseReminders`, toast + journal HOME), held flats listed in the journal's ROLLING CITIES section)
 - [x] **Megacities** (2026-10-10: `World/Megacity` + `MegaCityHost` — towers, cluster decks with rentable panel blocks, shops, clerk, residents, a gated lift per cluster from the plaza, landing pad + hangar, bridges, undercroft; graded site 1.5-2.2 km from the yard, on the world map; scenario `megacity.living`. Open: far LOD (~2.0 M triangles, always loaded), flying vehicles from the Blender set, a road to the plaza, residents riding the lifts, lease replication for clients. Designed 2026-10-09 in Blender — modelbench/lib/megacity.py: towers above a cloud sea, platform clusters of panel blocks, machinery undersides, bridges, cable webs, undercroft, landing pad + hangar; vehicles gunship / freighter / crawler / land-ship / skiffs): port through `CityKit` as a world site with tower lifts, the pad, quarters, shops and NPCs like the rolling cities.
 
 ## User requests (2026-10-09, concept art)
@@ -1675,7 +1774,7 @@ npc.medic_word, body.lie_up, towns.boss_car, npc.hitcher(_remembers), vehicle.fr
 ## 28. Rolling cities `T3` — in progress
 Mobilised downtowns: old city blocks bolted onto a giant deck that crawls across the wasteland on tracked bogies,
 stopping at city docks (graded yards with ramps, cranes and stalls) along a fixed circuit.
-- [~] **R1 — one rolling city** (2026-10-08: the circuit, docks, deck + bogies + four downtown blocks with real storeys and stairs, shacks / scaffold / bridge / tank / windmill / engine house / crane, the timetable, gangway, the player carried, parked cars strapped, driven cars grip the moving deck, stack smoke and sound, the cutaway opens its blocks; scenario `city.ride`. Open: NPCs and stalls aboard, ruts, night lights, map pin and timetable on the journal, HD look, network sync beyond the join snapshot): a deterministic city (deck, four tracked bogies, downtown core of pre-war
+- [~] **R1 — one rolling city** (2026-10-08: the circuit, docks, deck + bogies + four downtown blocks with real storeys and stairs, shacks / scaffold / bridge / tank / windmill / engine house / crane, the timetable, gangway, the player carried, parked cars strapped, driven cars grip the moving deck, stack smoke and sound, the cutaway opens its blocks; scenario `city.ride`. Open: ruts, HD look, network sync beyond the join snapshot. NPCs and stalls aboard: see Living aboard; night lights: `CityLights`. *Done (2026-10-13):* map pin and timetable — `WastelandGame.CityTimetable`: each city's live position on the world map (DOCKED / ROLLING), journal section ROLLING CITIES (AT <dock>, LEAVES IN … / BOUND FOR <dock>, ARRIVES IN …; ENTER = waypoint at the dock)): a deterministic city (deck, four tracked bogies, downtown core of pre-war
       brick/concrete blocks with post-apocalyptic attachments: scaffolds, shacks hung off the facades, catwalks and
       bridges between roofs, smokestacks, a crane, water tanks, windmills), a circuit through the world graded like
       a road, docks at the stops (ramps meet the deck edge), movement (slow, steady, stops on a timetable), riders (the
@@ -1683,9 +1782,9 @@ stopping at city docks (graded yards with ramps, cranes and stalls) along a fixe
 - [~] **R2 — start on the city** (2026-10-08: RULES START: ABOARD THE ROLLING CITY puts the player on the deck at the first dock; the fleet and homestead stay at the yard 180 m away. Open: kit in a deck-side garage, a car on the deck): a new-game start (RULES: START ON THE ROLLING CITY) beginning aboard at a dock,
       with the homestead kit in a deck-side garage; acceptance scenario that boards, rides a leg and steps off at a dock.
 - [~] **R1b — procedural city profiles** (2026-10-09: seeded Granite Falls + second industrial profile Saint Rust on its own circuit; the industrial city adds taller apartment towers, denser stacks, trussed galleries, pipe runs, condensers and connectors; 512² weathered material/triplanar detail; shared façade windows are inset into their openings for both profiles. Scenario `city.ride` now checks the second city's route and dock. Open: finish window/city screenshot acceptance, smoke per stack size, track modules visible past the deck, HD pass on the older city)
-- [ ] **R3 — living aboard**: residents, stalls and a town leader (faction), jobs aboard (stoking, repairs), the
+- [~] **R3 — living aboard** (*audit 2026-10-13:* residents, shopkeepers, the housing clerk and rentable / buyable flats with build permission are in — see "Living aboard" above; open: a town leader (faction), jobs aboard, the city as a settlement for news / contracts): residents, stalls and a town leader (faction), jobs aboard (stoking, repairs), the
       city as a settlement for trade/news/contracts, player rooms to rent or build (deck plots).
-- [ ] **R4 — more cities**: other circuits and styles (industrial, church city, raider hulk), cities meeting at docks,
+- [~] **R4 — more cities** (*audit 2026-10-13:* a second circuit with the industrial Saint Rust profile and the megacity are in; open: church city / raider hulk styles, cities meeting at docks, raids, breakdowns): other circuits and styles (industrial, church city, raider hulk), cities meeting at docks,
       raids on a moving city, the city breaking down (a stranded city becomes a temporary town).
 
 ## 29. Free building: beams, spans and climbing `T3` — in progress (2026-10-08, with roadmap 28)
@@ -1693,9 +1792,165 @@ Paving the way for a post-punk high-rise look (stacked shacks, walkways and plat
 rolling cities).
 - [x] **Beams anywhere** (2026-10-09: `Building/Frame` — `beam_wood` / `beam_steel` from click to click at any angle, ≤ 8 m, snap to beam ends, Shift straight, chain on; cost per 2 m; `BuildMode.Frame`. Open: struts/cables, snapping to piece edges): a beam piece snaps by either end to any surface, piece edge or another beam's end at any
       angle (not the 90° / 0.08 m grid), length set by the second click; struts and cables as variants.
-- [x] **Spans between beam ends** (2026-10-09: `span_planks/sheet/grating` over 3-6 picked ends, plane check ≤ 0.3 m, level spans are decks (`StructureGround.AddPolygonDeck`). Open: `StructureSupport` through the beams): pick 3-6 beam ends → an elevated surface (planks, sheet, grating) is laid over the
+- [x] **Spans between beam ends** (2026-10-09: `span_planks/sheet/grating` over 3-6 picked ends, plane check ≤ 0.3 m, level spans are decks (`StructureGround.AddPolygonDeck`). *Audit 2026-10-13:* `StructureSupport` already runs through beams and spans (they are `Placeable`s with root renderers: their bounds chain to the ground and they collapse when what holds them is cut)): pick 3-6 beam ends → an elevated surface (planks, sheet, grating) is laid over the
       irregular polygon they enclose (walkable, drivable when strong enough, `StructureSupport` through the beams).
-- [~] **Working ladders** (2026-10-09: `ladder_frame(_steel)` any length and lean, `PlayerCharacter.Climb` grabs on walking in, steps off at the top; scenario `build.frame`. Open: NPCs in `NpcPath`): ladders climb (on foot input, enter/leave at the top and bottom, NPCs use them in
+- [x] **Working ladders** (2026-10-09: `ladder_frame(_steel)` any length and lean, `PlayerCharacter.Climb` grabs on walking in, steps off at the top; scenario `build.frame`. *Done (2026-10-13):* NPCs use ladders — `Npc.Ladders`: a goal on a raised level (≥ 1.8 m above / below, not a hillside) with a ladder joining the levels sends the walker to its end, climbs it with the player's hand-over-hand pose and steps off (`Npc.Climbing`, `laddersClimbed`)): ladders climb (on foot input, enter/leave at the top and bottom, NPCs use them in
       `NpcPath`), any length, onto beams and spans.
-- [ ] **Post-punk high rise**: shacks and spans hung off existing towers and the rolling city's blocks; a structure
+- [ ] **Post-punk high rise** (*audit 2026-10-13:* collapse when beams are cut works through `StructureSupport`; open: hybrid plan library — `StructurePlans.Entry` does not keep a beam's length / a span's corners yet — and authored shacks on towers / city blocks): shacks and spans hung off existing towers and the rolling city's blocks; a structure
       plan library of hybrid pieces; collapse when beams are cut.
+
+## Visual feel pass: the overhead look (2026-10-12)
+Reference: a modern top-down GTA 1/2 (perspective camera high overhead, saturated daylight, crisp shadows, clean roads,
+headlight pools at night).
+- [x] **Overhead view, the new default**: `ViewMode.Overhead` (perspective, 40° FOV, 78° down) ~27 m over the walker,
+      ~33 m over a parked car (by length), climbing with speed (+30 m at 120 km/h, rises fast, settles slowly), leading
+      half a second of travel, lazily turning behind a driven vehicle (Z/C or RMB pause it 4 s), thinner mist veil.
+      New games open in it (saves keep their view). Motion blur only in the chase / first-person views.
+- [x] **Grade**: vibrance, log-space S contrast with highlight roll-off, split toning (cool shadows, warm light; at night
+      blue shadows and warm lamplight), vignette; punchier per-biome saturation/contrast. Sun light capped at 58° so
+      everything keeps a readable shadow from above at noon. Voxel props shade smoothly at full resolution
+      (`_MadMaxSmoothLight`) beside the HD assets.
+- [x] **Highways in HD terrain**: one crisp tarmac band from the signed centre-line distance (crumbling edge, tyre
+      lanes, faded edge lines, straight centre dashes, dusty shoulder), procedural grain; junctions and road ends fall
+      back to the cells where the interpolated distance isn't one.
+- [x] **Handling**: player-only yaw assist (`VehicleDriver.yawAssist`: the body follows the steered geometry up to
+      ~1 g, a released wheel settles the tail, handbrake = tyres only), quicker steering; on foot a short momentum ramp.
+      Headlights throw a longer beam (visible from above). Scenarios `camera.overhead`, `vehicle.yaw_assist`, `player.momentum`.
+- [x] **Machine loads you can believe**: excavator / backhoe buckets, the dozer's blade and the tipper bed show their
+      load shaped by the tool itself (level in the bucket as it tilts, heaped past the rim, a windrow in front of the
+      blade), lumpy, darker freshly dug soil; loads go only into tipper beds and bins (not car boots).
+- [x] **The world at rest when you arrive**: wrecks and loose parts wake already on the ground; at game start everything
+      near the player settles behind the loading fade (the story's overturned box trailer no longer tips in view).
+- [x] **Photo ground**: the HD terrain's detail maps come from Krea-2 photos (sand ripples, pebbles, aggregate, grass
+      blades), high-passed so nothing blotches or repeats from above.
+- [x] **If you see it, you can have it**: TAKE APART world props, lamps, stalls, loot furniture and city fixtures with the
+      right tool and skill; learned designs build from resources (SALVAGED); city parts, decks, ramps, lights as pieces.
+- [x] **Moving bases at any scale**: frames + extensions, axle/track mounts, engine bay, seat, tanks, suspension; giant
+      wheels and tracks; pieces add mass; decks carry vehicles; saved.
+- [x] **Heavy lifters**: magnet crane truck and car crusher with grapple (bales of scrap).
+- [x] **Towns that make sense**: a street plan per settlement (village / town / city densities), roundabouts, boulevards,
+      ring road, sidewalks, plazas, parks, lots with yards; street furniture, flowers, litter, birds, residents on their
+      rounds, gang hangouts. Open: crisp vector street markings in HD, intact apartment blocks, town streets on the map.
+- [x] **HD minimap and map**: round minimap, heading-up / north-up, waypoint route, edge marker, smooth map zoom.
+- [x] **HD map land**: `Game/MapLand` tiles (0.25–8 m texels, built on workers from `WorldGen.Sample`): smooth biome colours, NW hillshade, water by depth with a shoreline, contour lines, town-plan ground (streets, walks, plazas, lawns, car parks, fields) and building footprints with shadows; feeds the minimap and the map page, base map (hillshaded) as fallback and above 12 m/px.
+- [x] Settings toggle for the heading follow and the yaw assist (both default on), and an overhead height slider. *Done (2026-10-13):* `GameSettings.steerAssist` (GAMEPLAY: STEERING ASSIST → `VehicleDriver.YawAssist`), `headingFollow` (MOUSE & CAMERA: OVERHEAD FOLLOWS HEADING), `overheadHeight` 60–160 % (OVERHEAD HEIGHT, multiplies the overhead camera height).
+- [x] Round minimap with the health ring (the reference HUD), speed-dependent minimap zoom. *Audit 2026-10-13:* already in — `PixelHud.DrawRoundMinimap` (health arc left, stamina arc right, low-health blink; zoom 1×→2.6× by speed, 2× in the air; `LastMinimapMpp`).
+- [ ] Junction fillets and kerbs on highways; road decals (oil, cracks) from the same distance field. *(audit 2026-10-13: left open — the HD terrain shader's road block is being reworked by the town-street-markings pass; do it after that lands)*
+
+## 30. The railway `T3` — in progress (2026-10-13)
+*User request:* a train network with connected, tiered stations, makeshift and armoured trains running, driving with
+the right skill, points, and building / extending the network.
+
+- [x] **Network** (`World/Rail/RailNetwork*.cs`, `WorldGen.rail`): a station per settlement at the edge of its plan —
+      city TERMINAL (3 platform roads to buffer stops, yard siding with an end-loading ramp, engine shed road, water
+      tower, signal box, head house with a clock tower), town STATION (2 platforms, passing loop, signal box), village
+      HALT (one platform, shelter); lines as a spanning tree + loops (same landmass), junctions in the wasteland,
+      water/fuel stops on long runs; A* round towns, lakes, sites, crawlerways; grades ≤ 2.5 %; cuttings and
+      embankments graded into the land (features 19 ballast, 20 platform), level crossings pinned to the roads,
+      bridges over rivers / low ground on piers.
+- [x] **Track you can see**: ballast, sleepers, flat-bottom rails, crossing panels, girder bridges, buffer stops,
+      telegraph poles with wires, mile posts; platforms with coping, warning strip, ramps, lamps, benches, name boards,
+      canopies; lever stands with moving blades; crossing barriers / lamps / bell; colour-light signals.
+- [x] **Trains**: makeshift Guild services on timetables (ping-pong, dwell at every station: a trader and travellers on
+      the platform), armoured patrols (Rustmen war train, Remnant ironclad) whose turrets fire on their faction's
+      enemies; sounds (diesel, joint clacks, rolling rumble, brake squeal, two-tone horn at crossings, platform bell);
+      trains strike people on the line and shove cars; a train ahead holds a service up.
+- [x] **Driving**: [F] at a cab (steal a makeshift train at a platform; take a knocked-out armoured one), W/S throttle /
+      brake, Space emergency, R reverser, Q/E set the next facing points left/right, horn, J uncouple; coupling by
+      buffering up gently; diesel by [G] with a can; skill RAILWAYS (book, research) — untrained locos lurch and crawl,
+      the ironclad needs RAILWAYS 2.
+- [x] **Building**: RAIL TRACK / SCRAP TRACK laid point to point from ends or branching off any track (new points
+      with a lever stand), take up your own; buffer stop, platform section, signal, halt shelter; kits for a draisine,
+      flatcar, hopper, shack wagon and a makeshift loco; derelict wagons / locos / draisines in station yards.
+- [x] **Saved**: laid track (replayed in order), points, service clocks, free trains with their cars and place.
+- [x] **Map**: lines and stations on the minimap and the map page; stations found on arrival (journal).
+- [ ] Station buildings as destructible voxel props (now procedural meshes) and as buildable pieces.
+- [ ] AI services meeting each other head-on (they pass through; only player trains hold them up).
+- [ ] Derailment on over-speed in curves; wheels turning; NPC drivers visible in cabs; stationmasters.
+- [ ] Network play: trains are not replicated yet (each peer runs its own timetable from the shared clock).
+
+## Living bodies — animation revamp (2026-10-13)
+Runtime side; the clip data (walk_start … car_exit_high, idle_* variants, startle / cover_head / shield_eyes, prone,
+ground sit / lie, eat / drink, boarding) is authored separately into `Resources/CharacterAnims`. Every new clip name
+falls back to a procedural stand-in (or an existing clip) until it lands; "_r" clips are mirrored from the left-hand
+ones when not authored (`HumanClip.Mirror`).
+- [x] **Attention** (`Game/Character/Attention.cs`, one per `HumanAnimator`): a prioritised look target — the player's
+      aim; danger (hostiles fighting, charging / stalking animals, a car coming straight at you, fire close by,
+      gunshots, blasts); sounds; points of interest (what [E] would use, passing vehicles, animals, loose items, the
+      waypoint now and then); idle glances (driving: the mirrors and into the turn). Static bus `Attention.Ping` fed by
+      `Sfx.Play` (loud keys only, classified once per key), `NpcDirector.Noise/Horn`, `AnimalDirector.Noise`,
+      `Explosion.Blast`, `Fire.Ignite`, projectile impacts. Hold times, re-glance cooldowns, a blink on big shifts
+      (`HumanFace.Blink`), no owl turns (> 100°: give up, or for danger while the player stands idle the body turns
+      round). Close bangs: `startle` (flinch without the clip), blasts: `cover_head` (arms over the head stand-in).
+      First person suppresses it; NPCs run it within 35 m of the focus.
+- [x] **Locomotion feel** (`HumanAnimator.Feel.cs`): walk_start / walk_stop / run_stop (else a lean into the first
+      step and a settle back), turning on the spot by steps (turn_l90 / turn_r90 over the legs; else stepping legs and
+      footsteps) — the player turns before walking off when the new direction is > 60° away; lean into turns from
+      atan(ω·v/g), uphill / downhill lean, a steadied head while moving, tired / tired_walk under 30 % stamina (else
+      heavy breathing and a hunch), cold shivers, foot IK now also on the procedural path.
+- [x] **Prone & crawl** (`PlayerCharacter.Low.cs`, `Controls.Act.Prone` appended, default X): go_prone / prone_idle /
+      crawl / prone_up, 0.6 m capsule, 0.6 m/s, quiet scrapes, harder to spot (NPC hostiles 16 m, raider convoys
+      ×0.35, animals sight ×0.3 / noise 1.5); no crawling in water over 0.4 m; standing up waits for headroom.
+- [x] **Sit / lie on the ground** anywhere level (context menu SIT DOWN / LIE DOWN / GO PRONE): sit_ground_down /
+      sit_ground / sit_ground_up, lie_down / lie / lie_up, rolls onto the side (lie_side) after 25 s; stamina back ×1.6 /
+      ×2.2; any move gets up. Beds: lie_side while asleep.
+- [x] **Eating seated**: eat / drink over the chair or ground sitting pose with the food in the hand; chewing nods after
+      a bite (standing too).
+- [x] **Boarding** (`WastelandGame.Boarding`, `BoardingAlign`, `PlayerCharacter.Board`): walk to the door spot on your
+      own legs (round the car when on the far side), square up, car_open_door with the hinged door following the hand,
+      car_enter (root placed from the clip's sampled pelvis so seat- or door-anchored clips both line up),
+      car_close_door; out: door pushed open from the seat, car_exit, door pushed shut from outside. *_high for seats
+      > 0.75 m up, *_r on the right. A move key, a blow or the car rolling breaks it off cleanly; never left inside
+      the bodywork (door spot pushed out until a standing capsule fits).
+- [x] **Idles by context**: every 6–16 s standing at ease — hot: idle_wipe_brow, cold: idle_shiver, a pack:
+      idle_check_pack, else scratch / look / shift / stretch / neck / hips; never while talking, aiming or acting; NPCs
+      use the same scheduler with their own seed (heat from the air temperature).
+- [x] **Clip contract wired** (CLIPS.md): `HumanClip` reads rootX / rootZ / rootYaw, door, ground and events
+      (`RootAt`, `RootYawAt`, `RootSpeedAt`, `TimeAtRootZ`, `DoorAt`, `GroundAt`, `EventAt`, `Crossed`); explicit `_r`,
+      `startle_l` and `turn_r90` clips win over the mirror fallback. Gait stride = the dominant clip's speed × length
+      (walk 1.40, run 2.81, sprint 3.48, crouch_walk 0.95, tired_walk 1.155, crawl 0.66 m, × h) — run / sprint no
+      longer over-cycle. walk_start plays by the distance walked and hands over at walk u = 0; letting go of the input
+      runs on to the next heel strike, then walk_stop / run_stop (or the _r mirror from the right heel) move the body by
+      their rootZ; turning on the spot from standing plays turn_l90 / turn_r90 and turns the root by their rootYaw;
+      lie_down / lie_up move the resting root ∓0.45 m. Boarding in the seat frame: the walk-to point is the clips'
+      stand spot (car −0.60 / −0.45, high −0.90 / 0, × h), root at the seat lowered by the seat-height difference and
+      shifted by the stand-spot difference × ground[f], the hinge from door[f], sounds from door_open / door_shut,
+      base pose from seated / standing; car_exit opens the door itself. eat / drink run their full 2.4 / 2.2 s; bite
+      starts the chewing, sip a gulp; action-clip steps sound as footsteps. Prone: the controller stays at the root, a
+      probe keeps the head (1 m ahead) out of walls; crawl at the clip's 0.55 m/s.
+- [ ] Network: remote avatars and NPC proxies don't replicate prone / ground rest / boarding steps / attention targets
+      (peers see them standing, then seated).
+- [ ] NPCs sit and lie on the ground at camps and stalls, go prone / crouch behind cover in a fight, glance at each
+      other in NPC-NPC chats (Attention POI for the partner).
+- [ ] Passenger and rear doors: the same open / enter / close sequence (with *_r) for `PassengerSeat` boarding and
+      companions getting in.
+- [ ] Prone shooting (aim from the ground with long guns), crawling under low obstacles (vehicles, fences).
+- [ ] A jaw / mouth on `HumanFace` for chewing and talking; breath fog in the cold and sweat sheen in the heat.
+- [ ] Save the ground rest / prone state (load stands you up today).
+- [x] **Editor pass (2026-10-13)**: `anim.revamp`, `combat.guard`, `rail.network`, `rig.commission`, `vehicle.lifters`, `ui.map_land`, `towns.plan_smoke`, `player.momentum` pass in the editor; close-up captures of idle / walk / prone / crawl / ground sit / eat / lie and the full door sequence into a Sedan. Fixed on the way: boarding cancelled by trickle damage (`SinceBlow`) and by a frame-rate dependent stuck test; rail stations dropped by a summed slope score, networks split by straight-line dry checks, the crawlerway ring and the polar ice (landmass labels); test fixtures (raider pinned for the guard, far pads, on foot before the rail test).
+- [ ] Eat / drink with the real food model in hand for every food id (`food_can` fell back to the kit crate in the capture).
+- [ ] Walk stop: the run-to-heel + `walk_stop` takes ~0.9 s; offer a SNAPPY STOP setting or shorten for the top-down view if it feels slow.
+- [x] **Climbable terrain** (2026-10-13): softer ridges, and road / river / rail / yard / crawlerway banks that widen with the cut (~20°); steep spots near the start 0.56 % → 0.16 %.
+
+## Instrument clusters (2026-10-13)
+- [x] **Data-driven clusters** (`Vehicle/Dashboard/`): `DashboardStyle` (panel size, binnacle visor or flat panel,
+  Pal colours, bezel kind, backlight colour, key-on needle sweep; `GaugeDef` dial / LED bar / seven-segment digital /
+  rolling drum / shift-light LEDs with ranges, red zones, end letters and captions; `LampDef`s; dummy `SwitchDef`s),
+  `DashboardBuilder` (real geometry, one mesh set per style shared by every vehicle: lit housing with chrome / black /
+  square screwed bezels, unlit backlit face with ticks, 5x7 numerals, red zones and glass glints, needle transforms,
+  drum wheels, digit / LED meshes swapped, lamp lenses with icons tinted through a MaterialPropertyBlock), PixelVoxel
+  copies or HDLit with the HD pack. Built lazily (sat in, or the focus within 30 m).
+- [x] **Four generic styles** (`DashboardStyles`): classic analog (Sedan, Wagon, Pickup, Trabant, model cars: speedo +
+  tacho, fuel / temp, odometer drum, amber backlight), heavy panel (Hauler, Semi, Bus, TowTruck, Wrecker, Ambulance,
+  MagnetCrane, CarCrusher, boats; machines and moving bases on `heavy_slow`: speedo, tacho, oil, coolant, fuel, volts,
+  air, turbo, hour meter, rocker row), sport (Interceptor, Coupe, DuneBuggy, MonsterTruck, bikes at 62 %, aircraft:
+  white-faced tacho, digital speed, gear, shift lights, LED bars, needle sweep), rugged (APC, Scavenger: square gauges,
+  toggles, green backlight). Pedal bikes have none. `VehicleDesign.dashboard` / `VehicleDashboard.style` override; a
+  custom style named after a design is picked for it (`DashboardStyles.Custom.cs`).
+- [x] **Behaviour**: speed / rpm needles damped, fuel / temperature slow and falling to E / C with the key off, cranking
+  flicker, bulb check for 1.6 s on key-on, OIL + CHARGE red while the engine is off (OIL amber on low pressure, lamp
+  index 5; COLD lamp 9), headlamp / 4x4 / diff-lock / fire / air lamps, backlight at night with the headlamps (sport
+  always), odometer from the engine hours + the trip, tacho range from the mounted engine, units from the settings.
+  Scenario `vehicle.dashboards`.
+- [ ] Vehicle-specific clusters (Interceptor supercharger gauge, Bus door lamps, aircraft panels with altimeter / ASI,
+  boat panels with depth sounder), turn-signal arrows once indicators exist, a saved odometer.

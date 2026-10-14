@@ -154,6 +154,9 @@ namespace MadMax.World
             /// <summary>Generator → game mapping origin: deck centre at deck-top height.</summary>
             public Vector3 Origin => new Vector3(0f, 0f, ZD);
             public CityKit Kit(int salt = 0) => new CityKit(Origin, p.seed * 131 + salt);
+            /// <summary>Generator point → deck-local game point (<see cref="CityKit.P"/> without making a kit: per frame).</summary>
+            public Vector3 P(Vector3 b) => new Vector3(-b.y, b.z - ZD, b.x);
+            public Vector3 P(float bx, float by, float bz) => new Vector3(-by, bz - ZD, bx);
         }
 
         /// <summary>Deck-local game-space smoke outlets (stack tops) for the plan.</summary>

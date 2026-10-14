@@ -22,6 +22,11 @@ namespace MadMax.Story
         public static float Yaw(string key) => yaw.TryGetValue(key, out var y) ? y : 0f;
         public static IEnumerable<KeyValuePair<string, Vector3>> AllBound => at;
 
+        /// <summary>Bind again from scratch (a failed bind on the world thread is retried on the main thread).</summary>
+        public static void Rebind(WorldGen world) { bound = null; at.Clear(); yaw.Clear(); Bind(world); }
+
+        /// <summary>Pure on <paramref name="world"/> (sampling, layouts, landmarks; no Unity objects): runs on the world
+        /// generation thread at load (<c>WastelandGame.GenerateWorld</c>), before any chunk data is generated.</summary>
         public static void Bind(WorldGen world)
         {
             if (bound == world && at.Count > 0) return;

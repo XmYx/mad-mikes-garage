@@ -34,6 +34,7 @@ namespace MadMax.Building
             if (g.Stats.waste < 20f) { g.Toast("YOU DON'T NEED TO GO"); return; }
             if (fresh + ripe >= MaxPit) { g.Toast("THE PIT IS FULL: DIG IT OUT [T]"); return; }
             MadMax.Audio.Sfx.Play("door_open", transform.position, 0.6f);
+            PieceMotion.Use(gameObject, "open", 1.6f);
             MadMax.Game.ScreenFader.FadeThrough(() =>
             {
                 fresh += g.Stats.waste;

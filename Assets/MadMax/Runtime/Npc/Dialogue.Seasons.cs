@@ -92,7 +92,7 @@ namespace MadMax.Npc
             if (c.gift != null) g.Inventory.AddItem(c.gift, c.giftN);
             S.choreState = 2;
             Change(8);
-            NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 1);
+            Factions.Shift(Faction.Settlers, 1);
             MadMax.Audio.Sfx.Play2D("cash", 0.5f);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 1f);
             line = c.thanks + " (" + scrap + " SCRAP)";

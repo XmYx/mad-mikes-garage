@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 HD = os.path.dirname(HERE)
 BLENDER = os.environ.get("BLENDER", "/usr/bin/blender")
 PREVIEW = "/home/magix/PycharmProjects/MadMaxUnity/hd_preview"
-FAMILIES = [("parts_all", f) for f in ("wheels", "engines", "bumpers", "cargo", "lights_exhaust", "body_weapons", "machine_tools")] + \
+FAMILIES = [("parts_all", f) for f in ("wheels", "engines", "bumpers", "cargo", "lights_exhaust", "body_weapons", "machine_tools", "rig_wheels")] + \
            [("items", f) for f in ("tools", "food", "consumables", "clothing", "world_items")]
 # atlas size per asset for the exporter (texels on screen: a part spans 0.3-2 m, an item 0.05-1 m)
 BIG_PARTS = {"engines", "machine_tools"}

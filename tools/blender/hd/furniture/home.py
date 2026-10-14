@@ -7,7 +7,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from fcommon import K, Asset, Vector, Matrix, lo, hi, c, W, knob, screws, leg_square, drawer_front, bulb, run, VS
+from fcommon import K, Asset, Vector, Matrix, lo, hi, c, W, knob, screws, leg_square, drawer_front, bulb, run, VS  # noqa: F401
+from fcommon import drape, pillow, folded, mug, kettle, pan, jar, candle, log_pile, frame_picture, image_material, decal_material  # noqa: F401
 
 
 # ------------------------------------------------------------------------------------------ furniture
@@ -26,13 +27,17 @@ def bed():
         w.sphere(W("dark", "y"), 0.035, (x * VS, hi(8) - 0.01, 11 * VS), (1, 0.8, 1), 10, 6)
     w.box2(W("light", "x"), (lo(-4), lo(3), lo(11) + 0.02), (hi(4), hi(7), hi(11) - 0.02), bevel=0.01)
     w.box2(W("", "x"), (lo(-4), hi(7) - 0.04, lo(11)), (hi(4), hi(7) + 0.02, hi(11)), bevel=0.008)
-    # mattress, blanket, pillow
-    cl.box2("sheet", (lo(-4) + 0.01, lo(3), lo(-11)), (hi(4) - 0.01, hi(4), hi(10)), bevel=0.05, segs=3)
-    cl.superloft("blanket", [(lo(-11) - 0.012, 0, hi(4) - 0.03, 0.385, 0.045), (lo(-11), 0, hi(4) - 0.02, 0.4, 0.06),
-                             (0.0, 0, hi(4) - 0.005, 0.395, 0.055), (hi(3) - 0.02, 0, hi(4) - 0.01, 0.39, 0.05), (hi(3) + 0.03, 0, hi(4) - 0.03, 0.37, 0.035)], 20, 3.2)
-    cl.superloft("blanket", [(hi(3) - 0.06, 0, hi(4) + 0.03, 0.39, 0.035), (hi(3) + 0.06, 0, hi(4) + 0.03, 0.39, 0.03)], 16, 3.0)   # turned-down edge
-    cl.superloft("cloth_cream", [(lo(7) + 0.01, 0, hi(5) + 0.0, 0.2, 0.04), (lo(7) + 0.06, 0, hi(5) + 0.02, 0.26, 0.07),
-                                 (hi(10) - 0.06, 0, hi(5) + 0.02, 0.26, 0.07), (hi(10) - 0.01, 0, hi(5), 0.2, 0.04)], 18, 2.4)
+    # mattress (ticking), rumpled patchwork quilt hanging over the sides, turned-down sheet, two pillows,
+    # a folded wool blanket at the foot
+    cl.box2("ticking", (lo(-4) + 0.01, lo(3), lo(-11)), (hi(4) - 0.01, hi(4), hi(10)), bevel=0.05, segs=3)
+    drape(cl, "sheet", lo(-4) + 0.0, hi(4) - 0.0, c(4.5), hi(10) - 0.02, hi(4) + 0.006, hang=0.06, t=0.008, seed=31, amp=0.004, nx=10, nz=4)
+    drape(cl, "quilt", lo(-4) - 0.005, hi(4) + 0.005, lo(-11) + 0.02, c(5.5), hi(4) + 0.03, hang=0.17, t=0.022, seed=32, amp=0.016,
+          nx=14, nz=10, foot=True)
+    cl.loft("quilt", [[(x, hi(4) + 0.055 + 0.012 * math.sin(x * 9), z) for x in (lo(-4), -0.2, 0.0, 0.2, hi(4))] +
+                      [(x, hi(4) + 0.03, z) for x in (hi(4), 0.2, 0.0, -0.2, lo(-4))] for z in (c(4.6), c(5.6))])   # turned-down edge
+    pillow(cl, "cloth_cream", (-0.19, hi(4) + 0.075, c(8.6)), 0.36, 0.3, 0.13, yaw=6, tilt=-12)
+    pillow(cl, "cushion", (0.19, hi(4) + 0.07, c(8.4)), 0.34, 0.28, 0.12, yaw=-9, tilt=-10)
+    folded(cl, "blanket", (lo(-4) + 0.04, hi(4) + 0.04, lo(-11) + 0.05), (hi(4) - 0.06, hi(4) + 0.13, lo(-11) + 0.36), 3)
     return a
 
 
@@ -129,6 +134,10 @@ def shelf():
     s.box2("rust", (lo(2), hi(1), lo(-2)), (hi(4), hi(3), hi(0)), bevel=0.012)
     s.box2("steel", (lo(5), hi(1), lo(1)), (hi(6), hi(4) - 0.02, hi(2)), bevel=0.01)
     s.cyl("steel_dark", 0.02, 0.01, (c(5.5), hi(4) - 0.015, c(1.5)), "y", 10, 0.002)
+    lab = image_material("TexLabels", "labels", (1.0, 1.0, 1.0), 0.8, 0.32, False, "h")
+    for k, (x, fill) in enumerate(((-1.0, "flower_red"), (0.5, "ochre"), (2.2, "cloth_green"))):   # preserves with paper labels
+        jar(g, "glass", "brass" if k % 2 else "cloth_red", (c(x) - 0.02, hi(1), c(1.6) if k != 1 else c(-1.4)), 0.042, 0.12 + 0.02 * (k % 2), fill_m=fill, label_m=lab)
+    candle(s, a.p("Flame", "Wood", pivot=(c(-6.2), hi(1) + 0.078, c(2)), mover=True), (c(-6.2), hi(1), c(2)), 0.018, 0.07, 3, seed=7)
     return a
 
 
@@ -192,13 +201,17 @@ def stove():
     s.box2("black", (lo(-2), lo(3), hi(3) - 0.02), (hi(2), hi(5), hi(3)), bevel=0.01)          # fire door
     for k in range(5):
         s.box2("iron", (lo(-2) + 0.02 + k * 0.07, lo(3) + 0.02, hi(3)), (lo(-2) + 0.045 + k * 0.07, hi(5) - 0.02, hi(3) + 0.012), bevel=0.002)
-    a.p("Glow", "Scrap").box2("ember", (lo(-2) + 0.02, lo(3) + 0.02, hi(3) - 0.022), (hi(2) - 0.02, hi(5) - 0.02, hi(3) - 0.018), bevel=0)
+    a.p("Embers", "Scrap").box2("ember", (lo(-2) + 0.02, lo(3) + 0.02, hi(3) - 0.022), (hi(2) - 0.02, hi(5) - 0.02, hi(3) - 0.018), bevel=0)
     s.rod("chrome", (c(2.4), c(4), hi(3) + 0.006), (c(2.4), c(4), hi(3) + 0.02), 0.01, 8)
-    s.lathe("steel", [(0.0, 0), (0.09, 0), (0.1, 0.02), (0.1, 0.19), (0.105, 0.2), (0.0, 0.2)], (c(-2), hi(8), 0), "y", 18)   # pot
-    s.tube("steel", [(c(-2) - 0.1, hi(8) + 0.17, 0), (c(-2), hi(8) + 0.27, 0), (c(-2) + 0.1, hi(8) + 0.17, 0)], 0.005, 5, caps=False)
+    pot = a.p("Pot", "Scrap", pivot=(c(-2), hi(8), 0), mover=True)
+    pot.lathe("steel", [(0.0, 0), (0.09, 0), (0.1, 0.02), (0.1, 0.19), (0.105, 0.2), (0.0, 0.2)], (c(-2), hi(8), 0), "y", 18)   # pot
+    pot.tube("steel", [(c(-2) - 0.1, hi(8) + 0.17, 0), (c(-2), hi(8) + 0.27, 0), (c(-2) + 0.1, hi(8) + 0.17, 0)], 0.005, 5, caps=False)
     s.cyl("rust", 0.06, hi(22) - hi(8) - 0.04, (c(2), (hi(8) + hi(22)) / 2 - 0.02, c(-2)), "y", 14, 0.003)     # flue
     s.cyl("rust", 0.075, 0.02, (c(2), hi(14), c(-2)), "y", 14, 0.003)
-    s.lathe("rust", [(0.0, 0.0), (0.12, 0.0), (0.0, 0.05)], (c(2), hi(22) - 0.05, c(-2)), "y", 14)
+    a.p("Chimney", "Scrap", pivot=(c(2), hi(22), c(-2))).lathe("rust", [(0.0, 0.0), (0.12, 0.0), (0.0, 0.05)], (c(2), hi(22) - 0.05, c(-2)), "y", 14)   # flue cap: smoke here
+    kettle(a.p("Kettle", "Scrap", pivot=(c(1.6), hi(8), c(1.6)), mover=True), "enamel", (c(1.6), hi(8), c(1.6)), 0.075, "black")
+    s.box2("cloth_red", (lo(-4) - 0.03, hi(6) - 0.02, hi(3) + 0.02), (lo(-4) + 0.005, hi(6) + 0.2, hi(3) + 0.05), bevel=0.01, r=(0, 0, 4))   # tea towel on the rail
+    s.rod("chrome", (lo(-4) - 0.02, hi(7), lo(-3)), (lo(-4) - 0.02, hi(7), hi(3)), 0.007, 6)
     return a
 
 
@@ -220,6 +233,8 @@ def oven():
         for z in (-1.5, 1):
             s.torus("steel_dark", 0.07, 0.008, (c(x), lo(12) + 0.022, c(z)), "y", 16, 5)
     s.box2("white", (lo(-5), hi(11) - 0.02, lo(-4)), (hi(5), hi(12) + 0.03, lo(-4) + 0.06), bevel=0.01)   # splash back
+    pan(a.p("Pan", "Scrap", pivot=(c(-2), lo(12) + 0.03, c(-1.5)), mover=True), "iron", (c(-2), lo(12) + 0.03, c(-1.5)), 0.11, yaw=150)
+    kettle(a.p("Kettle", "Scrap", pivot=(c(2), lo(12) + 0.03, c(1)), mover=True), "crimson", (c(2), lo(12) + 0.03, c(1)), 0.07, "black")
     return a
 
 
@@ -253,6 +268,18 @@ def table():
     for k in range(5):
         z0 = lo(-6) + k * 0.208
         w.box2(K.WOODS["x"][k % 3], (lo(-9), lo(10), z0 + 0.002), (hi(9), hi(10), z0 + 0.206), bevel=0.008)
+    s = a.p("Scrap")
+    mug(s, "enamel", (c(4), hi(10), c(2)))
+    mug(s, "navy", (c(-5.5), hi(10), c(-2.5)), 0.038, 0.085)
+    w.box(K.wood("dark", "x"), (0.24, 0.035, 0.17), (c(-2), hi(10) + 0.018, c(1.5)), r=(0, 14, 0), bevel=0.006)     # a closed book
+    w.box("paper", (0.23, 0.026, 0.16), (c(-2), hi(10) + 0.018, c(1.5) + 0.004), r=(0, 14, 0), bevel=0.002)
+    g = a.p("Glass")
+    jar(g, "glass", "steel", (c(1), hi(10), c(-2)), 0.045, 0.14, fill_m="water")
+    for k in range(5):                                    # a few wild flowers in the jar
+        an = k * 1.26
+        tip = (c(1) + math.cos(an) * 0.06, hi(10) + 0.19 + 0.025 * (k % 2), c(-2) + math.sin(an) * 0.06)
+        w.rod("leaf", (c(1), hi(10) + 0.1, c(-2)), tip, 0.003, 4)
+        w.sphere("flower_yellow" if k % 2 else "flower_red", 0.016, tip, (1, 0.6, 1), 8, 4)
     return a
 
 
@@ -262,14 +289,21 @@ def sofa():
     for x in (-11, 11):
         for z in (-3, 3):
             w.cyl(W("dark", "y"), 0.025, 0.06, (c(x), lo(0) + 0.03, c(z)), "y", 8, 0.004)
-    cl.box2("cloth_olive", (lo(-12), lo(0) + 0.06, lo(-4)), (hi(12), hi(5), hi(4)), bevel=0.04, segs=3)
-    cl.box2("cloth_olive", (lo(-12) + 0.02, hi(5) - 0.02, lo(-4)), (hi(12) - 0.02, hi(11), hi(-2)), bevel=0.06, segs=3)    # back
+    cl.box2("cushion", (lo(-12), lo(0) + 0.06, lo(-4)), (hi(12), hi(5), hi(4)), bevel=0.04, segs=3)
+    cl.box2("cushion", (lo(-12) + 0.02, hi(5) - 0.02, lo(-4)), (hi(12) - 0.02, hi(11), hi(-2)), bevel=0.06, segs=3)    # back
     for x0, x1 in ((-12, -10), (10, 12)):                                                          # arms
-        cl.box2("cloth_olive", (lo(x0), hi(5) - 0.04, lo(-4)), (hi(x1), hi(8), hi(4)), bevel=0.06, segs=3)
+        cl.box2("cushion", (lo(x0), hi(5) - 0.04, lo(-4)), (hi(x1), hi(8), hi(4)), bevel=0.06, segs=3)
     for x0, x1 in ((-11 + 0.6, -1), (1, 11 - 0.6)):                                                # seat cushions
-        cl.box2("cloth_olive", (lo(x0), lo(6) - 0.02, lo(-1)), (hi(x1), hi(6) + 0.01, hi(4) - 0.02), bevel=0.04, segs=3)
-        cl.box2("cloth_olive", (lo(x0) + 0.02, hi(6) - 0.03, lo(-2) + 0.0), (hi(x1) - 0.02, hi(10), lo(-1) + 0.04), bevel=0.05, segs=3, r=(-8, 0, 0))
-    cl.box2("cloth_red", (c(4), hi(6) - 0.02, c(0)), (c(7), hi(6) + 0.08, c(2.5)), bevel=0.035, segs=2, r=(0, 20, 12))         # throw pillow
+        cl.box2("cushion", (lo(x0), lo(6) - 0.02, lo(-1)), (hi(x1), hi(6) + 0.01, hi(4) - 0.02), bevel=0.04, segs=3)
+        cl.box2("cushion", (lo(x0) + 0.02, hi(6) - 0.03, lo(-2) + 0.0), (hi(x1) - 0.02, hi(10), lo(-1) + 0.04), bevel=0.05, segs=3, r=(-8, 0, 0))
+    pillow(cl, "quilt", (c(-8.2), hi(6) + 0.16, c(-1.2)), 0.36, 0.14, 0.34, yaw=8, tilt=-62)                     # throw pillows
+    pillow(cl, "cloth_red", (c(8.0), hi(6) + 0.15, c(-1.0)), 0.34, 0.13, 0.32, yaw=-14, tilt=-58)
+    pillow(cl, "cloth_cream", (c(5.6), hi(6) + 0.13, c(-0.6)), 0.28, 0.12, 0.26, yaw=20, tilt=-50)
+    # wool blanket thrown over the left arm, spilling onto the seat
+    cl.loft("blanket", [[(x, y + 0.012, z) for (x, y) in pts] + [(x, y - 0.012, z) for (x, y) in reversed(pts)]
+                        for z, pts in ((lo(-3), [(lo(-12) - 0.03, c(3)), (lo(-12) - 0.02, hi(8) + 0.01), (c(-11), hi(8) + 0.03), (hi(-10), hi(8) + 0.01), (c(-9), hi(6) + 0.04), (c(-6.5), hi(6) + 0.03)]),
+                                       (c(0.5), [(lo(-12) - 0.035, c(2.6)), (lo(-12) - 0.02, hi(8) + 0.02), (c(-11), hi(8) + 0.045), (hi(-10), hi(8) + 0.02), (c(-9), hi(6) + 0.05), (c(-7.5), hi(6) + 0.035)]),
+                                       (hi(3), [(lo(-12) - 0.03, c(3.2)), (lo(-12) - 0.02, hi(8) + 0.01), (c(-11), hi(8) + 0.03), (hi(-10), hi(8) + 0.01), (c(-9), hi(6) + 0.04), (c(-8), hi(6) + 0.03)]))])
     return a
 
 
@@ -302,8 +336,13 @@ def radio():
         s.cyl("black", 0.1, 0.012, (c(sx), c(2), F), "z", 20, 0.003)
         for k in range(-3, 4):
             s.box2("chrome", (c(sx) - 0.08, c(2) + k * 0.022 - 0.004, F + 0.004), (c(sx) + 0.08, c(2) + k * 0.022 + 0.004, F + 0.008), bevel=0)
-    g.box2("lamp_amber", (lo(-1), lo(3), F - 0.004), (hi(1), hi(4) - 0.02, F + 0.006), bevel=0.003)
-    s.box2("lamp_red", (c(0.2) - 0.003, lo(3) + 0.01, F + 0.006), (c(0.2) + 0.003, hi(4) - 0.03, F + 0.009), bevel=0)
+    dial = a.p("Dial", "Glass")                           # glowing tuning dial (own object: the game lights it when on)
+    dial.box2("dial_glow", (lo(-1), lo(3), F - 0.004), (hi(1), hi(4) - 0.02, F + 0.006), bevel=0.003)
+    for k in range(9):                                    # frequency ticks
+        s.box2("black", (lo(-1) + 0.02 + k * 0.022, hi(4) - 0.05, F + 0.006), (lo(-1) + 0.024 + k * 0.022, hi(4) - 0.032, F + 0.008), bevel=0)
+    nd = a.p("Needle", "Scrap", pivot=(c(0.2), lo(3) + 0.01, F + 0.008), mover=True)
+    nd.box2("lamp_red", (c(0.2) - 0.003, lo(3) + 0.01, F + 0.006), (c(0.2) + 0.003, hi(4) - 0.03, F + 0.009), bevel=0)
+    s.box2("leather", (lo(-5) - 0.004, lo(0) + 0.02, lo(-2) - 0.004), (hi(5) + 0.004, lo(1) + 0.01, hi(1) + 0.004), bevel=0.01)   # leatherette base band
     for x, y in ((0, 2), (-1, 1), (1, 1)):
         knob(s, "chrome", (c(x), c(y), F + 0.015), 0.022, "z", 0.03)
     s.tube("black", [(c(-3), hi(5) - 0.01, 0), (c(-3), c(6.8), 0), (c(-2.4), c(7.2), 0), (c(2.4), c(7.2), 0), (c(3), c(6.8), 0), (c(3), hi(5) - 0.01, 0)], 0.016, 8)
@@ -315,7 +354,7 @@ def radio():
 def lamp():
     """Pendant oil lamp: hangs from its mount (+Y away from the ceiling)."""
     a = Asset("lamp", "Furniture")
-    s, g = a.p("Scrap"), a.p("Glass")
+    s, g = a.p("Scrap"), a.p("Bulb", "Glass")
     s.cyl("steel_dark", 0.04, 0.02, (0, lo(0) + 0.01, 0), "y", 12, 0.004)
     s.tube("black", [(0, lo(0) + 0.02, 0), (0, lo(2) + 0.02, 0)], 0.006, 6)
     s.torus("steel", 0.012, 0.004, (0, lo(2) + 0.025, 0), "z", 10, 4)
@@ -327,7 +366,7 @@ def lamp():
 
 def light_ceiling():
     a = Asset("light_ceiling", "Furniture")
-    s, g = a.p("Scrap"), a.p("Glass")
+    s, g = a.p("Scrap"), a.p("Bulb", "Glass")
     s.lathe("steel", [(0.0, 0.0), (0.27, 0.0), (0.28, 0.02), (0.26, 0.04), (0.0, 0.04)], (0, lo(0), 0), "y", 28)
     g.lathe("lamp", [(0.0, 0.0), (0.2, 0.0), (0.2, 0.03), (0.17, 0.08), (0.1, 0.11), (0.0, 0.12)], (0, lo(0) + 0.035, 0), "y", 28)
     for k in range(4):
@@ -386,6 +425,9 @@ def sink():
     for sx in (-1, 1):
         fe.cyl("chrome", 0.016, 0.03, (sx * 0.1, hi(11) + 0.015, c(-3)), "y", 8, 0.003)
         fe.box2("crimson" if sx < 0 else "navy", (sx * 0.1 - 0.03, hi(11) + 0.03, c(-3) - 0.008), (sx * 0.1 + 0.03, hi(11) + 0.045, c(-3) + 0.008), bevel=0.003)
+    mug(s, "enamel", (c(-5), hi(11) - 0.03, c(-3.2)), 0.035, 0.08)
+    mug(s, "cloth_blue", (c(4.6), hi(11) - 0.03, c(-3.2)), 0.035, 0.08)
+    s.box2("ticking", (hi(6) - 0.01, c(5.5), hi(4) - 0.01), (hi(6) + 0.015, c(9.5), hi(4) + 0.012), bevel=0.006)   # dish towel over the door
     return a
 
 
@@ -422,11 +464,23 @@ def fireplace():
     st.box2("stone", (lo(-9), lo(0), lo(0)), (hi(9), hi(0) + 0.02, hi(3)), bevel=0.01)                     # hearth
     st.box2("black", (lo(-5), hi(0), lo(-3)), (hi(5), hi(1), hi(0)), bevel=0.006)
     st.box2("brick", (lo(-5), lo(15), lo(-3)), (hi(5), hi(30), hi(1)), bevel=0.012)                       # chimney
-    st.box2("conc", (lo(-5) - 0.0, hi(30) - 0.04, lo(-3)), (hi(5), hi(30), hi(1)), bevel=0.008)
+    a.p("Chimney", "Stone", pivot=(0, hi(30), c(-1))).box2("conc", (lo(-5) - 0.0, hi(30) - 0.04, lo(-3)), (hi(5), hi(30), hi(1)), bevel=0.008)   # cap: smoke here
     st.box2("black", (lo(-5) + 0.02, lo(1) + 0.02, lo(-3) + 0.02), (hi(5) - 0.02, hi(8) - 0.02, lo(0) + 0.002), bevel=0)   # soot
     for k, (x0, x1, y) in enumerate(((-3, 3, 2.3), (-2.6, 2.4, 3.1))):
         w.cyl(W("dark", "x"), 0.045, (x1 - x0) * VS, ((x0 + x1) / 2 * VS, c(y), c(-1) + k * 0.04), "x", 10, 0.006, r_extra=K.rot(0, 15 * (1 - 2 * k), 0))
-    a.p("Glow", "Wood").add(K.kit.bm_rock(0.12, 7, 0.7, 1), "flame", Matrix.Translation((0, c(4) - 0.02, c(-2) + 0.06)) @ K._axis_mtx("y") @ Matrix.Diagonal((1.4, 0.6, 1.3, 1)))
+    a.p("Embers", "Wood").add(K.kit.bm_rock(0.15, 9, 0.35, 1), "ember", Matrix.Translation((0, hi(0) + 0.03, c(-1.5))) @ K._axis_mtx("y") @ Matrix.Diagonal((2.0, 0.25, 1.6, 1)))
+    a.p("Flame", "Wood", pivot=(0, c(3), c(-1.5)), mover=True).add(K.kit.bm_rock(0.12, 7, 0.7, 1), "flame", Matrix.Translation((0, c(4) - 0.02, c(-2) + 0.06)) @ K._axis_mtx("y") @ Matrix.Diagonal((1.4, 0.6, 1.3, 1)))
+    for k, x in enumerate((-7.2, -6.2, 6.6)):            # candle stubs on the mantel, flames Flame2..4
+        at = (c(x), hi(14), c(1.5) - 0.06 * (k % 2))
+        hgt = 0.07 + 0.05 * (k % 2)
+        fl = a.p("Flame%d" % (k + 2), "Wood", pivot=(at[0], at[1] + hgt + 0.008, at[2]), mover=True)
+        candle(w, fl, at, 0.02 + 0.004 * (k % 2), hgt, 3, seed=40 + k)
+    s_ = a.p("Scrap")
+    s_.box2("brass", (c(-1.5), hi(14), c(0)), (c(1.5), hi(14) + 0.2, c(2)), bevel=0.02)   # mantel clock
+    clock = decal_material("Mantel_Clock_Dial", "clock_face", (0.0, hi(14) + 0.11, c(2) + 0.002), (0.15, 0.15), plane="xy")
+    s_.cyl(clock, 0.075, 0.006, (0.0, hi(14) + 0.11, c(2) + 0.003), "z", 20, 0.0)
+    log_pile(w, (c(7.5), hi(0) + 0.02, c(1.3)), 5, 0.36, 0.045, "z", seed=5)                 # firewood on the hearth
+    s_.tube("iron", [(c(-7.5), hi(0) + 0.02, c(2)), (c(-7.6), c(6), c(2.1)), (c(-7.6), c(6.4), c(2.4))], 0.008, 5)   # poker
     return a
 
 
@@ -464,16 +518,20 @@ def player_stall():
 def rug():
     a = Asset("rug", "Decor")
     cl = a.p("Cloth")
-    cl.box2("cloth_olive", (lo(-12) + 0.02, lo(0), lo(-8) + 0.02), (hi(12) - 0.02, lo(0) + 0.03, hi(8) - 0.02), bevel=0.006)
-    for (x0, x1, z0, z1) in ((lo(-12), hi(12), lo(-8), lo(-6)), (lo(-12), hi(12), hi(6), hi(8)), (lo(-12), lo(-10), lo(-6), hi(6)), (hi(10), hi(12), lo(-6), hi(6))):
-        cl.box2("brick", (x0, lo(0), z0), (x1, lo(0) + 0.036, z1), bevel=0.006)
-    for cx in (-6, 0, 6):                                 # diamonds
-        for r_ in (0.32, 0.2):
-            pts = [(c(cx) + r_, 0), (c(cx), r_ * 0.75), (c(cx) - r_, 0), (c(cx), -r_ * 0.75)]
-            cl.prism("cloth_cream" if r_ > 0.25 else "cloth_red", pts, lo(0) + 0.03, lo(0) + 0.036 + (0.002 if r_ < 0.25 else 0))
-    for z in range(-7, 8):                                 # fringe
+    rug_m = decal_material("Rug_Woven", "rug_woven", (0.0, 0.024, 0.0), (hi(12) - lo(-12) - 0.04, hi(8) - lo(-8) - 0.04), plane="xz", rough=0.97)
+    secs = []                                              # soft pile on the floor surface (y 0: the voxel layer is half sunk), slightly wavy, thicker middle
+    n = 14
+    for k in range(n + 1):
+        x = lo(-12) + 0.02 + (hi(12) - lo(-12) - 0.04) * k / n
+        dy = 0.003 * math.sin(k * 1.7)
+        secs.append([(x, 0.001, lo(-8) + 0.02), (x, 0.02 + dy, lo(-8) + 0.02), (x, 0.026 + dy, 0.0),
+                     (x, 0.02 + dy, hi(8) - 0.02), (x, 0.001, hi(8) - 0.02)])
+    cl.loft(rug_m, secs)
+    for z in range(-15, 16):                               # fringe tassels at both short ends
         for sx in (-1, 1):
-            cl.rod("cloth_cream", (sx * hi(12), lo(0) + 0.01, c(z)), (sx * (hi(12) + 0.0), lo(0) + 0.01, c(z) + 0.0), 0.006, 4)
+            zz = z * 0.042
+            x0 = sx * (hi(12) - 0.02)
+            cl.rod("cloth_cream", (x0, 0.008, zz), (x0 + sx * 0.07, 0.004, zz + 0.006 * math.sin(z * 2.1)), 0.0045, 4)
     return a
 
 
@@ -482,15 +540,12 @@ def painting():
     w, cl = a.p("Wood"), a.p("Cloth")
     for (x0, x1, z0, z1, ax) in ((lo(-8), hi(8), lo(-6), lo(-5), "x"), (lo(-8), hi(8), hi(5), hi(6), "x"), (lo(-8), lo(-7), lo(-5), hi(5), "z"), (hi(7), hi(8), lo(-5), hi(5), "z")):
         w.box2(W("dark", ax), (x0, lo(0), z0), (x1, hi(1), z1), bevel=0.012)
+        w.box2("brass", (x0 + 0.012, hi(1) - 0.004, z0 + 0.012) if ax == "x" else (x0 + 0.012, hi(1) - 0.004, z0),
+               (x1 - 0.012, hi(1) + 0.004, z1 - 0.012) if ax == "x" else (x1 - 0.012, hi(1) + 0.004, z1), bevel=0.002)   # gilt inner lip
     w.box2(W("dark", "x"), (lo(-7), lo(0), lo(-5)), (hi(7), lo(0) + 0.02, hi(5)), bevel=0)
-    # canvas: sky, dunes, rusty ruins, a low sun (painted wasteland)
-    y = lo(1) + 0.004
-    cl.box2("cloth_pale", (lo(-7), lo(0) + 0.02, c(1.5)), (hi(7), y, hi(5)), bevel=0)
-    cl.box2("sand", (lo(-7), lo(0) + 0.02, c(-0.5)), (hi(7), y + 0.002, c(1.5)), bevel=0)
-    cl.box2("rock", (lo(-7), lo(0) + 0.02, lo(-5)), (hi(7), y + 0.001, c(-0.5)), bevel=0)
-    cl.cyl("lamp_amber", 0.07, 0.004, (c(3.5), y + 0.004, c(3)), "y", 16, 0)
-    for (x, h) in ((-4, 0.18), (-3.2, 0.26), (-2.5, 0.12)):
-        cl.box2("rust", (c(x) - 0.03, y, c(1.5)), (c(x) + 0.03, y + 0.003, c(1.5) + h), bevel=0)
+    # canvas: a naive oil painting of a farmhouse at sunset (wall piece: +Y out of the wall, picture "up" = +z)
+    pic = decal_material("Painting_Canvas", "painting", (0.0, hi(1), 0.0), (hi(7) - lo(-7), hi(5) - lo(-5)), plane="wall")
+    cl.box2(pic, (lo(-7), lo(0) + 0.02, lo(-5)), (hi(7), lo(1) + 0.004, hi(5)), bevel=0)
     return a
 
 

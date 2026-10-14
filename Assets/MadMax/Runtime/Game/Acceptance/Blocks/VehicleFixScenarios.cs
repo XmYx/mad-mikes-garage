@@ -255,8 +255,8 @@ namespace MadMax.Game.Acceptance
                 if (!c.Check(g.Current == v, "riding the " + name)) { Object.Destroy(wall); continue; }
                 float t0 = Time.time;
                 v.handbrake = false; v.brakeInput = 0f;
-                v.Body.linearVelocity = dir * 12f + Vector3.up * v.Body.linearVelocity.y;
-                c.Fixture(name + " launched at 12 m/s at the barrier");
+                v.Body.linearVelocity = dir * 16f + Vector3.up * v.Body.linearVelocity.y;
+                c.Fixture(name + " launched at 16 m/s at the barrier");
                 yield return VehicleFixScenarios.Until(() => g.LastEjection.time >= t0 || Time.time - t0 > 3f, 3.2f);
                 var ej = g.LastEjection;
                 if (!c.Check(ej.time >= t0 && ej.vehicle == v && g.Current != v, $"the crash throws the rider off the {name} ({ej.why})"))

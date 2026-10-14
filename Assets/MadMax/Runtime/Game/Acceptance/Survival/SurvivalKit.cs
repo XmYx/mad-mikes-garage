@@ -108,6 +108,8 @@ namespace MadMax.Game.Acceptance
             var press = ActionPress.Press(second ? Controls.Act.Second : Controls.Act.Use);
             yield return Until(() => press == null || press.Frame >= 0, 2f);
             yield return null;
+            // the use animation (WastelandGame.UseAnim): the effect lands when the hands get there; a bed once lying down
+            yield return Until(() => !g.UsePending && (!g.Player.LyingOn || g.Player.Lying), 5f);
             w.ok = true;
         }
 

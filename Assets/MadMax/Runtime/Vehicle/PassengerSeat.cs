@@ -12,8 +12,18 @@ namespace MadMax.Vehicles
         public const int Fare = 10;
         public VehicleDriver Vehicle { get; private set; }
         public Seat Seat { get; private set; }
-        /// <summary>A person sitting here (a companion riding along).</summary>
-        public MadMax.Npc.Npc Occupant;
+        /// <summary>A person sitting here (a companion riding along). Getting in or out swings the door beside the seat.</summary>
+        public MadMax.Npc.Npc Occupant
+        {
+            get => occupant;
+            set
+            {
+                if (value == occupant) return;
+                occupant = value;
+                if (Vehicle) WastelandGame.SwingDoorAt(Vehicle, transform.position);
+            }
+        }
+        MadMax.Npc.Npc occupant;
 
         /// <summary>Give a drivable vehicle its passenger seat (once).</summary>
         public static PassengerSeat For(VehicleDriver v)
@@ -82,6 +92,7 @@ namespace MadMax.Vehicles
             if (who != 1 && who != 3) return;
             if (who == 1 && !g.Inventory.TrySpend(MadMax.Items.ResourceType.Scrap, Fare)) { g.Toast("THE DRIVER WANTS " + Fare + " SCRAP FOR THE RIDE"); return; }
             MadMax.Audio.Sfx.Play("car_door", transform.position, 0.6f);
+            WastelandGame.SwingDoorAt(Vehicle, transform.position, 0.9f);                       // open while the player ducks in (PlayerCharacter.SitOn walks to the door first)
             g.Player.SitOn(Seat, Vector3.zero);
             g.Toast(who == 1 ? "YOU RIDE ALONG WITH THE TRADER - F TO GET OUT" : "RIDING ALONG - F TO GET OUT");
         }

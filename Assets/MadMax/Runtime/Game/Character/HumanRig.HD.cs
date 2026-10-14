@@ -28,6 +28,10 @@ namespace MadMax.Game
         readonly Dictionary<BodyPart, float> boneLength = new Dictionary<BodyPart, float>();
         LODGroup lodGroup;
         bool hdVisible = true, hdFirstPerson;
+        /// <summary>Dangle-chain transforms made for the worn pieces (name -> transform, tips included).</summary>
+        readonly Dictionary<string, Transform> chainBones = new Dictionary<string, Transform>();
+        Dictionary<string, HDCharacterCatalog.ChainBone> chainDefs;
+        ClothDynamics cloth;
 
         static readonly Bounds SkinBounds = new Bounds(new Vector3(0f, -0.05f, 0f), new Vector3(2.2f, 2.4f, 2.2f));
 
@@ -47,6 +51,8 @@ namespace MadMax.Game
 
             var map = new Dictionary<string, Transform> { { "Root", transform } };
             foreach (var kv in bones) map[kv.Key.ToString()] = kv.Value;
+            chainBones.Clear();
+            chainDefs = HDHuman.Chains(cat, shape);
             foreach (var b in HumanDesign.Skeleton(appearance)) boneLength[b.part] = b.length;
             int levels = shareMeshes ? 3 : 1;
             var lods = new[] { new List<Renderer>(), new List<Renderer>(), new List<Renderer>() };
@@ -170,7 +176,7 @@ namespace MadMax.Game
             go.transform.SetParent(transform, false);
             var r = go.AddComponent<SkinnedMeshRenderer>();
             var bt = new Transform[p.bones.Length];
-            for (int i = 0; i < bt.Length; i++) bt[i] = map.TryGetValue(p.bones[i], out var t) && t ? t : transform;
+            for (int i = 0; i < bt.Length; i++) bt[i] = map.TryGetValue(p.bones[i], out var t) && t ? t : ChainBone(p.bones[i], map) ?? transform;
             r.bones = bt;
             r.rootBone = bones[BodyPart.Pelvis];
             r.sharedMesh = m;
@@ -184,6 +190,38 @@ namespace MadMax.Game
             owned.Add(go);
             return r;
         }
+
+        /// <summary>A dangle-chain bone (and the rest of its group, tip included) made on demand from the catalogue's
+        /// rest offsets for this body shape; null when the pack has no such chain (the piece then rides on the root).</summary>
+        Transform ChainBone(string name, Dictionary<string, Transform> map)
+        {
+            if (chainDefs == null || !chainDefs.TryGetValue(name, out var def)) return null;
+            if (map.TryGetValue(name, out var have) && have) return have;
+            var parent = map.TryGetValue(def.parent, out var pt) && pt ? pt : ChainBone(def.parent, map);
+            if (!parent) return null;
+            var t = new GameObject(name).transform;
+            t.SetParent(parent, false);
+            t.localPosition = def.offset;
+            map[name] = t;
+            chainBones[name] = t;
+            // the whole group with its tip: the simulation needs every link
+            string g = ClothDynamics.GroupOf(name);
+            foreach (var kv in chainDefs)
+                if (!map.ContainsKey(kv.Key) && ClothDynamics.GroupOf(kv.Key) == g) ChainBone(kv.Key, map);
+            return t;
+        }
+
+        /// <summary>Simulate the chains the worn pieces use (none: the component stays off and costs nothing).</summary>
+        void SetupCloth()
+        {
+            if (!cloth) cloth = GetComponent<ClothDynamics>();
+            if (chainBones.Count == 0) { if (cloth) { cloth.Setup(this, chainBones); cloth.enabled = false; } return; }
+            if (!cloth) cloth = gameObject.AddComponent<ClothDynamics>();
+            cloth.Setup(this, chainBones);
+        }
+
+        /// <summary>The cloth / hair simulation of an HD rig (null for voxel rigs and rigs without chains).</summary>
+        public ClothDynamics Cloth => cloth && cloth.enabled ? cloth : null;
 
         static bool ArmBone(Transform t)
         {

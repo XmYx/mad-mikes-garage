@@ -291,6 +291,25 @@ namespace MadMax.Building
             return got;
         }
 
+        /// <summary>Put water into the node's network, filling each node up to its capacity. Returns the litres taken in.</summary>
+        public static float Pour(UtilityNode node, float litres, bool clean)
+        {
+            if (!node || litres <= 0f) return 0f;
+            var net = node.waterNet >= 0 && node.waterNet < waterNets.Count ? waterNets[node.waterNet] : new List<UtilityNode> { node };
+            float put = 0f;
+            foreach (var n in net)
+            {
+                if (!n) continue;
+                float t = Mathf.Min(Mathf.Max(0f, n.waterCapacity - n.Water), litres - put);
+                if (t <= 0f) continue;
+                if (clean) n.clean += t; else n.dirty += t;
+                put += t;
+                n.Piece?.Dirty();
+                if (put >= litres) break;
+            }
+            return put;
+        }
+
         // ------------------------------------------------------------------ drawing
         static void UpdateLines()
         {

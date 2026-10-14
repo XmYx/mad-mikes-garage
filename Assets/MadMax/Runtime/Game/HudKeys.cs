@@ -58,30 +58,76 @@ namespace MadMax.Game
         // ------------------------------------------------------------------ prompt list
         static readonly Regex Entry = new Regex(@"\[([^\]]+)\]\s*([^\[]*)");
 
+        // the parsed prompt, kept while the text is the same (no regex work or garbage per frame)
+        static string lastPrompt, lastHead;
+        static readonly List<(string key, string label, string icon)> lastRows = new List<(string, string, string)>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPromptCache() { lastPrompt = null; lastHead = null; lastRows.Clear(); }
+
+        static void Parse(string prompt)
+        {
+            if (prompt == lastPrompt || (lastPrompt != null && prompt.Length == lastPrompt.Length && string.CompareOrdinal(prompt, lastPrompt) == 0)) { lastPrompt = prompt; return; }
+            lastPrompt = prompt;
+            int first = prompt.IndexOf('[');
+            lastHead = (first < 0 ? prompt : prompt.Substring(0, first)).Trim();
+            lastRows.Clear();
+            foreach (Match m in Entry.Matches(prompt)) { var label = m.Groups[2].Value.Trim(); lastRows.Add((m.Groups[1].Value.Trim(), label, IconFor(label))); }
+        }
+
         /// <summary>The context prompt as a small list on the left, bottom row at <paramref name="bottom"/>.</summary>
         public static void DrawPromptList(PixelCanvas c, string prompt, int x, int bottom, Color32 text, Color32 dim, Color32 accent)
         {
             if (string.IsNullOrEmpty(prompt)) return;
-            int first = prompt.IndexOf('[');
-            string head = (first < 0 ? prompt : prompt.Substring(0, first)).Trim();
-            var rows = new List<(string key, string label)>();
-            foreach (Match m in Entry.Matches(prompt)) rows.Add((m.Groups[1].Value.Trim(), m.Groups[2].Value.Trim()));
+            Parse(prompt);
+            string head = lastHead;
+            var rows = lastRows;
+            if (c.vec != null) { DrawPromptListHD(c, head, rows, x, bottom, text, dim, accent); return; }
             int w = head.Length > 0 ? PixelCanvas.TextWidth(head) : 0;
-            foreach (var (key, label) in rows) w = Mathf.Max(w, PixelCanvas.TextWidth(key) + 4 + 10 + PixelCanvas.TextWidth(label));
+            foreach (var (key, label, _) in rows) w = Mathf.Max(w, PixelCanvas.TextWidth(key) + 4 + 10 + PixelCanvas.TextWidth(label));
             int h = rows.Count * 10 + (head.Length > 0 ? 9 : 0) + 4;
             int y = bottom - h;
             c.Rect(x - 2, y, w + 8, h, new Color32(8, 10, 10, 120));
             int ry = y + 3;
             if (head.Length > 0) { c.Text(x + 1, ry, head, dim, 1, false); ry += 9; }
-            foreach (var (key, label) in rows)
+            foreach (var (key, label, icon) in rows)
             {
                 int kw = PixelCanvas.TextWidth(key) + 4;
                 c.Frame(x, ry - 1, kw, 9, accent);
                 c.Text(x + 2, ry + 1, key, accent, 1, false);
-                var icon = IconFor(label);
                 DrawIcon(c, icon, x + kw + 2, ry, dim);
                 c.Text(x + kw + (icon != null ? 11 : 3), ry + 1, label, text, 1, false);
                 ry += 10;
+            }
+        }
+
+        /// <summary>HD HUD prompt list: a soft panel, key caps as rounded keys, the icons as dot glyphs.</summary>
+        static void DrawPromptListHD(PixelCanvas c, string head, List<(string key, string label, string icon)> rows, int x, int bottom, Color32 text, Color32 dim, Color32 accent)
+        {
+            var v = c.vec;
+            const float Row = 10f, Ks = 0.82f, Ls = 0.9f;
+            float w = head.Length > 0 ? PixelCanvas.TextWidthF(head, 0.8f) : 0f;
+            foreach (var (key, label, icon) in rows) w = Mathf.Max(w, Mathf.Max(7f, PixelCanvas.TextWidthF(key, Ks) + 4f) + (icon != null ? 11f : 3f) + PixelCanvas.TextWidthF(label, Ls));
+            float h = rows.Count * Row + (head.Length > 0 ? 8.5f : 0f) + 4f;
+            float y = bottom - h;
+            v.Fill(x - 3f, y, w + 9f, h, 3.2f, new Color32(8, 10, 10, 150), true);
+            float ry = y + 3f;
+            if (head.Length > 0) { c.TextF(x + 0.5f, ry, head, dim, 0.8f, false); ry += 8.5f; }
+            foreach (var (key, label, icon) in rows)
+            {
+                float kw = Mathf.Max(7f, PixelCanvas.TextWidthF(key, Ks) + 4f);
+                v.Fill(x, ry - 1f, kw, 8.4f, 1.8f, new Color32(44, 40, 34, 245), new Color32(24, 22, 18, 245));
+                v.Stroke(x, ry - 1f, kw, 8.4f, 1.8f, 0.4f, accent);
+                v.Line(x + 1.4f, ry + 6.6f, x + kw - 1.4f, ry + 6.6f, 0.3f, new Color32(0, 0, 0, 140));
+                c.TextF(x + (kw - PixelCanvas.TextWidthF(key, Ks)) * 0.5f, ry + 1f, key, accent, Ks, false);
+                if (icon != null && Icons.TryGetValue(icon, out var bits))
+                {
+                    for (int r = 0; r < 7; r++)
+                    for (int k = 0; k < 7; k++)
+                        if (bits[r * 7 + k] == '1') v.Fill(x + kw + 2f + k * 1f + 0.08f, ry - 0.2f + r * 1f + 0.08f, 0.84f, 0.84f, 0.25f, dim);
+                }
+                c.TextF(x + kw + (icon != null ? 11f : 3f), ry + 0.8f, label, text, Ls);
+                ry += Row;
             }
         }
 
@@ -165,6 +211,7 @@ namespace MadMax.Game
                 title = "ON FOOT";
                 MoveKeys(b, "WALK");
                 Add(b, Controls.Act.Jump, "JUMP / CLIMB", Grp.Move); Add(b, Controls.Act.Run, "RUN", Grp.Move); Add(b, Controls.Act.Crouch, "CROUCH / SLIDE", Grp.Move);
+                Add(b, Controls.Act.Prone, "PRONE / CRAWL", Grp.Move);
                 Add(b, Controls.Act.Use, "USE / TAKE / TALK", Grp.Action); Add(b, Controls.Act.Second, "SECOND ACTION", Grp.Action);
                 Add(b, Controls.Act.Drop, "DROP PART / TOOL", Grp.Action); Add(b, Controls.Act.Enter, "GET IN / RIDE", Grp.Action);
                 Add(b, Controls.Act.Build, "BUILD MENU", Grp.Build); Add(b, Controls.Act.Reload, "RELOAD / RESEARCH", Grp.Action);
@@ -204,6 +251,14 @@ namespace MadMax.Game
                     case Machine.Kind.DumpTruck: Tool(b, "RAISE BED", "LOWER BED", null, null, null, null); break;
                     case Machine.Kind.Paver: Tool(b, "SCREED UP", "SCREED DOWN", null, null, "PAVE ON / OFF", "MATERIAL"); break;
                 }
+            }
+            else if (car.TryGetComponent<MagnetCrane>(out var mgc) && mgc.Part)
+            {
+                Tool(b, "HOIST UP", "HOIST DOWN", "SLEW LEFT", "SLEW RIGHT", "MAGNET ON / OFF", null); Add(b, Controls.Act.Run, "SHIFT+UP/DN: BOOM", Grp.Tool);
+            }
+            else if (car.TryGetComponent<GrappleCrusher>(out var grc) && grc.Part)
+            {
+                Tool(b, "CLAW UP", "CLAW DOWN", "SLEW LEFT", "SLEW RIGHT", "GRAB / RELEASE", grc.HasBay ? "CRUSH CYCLE" : null); Add(b, Controls.Act.Run, "SHIFT+UP/DN: BOOM", Grp.Tool);
             }
             else if (car.TryGetComponent<Crane>(out var cr) && cr.CranePart)
             {

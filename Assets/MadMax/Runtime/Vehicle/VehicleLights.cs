@@ -40,12 +40,12 @@ namespace MadMax.Vehicles
             for (int i = 0; i < 2; i++)
             {
                 float x = i == 0 ? -hx : hx;
-                heads[i] = Make("Headlight", body, new Vector3(x, y, b.max.z + 0.05f), Quaternion.Euler(8f, 0f, 0f), LightType.Spot, new Color(1f, 0.93f, 0.8f), 28f, 60f);
+                heads[i] = Make("Headlight", body, new Vector3(x, y, b.max.z + 0.05f), Quaternion.Euler(4.5f, 0f, 0f), LightType.Spot, new Color(1f, 0.93f, 0.8f), 38f, 60f);   // a long throw: the beam reads from above
                 tails[i] = Make("Taillight", body, new Vector3(x, y, b.min.z - 0.08f), Quaternion.identity, LightType.Point, new Color(1f, 0.1f, 0.05f), 2f, 0.4f);
             }
             heads[1].enabled = false;                       // one spot per vehicle carries the beam (light budget), both tail lamps glow
             heads[0].transform.localPosition = new Vector3(0f, y, b.max.z + 0.05f);
-            heads[0].spotAngle = 75f;
+            heads[0].spotAngle = 75f; heads[0].innerSpotAngle = 22f;
             BuildBeams(body, y, hx, b.max.z);
             FindLamps(body);
         }

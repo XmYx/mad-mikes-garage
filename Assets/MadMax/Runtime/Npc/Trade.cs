@@ -123,7 +123,7 @@ namespace MadMax.Npc
         /// <summary>The faction the current trader answers to (prices by standing, roadmap 21).</summary>
         public static Faction Seller = Faction.None;
         public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f) * Factions.PriceFactor(Seller)));
-        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * Market.Factor(Town, id) * (Town == null ? 0.9f : 1f) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f) / Factions.PriceFactor(Seller)));
+        public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * (Town == null ? 0.9f : Market.Factor(Town, id)) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f) / Factions.PriceFactor(Seller)));
 
         // ------------------------------------------------------------------ stock
 
@@ -173,7 +173,7 @@ namespace MadMax.Npc
             },
             new Dictionary<string, (string, int, int)[]>
             {
-                { "food", new[] { ("seed_carrot", 1, 4), ("seed_cabbage", 1, 4), ("seed_beet", 0, 3), ("seed_wheat", 1, 4), ("seed_herbs", 0, 3), ("sapling_apple", 0, 2), ("sapling_pine", 0, 2) } },
+                { "food", new[] { ("seed_carrot", 1, 4), ("seed_cabbage", 1, 4), ("seed_beet", 0, 3), ("seed_wheat", 1, 4), ("seed_herbs", 0, 3), ("sapling_apple", 0, 2), ("sapling_pine", 0, 2), ("sapling_pear", 0, 1), ("sapling_olive", 0, 1), ("sapling_walnut", 0, 1) } },
                 { "pack", new[] { ("seed_potato", 1, 4), ("seed_corn", 1, 4), ("sapling_apple", 0, 1) } },
                 { "build", new[] { ("sapling_pine", 0, 3) } },
             },
@@ -248,6 +248,7 @@ namespace MadMax.Npc
                     if (n > 0) list.Add(new Offer { id = id, count = n, price = BuyPrice(id, bargain) });
                 }
             }
+            FisherStock(p, s, list, bargain);                                                    // the fishers' catch (Trade.Fishers)
             return list;
         }
 

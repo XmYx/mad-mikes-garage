@@ -28,7 +28,7 @@ namespace MadMax.Story
         static readonly List<string> scratch = new List<string>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { lastHour = -1f; worked = 0f; game = null; }
+        static void ResetStatics() { lastHour = -1f; worked = 0f; game = null; Rotted = 0; LastLarder = null; }
 
         /// <summary>People live at the garage (B4 done).</summary>
         public static bool Living => Story.Flag("residents");
@@ -85,6 +85,7 @@ namespace MadMax.Story
         static int TakeFood(int n)
         {
             Stores(stores);
+            stores.Sort((a, b) => a.SpoilFactor.CompareTo(b.SpoilFactor));                     // the root cellar / cold store is the pantry: first
             int took = 0;
             foreach (var c in stores)
             {
@@ -139,6 +140,7 @@ namespace MadMax.Story
         {
             Story.SetFlag("residents:supper:" + day);
             int got = TakeFood(Mouths);
+            Larder(g, day);
             if (got >= Mouths)
             {
                 Story.Note("residents:supper");
@@ -148,6 +150,42 @@ namespace MadMax.Story
             Story.SetFlag("residents:short:" + day);
             Journal.Add("HOME", "THE RESIDENTS WENT HUNGRY (" + got + "/" + Mouths + " PORTIONS). NO WORK TOMORROW: PUT FOOD IN A CHEST OR FRIDGE AT THE GARAGE");
             if (Near(g)) g.Toast("NOT ENOUGH FOOD IN THE GARAGE'S STORES: THE RESIDENTS GO HUNGRY");
+        }
+
+        /// <summary>Rotten food found in the garage's stores since last night (the residents set it aside for the
+        /// composter and say where it should have gone).</summary>
+        public static int Rotted { get; private set; }
+        /// <summary>The larder line said at the last supper (tests; null = none).</summary>
+        public static string LastLarder { get; private set; }
+
+        /// <summary>After supper the house talks about the stores: what rotted since yesterday (a cellar, smoking or
+        /// tins would have kept it) and, in autumn and winter, whether the larder sees them through to spring.</summary>
+        static void Larder(WastelandGame g, int day)
+        {
+            Stores(stores);
+            int rotten = 0;
+            foreach (var c in stores) rotten += c.inventory.GetItem("food_rotten");
+            int before = -1;
+            for (int k = 0; k <= 400 && before < 0; k++) if (Story.Flag("residents:rot:" + (day - 1) + ":" + k)) before = k;
+            Story.SetFlag("residents:rot:" + day + ":" + Mathf.Min(rotten, 400));
+            Rotted = before >= 0 ? Mathf.Max(0, rotten - before) : 0;
+            LastLarder = null;
+            if (Rotted > 0)
+                LastLarder = "HESTER: " + Rotted + " THINGS ROTTED IN THE STORES SINCE YESTERDAY. FOOD BELONGS IN THE ROOT CELLAR, SMOKED OR TINNED - I'VE PUT THE MESS BY FOR THE COMPOST";
+            else
+            {
+                int season = Weather.Season;
+                if (season != 1 && season != 2) return;
+                float toSpring = Mathf.Max(1, Weather.DaysPerSeason) * (season == 1 ? 2f - Weather.SeasonProgress : 1f - Weather.SeasonProgress);
+                float days = Portions() / (float)Mouths;
+                if (Story.Flag("residents:larder:" + season + ":" + (days >= toSpring ? 1 : 0))) return;   // said once per season and verdict
+                Story.SetFlag("residents:larder:" + season + ":" + (days >= toSpring ? 1 : 0));
+                LastLarder = days >= toSpring
+                    ? "HESTER: THE LARDER HOLDS - " + Mathf.FloorToInt(days) + " DAYS OF SUPPERS PUT BY, SPRING IS " + Mathf.CeilToInt(toSpring) + " AWAY"
+                    : "JUDD: " + Mathf.FloorToInt(days) + " DAYS OF FOOD AND " + Mathf.CeilToInt(toSpring) + " TO SPRING. WE'LL BE EATING BOOT LEATHER BEFORE THE THAW";
+            }
+            Journal.Add("HOME", LastLarder);
+            if (Near(g)) g.Toast(LastLarder);
         }
 
         static bool Near(WastelandGame g)

@@ -79,6 +79,9 @@ namespace MadMax.Net
         public int Remaining => end - pos;
 
         public void Set(byte[] b, int length) { buf = b; pos = 0; end = length; Failed = false; }
+        public int Position => pos;
+        /// <summary>Jump to a message boundary (clears a failure inside the message just left).</summary>
+        public void Seek(int position) { if (position > end) { pos = end; Failed = true; } else { pos = Math.Max(0, position); Failed = false; } }
 
         bool Need(int n) { if (pos + n > end) { Failed = true; return false; } return true; }
         public byte Byte() => Need(1) ? buf[pos++] : (byte)0;

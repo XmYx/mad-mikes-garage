@@ -112,14 +112,16 @@ namespace MadMax.World
             var fc0 = focusChunks[0];
             foreach (var o in offsets)
             {
-                if (built >= floraBuildsPerFrame) break;
+                if (built >= floraBuildsPerFrame || OverBudget) break;
                 if (o.magnitude * ChunkWorld > r + ChunkWorld) continue;
-                if (!chunks.TryGetValue(fc0 + o, out var ch) || !ch.go) continue;
+                if (!chunks.TryGetValue(fc0 + o, out var ch) || !ch.go || ch.stage != 0) continue;   // buildings still to come keep it out
                 int key = FloraKey((ch.c.y + 0.5f) * ChunkWorld);
                 bool need = !ch.floraGo || ch.floraKey != key || ((ch.floraDirty || ch.floraNext > 0f) && now >= ch.floraNext);
                 if (!need) continue;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Flora");
                 BuildFlora(ch, key);
-                built++;
+                UnityEngine.Profiling.Profiler.EndSample();
+                built++; buildSteps++;
             }
         }
 
@@ -152,7 +154,7 @@ namespace MadMax.World
             {
                 int k = j * V + i;
                 byte feat = ch.feature[k];
-                if (feat >= 2 || ch.pave[k] != 0 || ch.road[k] > 0.25f) continue;
+                if (!WorldGen.Grows(feat) || ch.pave[k] != 0 || ch.road[k] > 0.25f) continue;
                 float lx = (i + 0.5f) * Cell, lz = (j + 0.5f) * Cell;
                 bool blocked = false;
                 foreach (var b in blockers) if (b.Contains(new Vector2(lx, lz))) { blocked = true; break; }
@@ -187,7 +189,8 @@ namespace MadMax.World
                     if (field > 0.55f && !crop) continue;           // bare furrows
                 }
 
-                float density = feat == 1 ? 0.05f : BaseDensity(biome);
+                if (feat == TownPlan.FField) { crop = TownRow(gx, gz) && Hash(gi, gj) > 0.3f; if (!crop) continue; }   // town fields: rows along the plan
+                float density = feat == 1 ? 0.05f : feat >= TownPlan.FSidewalk ? TownFloraDensity(feat) : BaseDensity(biome);
                 density *= 0.45f + Mathf.PerlinNoise(gx * 0.13f + 7f, gz * 0.13f + 3f) * 1.1f;
                 density *= 0.75f + wetBase * 0.5f;
                 if (crop || shore || wetFoot) density = 0.9f;
@@ -206,6 +209,7 @@ namespace MadMax.World
                 if (crop) { CropRow(cell); continue; }
                 if (wetFoot || shore) { Reeds(cell, wetFoot); continue; }
                 if (feat == 1) { Tuft(cell, DryGrass, 2, 0.1f); continue; }
+                if (feat >= TownPlan.FSidewalk) { TownPlant(cell, feat, r1, r2, frost); continue; }
                 switch (biome)
                 {
                     case Biome.Forest:

@@ -45,12 +45,12 @@ namespace MadMax.World
                 var t = DeformableTerrain.Instance;
                 if (t)
                 {
-                    var b = t.BiomeAt(at.x, at.z);
+                    var b = t.BiomeAtNoLoad(at.x, at.z);                                          // NoLoad: no chunk data made for a look around
                     localDamp = b == Biome.Tropical ? 0.45f : b == Biome.Forest ? 0.3f : b == Biome.Nuclear ? 0.2f : 0f;
                     for (int i = 0; i < 6; i++)
                     {
                         float a = i * Mathf.PI / 3f;
-                        if (!float.IsNaN(t.WaterLevel(at.x + Mathf.Cos(a) * 18f, at.z + Mathf.Sin(a) * 18f))) { localDamp = Mathf.Max(localDamp, 0.4f); break; }
+                        if (!float.IsNaN(t.WaterLevelNoLoad(at.x + Mathf.Cos(a) * 18f, at.z + Mathf.Sin(a) * 18f))) { localDamp = Mathf.Max(localDamp, 0.4f); break; }
                     }
                 }
             }
@@ -95,20 +95,21 @@ namespace MadMax.World
             Vector3 tint; float sat, con;
             switch (b)
             {
-                case Biome.Desert: tint = new Vector3(1.05f, 1.0f, 0.92f); sat = 0.98f; con = 0.96f; break;
-                case Biome.Forest: tint = new Vector3(0.96f, 1.02f, 0.98f); sat = 1.05f; con = 1f; break;
-                case Biome.Tropical: tint = new Vector3(0.97f, 1.03f, 1f); sat = 1.04f; con = 0.98f; break;
-                case Biome.Nuclear: tint = new Vector3(0.95f, 1.06f, 0.86f); sat = 0.85f; con = 1.08f; break;
-                case Biome.Tundra: tint = new Vector3(0.93f, 0.98f, 1.06f); sat = 0.8f; con = 1.04f; break;
-                default: tint = new Vector3(1.02f, 1f, 0.96f); sat = 0.98f; con = 0.97f; break;
+                // vivid, punchy daylight (the reference look: saturated ground, deep cool shadows, warm light)
+                case Biome.Desert: tint = new Vector3(1.04f, 1.0f, 0.95f); sat = 1.1f; con = 1.12f; break;
+                case Biome.Forest: tint = new Vector3(0.97f, 1.02f, 0.98f); sat = 1.16f; con = 1.12f; break;
+                case Biome.Tropical: tint = new Vector3(0.98f, 1.03f, 1f); sat = 1.18f; con = 1.1f; break;
+                case Biome.Nuclear: tint = new Vector3(0.96f, 1.05f, 0.88f); sat = 0.95f; con = 1.14f; break;
+                case Biome.Tundra: tint = new Vector3(0.95f, 0.99f, 1.05f); sat = 0.92f; con = 1.1f; break;
+                default: tint = new Vector3(1.02f, 1f, 0.97f); sat = 1.1f; con = 1.1f; break;
             }
             if (MadMax.Game.TitleSequence.OnMoon) { tint = new Vector3(0.97f, 1f, 1.05f); sat = 0.85f; con = 1.12f; }   // airless: cold and hard
             bool moonSet = MadMax.Game.TitleSequence.OnMoon;
             float rain = Weather.Raining && !moonSet ? 1f : 0f, snow = Weather.Snowing && !moonSet ? 1f : 0f, night = DayNight.Darkness;
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.95f, 0.98f, 1.04f), rain));
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.0f, 1.02f, 1.06f), snow));
-            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 0.95f, 1.1f), night));
-            sat *= (1f - 0.2f * rain) * (1f - 0.12f * snow) * (1f - 0.2f * night);
+            tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.86f, 0.94f, 1.16f), night));   // moonlit blue: lamps and headlights carry the night
+            sat *= (1f - 0.2f * rain) * (1f - 0.12f * snow) * (1f - 0.38f * night);
             // storms: orange murk in a dust storm, a sick green glow in a radiation storm
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(1.14f, 0.95f, 0.7f), Storms.Dust));
             tint = Vector3.Scale(tint, Vector3.Lerp(Vector3.one, new Vector3(0.9f, 1.1f, 0.84f), Storms.Rad));
@@ -124,6 +125,13 @@ namespace MadMax.World
             grade.SetFloat("_Saturation", gSat);
             grade.SetFloat("_Contrast", gContrast);
             grade.SetFloat("_Haze", haze);
+            // split toning and vibrance fade with rain, dust and night (overcast light is flat; night has its own blue)
+            float clear = (1f - 0.7f * rain) * (1f - Storms.Dust) * (1f - night);
+            grade.SetFloat("_Vibrance", 0.35f * clear);
+            float nightTone = night * (1f - 0.5f * rain);                                           // night: blue shadows, lamplight stays warm
+            grade.SetColor("_ShadowTint", Color.Lerp(Color.Lerp(Color.white, new Color(0.9f, 0.96f, 1.08f), clear), new Color(0.88f, 0.95f, 1.12f), nightTone));
+            grade.SetColor("_HighlightTint", Color.Lerp(Color.Lerp(Color.white, new Color(1.04f, 1.0f, 0.95f), clear), new Color(1.14f, 1.0f, 0.84f), nightTone));
+            grade.SetFloat("_Vignette", moonSet ? 0.1f : 0.28f);
             grade.SetFloat("_Flash", flash);
         }
 

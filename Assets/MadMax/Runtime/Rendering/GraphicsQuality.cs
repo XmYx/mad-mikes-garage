@@ -30,6 +30,7 @@ namespace MadMax.Rendering
         static Volume volume;
         static Bloom bloom;
         static MotionBlur blur;
+        static bool blurWanted;
 #if URP_SCREEN_SPACE_REFLECTION
         static ScreenSpaceReflectionVolumeSettings ssrVolume;
 #endif
@@ -39,7 +40,7 @@ namespace MadMax.Rendering
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
-            volume = null; bloom = null; blur = null; dlssWanted = -1; dlssOk = null;
+            volume = null; bloom = null; blur = null; blurWanted = false; dlssWanted = -1; dlssOk = null;
 #if URP_SCREEN_SPACE_REFLECTION
             ssrVolume = null;
 #endif
@@ -160,7 +161,8 @@ namespace MadMax.Rendering
             }
             bloom.active = s.bloomLevel > 0;
             bloom.intensity.Override(s.bloomLevel >= 2 ? 1.6f : 0.9f);
-            blur.active = s.motionBlur && full;
+            blurWanted = s.motionBlur && full;
+            blur.active = blurWanted;
             blur.intensity.Override(0.35f);
 #if URP_SCREEN_SPACE_REFLECTION
             ssrVolume.active = full && s.reflections > 0;
@@ -178,6 +180,10 @@ namespace MadMax.Rendering
             QualitySettings.anisotropicFiltering = s.textureFilter == 0 ? AnisotropicFiltering.Disable : AnisotropicFiltering.ForceEnable;
             Texture.SetGlobalAnisotropicFilteringLimits(s.textureFilter >= 2 ? 16 : 4, s.textureFilter >= 2 ? 16 : 4);
         }
+
+        /// <summary>Motion blur only where the view travels with the eye (chase, first person): looking down, the camera's
+        /// own slide over the ground would smear the whole frame (CameraRig calls this every frame).</summary>
+        public static void ViewBlur(bool allowed) { if (blur) blur.active = blurWanted && allowed; }
 
         /// <summary>DLSS quality mode for a render scale: 4 DLAA (100 %), 2 quality, 1 balanced, 0 performance, 3 ultra performance.</summary>
         static int QualityFor(float scale) => scale >= 0.95f ? 4 : scale >= 0.64f ? 2 : scale >= 0.56f ? 1 : scale >= 0.45f ? 0 : 3;

@@ -40,13 +40,16 @@ namespace MadMax.Game
                     // the generated tracked city: high docks with a stair tower and a vehicle lift
                     var kits = new Task<CityKit>[route.docks.Length];
                     float H = route.deckHeight;
-                    for (int k = 0; k < kits.Length; k++) { int s = World.seed * 7 + k + r * 101; kits[k] = Task.Run(() => TrackedCity.Dock(H, s)); }
-                    var liftKit = Task.Run(() => TrackedCity.LiftPlatform(World.seed + r));
+                    for (int k = 0; k < kits.Length; k++) { int s = World.seed * 7 + k + r * 101; kits[k] = Task.Run(() => { var kit = TrackedCity.Dock(H, s); CityPrep.Pack(kit); return kit; }); }
+                    int liftSeed = World.seed + r;
+                    var liftKit = Task.Run(() => { var kit = TrackedCity.LiftPlatform(liftSeed); CityPrep.Pack(kit); return kit; });
                     while (!System.Array.TrueForAll(kits, t => t.IsCompleted) || !liftKit.IsCompleted) yield return null;
                     for (int k = 0; k < kits.Length; k++)
                     {
                         if (kits[k].IsFaulted) { Debug.LogException(kits[k].Exception); continue; }
+                        UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.CityDock");
                         CityDocks.Add(CityDock.CreateTracked(route, k, kits[k].Result, liftKit.Result, propMaterial, RollingCity.GlowMaterial(propMaterial)));
+                        UnityEngine.Profiling.Profiler.EndSample();
                         yield return null;
                     }
                 }
@@ -61,16 +64,21 @@ namespace MadMax.Game
                         CityDocks.Add(CityDock.Create(route, k, World.seed + r * 31, propMaterial, data[k]));
                     }
                 }
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.City");
                 var city = RollingCity.Create(route, World.seed + r * 31, propMaterial, r == 1);
                 Cities.Add(city);
                 if (r == 0) City = city;
                 city.Clock = r == 0
                     ? (pendingCityClock >= 0 ? pendingCityClock : CityStart && StartingCityIndex == 0 ? 12.0 : city.Cycle - 90.0)
                     : (pendingCityClock2 >= 0 ? pendingCityClock2 : CityStart && StartingCityIndex == 1 ? 12.0 : city.Cycle - 90.0);
-                while (!city.Ready) yield return null;
+                UnityEngine.Profiling.Profiler.EndSample();
+                float t0 = Time.realtimeSinceStartup, p0 = r == 0 ? 0.7f : 0.78f;
+                while (!city.Ready) { if (!Ready) ScreenFader.Progress(p0 + 0.07f * (1f - Mathf.Exp(-(Time.realtimeSinceStartup - t0) / 2f))); yield return null; }
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.CityPeople");
                 city.Snap();
                 RestoreCityPieces(city);
                 if (city.Plan != null) MadMax.Npc.CityFolk.Attach(this, city, CityHost.Hosts.IndexOf(city));                 // shopkeepers, the clerk, residents
+                UnityEngine.Profiling.Profiler.EndSample();
             }
         }
 

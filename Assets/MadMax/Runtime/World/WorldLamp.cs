@@ -4,11 +4,10 @@ using UnityEngine;
 namespace MadMax.World
 {
     /// <summary>A street lamp spawned along a settlement's roads (<see cref="TownLights"/>): on the town grid, dusk to
-    /// dawn. Smashing its head leaves it dark; a vehicle hitting the post faster than <see cref="KnockSpeed"/> knocks it
-    /// over (dark, leaning, no longer solid). Both are remembered by key (saved in the lights block).</summary>
+    /// dawn. Smashing its head leaves it dark; a vehicle hitting the post hard enough snaps it (<see cref="BreakablePole"/>:
+    /// it falls, dark). Both are remembered by key (saved in the lights block; old saves' knocked lamps lean).</summary>
     public class WorldLamp : MonoBehaviour
     {
-        public const float KnockSpeed = 6f;
         public string key;
         public int town = -1;
         PoweredLight lamp;
@@ -20,11 +19,13 @@ namespace MadMax.World
 
         void Start()
         {
+            if (MadMax.Building.SalvageDesigns.Removed.Contains(key)) { Destroy(gameObject); return; }   // taken apart for good
             if (!lamp) return;
             lamp.external = true;
             lamp.smashed += _ => TownLights.Smashed.Add(key);
             if (TownLights.Smashed.Contains(key)) lamp.broken = true;
-            if (TownLights.Knocked.Contains(key)) Lean(transform.forward);
+            if (TryGetComponent<BreakablePole>(out var pole)) pole.Broke += _ => { TownLights.Knocked.Add(key); if (lamp) lamp.broken = true; };
+            if (TownLights.Knocked.Contains(key) && !BreakablePole.Fallen.ContainsKey(key)) { Lean(transform.forward); if (pole) pole.Retire(); }   // knocked before poles fell
             lamp.externalPower = TownLights.TownPowered(town);
         }
 
@@ -37,19 +38,7 @@ namespace MadMax.World
             if (!lamp.broken && TownLights.Smashed.Contains(key)) lamp.broken = true;          // a save loaded after the chunk spawned
         }
 
-        void OnCollisionEnter(Collision c)
-        {
-            var rb = c.rigidbody;
-            if (!rb || rb.mass < 300f || c.relativeVelocity.magnitude < KnockSpeed || TownLights.Knocked.Contains(key)) return;
-            TownLights.Knocked.Add(key);
-            var push = rb.linearVelocity; push.y = 0f;
-            if (push.sqrMagnitude < 0.25f) { push = transform.position - rb.position; push.y = 0f; }
-            if (lamp) lamp.Smash(transform.position + Vector3.up * 1.5f);
-            Lean(push);
-            MadMax.Audio.Sfx.Play("creak", transform.position, 0.6f, 0.8f, 30f, 0.5f);
-        }
-
-        /// <summary>Knocked over: leaning 60° away from the hit, no longer blocking.</summary>
+        /// <summary>Knocked over in an old save: leaning 60° away, no longer blocking.</summary>
         void Lean(Vector3 away)
         {
             if (lamp) lamp.broken = true;

@@ -28,7 +28,7 @@ namespace MadMax.World
             }
             if (pave == 0)
             {
-                if (feat == 1 || feat == 2 || feat == 4 || feat == 5) return;           // rock, bunker floor, runway, runway paint
+                if (feat == 1 || feat == 2 || feat == 4 || feat == 5 || WorldGen.HardTown(feat)) return;   // rock, bunker floor, runway (paint), town paving
                 if (ch.paved[k] && ch.road[k] > 0.4f) return;                         // the old highways' asphalt
                 if (feat == 3) { capacity = 15f; rate = 1f; }                         // tunnel gravel
                 else

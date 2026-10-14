@@ -91,6 +91,14 @@ namespace MadMax.Vehicles
             }
         }
 
+        // loops are requested every rendered frame (Sfx stops a loop not asked for that frame; FixedUpdate can skip frames)
+        void Update()
+        {
+            if (!v || !rb || rb.isKinematic) return;
+            if (StallWarning && v.Occupied) MadMax.Audio.Sfx.Loop(this, "beep", 0.5f, 1f, 20f);
+            if (kind == Kind.Gyro && RotorRpm > 20f) MadMax.Audio.Sfx.Loop(transform, "rotor", Mathf.Clamp01(RotorRpm / 400f) * 0.7f, Mathf.Clamp(RotorRpm / 300f, 0.4f, 2f), 90f);   // blade slap
+        }
+
         void FixedUpdate()
         {
             if (!v || !rb || rb.isKinematic) return;
@@ -145,8 +153,6 @@ namespace MadMax.Vehicles
             float yawRate = Vector3.Dot(w, transform.up), rollRate = Vector3.Dot(w, transform.forward), pitchRate = Vector3.Dot(w, transform.right);
             bool sim = MadMax.Game.GameSettings.Current.simFlight;                               // SIM FLIGHT: no assists aloft
             Sideslip = Airspeed > 3f ? Mathf.Atan2(Vector3.Dot(air, transform.right), Mathf.Max(1f, Vector3.Dot(air, transform.forward))) * Mathf.Rad2Deg : 0f;
-            if (StallWarning && GetComponent<VehicleDriver>().Occupied) MadMax.Audio.Sfx.Loop(this, "beep", 0.5f, 1f, 20f);
-            if (kind == Kind.Gyro && RotorRpm > 20f) MadMax.Audio.Sfx.Loop(transform, "rotor", Mathf.Clamp01(RotorRpm / 400f) * 0.7f, Mathf.Clamp(RotorRpm / 300f, 0.4f, 2f), 90f);   // blade slap
             if (!Airborne)
             {
                 // taxiing: nose wheel + differential brakes turn it tightly when slow, gently on the take-off roll
@@ -269,6 +275,9 @@ namespace MadMax.Vehicles
             }
         }
 
+        /// <summary>Impact speed across the surface (m/s) that throws the pilot out; 8 m/s up to it only damages.</summary>
+        public const float ThrowHit = 14f;
+
         void OnCollisionEnter(Collision c)
         {
             if (Time.time < crashCd || c.contactCount == 0) return;
@@ -278,9 +287,12 @@ namespace MadMax.Vehicles
             if (hit < 8f) return;
             crashCd = Time.time + 2f;
             var engine = v ? v.Engine : null;
-            if (engine && engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = Mathf.Min(1f, ep.damage + (hit - 9f) * 0.04f);
+            if (engine && engine.TryGetComponent<VehiclePart>(out var ep)) ep.damage = Mathf.Min(1f, ep.damage + Mathf.Max(0f, hit - 8f) * 0.06f);   // never mends on a hard landing; ~0.8 at an explosive hit
             var g = MadMax.Game.WastelandGame.Instance;
-            if (g && g.Current == v) g.ThrowRider(v, rb.linearVelocity, (hit - 6f) * 5f, hit > 16f ? "YOU CRASHED" : "HARD LANDING");
+            // a hard landing bends the gear and the engine; the pilot only goes out in a real crash (or upside down)
+            bool thrown = hit >= ThrowHit || transform.up.y < 0.25f;
+            if (g && g.Current == v && thrown) g.ThrowRider(v, rb.linearVelocity, (hit - 6f) * 5f, hit > 16f ? "YOU CRASHED" : "HARD LANDING");
+            else if (g && g.Current == v) g.Toast("HARD LANDING");
             if (hit > 22f) MadMax.World.Explosion.Blast(transform.position, 3f, 3f, 0.4f, gameObject, true);
             tip *= 0.2f;
         }

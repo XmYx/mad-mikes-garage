@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hdkit as K  # noqa: E402
 from hdkit import Asset, Vector, Matrix  # noqa: E402
 from vbuild import VB, rubble  # noqa: E402
+import cozy as Z  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,9 +20,11 @@ def farmhouse(seed):
     gid = "Farmhouse%d" % seed
     a = Asset(gid, "Building", kind="building", voxel=0.16, yaw=180)
     b = VB(a, 0.16)
+    b.curtain = Z.curtain_mat("gingham" if seed == 0 else "rose")
     w, l, h = 20 + seed * 4, 16, 17
+    siding = "siding" if seed == 0 else ("pine_painted_v" if "pine_painted_v" in K.M else "siding")   # weathered grey / sage paint
     b.slab(w, l, 0, "Wood", K.wood("dark", "x"))
-    b.walls(w, l, 1, h, "Wood", "siding", seed, True, 7, frame_mat=K.wood("light", "y"), sill=K.wood("light", "x"))
+    b.walls(w, l, 1, h, "Wood", siding, seed, True, 7, frame_mat=K.wood("light", "y"), sill=K.wood("light", "x"))
     de, sh_r = b.detail("Wood"), b.shell("Scrap")
     for y in range(4, h + 1, 3):                          # clapboard shadow lines on the long faces
         for (x0, x1, z0, z1) in ((b.lo(-w), b.hi(w), b.lo(-l) - 0.012, b.lo(-l)), (b.lo(-w), b.hi(w), b.hi(l), b.hi(l) + 0.012)):
@@ -43,14 +46,15 @@ def farmhouse(seed):
     shw = b.shell("Wood")                                 # gable ends
     for x in (-w, w):
         pts = [(b.lo(-l), b.lo(h + 1)), (b.hi(l), b.lo(h + 1)), (0.0, b.hi(h + rise(0)) - 0.02)]
-        shw.prism("siding", pts, b.lo(x), b.hi(x), plane="zy")
+        shw.prism(siding, pts, b.lo(x), b.hi(x), plane="zy")
     for x in (-w, w):                                     # barge boards
         for sz in (-1, 1):
             de.beam(K.wood("light", "z"), (b.c(x) + (0.1 if x > 0 else -0.1), b.lo(h + 1), sz * b.hi(l + 2)), (b.c(x) + (0.1 if x > 0 else -0.1), b.hi(h + rise(0)), 0.0), 0.06, 0.05)
     sh_s = b.shell("Stone")                               # brick chimney through the roof
     sh_s.box2("brick", (b.lo(w - 6), b.lo(h - 2), b.lo(4)), (b.hi(w - 3), b.hi(h + 16), b.hi(7)), bevel=0.02)
     sh_s.box2("conc", (b.lo(w - 6) - 0.04, b.hi(h + 16) - 0.08, b.lo(4) - 0.04), (b.hi(w - 3) + 0.04, b.hi(h + 16), b.hi(7) + 0.04), bevel=0.01)
-    de.cyl("black", 0.1, 0.08, (b.c(w - 4.5), b.hi(h + 16) + 0.04, b.c(5.5)), "y", 12, 0.006)
+    a.p("Chimney", "Stone", pivot=(b.c(w - 4.5), b.hi(h + 16) + 0.08, b.c(5.5))).cyl("black", 0.1, 0.08, (b.c(w - 4.5), b.hi(h + 16) + 0.04, b.c(5.5)), "y", 12, 0.006)   # chimney pot: smoke here
+    Z.soot_ring(de, b.lo(w - 6), b.hi(w - 3), 0, b.hi(h + 16) - 0.08, b.lo(4), b.hi(7), 0.32)
     # porch step, door swung in, lamp, rain barrel, firewood stack
     de.box2(K.wood("", "x"), (b.lo(-4), b.lo(0), b.lo(-l) - 0.3), (b.hi(4), b.lo(1) - 0.02, b.lo(-l)), bevel=0.01)
     de.box(K.wood("", "y"), (1.0, b.hi(14) - b.lo(1), 0.05), (b.lo(-3) + 0.4, (b.lo(1) + b.hi(14)) / 2, b.lo(-l) + 0.5), r=(0, 60, 0), bevel=0.01)
@@ -61,7 +65,29 @@ def farmhouse(seed):
     r = K.rng(seed + 3)
     for k in range(14):
         de.cyl(K.wood("", "x"), r.uniform(0.05, 0.07), 0.5, (r.uniform(-1.5, -0.5), b.lo(1) + 0.06 + (k // 3) * 0.12, b.hi(l) + 0.08 + (k % 2) * 0.12), "x", 8, 0.006)
+    farm_life(a, b, w, l, h, seed)
     return a
+
+
+def farm_life(a, b, w, l, h, seed):
+    """Lived-in: window boxes, door mat, boots, coat pegs, a porch bench, gutters + downpipe, laundry out back."""
+    de = b.detail("Wood")
+    front = -l
+    for o in b.openings(w, l, 0, 1, True, 7):              # flower boxes under the front windows
+        if o[4] == "window":
+            Z.flower_box(de, b.lo(o[0]) - 0.02, b.hi(o[1]) + 0.02, b.lo(o[2]) - 0.06, b.lo(front) - 0.012, -1, seed * 31 + o[0])
+    Z.doormat(de, 0.0, b.lo(1) - 0.02, b.lo(front) - 0.16, 0.8, 0.26)
+    Z.boots(de, b.c(5.5), b.lo(1) - 0.02, b.lo(front) - 0.2, 8)
+    Z.coat_hooks(de, b.c(5), b.c(9), b.c(12), b.lo(front) - 0.005, -1, "cloth_olive" if seed == 0 else "cloth_blue")
+    for x in (-5.5, -8.5):                                  # porch bench by the door
+        de.box2(K.wood("dark", "y"), (b.c(x) - 0.03, b.lo(1) - 0.3, b.lo(front) - 0.45), (b.c(x) + 0.03, b.lo(1) + 0.12, b.lo(front) - 0.1), bevel=0.0)
+    de.box2(K.wood("", "x"), (b.c(-9.2), b.lo(1) + 0.12, b.lo(front) - 0.47), (b.c(-4.8), b.lo(1) + 0.16, b.lo(front) - 0.08), bevel=0.0)
+    Z.potted(de, (b.c(-9.8), b.lo(1) - 0.3, b.lo(front) - 0.3))
+    eave = b.lo(h + 1) - 0.02                               # gutters along both eaves, one downpipe
+    for sz in (-1, 1):
+        Z.gutter(de, b.lo(-w - 2), b.hi(w + 2), eave, sz * (b.hi(l + 2) - 0.02))
+    Z.drainpipe(de, b.hi(w + 2) - 0.08, -(b.hi(l + 2) - 0.02), eave, b.lo(0), kick=(0.0, -0.18))
+    Z.laundry_line(a, b.c(-w + 1), b.c(-w + 1) + 3.8, 1.75, b.hi(l) + 1.3, seed=seed + 70, base_y=b.lo(0))
 
 
 def brick_house(seed):
@@ -69,6 +95,7 @@ def brick_house(seed):
     a = Asset(gid, "Building", kind="building", voxel=0.16, yaw=180)
     b = VB(a, 0.16)
     w, l, st = 24 + seed * 3, 20, 18
+    b.curtain = Z.curtain_mat("ticking" if seed == 0 else "quilt")
     cut_box = (w - 10, st + 6, -l, w, st * 2 + 3, -l + 12) if seed == 1 else None   # collapsed corner (x0, y0, z0, x1, y1, z1)
 
     def ruin(y0, y1):
@@ -113,6 +140,19 @@ def brick_house(seed):
         rubble(de, ["brick", "brick_dark", "conc_dark"], r, (b.c(w - 6), 0, b.c(-l - 1.5)), 0.7, 24, 0.14, floor=b.lo(0))
         rubble(de, ["brick", "brick_dark"], r, (b.c(w - 5), b.hi(st + 1), b.c(-l + 5)), 0.6, 14, 0.12, floor=b.hi(st + 1))
     rubble(de, ["brick", "conc_dark"], r, (b.c(-w) + 0.6, b.hi(0), b.c(l) - 1.0), 0.4, 8, 0.1, floor=b.hi(0))
+    # lived-in: door mat, porch lamp, potted plants, window boxes upstairs, a stovepipe with a soot ring, a line on the roof
+    Z.doormat(de, 0.0, b.lo(1) - 0.02, b.lo(-l) - 0.25, 0.8, 0.4)
+    Z.lantern(a, (b.c(-6.5), b.c(13), b.lo(-l) - 0.2), "Lamp", bracket_to=(b.c(-6.5), b.c(15.5), b.lo(-l)))
+    Z.potted(de, (b.c(-5), b.lo(1) - 0.02, b.lo(-l) - 0.3), "terracotta", "leaf", 0.12)
+    Z.potted(de, (b.c(5), b.lo(1) - 0.02, b.lo(-l) - 0.3), "rust", "flower_red", 0.1)
+    for o in b.openings(w, l, 0, st + 2, False, 8):
+        if o[4] == "window" and not (cut_box and o[1] > cut_box[0]):
+            Z.flower_box(de, b.lo(o[0]) - 0.02, b.hi(o[1]) + 0.02, b.lo(o[2]) - 0.06, b.lo(-l) - 0.012, -1, seed * 17 + o[0])
+    roof = b.hi(st * 2 + 2)
+    Z.stovepipe(de, b.c(-w + 6), roof, roof + 1.1, b.c(l - 5), a=a)
+    Z.laundry_line(a, b.c(-w + 3), b.c(-w + 3) + 3.2, roof + 1.5, b.c(4), seed=seed + 90, base_y=roof)
+    if seed == 0:
+        Z.sign_board(a, b.c(-12), b.c(12), b.lo(-l) - 0.05, 1.3, 0.5, "cloth_cream", "navy", -1, False, 6, seed=5)
     return a
 
 
@@ -237,9 +277,12 @@ def shop(seed):
             gl.tri_plate("glass", (b.hi(u0), b.lo(3), b.c(-l)), (b.hi(u0) + 0.4 * r.random() + 0.2, b.lo(3), b.c(-l)), (b.hi(u0), b.lo(3) + 0.6 + 0.6 * r.random(), b.c(-l)), 0.008)
     b.slab(w + 1, l + 1, h + 1, "Stone", "conc_dark")
     sign = "sign_red" if seed % 2 == 0 else "navy"
-    de.box2(sign, (b.lo(-20), b.lo(h + 2), b.lo(-l - 1)), (b.hi(20), b.hi(h + 7), b.hi(-l - 1)), bevel=0.02)
+    sg = a.p("Sign", "Scrap", pivot=(0.0, b.lo(h + 2), b.c(-l - 1)))              # the shop sign (own object)
+    sg.box2(sign, (b.lo(-20), b.lo(h + 2), b.lo(-l - 1)), (b.hi(20), b.hi(h + 7), b.hi(-l - 1)), bevel=0.02)
     for x in range(-18, 19, 4):                            # sign letters
-        de.box2("cloth_cream", (b.lo(x) + 0.02, b.lo(h + 3), b.lo(-l - 1) - 0.02), (b.hi(x) - 0.02, b.hi(h + 6), b.lo(-l - 1)), bevel=0.006)
+        sg.box2("cloth_cream", (b.lo(x) + 0.02, b.lo(h + 3), b.lo(-l - 1) - 0.02), (b.hi(x) - 0.02, b.hi(h + 6), b.lo(-l - 1)), bevel=0.006)
+    Z.string_lights(a, [(b.lo(-w + 2), b.lo(13) - 0.05, b.lo(-l - 1) - 0.02), (b.c(-4), b.lo(13) - 0.05, b.lo(-l - 1) - 0.02),
+                        (b.hi(w - 2), b.lo(13) - 0.05, b.lo(-l - 1) - 0.02)], 10, sag=0.1)
     for x in (-18, 0, 18):
         de.rod("steel_dark", (b.c(x), b.lo(h + 2), b.c(-l - 1)), (b.c(x), b.hi(h + 1), b.c(-l + 1)), 0.015, 5)
     for k in range(10):                                    # tin awning over the storefront
@@ -264,6 +307,18 @@ def shop(seed):
             de.box2(r.choice([K.wood("light", "x"), "cloth_cream", "burlap"]), (x - 0.08, b.hi(y) - 0.08, b.c(z)), (x + 0.08, b.hi(y) + 0.06, b.c(z) + 0.2), bevel=0.01)
     de.box2("white", (b.c(10), b.hi(h + 1), b.c(6)), (b.c(14), b.hi(h + 1) + 0.6, b.c(10)), bevel=0.02)       # rooftop AC unit
     de.tube("rust", [(b.hi(w) - 0.05, b.hi(h + 1), b.hi(l) + 0.05), (b.hi(w) - 0.05, b.lo(1), b.hi(l) + 0.05)], 0.04, 8)
+    # out front: door mat, a bench, crates of produce, an OPEN board, a lantern by the door
+    Z.doormat(de, 0.0, b.hi(0), b.lo(-l) - 0.3, 0.9, 0.45)
+    for x in (-9.5, -13.5):
+        de.box2(K.wood("dark", "y"), (b.c(x) - 0.03, b.hi(0), b.lo(-l) - 0.6), (b.c(x) + 0.03, b.hi(0) + 0.42, b.lo(-l) - 0.25), bevel=0.006)
+    de.box2(K.wood("", "x"), (b.c(-14.2), b.hi(0) + 0.42, b.lo(-l) - 0.62), (b.c(-8.8), b.hi(0) + 0.47, b.lo(-l) - 0.22), bevel=0.008)
+    r = K.rng(seed + 9)
+    for k, x in enumerate((8, 11, 14)):
+        de.box2(K.wood("light", "x"), (b.c(x) - 0.25, b.hi(0), b.lo(-l) - 0.75), (b.c(x) + 0.25, b.hi(0) + 0.3, b.lo(-l) - 0.35), bevel=0.01)
+        for j in range(6):
+            de.sphere(["flower_red", "ochre", "leaf"][k], 0.06, (b.c(x) - 0.15 + (j % 3) * 0.15, b.hi(0) + 0.33, b.lo(-l) - 0.65 + (j // 3) * 0.18), (1, 0.9, 1), 8, 5)
+    Z.sign_board(a, b.c(-7), b.hi(0) + 0.55, b.lo(-l) - 0.9, 0.6, 0.8, "cloth_cream", "black", -1, False, 4, seed=seed + 4)
+    Z.lantern(a, (b.c(5.5), b.c(10), b.lo(-l) - 0.2), "Lamp", bracket_to=(b.c(5.5), b.c(11.5), b.lo(-l)))
     return a
 
 
@@ -274,6 +329,7 @@ def shack(seed):
     w, l, h = 16 + seed * 3, 18 + seed * 2, 34
     sh, shw, de, gl = b.shell("Scrap"), b.shell("Wood"), b.detail("Wood"), b.glass()
     shw.box2(K.wood("dark", "x"), (b.lo(-w), b.lo(0), b.lo(-l)), (b.hi(w), b.hi(0), b.hi(l)), bevel=0.006)
+    cur = Z.curtain_mat(["sack", "gingham", "quilt"][seed % 3])
     door = (b.lo(-5), b.hi(5), b.lo(0), b.hi(26))
     win = (b.lo(-4), b.hi(4), b.lo(14), b.hi(22))
     M = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
@@ -291,6 +347,14 @@ def shack(seed):
             for (z0, z1, y0, y1) in ((b.lo(-5), b.hi(-5), b.lo(13), b.hi(23)), (b.lo(5), b.hi(5), b.lo(13), b.hi(23)), (b.lo(-5), b.hi(5), b.lo(13), b.hi(13)), (b.lo(-5), b.hi(5), b.lo(23), b.hi(23))):
                 shw.box2(K.wood("", "y"), (b.lo(xf) - 0.02, y0, z0), (b.hi(xf) + 0.02, y1, z1), bevel=0.006)
             gl.box2("glass", (b.c(xf) - 0.005, b.lo(14), b.lo(-4)), (b.c(xf) + 0.005, b.hi(22), b.hi(4)), bevel=0)
+            xi = b.c(xf) - (0.05 if xf > 0 else -0.05)
+            cu = a.p("Curtain_%d" % side, "Cloth", pivot=(xi, b.hi(22) + 0.02, 0.0), mover=True)   # a cloth on a wire inside
+            for k in range(2):
+                z0, z1 = (b.lo(-4), -0.05) if k == 0 else (0.12, b.hi(4))
+                secs = [[(xi + (0.012 if i % 2 else -0.012), yy, z0 + (z1 - z0) * i / 5) for i in range(6)] +
+                        [(xi + (0.012 if i % 2 else -0.012) + 0.006, yy, z0 + (z1 - z0) * i / 5) for i in reversed(range(6))]
+                        for yy in (b.hi(22) + 0.02, b.lo(14) - 0.02)]
+                cu.loft(cur, secs)
             de.box2(K.wood("", "y"), (b.c(xf) - 0.02, b.lo(14), -0.02), (b.c(xf) + 0.02, b.hi(22), 0.02), bevel=0.004)
     for x in (-w, w):                                      # corner posts + door frame
         for z in (-l, l):
@@ -319,6 +383,20 @@ def shack(seed):
     de.cyl("rubber", 0.3, 0.2, (b.c(w) - 0.45, b.hi(0) + 0.1, b.c(-l) + 0.5), "y", 18, 0.04)    # junk inside
     de.box2(K.wood("", "x"), (b.c(-w) + 0.15, b.hi(0), b.c(l) - 0.6), (b.c(-w) + 0.65, b.hi(0) + 0.45, b.c(l) - 0.1), bevel=0.02)
     de.lathe("rust", [(0.0, 0.0), (0.26, 0.0), (0.27, 0.86), (0.0, 0.86)], (b.c(w) - 0.4, b.hi(0), b.c(l) - 0.4), "y", 18)
+    # lived-in: a stove pipe through the roof (soot ring), a door mat, a lantern over the door, a nailed-up sign,
+    # a cot with a blanket, a tin can of flowers by the door
+    yr = ya + (b.c(w - 3) - xa) / (xb - xa) * (yb - ya)
+    Z.stovepipe(de, b.c(w - 3), b.hi(0) + 0.5, yr + 0.7, b.c(-l + 4), 0.06, a=a)
+    de.box2("iron", (b.c(w - 3) - 0.2, b.hi(0), b.c(-l + 4) - 0.18), (b.c(w - 3) + 0.2, b.hi(0) + 0.5, b.c(-l + 4) + 0.18), bevel=0.02)
+    Z.doormat(de, 0.0, b.hi(0) - 0.02, b.lo(-l) - 0.25, 0.7, 0.4)
+    Z.lantern(a, (b.c(4), b.c(28), b.lo(-l) - 0.18), "Lamp", bracket_to=(b.c(4), b.c(30.5), b.lo(-l)))
+    Z.sign_board(a, b.c(-w + 6), b.c(22), b.lo(-l) - 0.05, 0.7, 0.3, "white", K.wood("grey", "x"), -1, False, 4, seed=seed)
+    de.box2(K.wood("dark", "x"), (b.c(-w) + 0.12, b.hi(0), b.c(-l) + 0.2), (b.c(-w) + 0.8, b.hi(0) + 0.35, b.c(-l) + 1.9), bevel=0.01)
+    de.box2("blanket", (b.c(-w) + 0.1, b.hi(0) + 0.35, b.c(-l) + 0.6), (b.c(-w) + 0.82, b.hi(0) + 0.4, b.c(-l) + 1.92), bevel=0.02)
+    de.box2("ticking", (b.c(-w) + 0.16, b.hi(0) + 0.35, b.c(-l) + 1.55), (b.c(-w) + 0.76, b.hi(0) + 0.45, b.c(-l) + 1.88), bevel=0.04)
+    de.cyl("tin", 0.06, 0.14, (b.c(-7.5), b.hi(0) + 0.07, b.lo(-l) - 0.15), "y", 10, 0.003)
+    for k in range(4):
+        de.sphere("flower_yellow" if k % 2 else "flower_red", 0.025, (b.c(-7.5) + 0.03 * math.cos(k * 1.6), b.hi(0) + 0.26 + 0.02 * k, b.lo(-l) - 0.15 + 0.03 * math.sin(k * 1.6)), (1, 0.7, 1), 6, 4)
     return a
 
 

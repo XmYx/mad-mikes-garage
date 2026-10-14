@@ -49,6 +49,20 @@ namespace MadMax.Vehicles
             baseFreq = driver.frequency; baseDamp = driver.damping; baseBrake = driver.brakeForce; baseBody = chassis ? chassis.bodyMass : 0f;
         }
 
+        /// <summary>The vehicle rewrote its design values (a war rig re-tuned after a change): take the ones it rewrites as the
+        /// new base (gears, final drive, springs, dampers, brakes, body mass, travel, tank) and lay the settings over them again.</summary>
+        public void Rebase()
+        {
+            if (!driver) return;
+            if (captured)
+            {
+                baseGears = (float[])driver.gears.Clone(); baseFinal = driver.finalDrive;
+                baseFreq = driver.frequency; baseDamp = driver.damping; baseBrake = driver.brakeForce; baseBody = chassis ? chassis.bodyMass : 0f;
+            }
+            RebaseKits();
+            Apply();
+        }
+
         public bool Stock => map == 0f && gearing == 0f && finalDrive == 0f && ride == 0f && stiffness == 0f && damping == 0f && Mathf.Abs(brakeBias - 0.6f) < 0.001f
                              && brakeLevel == 0 && pressure == 1f && ballast == 0f && !stripped && !turbo && !supercharger && nitrous == 0 && KitsStock;
 

@@ -93,7 +93,7 @@ namespace MadMax.Game
             // the waypoint: arrive, or re-route when far off the line
             if (HasWaypoint)
             {
-                if (Flat(Waypoint - at) < 18f) { ClearWaypoint(); if (!waypointQuiet) Toast("WAYPOINT REACHED"); return; }
+                if (Flat(Waypoint - at) < WaypointReach) { ClearWaypoint(); if (!waypointQuiet) Toast("WAYPOINT REACHED"); return; }
                 float off = float.MaxValue;
                 foreach (var p in Route) off = Mathf.Min(off, Flat(p - at));
                 if (Route.Count == 0 || off > 70f) RecomputeRoute();
@@ -185,7 +185,7 @@ namespace MadMax.Game
             Racing.Load(d.records);
             LoadWreckPlan(d);
             LoadHome(d);
-            if (d.hasWaypoint) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }
+            if (d.hasWaypoint && !JoiningWorld(d)) { Waypoint = d.waypoint; HasWaypoint = true; RecomputeRoute(); }   // waypoints are each player's own
         }
     }
 }

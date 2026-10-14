@@ -128,7 +128,8 @@ namespace MadMax.EditorTools
                                           vehicles["Bus"], vehicles["Ambulance"], vehicles["APC"], vehicles["Semi"], vehicles["MonsterTruck"], vehicles["DuneBuggy"],
                                           vehicles["DirtBike"], vehicles["Chopper"], vehicles["Bicycle"], vehicles["SidecarOutfit"],
                                           vehicles["Ultralight"], vehicles["Gyrocopter"] }
-                .Concat(VehicleDesigns.ModelCarNames.Select(n => vehicles[n])).ToArray();
+                .Concat(VehicleDesigns.ModelCarNames.Select(n => vehicles[n]))
+                .Concat(new[] { vehicles["MagnetCrane"], vehicles["CarCrusher"] }).ToArray();   // heavy lifters
             game.boatPrefabs = new[] { vehicles["Raft"], vehicles["Skiff"], vehicles["Trawler"], vehicles["Houseboat"], vehicles["IronEel"] };
             game.trailerPrefabs = new[] { vehicles["Tanker"], vehicles["TankerSmall"], vehicles["CargoTrailer"], vehicles["CarTrailer"], vehicles["CarTrailerDouble"], vehicles["BoxTrailer"] };
             game.partPrefabs = new List<GameObject>(lastParts.Values).ToArray();
@@ -217,7 +218,8 @@ namespace MadMax.EditorTools
                                       VehicleDesigns.LanciaYpsilon(), VehicleDesigns.Fiat500(), VehicleDesigns.Peugeot205(), VehicleDesigns.Peugeot206(), VehicleDesigns.Peugeot207CC(),
                                       VehicleDesigns.Peugeot405(), VehicleDesigns.Peugeot406Break(), VehicleDesigns.FiatMultipla(),
                                       VehicleDesigns.Ultralight(), VehicleDesigns.Gyrocopter(),
-                                      VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel() })
+                                      VehicleDesigns.Raft(), VehicleDesigns.Skiff(), VehicleDesigns.Trawler(), VehicleDesigns.Houseboat(), VehicleDesigns.IronEel(),
+                                      VehicleDesigns.MagnetCrane(), VehicleDesigns.CarCrusher() })
             {
                 d.CarveWheelArches(k => k != null && partDesigns.TryGetValue(k, out var pd) ? pd : null);   // tyres never poke through panels (cut doors / hood too)
                 foreach (var p in d.parts) parts[p.key] = SavePart(p, mat);
@@ -423,7 +425,7 @@ namespace MadMax.EditorTools
             sys.fuelCapacity = d.fuelL; sys.oilCapacity = d.oilL; sys.coolantCapacity = d.coolantL;
             sys.usesCoolant = d.usesCoolant; sys.oilInFuel = d.oilInFuel;
             sys.fuel = d.driveable ? d.fuelL * 0.6f : d.fuelL * 0.75f; sys.oil = d.oilL * 0.9f; sys.coolant = d.coolantL * 0.9f;
-            if (d.driveable) root.AddComponent<VehicleDashboard>();
+            if (d.driveable) root.AddComponent<VehicleDashboard>().style = d.dashboard;
             root.AddComponent<VehicleDamage>();
             if (d.machine != null) root.AddComponent<Machine>().kind = (Machine.Kind)System.Enum.Parse(typeof(Machine.Kind), d.machine);
             if (d.coupler.HasValue) root.AddComponent<TowCoupling>();

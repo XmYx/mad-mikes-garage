@@ -44,21 +44,23 @@ namespace MadMax.World
         {
             foreach (var k in Smashed) into.Add("x:" + k);
             foreach (var k in Knocked) into.Add("k:" + k);
+            BreakablePole.Save(into);                                                         // fallen poles (lamps, signs, telegraph poles)
         }
 
         public static void Load(List<string> from)
         {
-            Smashed.Clear(); Knocked.Clear();
+            Smashed.Clear(); Knocked.Clear(); BreakablePole.Fallen.Clear();
             if (from == null) return;
             foreach (var s in from)
             {
                 if (s == null || s.Length < 3) continue;
+                if (BreakablePole.Load(s)) continue;
                 if (s.StartsWith("x:")) Smashed.Add(s.Substring(2));
                 else if (s.StartsWith("k:")) Knocked.Add(s.Substring(2));
             }
         }
 
-        public static void NewGame() { Smashed.Clear(); Knocked.Clear(); Blackout.Clear(); }
+        public static void NewGame() { Smashed.Clear(); Knocked.Clear(); Blackout.Clear(); BreakablePole.Fallen.Clear(); }
 
         // ------------------------------------------------------------------ plan
 
@@ -99,10 +101,22 @@ namespace MadMax.World
                 spots.Add(sp);
             }
 
+            // planned towns: the plan's lamps (both sides of the streets, squares, parks, car parks) and its mast
+            foreach (var st in world.settlements)
+            {
+                if (st.plan == null) continue;
+                foreach (var sp in st.plan.spots)
+                {
+                    if (sp.kind != SpotKind.Lamp && sp.kind != SpotKind.Mast) continue;
+                    if (world.Reserved(sp.pos.x, sp.pos.y) || world.YardWeight(sp.pos.x, sp.pos.y) > 0.05f) continue;
+                    Add(sp.pos, sp.yaw, sp.id, st);
+                }
+            }
+
             // junction masts in the middle of towns and cities
             foreach (var st in world.settlements)
             {
-                if (st.kind == Biome.Village) continue;
+                if (st.kind == Biome.Village || st.plan != null) continue;
                 for (int k = 0; k < 8; k++)
                 {
                     float a = k * Mathf.PI / 4f + st.index * 0.7f;
@@ -141,6 +155,7 @@ namespace MadMax.World
                             if (dd < cand.radius + 80f && dd - cand.radius < d) { d = dd - cand.radius; st = cand; }
                         }
                         if (st == null) continue;
+                        if (st.plan != null && d < 2f) continue;                                    // inside a planned town: its own lamps
                         bool inside = d < -st.radius * 0.05f;
                         if (inside && st.kind == Biome.City && d < -st.radius * 0.15f) continue;     // the city's own streetlights
                         string piece;
@@ -179,6 +194,7 @@ namespace MadMax.World
                     var pl = FurnitureLibrary.WorldFixture(sp.piece, parent, pos, Quaternion.Euler(0f, sp.yaw, 0f), mat);
                     if (!pl) continue;
                     pl.gameObject.name = "StreetLamp";
+                    BreakablePole.ForLamp(pl.gameObject, sp.piece, sp.key);                        // snaps when a car hits it hard
                     var wl = pl.gameObject.AddComponent<WorldLamp>();
                     wl.key = sp.key; wl.town = sp.town;
                     FloraBlocker.Add(pl.gameObject, 0.02f);

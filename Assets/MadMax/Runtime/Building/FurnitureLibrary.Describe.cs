@@ -11,14 +11,15 @@ namespace MadMax.Building
         public static List<string> Describe(FurnitureDef d)
         {
             var l = new List<string>();
-            if (!string.IsNullOrEmpty(d.desc)) l.Add(d.desc);
+            string desc = !string.IsNullOrEmpty(d.desc) ? d.desc : Description(d.id);              // FurnitureLibrary.Descriptions
+            if (!string.IsNullOrEmpty(desc)) l.Add(desc);
             if (d.plan == -2) { l.Add("CAPTURE TOOL: SAVES THE STRUCTURE YOU AIM AT AS A PLAN TO BUILD AGAIN."); return l; }
             if (d.plan >= 0) { l.Add("A SAVED PLAN: PLACES THE WHOLE STRUCTURE AT ONCE, PAID PIECE BY PIECE."); return l; }
             if (d.link != UtilityKind.None) { l.Add("RUNS A " + d.link.ToString().ToUpperInvariant() + " LINE: CLICK ONE POINT, THEN THE OTHER."); return l; }
             int makes = 0;
             foreach (var r in RecipeLibrary.All) if (r.station == d.id) makes++;
             if (makes > 0) l.Add("A WORK STATION: " + makes + " THING" + (makes == 1 ? "" : "S") + " TO MAKE HERE ([E] TO USE).");
-            if (string.IsNullOrEmpty(d.desc) && makes == 0)
+            if (string.IsNullOrEmpty(desc) && makes == 0)
             {
                 string k = d.id;
                 string role =

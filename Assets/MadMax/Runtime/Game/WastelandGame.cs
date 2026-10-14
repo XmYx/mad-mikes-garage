@@ -102,6 +102,7 @@ namespace MadMax.Game
             Time.fixedDeltaTime = 0.01f;
             Time.timeScale = 1f;
             if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp) urp.shadowDistance = shadowDistance;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Registry");                 // markers for load profiling (dev builds)
             if (partPrefabs != null) foreach (var pp in partPrefabs) if (pp) partLookup[pp.name] = pp;
             var partList = new List<(string, PartCategory, float, int)>();
             foreach (var kv in partLookup) if (!kv.Key.EndsWith("_hidden") && kv.Value.TryGetComponent<VehiclePart>(out var vp)) partList.Add((kv.Key, vp.category, vp.mass, vp.sizeClass));   // _hidden: far end of an HD roller drum
@@ -110,8 +111,10 @@ namespace MadMax.Game
             foreach (var pf in vehiclePrefabs) if (pf && pf.TryGetComponent<VehicleChassis>(out var ch)) vehList.Add((pf.name, ch.TotalMass));
             if (boatPrefabs != null) foreach (var pf in boatPrefabs) if (pf && pf.TryGetComponent<VehicleChassis>(out var ch)) vehList.Add((pf.name, ch.TotalMass));
             RecipeLibrary.RegisterVehicles(vehList);
+            UnityEngine.Profiling.Profiler.EndSample();
             var pending = SaveSystem.Pending;
             SaveSystem.Pending = null;
+            if (pending == null) MadMax.World.DestructibleVoxels.Moved.Clear();                   // the last scene's crates noted themselves while unloading
             var net = NetSession.Instance;
             bool joining = net && net.IsClient && NetSession.JoinWorld != null && pending == NetSession.JoinWorld;
             Dedicated = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-server") >= 0 || (net && net.Mode == NetMode.Dedicated);
@@ -131,22 +134,26 @@ namespace MadMax.Game
             WheelStats.Popped_ -= OnTyrePop; WheelStats.Popped_ += OnTyrePop;
             viewRadius = GameSettings.Current.ViewRadius;
             VehicleDamage.Scrapped += OnScrapped;
-            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.World");                    // markers for load profiling (dev builds)
-            World = new WorldGen(seed);
+            yield return GenerateWorld(seed, 0.05f, 0.2f, !joining);                             // on a worker thread (story anchors too); prop templates beside it (WastelandGame.Load)
+            yield return LoadPropTemplates();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.TerrainInit");
             terrain = new GameObject("Terrain").AddComponent<DeformableTerrain>();
             terrain.viewRadius = viewRadius;
             terrain.Init(World, terrainMaterial, propMaterial);
             UnityEngine.Profiling.Profiler.EndSample();
             ScreenFader.Progress(0.25f);
             yield return null;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fx");
             var weather = new GameObject("Weather").AddComponent<Weather>();
             var fx = new GameObject("WorldFx");
             fx.AddComponent<DebrisSystem>().Init(propMaterial);
             pickups = fx.AddComponent<PickupSystem>();
             pickups.Init(propMaterial);
+            UnityEngine.Profiling.Profiler.EndSample();
 
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Anchors");
             World.roads.SpawnPoint(out var p, out var dir);
-            if (!joining) StoryAnchors.Bind(World);                                               // story places and their clearings before the terrain builds
+            if (!joining) StoryAnchors.Bind(World);                                               // story places and their clearings before the terrain builds (bound on the world thread already: returns at once)
             if (Rules.story && pending == null && !joining)
             {
                 // the campaign starts at the convoy wreck out on the road, not in the start yard
@@ -155,17 +162,33 @@ namespace MadMax.Game
             }
             WorldSpawn = p;
             SpawnDir = dir;
+            // where the terrain builds first: its chunk data starts on workers now, while the rest loads
+            var focus = CityStart ? CityFocus() : p;
+            if (pending != null)
+            {
+                focus = joining ? NetSession.JoinSpawn : pending.player.position;
+                if (!joining && pending.player.vehicle >= 0 && pending.player.vehicle < pending.vehicles.Count) focus = pending.vehicles[pending.player.vehicle].position;
+            }
+            terrain.PrefetchArea(focus);
+            UnityEngine.Profiling.Profiler.EndSample();
+            yield return null;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Player");
             Player = PlayerCharacter.Create(propMaterial, SaveSystem.PendingLook);
             Vitals = Player.gameObject.AddComponent<PlayerVitals>();
             Stats.EnsureArrays();
             Vitals.Init(Stats);
             Player.gameObject.SetActive(false);
+            UnityEngine.Profiling.Profiler.EndSample();
+            ScreenFader.Progress(0.27f);
+            yield return null;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Components");
             Build = gameObject.AddComponent<BuildMode>();
             Menus = gameObject.AddComponent<MenuSystem>();
             gameObject.AddComponent<MadMax.Audio.RadioNetwork>();
             gameObject.AddComponent<MadMax.Audio.AmbientAudio>();
             gameObject.AddComponent<MadMax.World.Atmosphere>();
             gameObject.AddComponent<MadMax.World.WindDust>();
+            gameObject.AddComponent<MadMax.World.TownLitter>();                                  // paper blowing down town streets
             gameObject.AddComponent<MadMax.World.Storms>();
             gameObject.AddComponent<Racing>();
             gameObject.AddComponent<MadMax.Npc.NpcVoice>();
@@ -173,40 +196,43 @@ namespace MadMax.Game
             gameObject.AddComponent<SeaLife>();
             gameObject.AddComponent<MadMax.World.FarTerrain>();
             gameObject.AddComponent<MadMax.World.RiverFoam>();
-            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Directors");                // same frame: BuildMode / MenuSystem never update before Init
             gameObject.AddComponent<MadMax.Npc.NpcDirector>().Init(this);
             gameObject.AddComponent<MadMax.Animals.AnimalDirector>().Init(this);
             Menus.Init(this);
-            UnityEngine.Profiling.Profiler.EndSample();
             if (cameraRig) Build.Init(this, cameraRig, propMaterial);
+            UnityEngine.Profiling.Profiler.EndSample();
+            ScreenFader.Progress(0.3f);
+            yield return null;
 
             if (pending != null)
             {
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Restore");
                 RestoreDestruction(pending);
-                var focus = joining ? NetSession.JoinSpawn : pending.player.position;
-                if (!joining && pending.player.vehicle >= 0 && pending.player.vehicle < pending.vehicles.Count) focus = pending.vehicles[pending.player.vehicle].position;
-                terrain.BuildAllNow(focus);
-                Physics.SyncTransforms();
-                ScreenFader.Progress(0.6f);
+                UnityEngine.Profiling.Profiler.EndSample();
+                yield return BuildTerrain(focus, 0.3f, 0.6f);                                       // chunks within a frame budget (MadMax.Terrain.* markers)
                 yield return null;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Vehicles");
                 RestoreVehicles(pending);
+                UnityEngine.Profiling.Profiler.EndSample();
             }
             else
             {
-                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Terrain");
-                terrain.BuildAllNow(CityStart ? CityFocus() : p);
-                Physics.SyncTransforms();
-                UnityEngine.Profiling.Profiler.EndSample();
-                ScreenFader.Progress(0.6f);
+                yield return BuildTerrain(focus, 0.3f, 0.6f);
                 yield return null;
-                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fleet");
-                if (!Rules.story) SpawnFleet(p, dir);
-                UnityEngine.Profiling.Profiler.EndSample();
-                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
-                SpawnWrecks(p);
-                UnityEngine.Profiling.Profiler.EndSample();
+                if (!Rules.story) yield return SpawnFleet(p, dir);                                 // MadMax.Start.Fleet per vehicle
+                yield return null;
+                yield return SpawnWrecks(p);                                                      // the yard wrecks, one a frame (MadMax.Start.Wrecks)
+                ScreenFader.Progress(0.65f);
+                yield return null;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Blocks");
                 BlocksNewGame();
                 Journal.Load(null); MadMax.Npc.TownNews.Load(null); MadMax.Npc.Trade.LoadHauls(null);     // statics outlive the scene reload
+                UnityEngine.Profiling.Profiler.EndSample();
+                if (cameraRig) cameraRig.mode = ViewMode.Overhead;                                     // new games open in the overhead view
+                yield return null;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Homestead");
                 if (Rules.story) StoryNewGame();
                 else
                 {
@@ -214,29 +240,42 @@ namespace MadMax.Game
                     GiveStartingKit(Rules.startingKit);
                     SpawnHomestead();
                 }
+                UnityEngine.Profiling.Profiler.EndSample();
+                ScreenFader.Progress(0.7f);
             }
             yield return SpawnCity();                                                             // the rolling city and its docks (roadmap 28)
             if (World != null && World.mega != null) StartCoroutine(SpawnMegaCity());              // the megacity builds in the background
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Equip");
             if (!(Rules.story && pending == null)) Player.Equip(ToolLibrary.Create(ItemIds.Sledgehammer, propMaterial));
+            UnityEngine.Profiling.Profiler.EndSample();
             ScreenFader.Progress(0.85f);
             yield return null;
 
             if (cameraRig)
             {
-                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Hud");
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Weather");
                 weather.Init(cameraRig.pixel.transform, sun);
                 InitSurvival();
+                UnityEngine.Profiling.Profiler.EndSample();
+                yield return null;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Hud");
                 gameObject.AddComponent<LineOfSight>();
                 gameObject.AddComponent<PixelHud>().Init(this, cameraRig);
                 UnityEngine.Profiling.Profiler.EndSample();
+                yield return null;
             }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Enter");
             if (joining) { JoinAsClient(); played = true; }
             else if (pending != null) { RestorePlayer(pending); played = true; Toast("GAME LOADED"); }
             else if (Rules.story && !Dedicated) { }                                               // StoryNewGame placed the player by the wreck
             else if (CityStart && City && !Dedicated) PlaceAboard();                               // START: ABOARD THE ROLLING CITY
             else if (fleet.Count == 0 && !Dedicated) { Player.gameObject.SetActive(true); var sp = p + Vector3.Cross(Vector3.up, dir) * 6f; sp.y = terrain.Height(sp.x, sp.z) + 0.1f; Player.Teleport(sp, 0f); terrain.focus = Player.transform; if (cameraRig) cameraRig.SetTarget(Player.transform); }
             else if (!Dedicated) Enter(fleet[0]);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Settings");
             GameSettings.Current.Apply(this);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Title");
             if (!joining && pending == null && !Dedicated && !Rules.story) BeginStarter();        // FIRST STEPS for a fresh sandbox world
             if (Dedicated) StartDedicated();
             else if (pending == null && !SaveSystem.SkipMenu && LaunchOptions.NoMenu)
@@ -258,6 +297,8 @@ namespace MadMax.Game
             SaveSystem.SkipMenu = false;
             helpUntil = Time.time + 12f;
             Hints.Show("keymap", "F1: A MAP OF THE KEYS FOR WHAT YOU ARE DOING", 3);
+            UnityEngine.Profiling.Profiler.EndSample();
+            if (played && !Dedicated && !joining) yield return SettleWorld();                     // the world at rest before the fade lifts
             ScreenFader.Progress(1f);
             Ready = true;
         }
@@ -313,7 +354,8 @@ namespace MadMax.Game
             Ragdoll.For(Player.Rig).Go(push, Player.transform.position + Vector3.up * 1.2f, Player.Velocity);
             if (Rules.permadeath)
             {
-                SaveSystem.Delete(SaveSystem.Slot); SaveSystem.Delete(0);                           // permadeath: this run's slot and the autosave
+                if (SaveSystem.SlotOwned) SaveSystem.Delete(SaveSystem.Slot);                       // permadeath: this run's slot (if it has one)
+                SaveSystem.Delete(0);                                                                // and the autosave
                 Invoke(nameof(ReturnToMainMenu), 4f);
                 return;
             }
@@ -343,6 +385,7 @@ namespace MadMax.Game
 
         void OnDestroy()
         {
+            if (settleMaxDt > 0f) { Time.maximumDeltaTime = settleMaxDt; Time.timeScale = 1f; }   // unloaded mid-settle (SettleWorld)
             CharacterStats.Notice -= Toast;
             VehicleDamage.Scrapped -= OnScrapped;
             if (Instance == this) Instance = null;
@@ -474,6 +517,16 @@ namespace MadMax.Game
             Inventory.AddItem(ItemIds.ClawHammer);
             foreach (var c in ClothingLibrary.Starter) Inventory.AddItem("cloth_" + c);
             Inventory.Add(ResourceType.Scrap, 20); Inventory.Add(ResourceType.Wood, 10);
+            // the shared world from the join snapshot, before the first WorldState (10 s) arrives
+            var d = NetSession.JoinWorld;
+            if (d != null)
+            {
+                terrain.LoadEdits(d.terrain);
+                MadMax.Npc.Factions.Load(d.factions);
+                MadMax.Npc.Market.Load(d.market);
+                RestoreFishing(d);
+                if (d.foundAircraft != null) foreach (var k in d.foundAircraft) FoundAircraft.Add(k);
+            }
         }
 
         /// <summary>Server keeps terrain colliders and awake bodies around every connected player.</summary>
@@ -497,7 +550,8 @@ namespace MadMax.Game
             return l;
         }
 
-        void SpawnFleet(Vector3 p, Vector3 dir)
+        /// <summary>The start yard's vehicles, spawned within <see cref="LoadBudgetMs"/> a frame.</summary>
+        IEnumerator SpawnFleet(Vector3 p, Vector3 dir)
         {
             // the start yard (WorldGen): a graded gravel lot on both sides of the highway. The fleet parks in rows on the
             // -side facing the road, the machines on the +side, trailers at the back of the lot; the road stays open
@@ -511,21 +565,25 @@ namespace MadMax.Game
             }
             var first = chosen.Count > 0 ? chosen[0] : null;                                      // the car you start in
             chosen.Sort((a, b) => HalfExtents(b).z.CompareTo(HalfExtents(a).z));                 // long ones in the front row
-            float across = -9f;
-            across = ParkRows(chosen, origin, along, -side, across, fleet);
+            var rows = new RowCursor();
+            yield return ParkRows(chosen, origin, along, -side, -9f, fleet, rows);
+            float across = rows.next;
             int fi = first ? fleet.FindIndex(v => v && v.name.StartsWith(first.name)) : -1;
             if (fi > 0) { var v0 = fleet[fi]; fleet.RemoveAt(fi); fleet.Insert(0, v0); }
             if (Rules.fleet == 0)
             {
                 var trailers = new List<GameObject>(trailerPrefabs);
-                ParkRows(trailers, origin, along, -side, across - 3f, null);
-                ParkRows(machines, origin, along, side, 11f, fleet);
+                yield return ParkRows(trailers, origin, along, -side, across - 3f, null, rows);
+                yield return ParkRows(machines, origin, along, side, 11f, fleet, rows);
             }
         }
 
+        sealed class RowCursor { public float next; public readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew(); }
+
         /// <summary>Park vehicles in rows starting <paramref name="front"/> metres from the road on the <paramref name="side"/>,
-        /// noses to the road, columns along it. Returns where the next row would start.</summary>
-        float ParkRows(List<GameObject> prefabs, Vector3 origin, Vector3 along, Vector3 side, float front, List<VehicleDriver> group)
+        /// noses to the road, columns along it. <paramref name="rows"/>.next = where the next row would start; a frame
+        /// ends when the load budget is spent.</summary>
+        IEnumerator ParkRows(List<GameObject> prefabs, Vector3 origin, Vector3 along, Vector3 side, float front, List<VehicleDriver> group, RowCursor rows)
         {
             front = Mathf.Abs(front);
             float col = WorldGen.YardAlong0 + 3f, rowDepth = 0f;
@@ -536,12 +594,15 @@ namespace MadMax.Game
                 if (col + half.x * 2f > WorldGen.YardAlong1 - 2f) { front += rowDepth + 3.5f; col = WorldGen.YardAlong0 + 3f; rowDepth = 0f; }
                 col += half.x + 0.6f;
                 var at = origin + along * col + side * (front + half.z);
+                if (rows.clock.Elapsed.TotalMilliseconds > LoadBudgetMs) { yield return null; rows.clock.Restart(); }
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Fleet");
                 var pos = FindClearSpot(at, along, half, face);
                 Register(Instantiate(pf, pos, face).GetComponent<VehicleDriver>(), group);
+                UnityEngine.Profiling.Profiler.EndSample();
                 col += half.x + 0.6f;
                 rowDepth = Mathf.Max(rowDepth, half.z * 2f);
             }
-            return -(front + rowDepth + 3.5f);
+            rows.next = -(front + rowDepth + 3.5f);
         }
 
         void Register(VehicleDriver v, List<VehicleDriver> group)
@@ -551,6 +612,7 @@ namespace MadMax.Game
             {
                 if (!v.GetComponent<Winch>()) v.gameObject.AddComponent<Winch>();
                 if (!v.GetComponent<Crane>()) v.gameObject.AddComponent<Crane>();
+                AddLifters(v);                                                                   // magnet crane, grapple crusher (WastelandGame.Lifters.cs)
                 if (!v.GetComponent<VehicleClimate>()) v.gameObject.AddComponent<VehicleClimate>();
                 if (!v.GetComponent<VehicleWeapons>()) v.gameObject.AddComponent<VehicleWeapons>();
             }
@@ -600,13 +662,13 @@ namespace MadMax.Game
             if (!Ready || !Player) return;
             var kb = Keyboard.current; var pad = Gamepad.current; var mouse = Mouse.current;
             bool Pressed(Key k) => kb != null && kb[k].wasPressedThisFrame;                      // fixed keys (machine / winch / crane digits)
-            UpdateRadial(kb, mouse);
-            UpdateContext(kb, mouse, pad);                                                       // context menus, respawn list (WastelandGame.Context)
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateRadial"); UpdateRadial(kb, mouse); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateContext"); UpdateContext(kb, mouse, pad); UnityEngine.Profiling.Profiler.EndSample();                                                       // context menus, respawn list (WastelandGame.Context)
 
-            if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); UpdateWreckStreaming(); return; }
-            Menus.Tick();
-            MadMax.Rendering.GraphicsQuality.Tick();
-            UpdateHandcraft(Time.deltaTime);                                                     // personal jobs go on under any page (WastelandGame.Handcraft)
+            if (Dedicated) { UpdateServerFoci(); UpdateSleepers(); UpdateWreckStreaming(); UpdateAutosave(); return; }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Menus_Tick"); Menus.Tick(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.MadMax_Rendering_GraphicsQuality_Tick"); MadMax.Rendering.GraphicsQuality.Tick(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateHandcraft"); UpdateHandcraft(Time.deltaTime); UnityEngine.Profiling.Profiler.EndSample();                                                     // personal jobs go on under any page (WastelandGame.Handcraft)
             var settings = GameSettings.Current;
             foreach (var c in cars)
             {
@@ -627,7 +689,8 @@ namespace MadMax.Game
 
             if (Controls.Down(Controls.Act.Help) || (kb != null && kb.f1Key.wasPressedThisFrame)) { ShowHelp = !ShowHelp; helpUntil = float.MaxValue; }
             if (ShowHelp && Time.time > helpUntil) ShowHelp = false;
-            UpdateAim(mouse, pad);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateAim"); UpdateAim(mouse, pad); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateGuard"); UpdateGuard(mouse, pad); UnityEngine.Profiling.Profiler.EndSample();                                                             // melee guard (WastelandGame.Guard)
             if (Controls.Down(Controls.Act.Reload) && !Current && Player.Tool is RangedTool gun) gun.ReloadKey(this);              // reload / clear a jam
             if (Controls.Down(Controls.Act.DevWeather) && !(NetSession.Instance && NetSession.Instance.IsClient)) { Weather.Raining = !Weather.Raining; NetSession.Instance?.SendWeather(); Toast(Weather.Raining ? (Weather.Snowing ? "SNOW" : "RAIN") : "CLEAR SKIES"); }
             if ((TabTapped || (pad != null && pad.buttonWest.wasPressedThisFrame && Current)) && fleet.Count > 0)
@@ -676,6 +739,7 @@ namespace MadMax.Game
                         kb.digit8Key.isPressed || arrowsFree && toolUp > 0f, kb.digit9Key.isPressed || arrowsFree && toolUp < 0f,
                         kb.digit0Key.isPressed ? (shiftHeld ? -1f : 1f) : arrowsFree ? toolSide : 0f, shiftHeld);
                 }
+                if (kb != null && !ExternalInput) LifterControls(kb, machineHere, toolUp, toolSide, shiftHeld);   // WastelandGame.Lifters.cs
                 if (Controls.Down(Controls.Act.Climate) && Current.TryGetComponent<VehicleClimate>(out var clim)) { clim.on = !clim.on; Toast(clim.on ? "CLIMATE AUTO" : "CLIMATE OFF"); }
                 if (Current.TryGetComponent<VehicleWeapons>(out var guns) && !ExternalInput)
                     guns.Control(new WeaponInput
@@ -703,16 +767,16 @@ namespace MadMax.Game
                         Controls.Down(Controls.Act.VolumeDown) ? -1 : Controls.Down(Controls.Act.VolumeUp) ? 1 : 0);
             }
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Items");
-            UpdateHotbar(kb, mouse);
-            UpdateEncumbrance();
-            UpdateLearning();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateHotbar"); UpdateHotbar(kb, mouse); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateEncumbrance"); UpdateEncumbrance(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateLearning"); UpdateLearning(); UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Survival");
-            UpdateEnvironment();
-            UpdateSurvival(Time.deltaTime);
-            UpdateRefuel(Time.deltaTime);
-            UpdateHealth(Time.deltaTime);
-            UpdateClothing(Time.deltaTime);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateEnvironment"); UpdateEnvironment(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateSurvival"); UpdateSurvival(Time.deltaTime); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateRefuel"); UpdateRefuel(Time.deltaTime); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateHealth"); UpdateHealth(Time.deltaTime); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateClothing"); UpdateClothing(Time.deltaTime); UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.EndSample();
             bool justClosed = Menus.ClosedFrame == Time.frameCount;                               // the key that closed a page this frame doesn't reopen it
             if (!justClosed && Controls.Down(Controls.Act.Inventory)) Menus.Open(MenuSystem.Page.Inventory);
@@ -721,27 +785,27 @@ namespace MadMax.Game
             if (!justClosed && !Current && Controls.Down(Controls.Act.Craft)) Menus.OpenCrafting(null);   // handcraft: anywhere on foot
             if (!justClosed && (Controls.Down(Controls.Act.Map) || (PadSelectTapped && !Current))) Menus.Open(MenuSystem.Page.Map);
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Interaction");
-            UpdateInteraction(kb, pad);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateInteraction"); UpdateInteraction(kb, pad); UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Sleepers");
-            UpdateServerFoci();
-            UpdateSleepers();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateServerFoci"); UpdateServerFoci(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateSleepers"); UpdateSleepers(); UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.EndSample();
-            UpdateAutosave();
-            UpdateMap();
-            UpdateHints();
-            UpdateStashes();
-            BaseUpkeep.Tick();
-            UpdateGarage();
-            UpdateStarter();
-            UpdateStory();
-            BlocksUpdate();
-            UpdateWreckStreaming();
-            RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial);
-            UpdatePlanet();
-            UpdateDiving();
-            UpdateBoats();
-            LastEngine.Tick(this);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateAutosave"); UpdateAutosave(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateMap"); UpdateMap(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateHints"); UpdateHints(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateStashes"); UpdateStashes(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.BaseUpkeep_Tick"); BaseUpkeep.Tick(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateGarage"); UpdateGarage(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateStarter"); UpdateStarter(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateStory"); UpdateStory(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.BlocksUpdate"); BlocksUpdate(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateWreckStreaming"); UpdateWreckStreaming(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.RunwayLights_Tick"); RunwayLights.Tick(World, FocusPos, terrain ? terrain.worldPropMaterial : propMaterial); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdatePlanet"); UpdatePlanet(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateDiving"); UpdateDiving(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.UpdateBoats"); UpdateBoats(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.LastEngine_Tick"); LastEngine.Tick(this); UnityEngine.Profiling.Profiler.EndSample();
             if (Current && (Controls.Down(Controls.Act.Recover) || PadSelectTapped) && !MadMax.Npc.NpcDirector.TryParley())
             {
                 // back on the wheels: only for a vehicle on its side or roof, or stuck and nearly still
@@ -809,6 +873,7 @@ namespace MadMax.Game
                 Player.run = shift;
                 if (spaceDown) Player.jump = true;
                 Player.crouch = Controls.Held(Controls.Act.Crouch) || (pad != null && pad.rightStickButton.isPressed);   // crouch; at a run: slide
+                if (Controls.Down(Controls.Act.Prone) && !(Build && Build.Active) && !PlacingItem && !(Menus && Menus.BlocksWorldInput)) Player.proneToggle = true;   // prone / crawl (PlayerCharacter.Low)
                 bool worldInputBlocked = Menus && Menus.BlocksWorldInput;
                 bool attack = !worldInputBlocked && ((mouse != null && mouse.leftButton.wasPressedThisFrame && !LootOverlay.ConsumesMouse) || (pad != null && pad.rightTrigger.wasPressedThisFrame));
                 if (Player.Tool is FishingRodTool rod && rod.Busy)

@@ -154,6 +154,7 @@ def sample(name, c, n):
     out = {"name": name, "fps": FPS, "frames": frames, "length": c["length"], "loop": bool(c["loop"]), "mask": c["mask"],
            "hit": float(c.get("hit", -1.0)), "speed": float(c.get("speed", 0.0)), "gait": bool(c.get("gait", False)),
            "bones": C.PARTS, "rot": [round(float(v), 5) for v in R.ravel()], "pelvis": pel}
+    out.update(C.extras(c, frames))                  # root motion, door curve, ground weight, events (clips_life)
     return out
 
 

@@ -96,7 +96,7 @@ namespace MadMax.Building
         public void SetBulb(Renderer r)
         {
             // HD pack: a voxel bulb (no UV) becomes a smooth glass globe of the same size and colour
-            if (r && MadMax.Rendering.HDBits.On && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && !MadMax.Rendering.HDModel.IsHDMesh(mf.sharedMesh) && mf.sharedMesh.name != "BulbHD")
+            if (r && MadMax.Rendering.HDBits.On && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable && !MadMax.Rendering.HDModel.IsHDMesh(mf.sharedMesh) && mf.sharedMesh.name != "BulbHD")
             {
                 mf.sharedMesh = MadMax.Rendering.HDBits.Bulb(mf.sharedMesh);
                 r.sharedMaterial = MadMax.Rendering.HDShapes.Solid;

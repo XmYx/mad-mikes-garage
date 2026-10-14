@@ -31,6 +31,7 @@ namespace MadMax.World
             if (!vis) return null;
             HDCarve.Attach(d, vis);
             if (vis.HasLamps) vis.LampState = () => DayNight.Darkness > 0.35f;                 // lit windows and signs after dusk
+            Ambience.Attach(d, vis, templateId);                                                  // swaying curtains, lanterns, chimney smoke (lived-in places)
             return vis;
         }
     }

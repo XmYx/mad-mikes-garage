@@ -117,6 +117,8 @@ namespace MadMax.Game
                     else { selectedSeed = id; Toast(ItemCatalog.Name(id) + " READY: USE A GARDEN PLOT"); }
                     break;
                 case ItemCategory.Kit:
+                    if (SalvageKitUse(id)) break;
+                    if (RailKitUse(id)) break;                                                          // rolling stock onto the rails (WastelandGame.Rail)                                                       // kits of things taken apart (WastelandGame.SalvageAnything)
                     foreach (var d in FurnitureLibrary.All) if (d.kit == id) { Build.Select(d.id); if (!Build.Active) Build.SetActive(true); }
                     break;
                 case ItemCategory.Clothing: Menus.Open(MenuSystem.Page.Character); break;
@@ -137,13 +139,13 @@ namespace MadMax.Game
             var v = t.forward * power + Vector3.up * (4f + power * 0.15f) + Player.Velocity;
             var net = MadMax.Net.NetSession.Instance;
             bool authority = !(net && net.IsClient);
-            SpawnThrown(id, p, v, authority);
+            SpawnThrown(id, p, v, authority, true);
             net?.SendThrow(id, p, v);
             Stats.Practice(Skill.Firearms, 1f);
         }
 
         /// <summary>A thrown bottle. Only the authority's bottle starts the fire (clients see a visual copy).</summary>
-        public void SpawnThrown(string id, Vector3 p, Vector3 v, bool authority)
+        public void SpawnThrown(string id, Vector3 p, Vector3 v, bool authority, bool byPlayer = false)
         {
             bool dynamite = id == "throw_dynamite", pipe = id == "throw_pipebomb", smoke = id == "throw_smoke", rock = id == "throw_rock";
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -179,7 +181,7 @@ namespace MadMax.Game
                 wick.transform.SetParent(go.transform, false); wick.transform.localPosition = new Vector3(0f, 0.6f, 0f);
                 return;
             }
-            go.AddComponent<MadMax.World.Molotov>().authority = authority;
+            var mo = go.AddComponent<MadMax.World.Molotov>(); mo.authority = authority; mo.byPlayer = byPlayer;
             var fire = new GameObject("Wick").AddComponent<Light>();
             fire.transform.SetParent(go.transform, false); fire.type = LightType.Point; fire.range = 3f; fire.intensity = 1.5f; fire.color = new Color(1f, 0.6f, 0.2f);
         }

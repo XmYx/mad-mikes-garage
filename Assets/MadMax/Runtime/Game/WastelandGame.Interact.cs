@@ -240,13 +240,27 @@ namespace MadMax.Game
                 return;
             }
 
+            // ---- lying in a bed, or the body on its way onto / off something: F gets up, nothing else meanwhile
+            if (!Player.Sitting && Player.BodyBusy)
+            {
+                Prompt = Player.LyingOn ? "[F] GET UP" : null;
+                if (F && Player.LyingOn) Player.GetUpFromBed();
+                return;
+            }
+
             // ---- sitting on furniture (or standing on a roof): get up / down, use what is in reach
             if (Player.Sitting)
             {
                 bool T0 = Controls.Down(Controls.Act.Second) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
                 string near = PieceInteraction(E, T0);
-                Prompt = (Player.SeatedOn && Player.SeatedOn.ride != null ? "[F] DISMOUNT" : Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP") + (near != null ? "   " + near : "");
-                if (F) Player.StandUp();
+                Prompt = (RailSeatPrompt() ?? (Player.SeatedOn && Player.SeatedOn.ride != null ? "[F] DISMOUNT" : Player.SeatedOn && Player.SeatedOn.standing ? "[F] CLIMB DOWN" : "[F] STAND UP")) + (near != null ? "   " + near : "");
+                if (F)
+                {
+                    var so = Player.SeatedOn;
+                    var sv = so && so.hasExit && !so.standing ? so.GetComponentInParent<VehicleDriver>() : null;
+                    if (sv) SwingDoorAt(sv, so.transform.TransformPoint(so.exitLocal));                // out of the passenger seat: the door opens
+                    Player.StandUp();
+                }
                 return;
             }
 
@@ -289,6 +303,7 @@ namespace MadMax.Game
             else
             {
                 NearbyVehicle = FindNearby(enterDistance);
+                if (NearbyVehicle && !RigVehicle.Enterable(NearbyVehicle, Player.transform.position + Vector3.up)) { enterText = RigPrompt(NearbyVehicle); NearbyVehicle = null; }   // moving bases: from the seat
                 if (NearbyVehicle)
                 {
                     var interior = NearbyVehicle.GetComponent<InteriorSpace>();
@@ -306,6 +321,7 @@ namespace MadMax.Game
                 }
             }
 
+            if (enterText == null && !space) enterText = RailInteraction(F, ref G);                     // locos' cabs, fuelling (WastelandGame.Rail)
             string towPrompt = FootTow(J);
             string fluidText = FluidInteraction(G, K);
             string armourText = ArmourInteraction(Controls.Down(Controls.Act.Armour) && !Build.Active);
@@ -321,6 +337,7 @@ namespace MadMax.Game
         /// wait), may bite with a shock, and makes noise.</summary>
         string HotwireInteraction(VehicleDriver v)
         {
+            if (Player) Player.SeatedAction = null;
             if (!v || !v.TryGetComponent<VehicleIgnition>(out var ign) || ign.CanStart(Inventory)) { hotwireT = 0f; return null; }
             string key = Controls.Name(Controls.Act.Service);
             if (Time.time < ign.blownUntil) { hotwireT = 0f; return "FUSE BLOWN: WAIT " + Mathf.CeilToInt(ign.blownUntil - Time.time) + " S"; }
@@ -328,6 +345,7 @@ namespace MadMax.Game
             float need = ign.HotwireSeconds(level);
             if (!(Controls.Held(Controls.Act.Service) || ForceHotwire) || Menus.IsOpen) { hotwireT = 0f; return "NO KEY  [HOLD " + key + "] TRY THE WIRES"; }
             hotwireT += Time.deltaTime;
+            if (Player && GameSettings.Current.workAnimation) Player.SeatedAction = "hotwire";            // bent down under the dash at the wires
             if (Random.value < Time.deltaTime * 3f) MadMax.Audio.Sfx.Play("ratchet", v.transform.position + Vector3.up, 0.25f, Random.Range(1.6f, 2.2f), 8f, 0.3f);
             if (hotwireT < need) return "HOTWIRING... " + Mathf.RoundToInt(hotwireT / need * 100f) + "%";
             hotwireT = 0f;
@@ -428,6 +446,7 @@ namespace MadMax.Game
             if (Stats.Level(MadMax.RPG.Skill.Mechanics) < 4) { Toast("NEEDS MECHANICS 4"); return; }
             if (!Inventory.TakeItem(kit)) { Toast("NO " + ItemCatalog.Name(kit)); return; }
             fit(); t.Apply();
+            Gesture(UseKind.Wrench, ItemIds.Wrench);
             MadMax.Audio.Sfx.Play("ratchet", t.transform.position, 0.8f, 1f);
             Stats.Practice(MadMax.RPG.Skill.Mechanics, 8f);
             Toast(ItemCatalog.Name(kit).Replace(" KIT", "") + " FITTED");
@@ -623,7 +642,7 @@ namespace MadMax.Game
                 if (!tc || !tc.Coupler || Vector3.Distance(tc.Coupler.position, Player.transform.position + Vector3.up) > 2.2f) continue;
                 if (tc.Tower)
                 {
-                    if (J) { tc.Uncouple(); MadMax.Net.NetSession.Instance?.SendCouple(t, null); }
+                    if (J) { var tt = t; AnimatedUse(UseKind.Hitch, tc.Coupler.position, () => { if (tc && tc.Tower) { tc.Uncouple(); MadMax.Net.NetSession.Instance?.SendCouple(tt, null); } }, tc); }   // down at the coupler first
                     return "[J] UNHITCH " + Name(t);
                 }
                 VehicleDriver best = null; float bd = 4f;
@@ -635,7 +654,7 @@ namespace MadMax.Game
                     if (d < bd) { bd = d; best = v; }
                 }
                 if (!best) return "BACK A VEHICLE UP TO THE " + Name(t);
-                if (J && tc.Couple(best)) MadMax.Net.NetSession.Instance?.SendCouple(t, best);
+                if (J) { var tt = t; var bb = best; AnimatedUse(UseKind.Hitch, tc.Coupler.position, () => { if (tc && bb && !tc.Tower && tc.Couple(bb)) MadMax.Net.NetSession.Instance?.SendCouple(tt, bb); }, tc); }
                 return $"[J] HITCH {Name(t)} TO {Name(best)}";
             }
             return null;

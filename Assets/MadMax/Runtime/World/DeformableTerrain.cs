@@ -68,6 +68,7 @@ namespace MadMax.World
             public Vector2Int c;
             public float lastUse;          // Time.time of the last query (queried data is kept, see cleanup)
             public float[] h, d, wet, road, dist, along, water, shore;
+            public sbyte[] side;               // which side of the road's centre line (HD terrain: signed distance, a straight centre line)
             public bool[] paved;
             public byte[] biome, feature;
             public float[] trampled;          // game day the ground cover was flattened (ruts, tyres, digging)
@@ -85,8 +86,12 @@ namespace MadMax.World
             public GameObject go;
             public Mesh mesh;
             public MeshCollider col;
+            public System.Threading.Tasks.Task bake;   // collider cooking on a worker (BuildObject): the mesh stays as it is until assigned
+            public List<Rigidbody> held;               // loose props on it kept kinematic until its collider is in
             public bool meshDirty, colDirty, deformed;
             public float colTime, colorWet = -1f, colorSnow = -1f;
+            public int stage;                          // streamed object still to finish (Update): 1 water, 2 props, 3 sites; 0 done
+            public IEnumerator<int> props;             // stage 2: the prop spawn, a piece per step
         }
 
         readonly Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
@@ -98,7 +103,11 @@ namespace MadMax.World
         static Vector3[] vb; static Vector3[] nb; static Color32[] cb; static int[] ib;
         static Vector4[] s0b, s1b;                                   // HD terrain: class weights per vertex (uv2, uv3)
         static Vector2[] r1b;                                        // HD terrain: (distance to a highway's centre line, distance along it) per vertex (uv1)
-        static Color32[] cellCol; static byte[] cellCls;             // HD terrain: one chunk's cells before blending to corners
+        static Vector4[] t4b, t5b;                                   // HD terrain: town street fields per vertex (uv4, uv5; TownSurface)
+        static Vector2[] vR1; static Vector4[] vT4, vT5;             // HD terrain: the same per grid vertex, before the triangles
+        static Color32[] cellCol; static byte[] cellCls;             // HD terrain: one chunk's cells plus a ring of its neighbours' before blending to corners
+        bool townChunk;                                              // HD terrain: the chunk being meshed has town street fields
+        Chunk nbL, nbR, nbD, nbU;                                    // HD terrain: loaded neighbours of the chunk being meshed (seamless corners)
         /// <summary>HD terrain mesh (HDTerrain): smooth normals, corner-blended colours and class weights.</summary>
         bool hdMesh;
         /// <summary>The ground class of the cell CellColor coloured last (HD terrain splat).</summary>
@@ -124,12 +133,14 @@ namespace MadMax.World
             if (vb == null)
             {
                 vb = new Vector3[N * N * 6]; nb = new Vector3[vb.Length]; cb = new Color32[vb.Length]; ib = new int[vb.Length];
-                s0b = new Vector4[vb.Length]; s1b = new Vector4[vb.Length]; r1b = new Vector2[vb.Length]; cellCol = new Color32[N * N]; cellCls = new byte[N * N];
+                s0b = new Vector4[vb.Length]; s1b = new Vector4[vb.Length]; r1b = new Vector2[vb.Length]; t4b = new Vector4[vb.Length]; t5b = new Vector4[vb.Length];
+                vR1 = new Vector2[V * V]; vT4 = new Vector4[V * V]; vT5 = new Vector4[V * V];
+                cellCol = new Color32[(N + 2) * (N + 2)]; cellCls = new byte[(N + 2) * (N + 2)];
                 for (int i = 0; i < ib.Length; i++) ib[i] = i;
             }
         }
 
-        void OnDestroy() { if (Instance == this) Instance = null; }
+        void OnDestroy() { WaitBakes(); if (Instance == this) Instance = null; }
 
         /// <summary>Change streaming distance (LOD setting). Chunks beyond it unload on the next Update.</summary>
         public void SetViewRadius(float radius)
@@ -148,7 +159,19 @@ namespace MadMax.World
         Chunk Data(Vector2Int c)
         {
             if (chunks.TryGetValue(c, out var ch)) { ch.lastUse = Time.time; return ch; }
-            return Insert(Generate(World, c));
+            if (pendingJobs.TryGetValue(c, out var job))
+            {
+                // already on a worker: wait for it rather than sample the chunk a second time here
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.WaitPrefetch");
+                Chunk made = null;
+                try { made = job.Result; } catch (System.Exception) { }
+                UnityEngine.Profiling.Profiler.EndSample();
+                if (made != null && made.h != null && made.c == c) return Insert(made);   // the queue entry finds it in and skips it
+            }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.GenerateSync");
+            ch = Insert(Generate(World, c));
+            UnityEngine.Profiling.Profiler.EndSample();
+            return ch;
         }
 
         /// <summary>Samples the generated ground for a chunk. Pure (no terrain state), so it also runs on worker threads.</summary>
@@ -158,7 +181,7 @@ namespace MadMax.World
             if (recycled.TryTake(out var old))
             {
                 // the arrays of a chunk dropped earlier: sampled fields are overwritten below, edit layers cleared
-                ch = new Chunk { c = c, h = old.h, d = old.d, wet = old.wet, road = old.road, dist = old.dist, along = old.along, paved = old.paved,
+                ch = new Chunk { c = c, h = old.h, d = old.d, wet = old.wet, road = old.road, dist = old.dist, along = old.along, paved = old.paved, side = old.side,
                                  water = old.water, shore = old.shore, biome = old.biome, feature = old.feature, pave = old.pave, compact = old.compact, cure = old.cure };
                 System.Array.Clear(ch.d, 0, ch.d.Length); System.Array.Clear(ch.pave, 0, ch.pave.Length);
                 System.Array.Clear(ch.compact, 0, ch.compact.Length); System.Array.Clear(ch.cure, 0, ch.cure.Length);
@@ -166,7 +189,7 @@ namespace MadMax.World
             else ch = new Chunk
             {
                 c = c, h = new float[V * V], d = new float[V * V], wet = new float[V * V], road = new float[V * V],
-                dist = new float[V * V], along = new float[V * V], paved = new bool[V * V],
+                dist = new float[V * V], along = new float[V * V], paved = new bool[V * V], side = new sbyte[V * V],
                 water = new float[V * V], shore = new float[V * V], biome = new byte[V * V], feature = new byte[V * V],
                 pave = new byte[V * V], compact = new byte[V * V], cure = new float[V * V]
             };
@@ -176,7 +199,7 @@ namespace MadMax.World
                 int k = j * V + i;
                 var s = world.Sample((c.x * N + i) * Cell, (c.y * N + j) * Cell);
                 ch.h[k] = s.height; ch.wet[k] = s.baseWet; ch.road[k] = s.road;
-                ch.dist[k] = s.roadDist; ch.along[k] = s.along; ch.paved[k] = s.paved;
+                ch.dist[k] = s.roadDist; ch.along[k] = s.along; ch.paved[k] = s.paved; ch.side[k] = (sbyte)(s.roadSide < 0f ? -1 : 1);
                 ch.water[k] = s.water; ch.shore[k] = s.shore; ch.biome[k] = (byte)s.biome; ch.feature[k] = s.feature;
             }
             return ch;
@@ -188,7 +211,7 @@ namespace MadMax.World
         static void Recycle(Chunk ch)
         {
             if (ch == null || ch.go || recycled.Count >= 96) return;
-            recycled.Add(new Chunk { h = ch.h, d = ch.d, wet = ch.wet, road = ch.road, dist = ch.dist, along = ch.along, paved = ch.paved,
+            recycled.Add(new Chunk { h = ch.h, d = ch.d, wet = ch.wet, road = ch.road, dist = ch.dist, along = ch.along, paved = ch.paved, side = ch.side,
                                      water = ch.water, shore = ch.shore, biome = ch.biome, feature = ch.feature, pave = ch.pave, compact = ch.compact, cure = ch.cure });
         }
 
@@ -205,29 +228,54 @@ namespace MadMax.World
 
         // background generation of chunk data ahead of the focus: the main thread only builds meshes
         readonly System.Collections.Concurrent.ConcurrentQueue<Chunk> prefetched = new System.Collections.Concurrent.ConcurrentQueue<Chunk>();
-        readonly HashSet<Vector2Int> pending = new HashSet<Vector2Int>();
-        const int MaxPrefetch = 6;
+        readonly Dictionary<Vector2Int, System.Threading.Tasks.Task<Chunk>> pendingJobs = new Dictionary<Vector2Int, System.Threading.Tasks.Task<Chunk>>();
+        /// <summary>Chunk data jobs in flight (more cores, more ahead of a fast vehicle).</summary>
+        static readonly int MaxPrefetch = Mathf.Clamp(System.Environment.ProcessorCount - 2, 6, 12);
 
         void Prefetch(Vector2Int center)
         {
             while (prefetched.TryDequeue(out var done))
             {
-                pending.Remove(done.c);
+                pendingJobs.Remove(done.c);
                 if (done.h != null && !chunks.ContainsKey(done.c)) Insert(done);
             }
-            if (pending.Count >= MaxPrefetch) return;
-            var world = World;
+            if (pendingJobs.Count >= MaxPrefetch) return;
             foreach (var o in offsets)
             {
                 var c = center + o;
-                if (chunks.ContainsKey(c) || pending.Contains(c)) continue;
-                pending.Add(c);
-                System.Threading.Tasks.Task.Run(() =>
-                {
-                    try { prefetched.Enqueue(Generate(world, c)); }
-                    catch (System.Exception e) { Debug.LogException(e); prefetched.Enqueue(new Chunk { c = c }); }
-                });
-                if (pending.Count >= MaxPrefetch) break;
+                if (chunks.ContainsKey(c) || pendingJobs.ContainsKey(c)) continue;
+                StartPrefetch(c);
+                if (pendingJobs.Count >= MaxPrefetch) break;
+            }
+        }
+
+        void StartPrefetch(Vector2Int c)
+        {
+            var world = World;
+            pendingJobs[c] = System.Threading.Tasks.Task.Run(() =>
+            {
+                Chunk made;
+                try { made = Generate(world, c); }
+                catch (System.Exception e) { Debug.LogException(e); made = new Chunk { c = c }; }
+                prefetched.Enqueue(made);
+                return made;
+            });
+        }
+
+        /// <summary>Chunk data around a point away from the focus (AI vehicles ahead of their route) generated on workers,
+        /// so their wheels find it loaded instead of sampling a chunk on the main thread (one 3x3 block, few in flight).</summary>
+        public void PrefetchNear(Vector3 p)
+        {
+            if (World == null || pendingJobs.Count >= MaxPrefetch * 2) return;
+            var c0 = ChunkOf(p);
+            for (int dz = -1; dz <= 1; dz++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                var c = new Vector2Int(c0.x + dx, c0.y + dz);
+                if (chunks.TryGetValue(c, out var ch)) { ch.lastUse = Time.time; continue; }
+                if (pendingJobs.ContainsKey(c)) continue;
+                StartPrefetch(c);
+                if (pendingJobs.Count >= MaxPrefetch * 2) return;
             }
         }
 
@@ -284,12 +332,14 @@ namespace MadMax.World
             return s;
         }
 
-        static Surface MakeSurface(Chunk ch, int k)
+        static Surface MakeSurface(Chunk ch, int k) => MakeSurface(ch, k, Weather.Wetness);
+
+        static Surface MakeSurface(Chunk ch, int k, float wetness)
         {
             float road = ch.road[k], d = ch.d[k];
             bool paved = ch.paved[k];
             // rain soaks the ground less than standing water: rain-only mud stays drivable, basins stay nasty
-            float w = Weather.Wetness * 0.75f;
+            float w = wetness * 0.75f;
             float wet = Mathf.Clamp01(ch.wet[k] + w * (1f - road * 0.75f) + (d < -0.02f ? w * 0.4f : 0f));
             float soak = Mathf.Lerp(0.7f, 1f, Mathf.Clamp01(ch.wet[k] * 1.6f));
             float hard = road * (paved ? 0.97f : 0.6f);
@@ -448,20 +498,35 @@ namespace MadMax.World
             foreach (var f in extraFoci) if (f) focusChunks.Add(ChunkOf(f.position));
             var fc = focusChunks[0];
             int built = 0;
-            Prefetch(fc);
             buildClock.Restart();
-            foreach (var center in focusChunks)
+            buildSteps = 0;
+            PollBakes();
+            Prefetch(fc);
+            // a streamed chunk object is built in steps (mesh + collider, then water, props a piece at a time, sites),
+            // nearest first, within BuildBudgetMs a frame: one new chunk mesh and one staged step always run, the ground
+            // right around a focus regardless; data still on a worker is waited for only there
+            for (int fi = 0; fi < focusChunks.Count; fi++)
             {
+                var center = focusChunks[fi];
                 foreach (var o in offsets)
                 {
-                    if (built >= buildsPerFrame || (built > 0 && buildClock.Elapsed.TotalMilliseconds > 4.0)) break;   // time budget per frame
+                    if (built >= buildsPerFrame || (OverBudget && o.sqrMagnitude > 2)) break;      // time budget per frame
                     if (o.magnitude * ChunkWorld > viewRadius + ChunkWorld) continue;
-                    var ch = Data(center + o);
+                    var c = center + o;
+                    if (!chunks.TryGetValue(c, out var ch))
+                    {
+                        if (fi == 0 && o.sqrMagnitude > 2) continue;                                // still being prefetched: comes next frames
+                        ch = Data(c);
+                    }
+                    else ch.lastUse = Time.time;
                     if (ch.go) continue;
-                    BuildObject(ch);
-                    built++;
+                    BuildObject(ch, o.sqrMagnitude > 4, o.sqrMagnitude > 2);                       // beyond 2 chunks the collider cooks on a worker
+                    built++; buildSteps++;
                 }
             }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Staged");
+            for (int stepped = 0; staging.Count > 0 && (stepped == 0 || !OverBudget); stepped++) StepStaged();
+            UnityEngine.Profiling.Profiler.EndSample();
 
             int R = Mathf.CeilToInt(viewRadius / ChunkWorld) + 2;
             for (int i = active.Count - 1; i >= 0; i--)
@@ -469,9 +534,9 @@ namespace MadMax.World
                 var ch = active[i];
                 bool near = false;
                 foreach (var c in focusChunks) if (Mathf.Max(Mathf.Abs(ch.c.x - c.x), Mathf.Abs(ch.c.y - c.y)) <= R) { near = true; break; }
-                if (near) continue;
+                if (near || ch.bake != null) continue;                                            // never destroy a mesh PhysX is still cooking
                 Destroy(ch.go); Destroy(ch.mesh);
-                ch.go = null; ch.mesh = null; ch.col = null;
+                ch.go = null; ch.mesh = null; ch.col = null; ch.stage = 0; ch.props = null;
                 DropFlora(ch);
                 active.RemoveAt(i);
             }
@@ -483,10 +548,13 @@ namespace MadMax.World
             foreach (var ch in active)
             {
                 if (ch.waterGo) ch.waterGo.transform.localPosition = new Vector3(0f, Weather.LakeRise, 0f);
-                if (rebuilt < rebuildsPerFrame && (ch.meshDirty || Mathf.Abs(ch.colorWet - Weather.Wetness) > 0.05f || Mathf.Abs(ch.colorSnow - Weather.SnowAt(ch.c.y * N * Cell)) > 0.06f))
+                if (ch.bake != null) continue;                                                    // its collider is cooking: the mesh waits
+                if (rebuilt < rebuildsPerFrame && (rebuilt == 0 || !OverBudget) && (ch.meshDirty || ch.colorWet != ToneWet || ch.colorSnow != ToneSnow(ch.c.y * N * Cell)))
                 {
+                    UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Remesh");
                     FillMesh(ch);
-                    rebuilt++;
+                    UnityEngine.Profiling.Profiler.EndSample();
+                    rebuilt++; buildSteps++;
                 }
                 if (ch.colDirty && Time.time >= ch.colTime)
                 {
@@ -512,8 +580,49 @@ namespace MadMax.World
             }
         }
 
-        void BuildObject(Chunk ch)
+        /// <summary>Main-thread time per frame for streamed chunk objects (steps, flora, re-meshing).</summary>
+        public const double BuildBudgetMs = 4.0;
+        readonly List<Chunk> staging = new List<Chunk>();
+        int buildSteps;
+        /// <summary>This frame's chunk work is past <see cref="BuildBudgetMs"/> (one step always runs).</summary>
+        bool OverBudget => buildSteps > 0 && buildClock.Elapsed.TotalMilliseconds > BuildBudgetMs;
+
+        /// <summary>One step of the oldest chunk object still being built (water, props, sites).</summary>
+        void StepStaged()
         {
+            var ch = staging[0];
+            buildSteps++;
+            if (!ch.go || ch.stage == 0) { ch.props = null; staging.RemoveAt(0); return; }     // streamed out meanwhile
+            var mat = worldPropMaterial ? worldPropMaterial : propMaterial;
+            switch (ch.stage)
+            {
+                case 1:
+                    UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Water");
+                    BuildWater(ch);
+                    UnityEngine.Profiling.Profiler.EndSample();
+                    ch.stage = 2;
+                    break;
+                case 2:
+                    UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Props");
+                    ch.props ??= PropLibrary.PopulateSteps(this, ch.c, ch.go.transform, mat);
+                    if (!ch.props.MoveNext()) { ch.props = null; ch.stage = 3; }
+                    if (ch.bake != null) HoldLoose(ch);                                              // crates wait for the cooked collider
+                    UnityEngine.Profiling.Profiler.EndSample();
+                    break;
+                default:
+                    UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Sites");
+                    SiteBuilder.Populate(this, ch.c, ch.go.transform, mat);
+                    UnityEngine.Profiling.Profiler.EndSample();
+                    ch.stage = 0;
+                    staging.RemoveAt(0);
+                    if (ch.bake != null) HoldLoose(ch);
+                    break;
+            }
+        }
+
+        void BuildObject(Chunk ch, bool bakeOnWorker = false, bool staged = false)
+        {
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Mesh");
             ch.go = new GameObject($"Chunk {ch.c.x},{ch.c.y}");
             ch.go.transform.SetParent(transform, false);
             ch.go.transform.position = new Vector3(ch.c.x * ChunkWorld, 0, ch.c.y * ChunkWorld);
@@ -529,13 +638,24 @@ namespace MadMax.World
             // terrain only receives shadows (from props and vehicles)
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             ch.col = ch.go.AddComponent<MeshCollider>();
-            ch.col.sharedMesh = ch.mesh;
             ch.col.sharedMaterial = GroundMaterial;
+            if (bakeOnWorker) BakeLater(ch);
+            else ch.col.sharedMesh = ch.mesh;
             ch.colDirty = false;
             active.Add(ch);
+            UnityEngine.Profiling.Profiler.EndSample();
+            if (staged) { ch.stage = 1; staging.Add(ch); return; }                               // water, props and sites follow (StepStaged)
+            ch.stage = 0;
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Water");
             BuildWater(ch);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Props");
             PropLibrary.Populate(this, ch.c, ch.go.transform, worldPropMaterial ? worldPropMaterial : propMaterial);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Terrain.Sites");
             SiteBuilder.Populate(this, ch.c, ch.go.transform, worldPropMaterial ? worldPropMaterial : propMaterial);
+            UnityEngine.Profiling.Profiler.EndSample();
+            if (ch.bake != null) HoldLoose(ch);
         }
 
         // ------------------------------------------------------------------ terraforming (excavators, pavers, rollers)
@@ -790,9 +910,14 @@ namespace MadMax.World
 
         static Material waterMat;
 
+        static readonly List<Vector3> waterVerts = new List<Vector3>();
+        static readonly List<Color32> waterCols = new List<Color32>();
+        static readonly List<int> waterTris = new List<int>();
+
         void BuildWater(Chunk ch)
         {
-            var verts = new List<Vector3>(); var cols = new List<Color32>(); var tris = new List<int>();
+            var verts = waterVerts; var cols = waterCols; var tris = waterTris;                  // main thread only: reused
+            verts.Clear(); cols.Clear(); tris.Clear();
             for (int j = 0; j < N; j++)
             for (int i = 0; i < N; i++)
             {
@@ -866,16 +991,33 @@ namespace MadMax.World
             ch.mesh.SetTriangles(ib, 0);
             ch.mesh.RecalculateBounds();
             ch.meshDirty = false;
-            ch.colorWet = Weather.Wetness;
-            ch.colorSnow = Weather.SnowAt(ch.c.y * N * Cell);
+            ch.colorWet = ToneWet;
+            ch.colorSnow = ToneSnow(ch.c.y * N * Cell);
         }
 
-        /// <summary>HD terrain: each corner takes the mean colour and the class mix of the cells around it (inside the
-        /// chunk) and a normal from the height field, so the ground is smooth and the detail textures blend.</summary>
+        /// <summary>HD terrain: each corner takes the mean colour and the class mix of the four cells around it (across
+        /// chunk borders where the neighbour is loaded, so no seam outlines the chunks) and a normal from the height field,
+        /// so the ground is smooth and the detail textures blend. Vertices carry the highway's centre-line distance (uv1)
+        /// and, in towns, the street fields HDLit draws the streets from (<see cref="TownSurface"/>: uv1, uv4, uv5).</summary>
         void FillMeshHD(Chunk ch)
         {
+            const int W = N + 2;
+            chunks.TryGetValue(ch.c + Vector2Int.left, out nbL); chunks.TryGetValue(ch.c + Vector2Int.right, out nbR);
+            chunks.TryGetValue(ch.c + Vector2Int.down, out nbD); chunks.TryGetValue(ch.c + Vector2Int.up, out nbU);
             for (int j = 0; j < N; j++)
-            for (int i = 0; i < N; i++) { cellCol[j * N + i] = CellColor(ch, i, j); cellCls[j * N + i] = cellClass; }
+            for (int i = 0; i < N; i++) { cellCol[(j + 1) * W + i + 1] = CellColor(ch, i, j); cellCls[(j + 1) * W + i + 1] = cellClass; }
+            for (int j = -1; j <= N; j++)                                                         // the ring: neighbours' edge cells
+            for (int i = -1; i <= N; i++)
+            {
+                if (i >= 0 && i < N && j >= 0 && j < N) continue;
+                int ci = Mathf.Clamp(i, 0, N - 1), cj = Mathf.Clamp(j, 0, N - 1), c = (j + 1) * W + i + 1;
+                chunks.TryGetValue(new Vector2Int(ch.c.x + (i < 0 ? -1 : i >= N ? 1 : 0), ch.c.y + (j < 0 ? -1 : j >= N ? 1 : 0)), out var other);
+                if (other != null) { cellCol[c] = CellColor(other, i < 0 ? N - 1 : i >= N ? 0 : i, j < 0 ? N - 1 : j >= N ? 0 : j); cellCls[c] = cellClass; }
+                else { cellCol[c] = cellCol[(cj + 1) * W + ci + 1]; cellCls[c] = cellCls[(cj + 1) * W + ci + 1]; }
+            }
+            townChunk = false;
+            for (int j = 0; j < V; j++)
+            for (int i = 0; i < V; i++) VertexRoad(ch, i, j, j * V + i);
             int n = 0;
             for (int j = 0; j < N; j++)
             for (int i = 0; i < N; i++)
@@ -883,50 +1025,84 @@ namespace MadMax.World
                 int k = j * V + i;
                 // corners in the order the flat path writes them: v00 v01 v11 / v00 v11 v10
                 Corner(ch, i, j, k, n); Corner(ch, i, j + 1, k + V, n + 1); Corner(ch, i + 1, j + 1, k + V + 1, n + 2);
-                vb[n + 3] = vb[n]; nb[n + 3] = nb[n]; cb[n + 3] = cb[n]; s0b[n + 3] = s0b[n]; s1b[n + 3] = s1b[n]; r1b[n + 3] = r1b[n];
-                vb[n + 4] = vb[n + 2]; nb[n + 4] = nb[n + 2]; cb[n + 4] = cb[n + 2]; s0b[n + 4] = s0b[n + 2]; s1b[n + 4] = s1b[n + 2]; r1b[n + 4] = r1b[n + 2];
+                vb[n + 3] = vb[n]; nb[n + 3] = nb[n]; cb[n + 3] = cb[n]; s0b[n + 3] = s0b[n]; s1b[n + 3] = s1b[n]; r1b[n + 3] = r1b[n]; t4b[n + 3] = t4b[n]; t5b[n + 3] = t5b[n];
+                vb[n + 4] = vb[n + 2]; nb[n + 4] = nb[n + 2]; cb[n + 4] = cb[n + 2]; s0b[n + 4] = s0b[n + 2]; s1b[n + 4] = s1b[n + 2]; r1b[n + 4] = r1b[n + 2]; t4b[n + 4] = t4b[n + 2]; t5b[n + 4] = t5b[n + 2];
                 Corner(ch, i + 1, j, k + 1, n + 5);
                 n += 6;
             }
+            nbL = nbR = nbD = nbU = null;
             ch.mesh.SetVertices(vb);
             ch.mesh.SetNormals(nb);
             ch.mesh.SetColors(cb);
             ch.mesh.SetUVs(1, r1b);
             ch.mesh.SetUVs(2, s0b);
             ch.mesh.SetUVs(3, s1b);
+            if (townChunk) { ch.mesh.SetUVs(4, t4b); ch.mesh.SetUVs(5, t5b); }
+            else { ch.mesh.SetUVs(4, (Vector4[])null); ch.mesh.SetUVs(5, (Vector4[])null); }   // 0 = no town (HDLit), no 200 KB per chunk
             ch.mesh.SetTriangles(ib, 0);
             ch.mesh.RecalculateBounds();
             ch.meshDirty = false;
-            ch.colorWet = Weather.Wetness;
-            ch.colorSnow = Weather.SnowAt(ch.c.y * N * Cell);
+            ch.colorWet = ToneWet;
+            ch.colorSnow = ToneSnow(ch.c.y * N * Cell);
+        }
+
+        /// <summary>Road fields of one grid vertex: highway (uv1 = signed distance to the centre line out to the shoulder,
+        /// along) or, inside a town plan, its streets (uv1 = marking frame, uv4 = carriageway edge / sidewalk edge / half
+        /// width / code, uv5 = end distance, plan x, plan z, plaza). uv4.z = 0 marks a vertex outside the towns.</summary>
+        void VertexRoad(Chunk ch, int i, int j, int k)
+        {
+            float gx = (ch.c.x * N + i) * Cell, gz = (ch.c.y * N + j) * Cell;
+            var plan = World != null && ch.pave[k] == 0 ? World.PlanAt(gx, gz) : null;
+            if (plan != null)
+            {
+                var l = plan.Local(gx, gz);
+                if (l.sqrMagnitude < (plan.radius + 2f) * (plan.radius + 2f) && plan.Surface(l, out var f))
+                {
+                    vR1[k] = new Vector2(f.lat, f.along);
+                    vT4[k] = new Vector4(f.edge, f.walkEdge, f.half, f.code);
+                    vT5[k] = new Vector4(f.end, l.x, l.y, ch.feature[k] == TownPlan.FPlaza ? 1f : 0f);
+                    townChunk = true;
+                    return;
+                }
+            }
+            vR1[k] = new Vector2(ch.paved[k] && ch.dist[k] < 6f && ch.pave[k] == 0 && ch.feature[k] < TownPlan.FSidewalk ? ch.dist[k] * ch.side[k] : 99f * ch.side[k], ch.along[k]);   // signed, out to the shoulder: HDLit draws the edge
+            vT4[k] = new Vector4(99f, 99f, 0f, 0f);
+            vT5[k] = new Vector4(99f, 0f, 0f, 0f);
+        }
+
+        /// <summary>Height of grid vertex (ci, cj) of a chunk, reaching one vertex into a loaded neighbour (else clamped).</summary>
+        float VertexY(Chunk ch, int ci, int cj)
+        {
+            if (ci < 0) { if (nbL == null) ci = 0; else { ch = nbL; ci += N; } }
+            else if (ci > N) { if (nbR == null) ci = N; else { ch = nbR; ci -= N; } }
+            if (cj < 0) { if (nbD == null) cj = 0; else { ch = nbD; cj += N; } }
+            else if (cj > N) { if (nbU == null) cj = N; else { ch = nbU; cj -= N; } }
+            int k = cj * V + ci;
+            return ch.h[k] + ch.d[k];
         }
 
         void Corner(Chunk ch, int ci, int cj, int k, int n)
         {
             float y = ch.h[k] + ch.d[k];
             vb[n] = new Vector3(ci * Cell, y, cj * Cell);
-            float hl = ci > 0 ? ch.h[k - 1] + ch.d[k - 1] : y, hr = ci < N ? ch.h[k + 1] + ch.d[k + 1] : y;
-            float hd = cj > 0 ? ch.h[k - V] + ch.d[k - V] : y, hu = cj < N ? ch.h[k + V] + ch.d[k + V] : y;
-            float sx = (ci > 0 && ci < N) ? 2f : 1f, sz = (cj > 0 && cj < N) ? 2f : 1f;
-            nb[n] = new Vector3(-(hr - hl) / (sx * Cell), 1f, -(hu - hd) / (sz * Cell)).normalized;
-            int r = 0, g = 0, b = 0, cnt = 0;
+            float hl = VertexY(ch, ci - 1, cj), hr = VertexY(ch, ci + 1, cj), hd = VertexY(ch, ci, cj - 1), hu = VertexY(ch, ci, cj + 1);
+            nb[n] = new Vector3(-(hr - hl) / (2f * Cell), 1f, -(hu - hd) / (2f * Cell)).normalized;
+            int r = 0, g = 0, b = 0;
             Vector4 w0 = Vector4.zero, w1 = Vector4.zero;
             for (int dj = -1; dj <= 0; dj++)
             for (int di = -1; di <= 0; di++)
             {
-                int x = ci + di, z = cj + dj;
-                if (x < 0 || z < 0 || x >= N || z >= N) continue;
-                var c = cellCol[z * N + x];
-                r += c.r; g += c.g; b += c.b; cnt++;
-                int cls = cellCls[z * N + x];
+                int c = (cj + dj + 1) * (N + 2) + ci + di + 1;
+                var col = cellCol[c];
+                r += col.r; g += col.g; b += col.b;
+                int cls = cellCls[c];
                 if (cls < 4) w0[cls] += 1f; else if (cls < 8) w1[cls - 4] += 1f;
             }
-            float inv = 1f / Mathf.Max(1, cnt);
-            // ruts: the depth of the deformation in alpha (HDLit blends mud in per pixel); highway centre line: uv1
+            // ruts: the depth of the deformation in alpha (HDLit blends mud in per pixel)
             float rut = Mathf.Clamp01(-ch.d[k] / 0.12f);
-            cb[n] = new Color32((byte)(r * inv), (byte)(g * inv), (byte)(b * inv), (byte)(255 - rut * 255f));
-            r1b[n] = new Vector2(ch.paved[k] && ch.road[k] > 0.45f && ch.pave[k] == 0 ? ch.dist[k] : 99f, ch.along[k]);
-            s0b[n] = w0 * inv; s1b[n] = w1 * inv;                                                  // snow = 1 - the rest
+            cb[n] = new Color32((byte)(r >> 2), (byte)(g >> 2), (byte)(b >> 2), (byte)(255 - rut * 255f));
+            r1b[n] = vR1[k]; t4b[n] = vT4[k]; t5b[n] = vT5[k];
+            s0b[n] = w0 * 0.25f; s1b[n] = w1 * 0.25f;                                              // snow = 1 - the rest
         }
 
         // ------------------------------------------------------------------ colours
@@ -980,7 +1156,9 @@ namespace MadMax.World
                     var gravel = Color32.Lerp(Gravel[1], Gravel[2], Mathf.Clamp01(patch + (hs - 0.5f) * 0.2f));
                     if (patch > 0.78f) gravel = Color32.Lerp(gravel, Dirt[0], 0.3f);
                     return hs > 0.97f ? Color32.Lerp(gravel, RockGrey[2], 0.25f) : gravel;
+                case 19: case 20: return RailColor(feat, hs, gx, gz);                              // railway ballast, platforms (DeformableTerrain.Rail)
                 default:
+                    if (feat >= TownPlan.FSidewalk) return TownColor(feat, hs, gx, gz);                // town plans
                     cellClass = (byte)TerrainClass.Gravel;
                     return hs > 0.9f ? RockGrey[0] : Gravel[hs < 0.3f ? 0 : 1];
             }
@@ -1005,6 +1183,8 @@ namespace MadMax.World
             else if (s.road > 0.5f) col = s.paved ? Asphalt[1] : Dirt[1];
             else if (s.feature == 1) col = Sandstone[2];
             else if (s.feature == 4 || s.feature == 2) col = Concrete[2];
+            else if (s.feature == 19 || s.feature == 20) col = s.feature == 19 ? RockGrey[2] : Concrete[3];
+            else if (s.feature >= TownPlan.FSidewalk) col = FarTownColor(s.feature);
             else
             {
                 float tone = Mathf.PerlinNoise(x * 0.03f + 5f, z * 0.03f + 9f);
@@ -1026,11 +1206,16 @@ namespace MadMax.World
             return col;
         }
 
+        /// <summary>Wetness and snow as the ground colours use them: in steps, so every chunk rebuilt at a step shows the
+        /// same tone (chunks rebuild a few per frame; continuous values left 8 m squares of different shades).</summary>
+        static float ToneWet => Mathf.Round(Weather.Wetness * 20f) / 20f;
+        static float ToneSnow(float z) => Mathf.Round(Weather.SnowAt(z) * 16f) / 16f;
+
         /// <summary>A puddle at this ground point for the current wetness (low spots of a fixed noise fill first).</summary>
         static bool Puddle(float gx, float gz)
         {
-            float w = Weather.Wetness;
-            if (w < 0.2f || Weather.SnowAt(gz) > 0.4f) return false;
+            float w = ToneWet;
+            if (w < 0.2f || ToneSnow(gz) > 0.4f) return false;
             float pn = Mathf.PerlinNoise(gx * 0.45f + 13f, gz * 0.45f + 7f) * 0.8f + Mathf.PerlinNoise(gx * 1.3f + 5f, gz * 1.3f + 29f) * 0.2f;
             return pn < w * 0.42f - 0.06f;
         }
@@ -1052,9 +1237,9 @@ namespace MadMax.World
             if (feat != 0)
             {
                 col = FeatureColor(ch, k, feat, hs, gx, gz);
-                if (feat >= 2 && feat != 6) return col;           // under a roof: no puddles or snow (the yard is open sky)
+                if (feat >= 2 && feat <= 5) return col;           // under a roof: no puddles or snow (yards and towns are open sky)
             }
-            else if (road > hs * 0.6f + 0.3f)
+            else if (hdMesh && paved ? dist < 3.9f : road > hs * 0.6f + 0.3f)                         // HD highways: HDLit draws the crisp edge
             {
                 if (paved)
                 {
@@ -1124,16 +1309,16 @@ namespace MadMax.World
                 if (ch.compact[k] == 0 && set >= 1f && hs > 0.8f) baseC = asphalt ? Asphalt[3] : Concrete[0];   // rough, unrolled finish
                 col = set < 1f ? Color32.Lerp(asphalt ? C(0x1a1614) : Concrete[0], baseC, set * 0.7f) : baseC;
                 if (set >= 1f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, 0.3f);
-                float psnow = Weather.SnowAt(gz);
+                float psnow = ToneSnow(gz);
                 if (psnow > 0.3f && set >= 1f) col = Color32.Lerp(col, SnowCol, Mathf.Round(psnow * 2f) / 3f);
                 return col;
             }
-            var s = MakeSurface(ch, k);
+            var s = MakeSurface(ch, k, ToneWet);
             float wq = Mathf.Round(s.wet * 4f) / 4f;
             if (paved && road > 0.5f)
             {
                 col = Color32.Lerp(col, Crack, wq * 0.35f);
-                if (Weather.Wetness > 0.4f && hs > 0.93f) col = Color32.Lerp(col, WaterHi, 0.45f);           // wet asphalt catches the light
+                if (ToneWet > 0.4f && hs > 0.93f) col = Color32.Lerp(col, WaterHi, 0.45f);           // wet asphalt catches the light
             }
             else
             {
@@ -1142,12 +1327,12 @@ namespace MadMax.World
             }
             // puddles on roads and tracks: they spread in the rain and shrink back as the ground dries
             if (road > 0.4f && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, paved ? 0.25f : 0.1f);
-            if (s.wet > 0.85f && (d < -0.03f || ch.wet[k] > 0.8f) && Weather.Wetness > 0.25f && road < 0.5f)
+            if (s.wet > 0.85f && (d < -0.03f || ch.wet[k] > 0.8f) && ToneWet > 0.25f && road < 0.5f)
                 col = hs > 0.88f ? WaterHi : Water;
             if (d < -0.015f) { col = Color32.Lerp(col, Mud, Mathf.Clamp(-d * 3f, 0.12f, 0.45f)); if (d < -0.08f) cellClass = (byte)TerrainClass.Mud; }
             else if (d > 0.015f) col = Color32.Lerp(col, Sand[4], 0.12f);
             // snow cover: patchy at first, thinner on roads, ruts cut through to the ground
-            float snow = Weather.SnowAt(gz);                                                         // weather cover or the latitude's lasting snow
+            float snow = ToneSnow(gz);                                                                // weather cover or the latitude's lasting snow
             if (snow > 0.02f)
             {
                 float patch = Mathf.PerlinNoise(gx * 0.25f + 31f, gz * 0.25f + 11f) * 0.6f + hs * 0.4f;

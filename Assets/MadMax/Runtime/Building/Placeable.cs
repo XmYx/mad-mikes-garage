@@ -87,6 +87,7 @@ namespace MadMax.Building
         void Start()
         {
             Changed?.Invoke();
+            PieceMotion.Attach(this);                                                              // lids, flames, flags... (only pieces that have any)
             var def = FurnitureLibrary.Get(id);
             if (def != null && def.deck != Vector4.zero) StructureGround.Add(this, def.deck);
         }
@@ -130,8 +131,9 @@ namespace MadMax.Building
         void Emit(int count, Vector3 dir)
         {
             var mesh = GetComponent<MeshFilter>().sharedMesh;
-            if (!DebrisSystem.Instance || !mesh) return;
+            if (!DebrisSystem.Instance || !mesh || !mesh.isReadable) return;                 // imported HD meshes without Read/Write
             var verts = mesh.vertices; var cols = mesh.colors32;
+            if (verts.Length == 0 || cols.Length < verts.Length) return;
             chunks.Clear();
             for (int i = 0; i < count; i++)
             {

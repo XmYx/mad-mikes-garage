@@ -44,7 +44,7 @@ namespace MadMax.Vehicles
             dirt = Mathf.Clamp01(dirt - dt * 0.0002f);
             if ((applyT -= dt) > 0f) return;
             applyT = 0.25f;
-            if ((rescanT -= 0.25f) <= 0f || renderers == null) { rescanT = 5f; renderers = GetComponentsInChildren<MeshRenderer>(); }   // parts come and go
+            if ((rescanT -= 0.25f) <= 0f || renderers == null) { rescanT = 5f; renderers = GetComponentsInChildren<MeshRenderer>(); for (int i = 0; i < renderers.Length; i++) if (VehicleDashboard.IsDash(renderers[i])) renderers[i] = null; }   // parts come and go; the cluster keeps its own tint
             var bb = body.bounds;
             float top = bb.min.y + bb.size.y * (0.2f + 0.45f * Mathf.Sqrt(dirt));
             bool tyres = TyresChanged();

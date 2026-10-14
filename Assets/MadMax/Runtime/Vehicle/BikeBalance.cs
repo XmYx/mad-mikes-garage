@@ -142,7 +142,8 @@ namespace MadMax.Vehicles
         void CrashChecks(float phi, float pitchUp, float dt, float fallAngle)
         {
             fallenT = Mathf.Abs(phi) > fallAngle ? fallenT + dt : 0f;
-            if (fallenT > 0.35f) { LastCrash = "fell " + phi.ToString("0"); Crash(Mathf.Abs(v.ForwardSpeed) * 1.2f, "YOU LOST IT"); }
+            if (fallenT > 0.6f && Mathf.Abs(v.ForwardSpeed) < 2.5f) fallenT = 0f;                 // nearly stopped: a foot goes down, no spill
+            if (fallenT > 0.6f) { LastCrash = "fell " + phi.ToString("0"); Crash(Mathf.Abs(v.ForwardSpeed) * 1.2f, "YOU LOST IT"); }
             else if (pitchUp > 65f) { LastCrash = "wheelie " + pitchUp.ToString("0"); Crash(8f + Mathf.Abs(v.ForwardSpeed), "LOOPED THE WHEELIE"); }
         }
 
@@ -154,6 +155,10 @@ namespace MadMax.Vehicles
             if (c.rigidbody && !c.rigidbody.isKinematic && c.rigidbody.mass < 40f) return;       // pickups, debris, crates: ride over them
             float hit = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
             if (Time.time < crashCd && hit < 10f) return;                                      // just mounted: knocks don't throw, a wall still does
+            // kerbs and low steps in the ground: the wheels ride them (they sample the terrain), the frame only scrapes
+            var cp = c.GetContact(0).point;
+            var terr = MadMax.World.DeformableTerrain.Instance;
+            if (c.collider.name.StartsWith("Chunk") && terr && cp.y - terr.Height(cp.x, cp.z) < 0.5f) return;
             // shrubs, fences, cacti: the bike ploughs through (the prop carves) with a wobble instead of a spill
             var prop = c.collider.GetComponentInParent<MadMax.World.DestructibleVoxels>();
             if (prop && (prop.name == "Bush" || prop.name == "Fence" || prop.name == "Cactus" || prop.VoxelCount < 500) && hit < 16f)
@@ -162,9 +167,20 @@ namespace MadMax.Vehicles
                 rb.linearVelocity *= 0.92f;
                 return;
             }
-            if (hit > 7f && TryGetComponent<VehicleDamage>(out var vd)) vd.LastStruck = c.collider;     // the rider tumbles over it
-            if (hit > 7f) { LastCrash = "hit " + c.collider.name + " " + hit.ToString("0.0") + " n=" + n; Crash(hit * 2.2f, "THROWN OVER THE BARS"); }
+            if (hit > 7f && hit <= ThrowHit)
+            {                                                                                   // a knock: the bike loses speed, the rider hangs on
+                rb.linearVelocity *= 0.85f;
+                Knocks++;
+                return;
+            }
+            if (hit > ThrowHit && TryGetComponent<VehicleDamage>(out var vd)) vd.LastStruck = c.collider;     // the rider tumbles over it
+            if (hit > ThrowHit) { LastCrash = "hit " + c.collider.name + " " + hit.ToString("0.0") + " n=" + n; Crash(hit * 2.2f, "THROWN OVER THE BARS"); }
         }
+
+        /// <summary>Impact speed into an obstacle (m/s, across its face) that throws the rider over the bars.</summary>
+        public const float ThrowHit = 10f;
+        /// <summary>Knocks ridden out (tests).</summary>
+        [System.NonSerialized] public int Knocks;
 
         void Crash(float severity, string why)
         {

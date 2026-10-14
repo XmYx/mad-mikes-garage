@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--timeout", type=float, default=1800)
     ap.add_argument("--headless", action="store_true", help="-batchmode -nographics (no GPU; screenshots are blank)")
     ap.add_argument("--keep", action="store_true", help="keep the disposable profile folder")
+    ap.add_argument("--startup", type=float, default=300, help="seconds the player may take to reach the runner (failed startup = exit 3)")
     a = ap.parse_args()
 
     if not os.path.isfile(a.player):
@@ -50,16 +51,39 @@ def main():
     if a.headless:
         cmd += ["-batchmode", "-nographics"]
     print("[acceptance]", " ".join(cmd), flush=True)
-    t0 = time.time()
-    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL)
+    env = dict(os.environ)
     try:
-        code = proc.wait(timeout=a.timeout + 180)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        print(f"[acceptance] TIMEOUT: killed the player after {time.time() - t0:.0f} s", file=sys.stderr)
-        code = 3
+        env["MADMAX_COMMIT"] = subprocess.check_output(["git", "-C", ROOT, "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    # exact replay: the same suite / filter on a fresh disposable profile
+    replay = [sys.executable, os.path.abspath(__file__), "--suite", a.suite] + (["--scenario", a.scenario] if a.scenario else []) + \
+             (["--skip", a.skip] if a.skip else []) + (["--quick"] if a.quick else []) + (["--headless"] if a.headless else []) + \
+             ["--player", a.player, "--timeout", str(int(a.timeout))]
+    with open(os.path.join(results, "replay.sh"), "w") as fh:
+        fh.write("#!/bin/sh\n# commit " + env.get("MADMAX_COMMIT", "unknown") + "\n" + " ".join(replay) + "\n")
+    t0 = time.time()
+    log = os.path.join(results, "player.log")
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, env=env)
+    code, started = None, False
+    try:
+        while code is None:
+            try:
+                code = proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                el = time.time() - t0
+                if not started and os.path.exists(log):
+                    with open(log, encoding="utf-8", errors="replace") as fh:
+                        started = "[acceptance]" in fh.read()
+                if not started and el > a.startup:
+                    print(f"[acceptance] STARTUP: the runner never reported within {a.startup:.0f} s", file=sys.stderr)
+                    proc.kill(); proc.wait(); code = 3
+                elif el > a.timeout + 180:
+                    print(f"[acceptance] TIMEOUT: killed the player after {el:.0f} s", file=sys.stderr)
+                    proc.kill(); proc.wait(); code = 3
     finally:
+        if proc.poll() is None:
+            proc.kill()
         if not a.keep:
             shutil.rmtree(profile, ignore_errors=True)
 
@@ -77,6 +101,7 @@ def main():
     if os.path.exists(cov):
         k = json.load(open(cov, encoding="utf-8"))["counts"]
         print(f"[acceptance] coverage: {k['covered']} of {k['features']} features covered, {k['gap']} explicit gaps, {k['failing_or_blocked']} failing/blocked")
+    print(f"[acceptance] replay: {os.path.join(results, 'replay.sh')}")
     expected = r["exit"]
     if code not in (expected, 0) and code != 3:
         print(f"[acceptance] note: player exit {code} differs from the report's {expected}", file=sys.stderr)

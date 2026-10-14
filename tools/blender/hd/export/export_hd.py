@@ -929,6 +929,8 @@ def _atlas_size(o, cfg, ob):
         if "brows" in n or "beard" in n:
             return 256
         area = sum(p.area for p in ob.data.polygons)
+        if area > 0.3 and "hair" not in n:
+            return 1024                                 # big fabric garments: the woven texture + its normal survive
         return 512 if area > 0.06 else 256              # garments / hair: 512 keeps a full wardrobe ~30 MB per body
     return cfg["size"]
 

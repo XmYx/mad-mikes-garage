@@ -291,7 +291,7 @@ namespace MadMax.Game
             string time = Mathf.FloorToInt(seconds / 60f) + ":" + (seconds % 60f).ToString("00.0");
             string what = e.kind == Kind.Arena ? "ARENA WON" : place == 1 ? "YOU WON" : "PLACE " + place;
             End(what + " IN " + time + (pay > 0 ? " (+" + pay + " SCRAP)" : "") + (place == 1 && record ? " NEW RECORD" : ""), true);
-            if (place == 1) { game.Stats.Practice(MadMax.RPG.Skill.Driving, 10f); NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 1); }
+            if (place == 1) { game.Stats.Practice(MadMax.RPG.Skill.Driving, 10f); MadMax.Npc.Factions.Shift(MadMax.Npc.Faction.Settlers, 1); }
         }
 
         void End(string message, bool finished)

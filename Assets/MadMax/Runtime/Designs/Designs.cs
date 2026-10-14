@@ -70,7 +70,9 @@ namespace MadMax.Designs
         public readonly List<BoundsInt> colliders = new List<BoundsInt>();   // voxel-space boxes; empty = one box around the body
         public InteriorDesign interior;
         public string machine;                 // construction machine behaviour (MadMax.Vehicles.Machine.Kind name)
+        public string dashboard;               // instrument cluster style id (DashboardStyles); null = picked by vehicle class
         public float archLift;                 // set by CarveWheelArches: how far (m) the wheel meshes may rise into the arches
+        public readonly HashSet<Vector3Int> archKeep = new HashSet<Vector3Int>();   // body voxels the arch carve leaves (wheel spats outboard of the tyre)
         public bool crawler;                   // tracked: wheels hide inside the tracks (no arch carving)
         public bool bike, sidecar;             // two-wheeler (BikeBalance leans it); sidecar outfit: three wheels, no lean
         public float comX;                     // centre of mass offset (m) to the right (sidecar outfits)
@@ -143,6 +145,7 @@ namespace MadMax.Designs
                     {
                         var p = local + at;
                         if (p.x < x0 || p.x > x1) continue;
+                        if (g == body && archKeep.Contains(p)) continue;
                         float dz = Mathf.Max(0f, Mathf.Abs(p.z - s.position.z) - zMargin);
                         float dy = p.y - s.position.y;
                         float ey = dy - Mathf.Clamp(dy, 0f, travelVox);      // capsule: the wheel rises by the suspension travel

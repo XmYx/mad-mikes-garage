@@ -113,7 +113,7 @@ namespace MadMax.Game
 
         /// <summary>Strap a prosthetic from the pack onto a healed stump (a clinic bed or surgery table within 3 m makes
         /// it painless; alone it hurts a little).</summary>
-        public bool FitProsthetic(BodyZone z, string id)
+        public bool FitProsthetic(BodyZone z, string id, bool assisted = false)
         {
             var d = ProstheticLibrary.Get(id);
             if (d == null || !d.Fits(z) || !Limbs.Severed(Look.lost, z)) { Toast("IT DOESN'T FIT THERE"); return false; }
@@ -121,7 +121,7 @@ namespace MadMax.Game
             if (!Inventory.TakeItem(id)) return false;
             ReturnProsthetic(z, Player.transform.position);
             ProstheticLibrary.SetFitted(Look, z, id);
-            bool helped = false;
+            bool helped = assisted;                                                           // a surgeon's hands (Dialogue.Surgeon)
             foreach (var t in Object.FindObjectsByType<SurgeryTable>(FindObjectsSortMode.None)) if ((t.transform.position - Player.transform.position).sqrMagnitude < 9f) helped = true;
             foreach (var b in ClinicBed.All) if (b && (b.transform.position - Player.transform.position).sqrMagnitude < 9f) helped = true;
             if (!helped) Stats.health = Mathf.Max(1f, Stats.health - 3f);                     // strapped on alone: it chafes

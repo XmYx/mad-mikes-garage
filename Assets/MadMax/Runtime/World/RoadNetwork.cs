@@ -7,6 +7,8 @@ namespace MadMax.World
     {
         public float dist, height, along, width;
         public bool paved;
+        /// <summary>+1 on the right of the road's direction of travel, -1 on the left (signed lateral = side * dist).</summary>
+        public float side;
         public int road;
     }
 
@@ -28,7 +30,9 @@ namespace MadMax.World
             public int road;
         }
 
-        public const float Reach = 18f; // how far beyond the road edge the query reports (shoulder blending)
+        public const float Reach = 24f;                       // the graded bank out from the road edge (wide: cuts and fills stay climbable)
+        /// <summary>The spawn point lies at least this far from the origin town's centre (0 = the old fixed point index).</summary>
+        public float spawnClear; // how far beyond the road edge the query reports (shoulder blending)
         const float GridCell = 64f;
 
         public readonly List<Vector2> towns = new List<Vector2>();
@@ -140,13 +144,27 @@ namespace MadMax.World
             var road = new Road { width = paved ? 8f : 5f, paved = paved };
             int id = roads.Count;
             roads.Add(road);
+            for (int i = 0; i < pts.Count; i++) road.points.Add(new Vector3(pts[i].x, h[i], pts[i].y));
+            Index(id);
+        }
+
+        /// <summary>Re-index every road after their points changed (town plans reroute the highways through towns).</summary>
+        public void Rebuild()
+        {
+            segs.Clear(); grid.Clear();
+            for (int id = 0; id < roads.Count; id++) Index(id);
+        }
+
+        void Index(int id)
+        {
+            var road = roads[id];
+            var pts = road.points;
             float along = 0;
-            for (int i = 0; i < pts.Count; i++)
+            for (int i = 1; i < pts.Count; i++)
             {
-                road.points.Add(new Vector3(pts[i].x, h[i], pts[i].y));
-                if (i == 0) continue;
-                float len = Vector2.Distance(pts[i - 1], pts[i]);
-                var seg = new Seg { a = pts[i - 1], b = pts[i], ha = h[i - 1], hb = h[i], la = along, lb = along + len, road = id };
+                var a = new Vector2(pts[i - 1].x, pts[i - 1].z); var b = new Vector2(pts[i].x, pts[i].z);
+                float len = Vector2.Distance(a, b);
+                var seg = new Seg { a = a, b = b, ha = pts[i - 1].y, hb = pts[i].y, la = along, lb = along + len, road = id };
                 along += len;
                 int si = segs.Count;
                 segs.Add(seg);
@@ -201,7 +219,9 @@ namespace MadMax.World
                 float t = Mathf.Clamp01(Vector2.Dot(p - s.a, ab) / Mathf.Max(1e-4f, ab.sqrMagnitude));
                 float d = Vector2.Distance(p, s.a + ab * t);
                 if (d > r.width * 0.5f + Reach) continue;
-                var hit = new RoadHit { dist = d, height = Mathf.Lerp(s.ha, s.hb, t), along = Mathf.Lerp(s.la, s.lb, t), width = r.width, paved = r.paved, road = s.road };
+                var ap = p - s.a;
+                var hit = new RoadHit { dist = d, height = Mathf.Lerp(s.ha, s.hb, t), along = Mathf.Lerp(s.la, s.lb, t), width = r.width, paved = r.paved, road = s.road,
+                                        side = ab.x * ap.y - ab.y * ap.x > 0f ? -1f : 1f };
                 int existing = -1;
                 for (int h = 0; h < hits.Count; h++) if (hits[h].road == s.road) { existing = h; break; }
                 if (existing < 0) hits.Add(hit);
@@ -214,7 +234,14 @@ namespace MadMax.World
         {
             var road = roads[0];
             var pts = road.points;
-            bool reversed = (new Vector2(pts[0].x, pts[0].z)).sqrMagnitude > 1f;
+            bool reversed = (new Vector2(pts[0].x, pts[0].z)).sqrMagnitude > (new Vector2(pts[pts.Count - 1].x, pts[pts.Count - 1].z)).sqrMagnitude;
+            if (spawnClear > 0f)
+                for (index = 0; index < pts.Count - 2; index++)
+                {
+                    var q = pts[reversed ? pts.Count - 1 - index : index];
+                    if (new Vector2(q.x, q.z).magnitude >= spawnClear) break;
+                }
+            index = Mathf.Clamp(index, 0, pts.Count - 2);
             int i = reversed ? pts.Count - 1 - index : index;
             int j = reversed ? i - 1 : i + 1;
             position = pts[i];

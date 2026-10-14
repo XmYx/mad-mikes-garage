@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MadMax.Building
 {
-    public enum BuildCategory { Structure, Furniture, Utility, Garden, Industry, Decor, Hidden, Defence }
+    public enum BuildCategory { Structure, Furniture, Utility, Garden, Industry, Decor, Hidden, Defence, Salvaged, Vehicle }   // append only
 
     public class FurnitureDef
     {
@@ -28,6 +28,7 @@ namespace MadMax.Building
         public float voxel = VoxelMesher.DefaultSize;   // big coarse pieces (the hangar) use larger voxels
         public string desc;              // what it is for (build menu); null = read from what it is (FurnitureLibrary.Describe)
         public FrameKind frame;          // free frame (roadmap 29): beams / ladders point to point, spans over beam ends
+        public float mass;               // kg on a vehicle (0 = estimated from the voxels, FurnitureLibrary.MassOf)
     }
 
     /// <summary>Placeable furniture and building pieces. Origin = mounting point on the surface, +Y = away from the
@@ -45,7 +46,7 @@ namespace MadMax.Building
         {
             Ensure();
             if (byId.Count == 0) foreach (var d in defs) byId[d.id] = d;
-            return id != null && byId.TryGetValue(id, out var def) ? def : null;
+            return id != null && byId.TryGetValue(id, out var def) ? def : SalvagedDef(id);      // prop:<template> designs resolve on demand
         }
 
         static void Ensure()
@@ -188,6 +189,9 @@ namespace MadMax.Building
             defs.AddRange(LightsPieces());
             defs.AddRange(FluidsPieces());
             defs.AddRange(WinterPieces());
+            defs.AddRange(RigPieces());
+            defs.AddRange(CityPieces());
+            defs.AddRange(RailPieces());
             Upgrades();
         }
 
@@ -298,6 +302,7 @@ namespace MadMax.Building
             var l = new List<FurnitureDef>();
             foreach (var d in All) if (d.category == c) l.Add(d);
             if (c == BuildCategory.Structure) StructurePlans.AddDefs(l);      // saved plans + the capture tool
+            if (c == BuildCategory.Salvaged) SalvagedDefs(l);                 // designs learned by taking world things apart
             return l;
         }
 

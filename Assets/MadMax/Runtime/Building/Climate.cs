@@ -22,13 +22,33 @@ namespace MadMax.Building
 
         public bool Active => on && (burnsWood ? fire > 0f : !node || node.Powered);
 
+        Transform chimney; bool chimneyLooked;
+        /// <summary>Where the smoke leaves: the HD model's <c>Chimney</c>, else the top of the piece (a campfire's smoke
+        /// rises from the fire, a stove's from its flue).</summary>
+        Vector3 SmokePoint
+        {
+            get
+            {
+                if (!chimneyLooked)
+                {
+                    chimneyLooked = true;
+                    var v = GetComponent<MadMax.Rendering.HDVisual>();
+                    if (v && v.root) chimney = MadMax.Rendering.HDAssets.FindDeep(v.root, "Chimney");
+                }
+                var r = chimney ? chimney.GetComponentInChildren<Renderer>() : GetComponent<Renderer>();
+                if (!r) return transform.TransformPoint(new Vector3(0, 2.4f, -0.1f));
+                var b = r.bounds;
+                return new Vector3(b.center.x, b.max.y + 0.08f, b.center.z);
+            }
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
             if (node && !burnsWood) node.demand = on ? (heat > 0f ? 1500f : 1200f) : 0f;
             if (!burnsWood || !on || fire <= 0f) return;
             fire = Mathf.Max(0f, fire - dt / 60f);
-            if ((smoke += dt) > 0.8f) { smoke = 0f; MadMax.World.Fx.Smoke(transform.TransformPoint(new Vector3(0, 2.4f, -0.1f)), Vector3.up + MadMax.World.Fx.Wind * 0.3f, 0.5f, new Color(0.3f, 0.3f, 0.3f, 0.5f), 3f); }
+            if ((smoke += dt) > 0.8f) { smoke = 0f; MadMax.World.Fx.Smoke(SmokePoint, Vector3.up + MadMax.World.Fx.Wind * 0.3f, 0.5f, new Color(0.3f, 0.3f, 0.3f, 0.5f), 3f); }
             if (fire <= 0f) GetComponent<Placeable>()?.Dirty();
         }
 

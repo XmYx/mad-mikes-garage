@@ -63,6 +63,11 @@ namespace MadMax.Audio
         public float wear, oil = 1f, misfire, ping, cold, leak, mufflerDamage, clog;
         /// <summary>Frost-thick oil 0..1: the starter turns slower and labours on each compression.</summary>
         public float frost;
+        /// <summary>Where the exhaust blows: <see cref="leak"/> is at the manifold — one cylinder's port when
+        /// <see cref="leakCyl"/> ≥ 0 (a tick once a cycle from that cylinder, heard at the engine), else the collector;
+        /// <see cref="leakPipe"/> is a split pipe or muffler joint further back (heard at the tailpipe end, raw).</summary>
+        public int leakCyl = -1;
+        public float leakPipe;
         /// <summary>Fuel at the injectors / carburettor (false: cranks without a cough).</summary>
         public bool fuelled = true;
 
@@ -214,7 +219,7 @@ namespace MadMax.Audio
                     float a = cylAmp[c] * (Spec.twoStroke ? 0.9f : 1f);
                     int mask = ring.Length - 1;
                     ring[(rw + delay[c]) & mask] += a;
-                    leakExc += a;
+                    leakExc += leakCyl < 0 || leakCyl >= cylAmp.Length || c == leakCyl ? a : a * 0.12f;   // one blowing port ticks once a cycle
                     // unburnt charge lights in the hot pipe: a bang (overrun, misfires)
                     if (!burned[c] && running && !Spec.diesel && curRpm > idleRpm * 1.4f && noise.Unit() < profile.crackle * (overrun > 0f ? 0.35f : 0.12f))
                         ring[(rw + delay[c] + 30 + (int)(noise.Unit() * 400f)) & mask] += 0.9f + noise.Unit() * 0.9f;
@@ -339,7 +344,7 @@ namespace MadMax.Audio
                 float x = flow * (1f + nz * 0.2f * rasp);
                 float back = pipe[(pw - pipeLen) & pmask];
                 pipeLp += (back - pipeLp) * pipeK;
-                float y = x * (1f - 0.45f * leak) + profile.reflection * pipeLp;
+                float y = x * (1f - 0.45f * leak) * (1f - 0.3f * leakPipe) + profile.reflection * pipeLp;
                 pipe[pw] = y; pw = (pw + 1) & pmask;
                 muffler.Process(y); muffler2.Process(muffler.lp);
                 raspLp += (y - raspLp) * raspK;
@@ -407,7 +412,8 @@ namespace MadMax.Audio
                 }
 
                 mech *= 0.6f;
-                exOut[i] = exhaust + mech * 0.12f;
+                float split = leakPipe > 0f ? leakPipe * ((y - raspLp) * 0.9f + nz * Mathf.Abs(y) * 0.35f) : 0f;   // a split pipe: raw pulses before the muffler
+                exOut[i] = exhaust + mech * 0.12f + split * 1.5f;
                 bayOut[i] = mech + intake * 0.7f + forced + starter + leaky * 1.6f + (exhaust + m * 0.3f) * exBleed;
             }
 

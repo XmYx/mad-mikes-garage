@@ -15,6 +15,7 @@ JOBS = [
     ("machines.py", "Excavator"), ("machines.py", "Backhoe"), ("machines.py", "Bulldozer"), ("machines.py", "DumpTruck"),
     ("machines.py", "Paver"), ("machines.py", "Roller"),
     ("farm.py", "Tractor"), ("farm.py", "Tractor_implements"),
+    ("lifters.py", "MagnetCrane"), ("lifters.py", "CarCrusher"),
 ]
 EXTRA = {  # extra tiles rendered by a job: name -> (label, replaces)
     "Hauler_cutaway": ("Hauler cutaway (living module)", "Hauler walk-in interior: InteriorDesign furniture + cab"),

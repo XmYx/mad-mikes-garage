@@ -3,9 +3,10 @@ using UnityEngine.Profiling;
 
 namespace MadMax.Game
 {
-    /// <summary>Diagnostics for builds. -fpslog: frame stats every 5 s. -mute: pause all audio.
+    /// <summary>Diagnostics for builds. -fpslog: frame stats every 5 s. -mute: pause all audio. -vector: vector render
+    /// style for this run. -autotest keeps running unfocused.
     /// -autotest: start a new game, drive the first car along the nearest road (streaming new terrain), log stats,
-    /// record a profiler capture (development builds, -profile &lt;file.raw&gt;) from 15 s to 45 s (-profilefrom N: N to N+30; -1 also records the new-game load),
+    /// record a profiler capture (development builds, -profile &lt;file.raw&gt;) from 15 s to 45 s (-profilefrom N: N to N+30; -1 also records the new-game load; -2 from boot),
     /// and quit at 50 s.</summary>
     public class FrameStats : MonoBehaviour
     {
@@ -15,6 +16,7 @@ namespace MadMax.Game
         float t0, worst, testStart = -1f, profileFrom = 15f;
         int frames, spikes;
         bool autotest, profiling, towtest;
+        float stallLogAt;
         MadMax.Vehicles.TowCoupling tow;
         System.Collections.Generic.List<Vector3> route;
         int routeIndex, routeDir = 1;
@@ -24,6 +26,10 @@ namespace MadMax.Game
         string profileFile, shotsDir;
         float nextShot;
         int shotIndex;
+        // run summary (roadmap 26 Q7): every frame time after the warm-up, percentiles + memory logged on quit
+        const float WarmUp = 20f;
+        readonly float[] sample = new float[36000];
+        int sampled, gcAtWarm = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -33,6 +39,8 @@ namespace MadMax.Game
             bool log = System.Array.IndexOf(args, "-fpslog") >= 0, test = System.Array.IndexOf(args, "-autotest") >= 0;
             int si = System.Array.IndexOf(args, "-shots");
             if ((!log && !test && si < 0) || FindAnyObjectByType<FrameStats>()) return;
+            if (test) Application.runInBackground = true;                                     // measurements keep running when the window loses focus
+            if (System.Array.IndexOf(args, "-vector") >= 0) GameSettings.Current.vector = true;   // this run only (applied when the game starts, not saved)
             var go = new GameObject("FrameStats"); DontDestroyOnLoad(go);
             var fs = go.AddComponent<FrameStats>();
             fs.autotest = test;
@@ -42,6 +50,7 @@ namespace MadMax.Game
             int pf = System.Array.IndexOf(args, "-profilefrom");                       // capture start (s after driving begins)
             if (pf >= 0 && pf + 1 < args.Length && float.TryParse(args[pf + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var from)) fs.profileFrom = from;
             if (si >= 0 && si + 1 < args.Length) { fs.shotsDir = args[si + 1]; System.IO.Directory.CreateDirectory(fs.shotsDir); }
+            if (fs.profileFile != null && fs.profileFrom <= -2f) fs.StartProfiler();           // -profilefrom -2: from boot (menu, world generation, load)
         }
 
         void Update()
@@ -51,6 +60,7 @@ namespace MadMax.Game
             worst = Mathf.Max(worst, dtu);
             if (dtu > 1f / 30f) spikes++;
             float t = Time.realtimeSinceStartup;
+            if (t > WarmUp && sampled < sample.Length) { if (gcAtWarm < 0) gcAtWarm = System.GC.CollectionCount(0); sample[sampled++] = dtu; }
             if (autotest) Drive(t);
             // -shots <dir>: a frame every 0.5 s for the first 45 s (boot film, handover, title)
             if (shotsDir != null && t < 45f && t >= nextShot)
@@ -63,6 +73,18 @@ namespace MadMax.Game
             Debug.Log($"[fps] t={t:0} avg {frames / (t - t0):0.0} fps, worst {worst * 1000f:0} ms, frames >33ms {spikes}, audio paused {AudioListener.pause}, gc {System.GC.CollectionCount(0)}" + (gc ? $", car {gc.SpeedKmh:0} km/h rpm {gc.Rpm:0} at {gc.transform.position}" : "")
                       + (autotest && testStart < 0f ? $" [waiting: started {started}, menu world {WastelandGame.Instance == menuGame}, title {TitleSequence.Playing}, fader {ScreenFader.Busy}, ready {(WastelandGame.Instance && WastelandGame.Instance.Ready)}]" : ""));
             t0 = t; frames = 0; worst = 0f; spikes = 0;
+        }
+
+        void OnApplicationQuit()
+        {
+            if (sampled < 10) return;
+            var sorted = new float[sampled];
+            System.Array.Copy(sample, sorted, sampled);
+            System.Array.Sort(sorted);
+            float P(float q) => sorted[Mathf.Clamp(Mathf.CeilToInt(q * sampled) - 1, 0, sampled - 1)] * 1000f;
+            Debug.Log($"[fps] summary after {WarmUp:0} s warm-up: {sampled} frames, median {P(0.5f):0.0} ms, p95 {P(0.95f):0.0} ms, p99 {P(0.99f):0.0} ms, worst {sorted[sampled - 1] * 1000f:0} ms, "
+                      + $"gc {System.GC.CollectionCount(0) - gcAtWarm}, managed {System.GC.GetTotalMemory(false) / 1048576f:0} MB, "
+                      + $"allocated {UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / 1048576f:0} MB, reserved {UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong() / 1048576f:0} MB");
         }
 
         /// <summary>-towtest: rest the small tanker behind the car, hitch it (as J would), then drive and log the joint.</summary>
@@ -202,7 +224,7 @@ namespace MadMax.Game
                 if (ScreenFader.Busy) return;                                                 // the menu's own load must finish fading in first
                 started = true;
                 menuGame = g;                                                                 // the menu's world, until the new one loads
-                if (profileFile != null && profileFrom < 0f) StartProfiler();             // -profilefrom -1: include the new-game load
+                if (profileFile != null && profileFrom < 0f && !profiling) StartProfiler();   // -profilefrom -1: include the new-game load
                 g.StartNewGame(new GameRules { randomSeed = false }, new MadMax.RPG.CharacterStats(), new Appearance(), false);   // same world every run
                 return;
             }
@@ -218,6 +240,11 @@ namespace MadMax.Game
                 c.throttleInput = s % 12f < 10f ? 1f : 0f;         // lift every 12 s
                 c.brakeInput = s % 12f > 10.5f ? 0.6f : 0f;
                 c.steerInput = Mathf.Sin(s * 0.25f) * 0.35f;
+            }
+            if (s > 6f && Mathf.Abs(c.ForwardSpeed) < 1f && Time.time > stallLogAt)
+            {                                                                                   // stuck: say why (wheels, contacts)
+                stallLogAt = Time.time + 5f;
+                Debug.Log("[autotest] stalled: " + MadMax.Game.Acceptance.TestWorld.State(c) + $" | thr {c.throttleInput:0.00} brk {c.brakeInput:0.00} str {c.steerInput:0.00} hb {c.handbrake} coupling {c.Coupling:0.00} shaft {c.ShaftRpm:0} | " + MadMax.Game.Acceptance.TestWorld.Contacts(c));
             }
             if (profileFile != null && !profiling && s > profileFrom) StartProfiler();
             if (profiling && s > profileFrom + 30f && Profiler.enabled) { Profiler.enabled = false; Profiler.logFile = ""; Debug.Log("[autotest] profile done"); }

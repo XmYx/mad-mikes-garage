@@ -14,7 +14,22 @@ namespace MadMax.Building
         FilterCartridge cartridge;
         WaterTaint ground;
         float groundAt = -1f;
+        float roofAt; bool covered;
         void Awake() => node = GetComponent<UtilityNode>();
+
+        /// <summary>Something solid overhead that isn't the collector or what carries it.</summary>
+        bool Covered()
+        {
+            var hits = Physics.RaycastAll(transform.position + Vector3.up * 0.3f, Vector3.up, 30f, ~0, QueryTriggerInteraction.Ignore);
+            var carrier = GetComponentInParent<MadMax.Vehicles.VehicleDriver>();                  // a tank part: its own vehicle doesn't count
+            foreach (var h in hits)
+            {
+                if (h.collider.transform.IsChildOf(transform)) continue;
+                if (carrier && h.collider.transform.IsChildOf(carrier.transform)) continue;
+                return true;
+            }
+            return false;
+        }
         void Start() => cartridge = GetComponent<FilterCartridge>();
 
         void Update()
@@ -24,7 +39,9 @@ namespace MadMax.Building
             switch (mode)
             {
                 case Mode.Rain:
-                    node.sourceDirty = MadMax.World.Weather.Raining && !MadMax.World.Weather.Snowing ? 0.35f : 0f;
+                    bool raining = MadMax.World.Weather.Raining && !MadMax.World.Weather.Snowing;
+                    if (raining && Time.time >= roofAt) { roofAt = Time.time + 4f; covered = Covered(); }   // under a roof it catches nothing
+                    node.sourceDirty = raining && !covered ? 0.35f : 0f;
                     node.sourceTaint = WaterTaint.Silt;
                     break;
                 case Mode.Pump:

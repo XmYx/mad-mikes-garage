@@ -78,6 +78,11 @@ namespace MadMax.Vehicles
                     s.cylinders = 2; s.twoStroke = true; s.fireDeg = Even(2, 360f); s.displacement = 0.6f; s.valves = Valvetrain.Ports; s.airCooled = true;
                     s.idleRpm = 950f; s.flywheel = 0.6f; s.pipeLength = 1.4f; s.mufflerHz = 1300f;
                     break;
+                case "engine_twin_air":
+                    // Fiat 126p / 500 air-cooled four-stroke twin: 360° crank, the cylinders fire alternately every turn
+                    s.cylinders = 2; s.fireDeg = new[] { 0f, 360f }; s.displacement = 0.65f; s.valves = Valvetrain.Ohv; s.airCooled = true;
+                    s.idleRpm = 900f; s.flywheel = 0.55f; s.pipeLength = 1.2f; s.mufflerHz = 1250f;
+                    break;
                 case "engine_2stroke_aero":
                     s.cylinders = 2; s.twoStroke = true; s.fireDeg = Even(2, 360f); s.displacement = 0.58f; s.valves = Valvetrain.Ports;
                     s.idleRpm = 1600f; s.flywheel = 0.5f; s.pipeLength = 1.1f; s.mufflerHz = 1800f;

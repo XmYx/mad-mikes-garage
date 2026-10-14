@@ -7,6 +7,7 @@ namespace MadMax.World
     {
         public bool authority = true;
         public bool rock;                 // a thrown stone: a knock, and a noise where it lands (a distraction)
+        public bool byPlayer;             // thrown by the local player (a town remembers who started a fire)
         float armed = 0.08f;
         void Update() { armed -= Time.deltaTime; if (transform.position.y < -200f) Destroy(gameObject); }
         void OnCollisionEnter(Collision c)
@@ -27,6 +28,7 @@ namespace MadMax.World
             }
             if (!authority) { Fx.Sparks(transform.position, Vector3.up, 12, new Color(1f, 0.7f, 0.3f)); Destroy(gameObject); return; }
             MadMax.Audio.Sfx.Play("glass_break", p, 0.9f);
+            MadMax.Game.WastelandGame.NoteFireBomb(p, byPlayer);
             MadMax.Audio.Sfx.Play("explosion", p, 0.5f, 1.3f, 60f);
             var terrain = DeformableTerrain.Instance;
             bool grass = terrain && (terrain.BiomeAt(p.x, p.z) is Biome.Forest or Biome.Village or Biome.Tropical);

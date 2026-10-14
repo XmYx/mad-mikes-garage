@@ -12,7 +12,11 @@ namespace MadMax.Audio
         const int PoolSize = 24, MaxLoops = 12, MaxRequests = 512;
 
         struct Request { public Component owner; public string key; public float vol, pitch, range, score; public bool flat; public Vector3 pos; }
-        class LoopVoice { public AudioSource src; public Component owner; public string key; public bool used; }
+        class LoopVoice { public AudioSource src; public Component owner; public string key; public bool used; public float served; public int servedFrame; }
+        /// <summary>A loop requested from FixedUpdate may miss a rendered frame (frame rate above the physics rate): it
+        /// keeps playing this long after its last request.</summary>
+        const float LoopGrace = 0.25f;                                                       // a slow frame or two never cuts a loop
+        static bool InGrace(LoopVoice v) => v.owner != null && (Time.unscaledTime - v.served < LoopGrace || Time.frameCount - v.servedFrame <= 3);
 
         static readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>();
         static readonly Dictionary<string, float> lastPlayed = new Dictionary<string, float>();
@@ -52,6 +56,7 @@ namespace MadMax.Audio
             if (clips.TryGetValue(key, out var c) && c) return c;
             c = Resources.Load<AudioClip>("Sfx/" + key);
             if (!c) c = ProceduralSfx.Make(key);                                         // synthesised stand-ins (ProceduralSfx)
+            if (!c) c = MadMax.World.RailSfx.Make(key);                                  // railway sounds (RailSfx)
             clips[key] = c;
             return c;
         }
@@ -84,7 +89,9 @@ namespace MadMax.Audio
         /// <summary>3D one-shot; skipped beyond range. minInterval drops repeats of the same key closer together (seconds).</summary>
         public static void Play(string key, Vector3 pos, float volume = 1f, float pitch = 1f, float range = 40f, float minInterval = 0.05f)
         {
-            if (Muted || volume <= 0.001f) return;
+            if (volume <= 0.001f) return;
+            MadMax.Game.Attention.FromSound(key, pos, volume);                                  // loud keys turn heads (also muted)
+            if (Muted) return;
             if (HasListener && (pos - ListenerPosition).sqrMagnitude > range * range) return;
             float now = Time.unscaledTime;
             if (lastPlayed.TryGetValue(key, out var t) && now - t < minInterval) return;
@@ -123,6 +130,8 @@ namespace MadMax.Audio
                 if (d >= range) return;
                 score *= 1f - d / range;
             }
+            foreach (var v in loopVoices)                                                       // already playing: it keeps its voice unless clearly outranked
+                if (v != null && v.owner == owner && v.key == key) { score *= 1.6f; break; }
             requests[requestCount++] = new Request { owner = owner, key = key, vol = volume, pitch = pitch, range = range, flat = flat, pos = pos, score = score };
         }
 
@@ -158,10 +167,10 @@ namespace MadMax.Audio
                     foreach (var v in loopVoices)
                     {
                         if (v.used) continue;
-                        if (pass == 0 ? (v.owner == r.owner && v.key == r.key) : !IsClaimed(v, picked)) { voice = v; break; }
+                        if (pass == 0 ? (v.owner == r.owner && v.key == r.key) : !IsClaimed(v, picked) && !InGrace(v)) { voice = v; break; }
                     }
                     if (voice == null) continue;
-                    voice.used = true;
+                    voice.used = true; voice.served = Time.unscaledTime; voice.servedFrame = Time.frameCount;
                     var s = voice.src;
                     if (voice.owner != r.owner || voice.key != r.key || !s.isPlaying)
                     {
@@ -175,7 +184,7 @@ namespace MadMax.Audio
                     s.volume = Mathf.Clamp01(r.vol) * Master * Channel(r.key); s.pitch = r.pitch;
                     r.owner = null;   // served
                 }
-            foreach (var v in loopVoices) if (!v.used) { if (v.src.isPlaying) v.src.Stop(); v.owner = null; v.key = null; }
+            foreach (var v in loopVoices) if (!v.used && !(InGrace(v) && v.owner)) { if (v.src.isPlaying) v.src.Stop(); v.owner = null; v.key = null; }
             requestCount = 0;
         }
 

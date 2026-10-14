@@ -17,11 +17,16 @@ namespace MadMax.World
         static readonly string[] Names = { "sand", "dirt", "grass", "rock", "gravel", "asphalt", "concrete", "mud", "snow" };
         /// <summary>World metres one texture tile covers, per class.</summary>
         static readonly float[] TileMetres = { 2.4f, 2.2f, 1.8f, 4.5f, 1.6f, 2.5f, 3.5f, 3.0f, 3.5f };
-        static Texture2DArray albedo, normal;
-        static int state = -1;                    // -1 unknown, 0 off, 1 ready
+        /// <summary>Road layers (R&lt;k&gt;_&lt;name&gt;, make_textures.ROADS): asphalt fresh / worn / cracked / patched,
+        /// sidewalk concrete, kerb granite, worn paint (A = coverage), decals manhole / drain / oil / pothole (sRGB colour,
+        /// A = cut-out). Optional: without them HDLit draws the streets procedurally.</summary>
+        static readonly string[] RoadNames = { "asphalt_fresh", "asphalt_worn", "asphalt_cracked", "asphalt_patched", "sidewalk", "kerb",
+                                               "paint", "manhole", "drain", "oil", "pothole" };
+        static Texture2DArray albedo, normal, roadAlbedo, roadNormal;
+        static int state = -1, roadState = -1;    // -1 unknown, 0 off, 1 ready
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { state = -1; albedo = normal = null; }
+        static void ResetStatics() { state = roadState = -1; albedo = normal = roadAlbedo = roadNormal = null; }
 
         /// <summary>The HD pack is on and the terrain textures load into arrays.</summary>
         public static bool Enabled
@@ -43,21 +48,33 @@ namespace MadMax.World
             return true;
         }
 
-        static Texture2DArray Array(string kind, bool linear)
+        /// <summary>The road layer arrays loaded (photo asphalt, kerbs, paint wear, decals).</summary>
+        static bool Roads()
         {
+            if (roadState >= 0 && (roadState == 0 || (roadAlbedo && roadNormal))) return roadState == 1;
+            roadAlbedo = Array("A", false, "R", RoadNames);
+            roadNormal = roadAlbedo ? Array("N", true, "R", RoadNames) : null;
+            roadState = roadAlbedo && roadNormal ? 1 : 0;
+            if (roadState == 0) Debug.Log("[HD] road textures not installed (Resources/HDTerrain/R*): procedural streets");
+            return roadState == 1;
+        }
+
+        static Texture2DArray Array(string kind, bool linear, string prefix = "T", string[] names = null)
+        {
+            names ??= Names;
             Texture2D first = null;
-            var tex = new Texture2D[Classes];
-            for (int k = 0; k < Classes; k++)
+            var tex = new Texture2D[names.Length];
+            for (int k = 0; k < names.Length; k++)
             {
-                tex[k] = Resources.Load<Texture2D>("HDTerrain/T" + k + "_" + Names[k] + "_" + kind);
+                tex[k] = Resources.Load<Texture2D>("HDTerrain/" + prefix + k + "_" + names[k] + "_" + kind);
                 if (!tex[k]) return null;
                 if (!first) first = tex[k];
                 if (tex[k].width != first.width || tex[k].height != first.height || tex[k].graphicsFormat != first.graphicsFormat || tex[k].mipmapCount != first.mipmapCount)
                 { Debug.LogWarning("[HD] terrain texture " + tex[k].name + " differs in size or format"); return null; }
             }
-            var arr = new Texture2DArray(first.width, first.height, Classes, first.graphicsFormat, TextureCreationFlags.MipChain, first.mipmapCount)
-            { name = "HDTerrain_" + kind, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 8 };
-            for (int k = 0; k < Classes; k++)
+            var arr = new Texture2DArray(first.width, first.height, names.Length, first.graphicsFormat, TextureCreationFlags.MipChain, first.mipmapCount)
+            { name = "HDTerrain_" + prefix + kind, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 8 };
+            for (int k = 0; k < names.Length; k++)
                 for (int m = 0; m < first.mipmapCount; m++) Graphics.CopyTexture(tex[k], 0, m, arr, k, m);
             return arr;
         }
@@ -81,6 +98,9 @@ namespace MadMax.World
             m.SetFloat("_WorldCut", 1f);
             m.SetFloat("_MaskStrength", 0f);
             m.SetFloat("_NormalStrength", 1f);
+            bool roads = Roads();                                                            // HD streets: photo layers + decals
+            if (roads) { m.SetTexture("_RoadAlbedo", roadAlbedo); m.SetTexture("_RoadNormal", roadNormal); }
+            m.SetFloat("_RoadTex", roads ? 1f : 0f);
             return m;
         }
     }

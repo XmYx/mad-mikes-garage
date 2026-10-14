@@ -65,14 +65,15 @@ namespace MadMax.Game
 
         public BuildCategory Category { get; private set; }
         public List<FurnitureDef> Pieces => FurnitureLibrary.InCategory(Category);
-        public FurnitureDef Current { get { var p = Pieces; return p[Mathf.Clamp(Selected, 0, p.Count - 1)]; } }
-        public static readonly BuildCategory[] Categories = { BuildCategory.Structure, BuildCategory.Furniture, BuildCategory.Utility, BuildCategory.Garden, BuildCategory.Industry, BuildCategory.Defence, BuildCategory.Decor };
+        public FurnitureDef Current { get { var p = Pieces; return p.Count == 0 ? null : p[Mathf.Clamp(Selected, 0, p.Count - 1)]; } }   // SALVAGED is empty until something is learned
+        public static readonly BuildCategory[] Categories = { BuildCategory.Structure, BuildCategory.Furniture, BuildCategory.Utility, BuildCategory.Garden, BuildCategory.Industry, BuildCategory.Defence, BuildCategory.Decor, BuildCategory.Salvaged, BuildCategory.Vehicle };
         UtilityNode linkStart;
         public UtilityNode LinkStart => linkStart;
 
         public bool Affordable(FurnitureDef def)
         {
             if (def.needsItem != null && game.Inventory.GetItem(def.needsItem) <= 0) return false;
+            if (SalvageDesigns.HeldKit(def, game.Inventory) != null) return true;                // taken apart out there: placed from its kit
             if (def.kit != null) return game.Inventory.GetItem(def.kit) > 0;
             foreach (var (t, n) in def.cost) if (game.Inventory.Get(t) < Cost(n)) return false;
             return true;
@@ -120,6 +121,7 @@ namespace MadMax.Game
                 if (Controls.Down(Controls.Act.BuildNextCategory)) SetCategory(Categories[(ci + 1) % Categories.Length]);
                 if (Controls.Down(Controls.Act.BuildPrevCategory)) SetCategory(Categories[(ci + Categories.Length - 1) % Categories.Length]);
                 all = Pieces;
+                if (all.Count == 0) { EmptyCategory(); return; }
                 for (int i = 0; i < 10; i++)
                 {
                     var key = i == 9 ? Key.Digit0 : Key.Digit1 + i;
@@ -132,14 +134,15 @@ namespace MadMax.Game
             if (pad != null)
             {
                 // pad: d-pad up/down picks the piece, shoulders switch category, north rotates
-                if (pad.dpad.up.wasPressedThisFrame) Selected = (Selected + 1) % all.Count;
-                if (pad.dpad.down.wasPressedThisFrame) Selected = (Selected + all.Count - 1) % all.Count;
+                if (pad.dpad.up.wasPressedThisFrame && all.Count > 0) Selected = (Selected + 1) % all.Count;
+                if (pad.dpad.down.wasPressedThisFrame && all.Count > 0) Selected = (Selected + all.Count - 1) % all.Count;
                 int pci = System.Array.IndexOf(Categories, Category);
                 if (pad.rightShoulder.wasPressedThisFrame) { SetCategory(Categories[(pci + 1) % Categories.Length]); all = Pieces; }
                 if (pad.leftShoulder.wasPressedThisFrame) { SetCategory(Categories[(pci + Categories.Length - 1) % Categories.Length]); all = Pieces; }
                 if (pad.buttonNorth.wasPressedThisFrame) yawSteps = (yawSteps + 1) % 4;
             }
             var def = Current;
+            if (def == null) { EmptyCategory(); return; }
             var player = game.Player;
             if (!player.Tool || player.Tool.id != ItemIds.ClawHammer)
             {
@@ -167,6 +170,8 @@ namespace MadMax.Game
             if (targetPiece && Controls.Down(Controls.Act.BuildUpgrade)) { Upgrade(targetPiece); return; }
             if (targetPiece && Controls.Down(Controls.Act.BuildRepair)) { Repair(targetPiece); return; }
             if (def.frame != MadMax.Building.FrameKind.None) { FrameTick(def, hit, kb, mouse, pad); return; }   // free frame (roadmap 29)
+            if (RigTick(def, hit, mouse, pad)) return;                                              // moving bases (BuildMode.Rig)
+            if (RailTick(def, hit, kb, mouse, pad)) return;                                         // rail track (BuildMode.Rail)
 
             var chassis = hit.collider.GetComponentInParent<VehicleChassis>();
             var city = chassis ? null : hit.collider.GetComponentInParent<MadMax.World.CityHost>();
@@ -249,15 +254,18 @@ namespace MadMax.Game
         {
             if (!Valid || !aimParent) return null;
             var def = Current;
+            if (def == null) return null;
             if (def.plan >= 0) return PlacePlan(def);
             using (Inventory.Source(null, "BUILT"))                                                  // item feed labels
             {
-                if (def.kit != null) game.Inventory.TakeItem(def.kit);
+                var salvageKit = SalvageDesigns.HeldKit(def, game.Inventory);
+                if (salvageKit != null) game.Inventory.TakeItem(salvageKit);                       // a piece taken apart elsewhere goes up again for free
+                else if (def.kit != null) game.Inventory.TakeItem(def.kit);
                 else foreach (var (t, c) in def.cost) game.Inventory.TrySpend(t, Cost(c));
                 if (def.needsItem != null) game.Inventory.TakeItem(def.needsItem);
             }
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 6f);
-            var placed = FurnitureLibrary.Spawn(def.id, aimParent, aimPos, aimRot, material);
+            var placed = rigNewFrame ? PlaceRigFrame(def) : FurnitureLibrary.Spawn(def.id, aimParent, aimPos, aimRot, material);
             if (placed) { placed.owner = game.Stats.name; _ = placed.Id; placed.Dirty(); MadMax.Audio.Sfx.Play("hammer", placed.transform.position, 0.7f); }
             MadMax.Net.NetSession.Instance?.SendPlaced(placed);
             return placed;
@@ -347,11 +355,12 @@ namespace MadMax.Game
 
         /// <summary>Take a built piece apart: full refund of what building it costs (kit back, or the raw materials at
         /// the builder's skill price, so building and dismantling never makes material out of nothing).</summary>
-        /// <summary>Take an own piece down for its cost (kit) back (X in build mode, DISMANTLE in its context menu).</summary>
         public void Dismantle(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
             if (!game.OwnsPiece(p)) { game.Toast("NOT YOURS"); return; }
+            if (!RigVehicle.CanDismantle(p, out var rigWhy)) { game.Toast(rigWhy); return; }    // moving bases: parts off first
+            if (game.IsStoryProp(p) && !game.StoryClearable(p)) { game.Toast("IT IS NOT YOURS TO TAKE APART"); return; }   // as the context menu: story props stay
             if (p.TryGetComponent<Container>(out var box) && !Empty(box.inventory)) { game.Toast("EMPTY IT FIRST"); return; }
             if (p.TryGetComponent<FluidStore>(out var store) && store.Contents > 1f) { game.Toast("DRAIN IT FIRST"); return; }   // coins weigh next to nothing
             if (p.TryGetComponent<UtilityNode>(out var un)) un.Unlink();
@@ -359,7 +368,8 @@ namespace MadMax.Game
             {
                 using var feed = Inventory.Source("DISMANTLED");
                 if (def.kit != null) game.Inventory.AddItem(def.kit);
-                else foreach (var (t, n) in def.cost) game.Inventory.Add(t, Cost(n));
+                else if (SalvageDesigns.Portable.Contains(def.id)) game.Inventory.AddItem(SalvageDesigns.KitFor(def));   // small salvaged / city pieces fold back into their kit
+                else foreach (var (t, n) in RefundCost(p, def)) game.Inventory.Add(t, Cost(n));
                 if (def.needsItem != null) game.Inventory.AddItem(def.needsItem);
             }
             if (MadMax.World.DebrisSystem.Instance)
@@ -369,6 +379,22 @@ namespace MadMax.Game
             game.Toast("DISMANTLED " + (def != null ? def.name : p.id));
             StructureSupport.Removed(p, p.transform.position, p.transform.parent);
             Destroy(p.gameObject);
+        }
+
+        /// <summary>What building this piece cost: frame pieces by their length / area, everything else its def cost.</summary>
+        static (ResourceType type, int amount)[] RefundCost(Placeable p, FurnitureDef def)
+        {
+            if (def.frame == FrameKind.None) return def.cost;
+            if (p.TryGetComponent<FrameBeam>(out var fb)) return FurnitureLibrary.FrameCost(def, fb.length);
+            if (p.TryGetComponent<FrameSpan>(out var fs) && fs.corners.Count >= 3) return FurnitureLibrary.FrameCost(def, Frame.Area(fs.corners));
+            return def.cost;
+        }
+
+        void EmptyCategory()
+        {
+            if (ghost) ghost.SetActive(false);
+            Valid = false;
+            Status = Category == BuildCategory.Salvaged ? "TAKE SOMETHING APART OUT THERE TO LEARN HOW IT IS BUILT" : "NOTHING TO BUILD HERE";
         }
 
         static bool Empty(Inventory inv)
@@ -422,7 +448,7 @@ namespace MadMax.Game
         string PieceHint(Placeable p)
         {
             var def = FurnitureLibrary.Get(p.id);
-            if (def == null || !game.OwnsPiece(p)) return "";
+            if (def == null || !game.OwnsPiece(p) || (game.IsStoryProp(p) && !game.StoryClearable(p))) return "";
             string s = "  [X] DISMANTLE";
             if (p.hits < def.hits) s += "  [R] REPAIR " + p.hits + "/" + def.hits;
             var up = def.upgrade != null ? FurnitureLibrary.Get(def.upgrade) : null;
@@ -442,15 +468,21 @@ namespace MadMax.Game
             {
                 foreach (var (t, c) in up.cost) game.Inventory.TrySpend(t, Cost(c));
                 if (up.kit != null) game.Inventory.TakeItem(up.kit);                               // kit pieces (prefab panels) use up their kit
-                foreach (var (t, n) in def.cost) if (n / 2 > 0) game.Inventory.Add(t, n / 2);
+                foreach (var (t, n) in def.cost) if (Cost(n) / 2 > 0) game.Inventory.Add(t, Cost(n) / 2);   // half of what it cost this builder
             }
             var parent = p.transform.parent; var lp = p.transform.localPosition; var lr = p.transform.localRotation;
             string owner = p.owner; byte dye = p.dye;
             var box = p.GetComponent<Container>();                                                  // stores move over (MG nest belts → the turret)
+            bool wasLocked = (p.TryGetComponent<Door>(out var dr) && dr.locked) || (p.TryGetComponent<RollerDoor>(out var rd) && rd.locked);
             MadMax.Net.NetSession.Instance?.SendPlaceBroken(p);
             Destroy(p.gameObject);
             var placed = FurnitureLibrary.Spawn(up.id, parent, lp, lr, material);
             if (placed) { placed.owner = owner; _ = placed.Id; if (dye != 0) placed.SetDye(dye); placed.Dirty(); MadMax.Net.NetSession.Instance?.SendPlaced(placed); }
+            if (placed && wasLocked)                                                                  // a locked door stays locked
+            {
+                if (placed.TryGetComponent<Door>(out var nd)) nd.SetLocked(true);
+                if (placed.TryGetComponent<RollerDoor>(out var nr)) { nr.locked = true; placed.Dirty(); }
+            }
             if (box && placed && placed.TryGetComponent<Container>(out var into)) InventoryCodec.Decode(into.inventory, InventoryCodec.Encode(box.inventory));
             else if (box) box.Spill();
             game.Stats.Practice(MadMax.RPG.Skill.Construction, 8f);

@@ -24,6 +24,11 @@ blender -b -P tools/blender/hd/export/verify_render.py -- Assets/MadMax/Models/H
   `[<Atlas>_Normal.png]`, `[<Atlas>_Emission.png]`, `<Asset>.hd.json` (sidecar). Logs: `<repo>/Logs/hd_export/`.
   Size report: `tools/blender/hd/export/hd_report.json`.
 * Bake runs on the GPU (CUDA/OptiX) when available; the first run compiles kernels (~4 min), then a car takes ~90 s.
+* 2026-10-13 content: `heavy/lifters.py` (MagnetCrane, CarCrusher; crane parts `magnet_crane` / `grapple_crane` as
+  segment trees on the `cargo` socket, movables `Outrigger_*`, `OutriggerLeg_*`, `CrusherLid`), `parts_all/rig_wheels.py`
+  (wheel_heavy / giant, wheel_track_wide / heavy / giant), `furniture/city.py` (FurnitureLibrary.City, ported through
+  `furniture/citykit.py` = CityKit in generator axes), `furniture/rig.py` (FurnitureLibrary.Rig), `world/town.py`
+  (BiomeProps.Town templates; TownDecor spots wear them per spot in HD).
 * `run_export.py all` picks up every built blend: cars by file, heavy by file, misc files export each top-level
   object as its own asset (`--kind part|vehicle|prop` by file prefix `parts_`, `bike_/boat_/air_`, else prop).
 
@@ -220,6 +225,17 @@ toggle them; an outfit export (`outfit_*`) is a complete dressed character.
 Wardrobe coverage: `garments.GARMENTS` has a garment for every `ClothingLibrary` id (checked by `hd.audit`). Preview a
 few without touching the committed blends: `HD_GARMENTS=poncho,duffel HD_WARDROBE_OUT=/tmp/wd blender -b -P
 build_wardrobe.py -- M`.
+
+Fabrics (2026-10-12): `character/fabric_textures.py` generates tileable photo textures with Krea-2 Turbo through the
+local ComfyUI (`textures/fabric/<name>.png` 512 px albedo + `<name>_n.png` normal from luminance + `stats.json` mean
+colours; ~28 MB, committed; originals cached in `~/.cache/madmax_fabric_raw`, `--force` re-processes, `--regen` makes
+new ones). `materials.make(..., tex=)` box-projects one over the rest position, tinted so its mean is the game colour,
+with the normal map tri-planar (object-space Normal Map node into the Bump) - so garments bake a `_Normal`. The images
+are packed into the wardrobe blends at 256 px (`HD_FABRIC_PX`): the one-sample bake would alias a finer one. Detail
+helpers in `garments.py` (`stamp` conforming plates for buttons/rivets/eyelets/buckles/D-rings, `ridge` welts and seams,
+`rib_hem` knit ribbing, `fray` torn hems, `zipper`): hardware goes in its own `<garment>_<part>` piece (metal material),
+fabric trim is unioned into the garment's own field. Asymmetric fields need `sym=False` (the symmetric decimator stalls);
+thin sheets need >= 7 mm or `res=FINE_H`, and skirts must be sheets, not solid drums, or the decimation stalls too.
 
 Orientation: the catalogue builder measures each imported model (left arm at -X, toes in front of the ankles) and bakes
 a half turn (or a front/back mirror, flipping the winding) into joints and bindposes when the FBX axis conversion left it

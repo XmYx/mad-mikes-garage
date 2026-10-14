@@ -53,13 +53,17 @@ namespace MadMax.Game
         partial void BagsLoad(SaveData d);
         partial void BagsNewGame();
 
-        void BlocksUpdate() { ItemsUpdate(); AnimUpdate(); RoadsUpdate(); MetalUpdate(); HusbandryUpdate(); UtilitiesUpdate(); MedMineUpdate(); DefenceUpdate(); LightsUpdate(); FluidsUpdate(); BagsUpdate(); UpdateTrail(); }
+        void BlocksUpdate() { UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.ItemsUpdate"); ItemsUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.AnimUpdate"); AnimUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.RoadsUpdate"); RoadsUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.MetalUpdate"); MetalUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.HusbandryUpdate"); HusbandryUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.UtilitiesUpdate"); UtilitiesUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.MedMineUpdate"); MedMineUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.DefenceUpdate"); DefenceUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.LightsUpdate"); LightsUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.FluidsUpdate"); FluidsUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.BagsUpdate"); BagsUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.UpdateTrail"); UpdateTrail(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.SalvageUpdate"); SalvageUpdate(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.UpdateFireScenes"); UpdateFireScenes(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.UpdateLeaseReminders"); UpdateLeaseReminders(); UnityEngine.Profiling.Profiler.EndSample(); UnityEngine.Profiling.Profiler.BeginSample("MadMax.Block.RailUpdate"); RailUpdate(); UnityEngine.Profiling.Profiler.EndSample(); }
+        partial void SalvageUpdate();
+        partial void SalvageSave(SaveData d);
+        partial void SalvageLoad(SaveData d);
+        partial void SalvageNewGame();
         partial void CitySave(SaveData d);
         partial void CityLoad(SaveData d);
         partial void CityNewGame();
 
-        void BlocksSave(SaveData d) { CitySave(d); ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); LightsSave(d); ContextSave(d); FluidsSave(d); BagsSave(d); }
-        void BlocksLoad(SaveData d) { CityLoad(d); ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); LightsLoad(d); ContextLoad(d); FluidsLoad(d); BagsLoad(d); }
-        void BlocksNewGame() { CityNewGame(); ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); LightsNewGame(); ContextNewGame(); FluidsNewGame(); BagsNewGame(); }
+        void BlocksSave(SaveData d) { CitySave(d); ItemsSave(d); AnimSave(d); RoadsSave(d); MetalSave(d); HusbandrySave(d); UtilitiesSave(d); MedMineSave(d); DefenceSave(d); LightsSave(d); ContextSave(d); FluidsSave(d); BagsSave(d); SalvageSave(d); RailSave(d); }
+        void BlocksLoad(SaveData d) { CityLoad(d); ItemsLoad(d); AnimLoad(d); RoadsLoad(d); MetalLoad(d); HusbandryLoad(d); UtilitiesLoad(d); MedMineLoad(d); DefenceLoad(d); LightsLoad(d); ContextLoad(d); FluidsLoad(d); BagsLoad(d); SalvageLoad(d); RailLoad(d); }
+        void BlocksNewGame() { CityNewGame(); ItemsNewGame(); AnimNewGame(); RoadsNewGame(); MetalNewGame(); HusbandryNewGame(); UtilitiesNewGame(); MedMineNewGame(); DefenceNewGame(); LightsNewGame(); ContextNewGame(); FluidsNewGame(); BagsNewGame(); SalvageNewGame(); RailNewGame(); }
     }
 }

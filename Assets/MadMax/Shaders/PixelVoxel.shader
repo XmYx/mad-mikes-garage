@@ -78,6 +78,7 @@ Shader "MadMax/PixelVoxel"
             return saturate((n - (1.0 - _MadMaxClouds.x)) * 5.0) * _MadMaxClouds.y;
         }
         float _MadMaxDither;     // ordered dither between light bands
+        float _MadMaxSmoothLight; // 1 = full-resolution rendering: smooth light like the HD assets beside it (no bands)
         float4 _MadMaxWind;      // xz wind (m/s), y gust 0..1, w time
         float4 _MadMaxCut;       // underground cutaway: xy centre (world xz), z radius (0 = off), w height
 
@@ -162,6 +163,7 @@ Shader "MadMax/PixelVoxel"
                 half lit = ndl * light.shadowAttenuation * (1.0h - CloudShadow(i.positionWS));   // drifting cloud shadows
                 half bias = lerp(0.35h, Bayer4(i.positionCS.xy), _MadMaxDither);
                 half q = floor(lit * _Bands + bias) / _Bands;            // hard light bands, no gradients (optionally dithered)
+                q = lerp(q, smoothstep(0.0h, 1.0h, lit), (half)_MadMaxSmoothLight);
                 half3 albedo = i.color.rgb;
                 #if !defined(UNITY_COLORSPACE_GAMMA)
                 albedo = SRGBToLinear(albedo);                             // vertex colours are authored in sRGB
@@ -220,7 +222,7 @@ Shader "MadMax/PixelVoxel"
                 LIGHT_LOOP_BEGIN(lightCount)
                     Light al = GetAdditionalLight(lightIndex, i.positionWS);
                     half a = saturate(dot(nrm, al.direction) * 0.7h + 0.3h) * al.distanceAttenuation;
-                    c += albedo * al.color * (floor(a * _Bands * 2.0h + 0.35h) / (_Bands * 2.0h));
+                    c += albedo * al.color * lerp(floor(a * _Bands * 2.0h + 0.35h) / (_Bands * 2.0h), a, (half)_MadMaxSmoothLight);
                 LIGHT_LOOP_END
                 #endif
                 c = lerp(c, albedo, _Unlit);

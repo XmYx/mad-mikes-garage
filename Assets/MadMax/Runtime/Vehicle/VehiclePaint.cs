@@ -90,12 +90,12 @@ namespace MadMax.Vehicles
             var body = transform.Find("Body");
             if (body)
             {
-                if (body.TryGetComponent<MeshFilter>(out var bf) && bf.sharedMesh) targets.Add(bf);
+                if (body.TryGetComponent<MeshFilter>(out var bf) && bf.sharedMesh && bf.sharedMesh.isReadable) targets.Add(bf);
                 foreach (Transform c in body)
-                    if (c.name != "Glass" && c.name != "Driver" && c.name != "Legs" && !c.name.StartsWith("Decal") && c.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh) targets.Add(mf);
+                    if (c.name != "Glass" && c.name != "Driver" && c.name != "Legs" && !c.name.StartsWith("Decal") && c.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable) targets.Add(mf);
             }
             foreach (var p in GetComponentsInChildren<VehiclePart>())
-                if ((p.category == PartCategory.Door || p.category == PartCategory.Hood) && p.Socket && p.TryGetComponent<MeshFilter>(out var pf) && pf.sharedMesh) targets.Add(pf);
+                if ((p.category == PartCategory.Door || p.category == PartCategory.Hood) && p.Socket && p.TryGetComponent<MeshFilter>(out var pf) && pf.sharedMesh && pf.sharedMesh.isReadable) targets.Add(pf);
         }
 
         Color32[] Original(MeshFilter mf)

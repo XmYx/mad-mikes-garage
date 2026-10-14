@@ -331,24 +331,25 @@ namespace MadMax.Game
             Journal.Add("PLACE", "JUNE'S MAST MAP: EVERY RELAY MAST IS ON YOUR MAP NOW");
         }
 
+        /// <summary>Story upkeep; scene props are built one scene a frame (a new world unlocks several at once).</summary>
         void UpdateStory()
         {
             if (!played || !Player) return;
-            if (Story.Story.Campaign && Story.Story.StateOf("B1") != Story.Story.State.Locked && !Story.Story.Flag("garage_built")) { BuildGarage(); Story.Story.SetFlag("garage_built"); }
-            if (Story.Story.StateOf("S09") != Story.Story.State.Locked && !Story.Story.Flag("scene:S09")) { BuildUnaGarden(); Story.Story.SetFlag("scene:S09"); }
-            if (Story.Story.StateOf("S24") != Story.Story.State.Locked && !Story.Story.Flag("scene:S24")) { BuildGusCorner(); Story.Story.SetFlag("scene:S24"); }
+            if (Story.Story.Campaign && Story.Story.StateOf("B1") != Story.Story.State.Locked && !Story.Story.Flag("garage_built")) { BuildGarage(); Story.Story.SetFlag("garage_built"); return; }
+            if (Story.Story.StateOf("S09") != Story.Story.State.Locked && !Story.Story.Flag("scene:S09")) { BuildUnaGarden(); Story.Story.SetFlag("scene:S09"); return; }
+            if (Story.Story.StateOf("S24") != Story.Story.State.Locked && !Story.Story.Flag("scene:S24")) { BuildGusCorner(); Story.Story.SetFlag("scene:S24"); return; }
             if (Story.Story.StateOf("S09") == Story.Story.State.Active && Time.frameCount % 30 == 0 && UnaWatered()) Story.Story.Note("una:watered");
-            if (Story.Story.StateOf("A2") != Story.Story.State.Locked && !Story.Story.Flag("scene:A2")) { BuildLenStall(); Story.Story.SetFlag("scene:A2"); }
-            if (Story.Story.StateOf("S03") != Story.Story.State.Locked && !Story.Story.Flag("scene:S03")) { SpawnHearse(); Story.Story.SetFlag("scene:S03"); }
-            if (Story.Story.StateOf("S06") != Story.Story.State.Locked && !Story.Story.Flag("scene:S06")) { BuildJoFarm(); Story.Story.SetFlag("scene:S06"); }
+            if (Story.Story.StateOf("A2") != Story.Story.State.Locked && !Story.Story.Flag("scene:A2")) { BuildLenStall(); Story.Story.SetFlag("scene:A2"); return; }
+            if (Story.Story.StateOf("S03") != Story.Story.State.Locked && !Story.Story.Flag("scene:S03")) { SpawnHearse(); Story.Story.SetFlag("scene:S03"); return; }
+            if (Story.Story.StateOf("S06") != Story.Story.State.Locked && !Story.Story.Flag("scene:S06")) { BuildJoFarm(); Story.Story.SetFlag("scene:S06"); return; }
             if (Story.Story.StateOf("S03") == Story.Story.State.Active) HearseCheck();
-            if (Story.Story.StateOf("A3") != Story.Story.State.Locked && !Story.Story.Flag("scene:A3")) { BuildRelay(); Story.Story.SetFlag("scene:A3"); }
-            if (Story.Story.StateOf("A4") != Story.Story.State.Locked && !Story.Story.Flag("scene:A4")) { BuildDepot(); Story.Story.SetFlag("scene:A4"); }
+            if (Story.Story.StateOf("A3") != Story.Story.State.Locked && !Story.Story.Flag("scene:A3")) { BuildRelay(); Story.Story.SetFlag("scene:A3"); return; }
+            if (Story.Story.StateOf("A4") != Story.Story.State.Locked && !Story.Story.Flag("scene:A4")) { BuildDepot(); Story.Story.SetFlag("scene:A4"); return; }
             if (Story.Story.StateOf("A3") == Story.Story.State.Active && Time.frameCount % 15 == 0 && RelayPowered()) Story.Story.Note("a3:power");
             if (Story.Story.StateOf("A4") == Story.Story.State.Active && Time.frameCount % 15 == 0 && GuardsDown()) Story.Story.Note("a4:guards_down");
-            if (Story.Story.Flag("masts_known") && !Story.Story.Flag("masts_marked")) { MarkMasts(); Story.Story.SetFlag("masts_marked"); }
-            QuestHooks();
-            Story.Story.Tick(this);
+            if (Story.Story.Flag("masts_known") && !Story.Story.Flag("masts_marked")) { MarkMasts(); Story.Story.SetFlag("masts_marked"); return; }
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Story.QuestHooks"); QuestHooks(); UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Story.Tick"); Story.Story.Tick(this); UnityEngine.Profiling.Profiler.EndSample();
             if (Time.time < castCheck) return;
             castCheck = Time.time + 1f;
             UpdateCast();

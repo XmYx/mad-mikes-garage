@@ -109,6 +109,12 @@ namespace MadMax.Vehicles
             baseTravel = driver.travel; baseAwd = driver.awdSelectable; baseFuelCap = systems ? systems.fuelCapacity : 0f;
         }
 
+        void RebaseKits()
+        {
+            if (!kitsCaptured) return;
+            baseTravel = driver.travel; baseFuelCap = systems ? systems.fuelCapacity : 0f;
+        }
+
         /// <summary>Called by <see cref="Apply"/> after the sliders: layers the kits over the tuned values.</summary>
         void ApplyKits()
         {

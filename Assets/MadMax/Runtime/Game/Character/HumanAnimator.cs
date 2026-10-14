@@ -26,6 +26,18 @@ namespace MadMax.Game
             public float actionHit;          // the tool's strike moment 0..1 the clip's hit is lined up with (0 = none)
             public Transform grip2;          // a long-handled tool held in both hands: the left hand stays on its handle (IK)
             public string hold;              // how the held tool is carried at rest ("hold_*" arm overlay clip, ToolHolds); null = none
+            public float stress;             // 0..1 scared / fighting / badly hurt: the face blinks faster (HumanFace)
+            public Vector3 hitFrom;          // a blow's reaction: where it came from (character space, length = weight; zero = none)
+            public float hitT;               // its progress 0..1 (the chest gives way from that side, HitLean)
+            public bool prone;               // face down on the ground (crawling when moving: prone_idle / crawl)
+            public bool groundSit;           // sitting on the ground (sit_ground)
+            public bool lyingSide;           // lying on the side (lie_side; with lying)
+            public float tired;              // 0..1 out of breath (tired / tired_walk, heavy breathing)
+            public float heat;               // -1 cold .. +1 hot (shivers, the idle choice)
+            public bool pack;                // a backpack on (idle: check the straps)
+            public float chewing;            // 0..1 chewing after a bite
+            public bool rootStop;            // the owner moves the body by the stop clips' root motion (HumanAnimator.RootSpeed)
+            public bool wantStop;            // no move input while moving: stop (with rootStop)
         }
 
         readonly HumanRig rig;
@@ -36,6 +48,7 @@ namespace MadMax.Game
         {
             this.rig = rig;
             pelvisBase = rig.Bone(BodyPart.Pelvis).localPosition.y;
+            Attention = new Attention(rig);
         }
 
         public void Rebound() => pelvisBase = rig.Bone(BodyPart.Pelvis).localPosition.y;
@@ -45,6 +58,8 @@ namespace MadMax.Game
             time += dt;
             float k = 1f - Mathf.Exp(-16f * dt);
             if (s.sitting) { Sit(s, k); return; }
+            if (s.prone) { ProneProcedural(dt, s, k); return; }
+            if (s.groundSit) { GroundSitProcedural(s, k); return; }
 
             float run = Mathf.InverseLerp(2.6f, 5.5f, s.speed);
             float move = Mathf.Clamp01(s.speed / 1.2f);
@@ -58,13 +73,21 @@ namespace MadMax.Game
             float Kn = Mathf.Lerp(55f, 100f, run) * move;
             float Aa = Mathf.Lerp(20f, 48f, run) * move;
             float elbow = Mathf.Lerp(10f, 80f, run) * move + 8f;
-            float lean = run * 14f + Mathf.Clamp(s.verticalSpeed * -1f, -6f, 6f) * 0f;
+            float lean = run * 14f + slopeCur + 6f * tiredW;
+            if (startT >= 0f) lean += 7f * Env(startT);
+            if (stopT >= 0f) lean -= (stopHard ? 10f : 5f) * Env(stopT);
 
             float thL = -A * sp, thR = A * sp;
             float knL = Kn * Mathf.Max(0f, cp) + 4f, knR = Kn * Mathf.Max(0f, -cp) + 4f;
             // limp: the hurt leg barely swings or bends; the pelvis drops and the body leans away when it takes the weight
             thL *= 1f - 0.6f * s.limpL; knL *= 1f - 0.55f * s.limpL;
             thR *= 1f - 0.6f * s.limpR; knR *= 1f - 0.55f * s.limpR;
+            if (turnW > 0f)
+            {
+                // turning on the spot: short steps round
+                float ta = Mathf.Max(0f, Mathf.Sin(stepPhase)) * turnW, tb = Mathf.Max(0f, -Mathf.Sin(stepPhase)) * turnW;
+                thL -= 24f * ta; knL += 40f * ta; thR -= 24f * tb; knR += 40f * tb;
+            }
             float hitch = (s.limpL * Mathf.Max(0f, sp) + s.limpR * Mathf.Max(0f, -sp)) * 0.045f * move;
             float limpRoll = (s.limpL - s.limpR) * 7f * move;
             if (!s.grounded)
@@ -84,11 +107,12 @@ namespace MadMax.Game
 
             var pelvis = rig.Bone(BodyPart.Pelvis);
             float bob = (1f - Mathf.Abs(cp)) * Mathf.Lerp(0.025f, 0.05f, run) * move + landing * 0.08f;
+            if (stopT >= 0f) bob += (stopHard ? 0.045f : 0.025f) * Env(stopT) * pelvisBase / 0.94f;
             pelvis.localPosition = new Vector3(0, pelvisBase - bob - hitch, 0);
-            Set(BodyPart.Pelvis, 0, sp * 6f * move, cp * 3f * move + limpRoll, k);
+            Set(BodyPart.Pelvis, 0, sp * 6f * move, cp * 3f * move + limpRoll - bankCur * 0.6f, k);
 
-            float breathe = Mathf.Sin(time * 1.7f) * 1.4f * (1f - move);
-            float bank = Mathf.Clamp(s.turnRate * 0.05f, -8f, 8f) * move;
+            float breathe = Mathf.Sin(time * (1.7f + 2f * tiredW)) * (1.4f + 2.6f * tiredW) * (1f - move * (1f - tiredW));
+            float bank = bankCur * 0.4f;
             Set(BodyPart.Chest, lean + breathe, -sp * 8f * move, -bank, k);
             Set(BodyPart.Head, -lean * 0.6f + Mathf.Clamp(s.lookPitch * 0.5f, -25f, 30f), sp * 3f * move, bank * 0.5f, k);
 

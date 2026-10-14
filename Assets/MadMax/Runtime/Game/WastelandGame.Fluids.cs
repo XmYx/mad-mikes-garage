@@ -55,7 +55,7 @@ namespace MadMax.Game
 
         CanContents FromPool(string id)
         {
-            if (canPool.TryGetValue(id, out var p) && p.Count > 0) { var c = p[p.Count - 1]; p.RemoveAt(p.Count - 1); return c; }
+            if (canPool.TryGetValue(id, out var p) && p.Count > 0) { var c = p[p.Count - 1]; p.RemoveAt(p.Count - 1); pooledFrame.Remove(c); return c; }
             return new CanContents();
         }
 
@@ -64,6 +64,7 @@ namespace MadMax.Game
             if (c == null || c.Empty) return;
             if (!canPool.TryGetValue(id, out var p)) canPool[id] = p = new List<CanContents>();
             p.Add(c);
+            pooledFrame[c] = Time.frameCount;                                                       // in transit to a storage or the ground (CanStates)
         }
 
         void OnCanDelta(string id, ResourceType t, int n)
@@ -119,12 +120,14 @@ namespace MadMax.Game
             if (ItemCatalog.ContentsWeight == null) ItemCatalog.ContentsWeight = inv => Instance ? Instance.CansWeight(inv) : 0f;
             if (!ContextActions.Has("pack.fluids")) ContextActions.Register("pack.fluids", (g, t, into) => { if (t.item != null) g.CanPackOptions(t.item, into); });
             if (!Spills.Instance && DeformableTerrain.Instance) Spills.Ensure();
+            if (!LakeIce.Instance) LakeIce.Ensure();
+            CanStatesTick();                                                                         // cans keep their contents in storage / on the ground                                                   // walkable lake ice in a hard frost
             UpdatePour(Time.deltaTime);
         }
 
         partial void FluidsNewGame()
         {
-            cans.Clear(); canPool.Clear();
+            cans.Clear(); canPool.Clear(); ClearCanStates();
             Spills.Clear();
             Inventory.AddItem(FluidContainers.FuelCan);                                              // an empty 10 L fuel can in every starting kit
         }
@@ -160,17 +163,19 @@ namespace MadMax.Game
                 foreach (var c in CansOf(kv.Key)) d.blockFluids.Add("c\u001f" + kv.Key + "\u001f" + c.litres.ToString("0.###", CultureInfo.InvariantCulture) + "\u001f" + c.mix.Save());
             foreach (var kv in canPool)
                 foreach (var c in kv.Value) if (!c.Empty) d.blockFluids.Add("p\u001f" + kv.Key + "\u001f" + c.litres.ToString("0.###", CultureInfo.InvariantCulture) + "\u001f" + c.mix.Save());
+            SaveCanStates(d.blockFluids);                                                            // cans in storage and on the ground
             Spills.Save(d.blockFluids, "s\u001f");                                                   // liquids on the ground
         }
 
         partial void FluidsLoad(SaveData d)
         {
-            cans.Clear(); canPool.Clear();
+            cans.Clear(); canPool.Clear(); ClearCanStates();
             Spills.Clear();
             if (d.blockFluids == null) return;
             foreach (var line in d.blockFluids)
             {
                 if (line.StartsWith("s\u001f")) { Spills.Load(line.Substring(2)); continue; }
+                if (LoadCanState(line)) continue;
                 var a = line.Split('\u001f');
                 if (a.Length < 4 || !FluidContainers.Is(a[1])) continue;
                 var c = new CanContents();
@@ -274,6 +279,26 @@ namespace MadMax.Game
                 m.Blend(sys.Level(system) < 0.05f ? 0f : sys.Level(system), mix, Mathf.Min(litres, Room));
                 return m;
             }
+        }
+
+        /// <summary>The fuel tank's drain plug (siphon only): the water that settled at the bottom of a parked tank
+        /// runs out first; with none settled, a sample of the blend.</summary>
+        sealed class DrainEnd : FluidEnd
+        {
+            public VehicleSystems sys;
+            public override float Available => sys.tankIced ? 0f : Mathf.Min(sys.Level(system), sys.SettledWater + 0.3f);
+            public override float Room => 0f;
+            public override FluidMix Mix
+            {
+                get
+                {
+                    if (sys.SettledWater < 0.05f) return sys.EffectiveFuelMix;
+                    var m = sys.fuelMix.Clone(); m.Evaporate(sys.fuel, sys.fuel, t => FluidMix.Family(t) == FluidFamily.Aqueous ? 0f : 1f);
+                    return m;
+                }
+            }
+            public override float Draw(float litres, FluidMix into) => sys.DrainPlug(litres, into);
+            public override float Pour(FluidMix mix, float litres) => 0f;
         }
 
         sealed class PumpEnd : FluidEnd
@@ -391,15 +416,68 @@ namespace MadMax.Game
             }
         }
 
-        /// <summary>A tap or outlet on the water network.</summary>
+        /// <summary>A tap, outlet, barrel or tank on the water network (a vehicle's water tank too): draw from it, or pour
+        /// water back in (clean water stays clean, dirty or sea water counts as dirty).</summary>
         sealed class NetEnd : FluidEnd
         {
             public UtilityNode node;
             public override float Available => UtilityGrid.NetWater(node, out _);
-            public override float Room => 0f;
+            public override float Room => Mathf.Max(0f, UtilityGrid.NetCapacity(node) - UtilityGrid.NetWater(node, out _));
             public override FluidMix Mix { get { UtilityGrid.NetWater(node, out float clean); return new FluidMix(clean > 0.99f ? ResourceType.Water : WaterQuality.Carried(node)); } }
             public override float Draw(float litres, FluidMix into) { float got = UtilityGrid.Draw(node, litres, out bool clean); into.Set(clean ? ResourceType.Water : WaterQuality.Carried(node)); return got; }
-            public override float Pour(FluidMix mix, float litres) => 0f;
+            public override string Refuse(FluidMix mix) => mix.MainFamily == FluidFamily.Aqueous && mix[ResourceType.Coolant] < 0.05f ? null : "THE WATER PIPES TAKE WATER ONLY";
+            public override float Pour(FluidMix mix, float litres)
+            {
+                if (Refuse(mix) != null) return 0f;
+                bool clean = mix.IsPure && mix.Main == ResourceType.Water;
+                float want = Mathf.Min(litres, Room), left = want;
+                foreach (var n in UtilityNode.All)
+                {
+                    if (left <= 0f) break;
+                    if (!n || n.waterCapacity <= 0f || (n != node && (node.waterNet < 0 || n.waterNet != node.waterNet))) continue;
+                    float t = Mathf.Min(left, n.waterCapacity - n.Water);
+                    if (t <= 0f) continue;
+                    if (clean) n.clean += t; else n.dirty += t;
+                    left -= t; n.Piece?.Dirty();
+                }
+                return want - left;
+            }
+        }
+
+        /// <summary>A still or refinery: pour a pure liquid in as its feed (into a storage within reach of the station,
+        /// where its recipes look, else the pack), draw what it made from its output tray.</summary>
+        sealed class StationEnd : FluidEnd
+        {
+            public CraftingStation st;
+            public Inventory pack;
+            ResourceType TrayLiquid { get { for (int i = 1; i < ResourceInfo.Count; i++) { var t = (ResourceType)i; if (ResourceInfo.IsFluid(t) && st.tray.Get(t) > 0) return t; } return ResourceType.None; } }
+            public override float Available { get { var t = TrayLiquid; return t == ResourceType.None ? 0f : st.tray.Get(t); } }
+            public override float Room => 9999f;
+            public override FluidMix Mix { get { var t = TrayLiquid; return t == ResourceType.None ? new FluidMix() : new FluidMix(t); } }
+            public override float Draw(float litres, FluidMix into)
+            {
+                var t = TrayLiquid;
+                int n = t == ResourceType.None ? 0 : Mathf.Min(st.tray.Get(t), Mathf.FloorToInt(litres + 1e-4f));
+                if (n <= 0 || !st.tray.TrySpend(t, n)) return 0f;
+                into.Set(t); st.GetComponent<Placeable>()?.Dirty();
+                return n;
+            }
+            public override string Refuse(FluidMix mix) => mix.IsPure ? null : "THE " + st.title + " TAKES ONE PURE LIQUID";
+            public override float Pour(FluidMix mix, float litres)
+            {
+                if (Refuse(mix) != null) return 0f;
+                int n = Mathf.FloorToInt(litres + 1e-4f);
+                if (n <= 0) return 0f;
+                Container best = null; float bd = 5f * 5f;
+                foreach (var c in Container.All)
+                {
+                    if (!c || !c.GetComponent<Placeable>()) continue;
+                    float d = (c.transform.position - st.transform.position).sqrMagnitude;
+                    if (d < bd) { bd = d; best = c; }
+                }
+                (best ? best.inventory : pack).Add(mix.Main, n);
+                return n;
+            }
         }
 
         sealed class GroundEnd : FluidEnd
@@ -422,6 +500,7 @@ namespace MadMax.Game
                 bool tanker = v.GetComponent<FuelTanker>();
                 string vn = Name(v);
                 if (sys.fuelCapacity > 0f) l.Add(new TankEnd { sys = sys, vehicle = v, system = VehicleSystems.FluidSystem.Fuel, name = tanker ? "TANKER" : "FUEL TANK" });
+                if (sys.fuelCapacity > 0f && !tanker && sys.fuel > 0.05f) l.Add(new DrainEnd { sys = sys, vehicle = v, system = VehicleSystems.FluidSystem.Fuel, name = "DRAIN PLUG" });
                 if (!tanker && sys.HasEngine)
                 {
                     if (sys.Capacity(VehicleSystems.FluidSystem.Oil) > 0f) l.Add(new TankEnd { sys = sys, vehicle = v, system = VehicleSystems.FluidSystem.Oil, name = "ENGINE OIL" });
@@ -439,8 +518,10 @@ namespace MadMax.Game
             var store = FluidStore.Near(feet, 2.2f);
             if (store) l.Add(new StoreEnd { store = store, name = store.title });
             foreach (var u in UtilityNode.All)
-                if (u && (u.GetComponent<WaterTap>() || u.GetComponent<WaterOutlet>()) && !u.GetComponent<FluidStore>() && Vector3.Distance(u.transform.position, feet) < 1.8f)
-                { l.Add(new NetEnd { node = u, name = u.GetComponent<WaterTap>() ? "TAP" : "OUTLET" }); break; }
+                if (u && (u.GetComponent<WaterTap>() || u.GetComponent<WaterOutlet>() || u.waterCapacity > 0f) && !u.GetComponent<FluidStore>() && Vector3.Distance(u.transform.position, feet) < (u.waterCapacity > 0f ? 2.5f : 1.8f))
+                { l.Add(new NetEnd { node = u, name = u.GetComponent<WaterTap>() ? "TAP" : u.GetComponent<WaterOutlet>() ? "OUTLET" : "WATER TANK" }); break; }
+            foreach (var st in CraftingStation.All)
+                if (st && (st.type == "still" || st.type == "refinery") && Vector3.Distance(st.transform.position, feet) < 2.5f) { l.Add(new StationEnd { st = st, pack = Inventory, name = st.title }); break; }
             var terrain = DeformableTerrain.Instance;
             var ahead = feet + Player.transform.forward * 1f;
             float puddle = Spills.PoolNear(ahead, PoolEnd.Reach, out _, PoolEnd.MinCell);

@@ -28,6 +28,7 @@ namespace MadMax.Building
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
+            PieceMotion.Use(gameObject, "turn", 1.5f);                                             // the tap handle turns
             if (kind == Kind.Bath)
             {
                 if (secondary) return;

@@ -39,6 +39,8 @@ namespace MadMax.World
             public float rough = 1f;                                  // hollows the film fills before it runs on (× the liquid's film)
             public float burning;                                     // > 0 while the pool is alight
             public bool frozen, shaded, lined, lake;
+            /// <summary>Standing on a built floor (a static structure deck above the ground), not the terrain.</summary>
+            public bool floor;
             public float drawnPool = -1f, drawnSoak;
             public float Soaked => soakWater + soakFuel + soakOil + soakToxic;
             public float Depth => pool * 0.001f / Area;
@@ -57,7 +59,8 @@ namespace MadMax.World
         readonly List<Cell> list = new List<Cell>();
         readonly Dictionary<long, Region> regions = new Dictionary<long, Region>();
         static Material mat;
-        float flowTick, slowTick, gardenTick, refreshTick, splashTick, pendingHours, fireAt;
+        float flowTick, slowTick, gardenTick, refreshTick, splashTick, pendingHours, fireAt, pitHours, pitScanAt;
+        readonly List<Vector4> pits = new List<Vector4>();
         double lastDays = -1;
         Vector3 lastFeet;
         static readonly System.Func<ResourceType, float> volatility = FluidProps.Volatility;
@@ -92,8 +95,9 @@ namespace MadMax.World
             if (!terrain) return litres;
             if (replicate && !MadMax.Net.NetSession.Applying) MadMax.Net.NetSession.Instance?.SendSpill(at, mix, litres);
             if (terrain.WaterDepth(at.x, at.z) > 0.05f) return litres;
-            var c = s.Get(Ix(at.x), Ix(at.z), true);
+            var c = s.Get(Ix(at.x), Ix(at.z), true, at.y);
             if (c == null) return litres;
+            if (!c.floor && at.y > c.ground + 0.3f) s.Refresh(c, false, at.y);                    // poured onto a floor above an old puddle
             c.mix.Blend(c.pool, mix, litres);
             c.pool += litres;
             s.Touch(c);
@@ -226,25 +230,35 @@ namespace MadMax.World
             return l;
         }
 
-        Cell Get(int ix, int iz, bool create)
+        Cell Get(int ix, int iz, bool create, float from = float.NaN)
         {
             long k = Key(ix, iz);
             if (cells.TryGetValue(k, out var c)) return c;
             if (!create) return null;
             if (list.Count >= MaxCells) Trim();
             c = new Cell { ix = ix, iz = iz };
-            Refresh(c, true);
+            Refresh(c, true, from);
             cells[k] = c; list.Add(c);
             return c;
         }
 
         /// <summary>Ground height, soil, lake, liner and roof of a cell (on creation, then every few seconds near the player).</summary>
-        void Refresh(Cell c, bool full)
+        void Refresh(Cell c, bool full, float from = float.NaN)
         {
             var terrain = DeformableTerrain.Instance;
             if (!terrain) return;
             float x = (c.ix + 0.5f) * CellSize, z = (c.iz + 0.5f) * CellSize;
-            c.ground = terrain.Height(x, z);
+            float earth = terrain.Height(x, z);
+            if (float.IsNaN(from) && c.floor) from = c.ground;
+            if (!float.IsNaN(from) && from > earth + 0.1f && FloorAt(x, z, from, earth, out float top))
+            {
+                // a built floor: nothing soaks in, it runs off the edge; no lake, liner or soil here
+                c.floor = true; c.ground = top; c.lake = false; c.lined = false; c.capacity = 0f; c.rate = 0f; c.rough = 1f;
+                if (full) c.shaded = Physics.Raycast(new Vector3(x, c.ground + 0.3f, z), Vector3.up, 30f, ~0, QueryTriggerInteraction.Ignore);
+                return;
+            }
+            c.floor = false;
+            c.ground = earth;
             c.lake = terrain.WaterDepth(x, z) > 0.05f;
             terrain.SeepAt(x, z, out float cap, out float rate);
             c.lined = MadMax.Building.PondLiner.Covers(new Vector3(x, c.ground, z));
@@ -252,6 +266,27 @@ namespace MadMax.World
             c.rough = cap > 0f ? 4f : c.lined ? 2f : 1f;                         // smooth asphalt, a creased tarp, rough soil
             c.rate = c.lined ? 0f : rate * Area;
             if (full) c.shaded = Physics.Raycast(new Vector3(x, c.ground + 0.3f, z), Vector3.up, 30f, ~0, QueryTriggerInteraction.Ignore);
+        }
+
+        static readonly RaycastHit[] floorHits = new RaycastHit[8];
+
+        /// <summary>The top of a static built floor under (x, z) below <paramref name="from"/> and above the ground.</summary>
+        static bool FloorAt(float x, float z, float from, float earth, out float top)
+        {
+            top = earth;
+            float reach = from - earth + 0.35f;
+            int n = Physics.RaycastNonAlloc(new Vector3(x, from + 0.35f, z), Vector3.down, floorHits, reach, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MinValue;
+            for (int i = 0; i < n; i++)
+            {
+                var h = floorHits[i];
+                if (h.normal.y < 0.8f || h.point.y < earth + 0.08f || h.point.y > from + 0.05f || h.point.y <= best) continue;
+                if (!h.collider.GetComponentInParent<MadMax.Building.Placeable>() || h.collider.attachedRigidbody) continue;   // built and standing still
+                best = h.point.y;
+            }
+            if (best == float.MinValue) return false;
+            top = best;
+            return true;
         }
 
         void Trim()
@@ -291,7 +326,7 @@ namespace MadMax.World
             lastDays = days;
             var focus = Focus();
             float dt = Time.deltaTime;
-            if (list.Count > 0) Step(dt, hours, focus);
+            if (list.Count > 0 || Weather.Raining) Step(dt, hours, focus);                        // rain fills dug holes too
             SplashUnderfoot(dt);
             Draw();
         }
@@ -390,7 +425,7 @@ namespace MadMax.World
                 {
                     float m = want[n] * scale;
                     if (m <= 0.0005f) continue;
-                    var o = nb[n] ?? Get(c.ix + NX[n], c.iz + NZ[n], true);
+                    var o = nb[n] ?? Get(c.ix + NX[n], c.iz + NZ[n], true, c.floor ? c.ground : float.NaN);
                     if (o == null) continue;
                     o.mix.Blend(o.pool, c.mix, m);
                     o.pool += m; c.pool -= m;
@@ -443,6 +478,25 @@ namespace MadMax.World
                 if (c.Empty) { cells.Remove(Key(c.ix, c.iz)); list.RemoveAt(i); Dirty(c); continue; }
                 Touch(c);
             }
+            // rain runs into dug holes (DeformableTerrain.RainPits): what the soil can't drink stands
+            pitHours += rain ? hours : 0f;
+            if (rain && Time.time >= pitScanAt && terrain)
+            {
+                pitScanAt = Time.time + 5f;
+                terrain.RainPits(Focus(), 60f, pits);
+                foreach (var p in pits)
+                {
+                    var at = new Vector3(p.x, p.y, p.z);
+                    if (MadMax.Building.PondLiner.Covers(at)) continue;                  // a lined pond already catches its rain
+                    var c = Get(Ix(p.x), Ix(p.z), true);
+                    if (c == null || c.shaded) continue;
+                    float litres = RainMM * p.w * pitHours * Mathf.Max(0.3f, Weather.Wetness);
+                    if (litres <= 0f) continue;
+                    c.mix.Blend(c.pool, ResourceType.Water, litres); c.pool += litres; Touch(c);
+                }
+                pitHours = 0f;
+            }
+            if (!rain) pitHours = 0f;
             // rain falls on the whole of a lined pond, not only where water already stands
             if (rain && hours > 0f)
                 foreach (var l in MadMax.Building.PondLiner.All)
@@ -692,8 +746,9 @@ namespace MadMax.World
                 sb.Clear().Append(prefix).Append(c.ix).Append(',').Append(c.iz).Append(',')
                   .Append(c.pool.ToString("0.###", ci)).Append(',').Append(c.soakWater.ToString("0.##", ci)).Append(',')
                   .Append(c.soakFuel.ToString("0.##", ci)).Append(',').Append(c.soakOil.ToString("0.##", ci)).Append(',')
-                  .Append(c.soakToxic.ToString("0.##", ci)).Append(',').Append(c.stain.ToString("0.###", ci))
-                  .Append('\u001f').Append(c.mix.Save());
+                  .Append(c.soakToxic.ToString("0.##", ci)).Append(',').Append(c.stain.ToString("0.###", ci));
+                if (c.floor) sb.Append(',').Append(c.ground.ToString("0.###", ci));                // on a built floor: its height
+                sb.Append('\u001f').Append(c.mix.Save());
                 into.Add(sb.ToString());
             }
         }
@@ -710,6 +765,7 @@ namespace MadMax.World
             if (c == null) return;
             float.TryParse(a[2], st, ci, out c.pool); float.TryParse(a[3], st, ci, out c.soakWater); float.TryParse(a[4], st, ci, out c.soakFuel);
             float.TryParse(a[5], st, ci, out c.soakOil); float.TryParse(a[6], st, ci, out c.soakToxic); float.TryParse(a[7], st, ci, out c.stain);
+            if (a.Length > 8 && float.TryParse(a[8], st, ci, out float floorY)) { c.floor = true; c.ground = floorY; c.capacity = 0f; c.rate = 0f; c.lake = false; }
             if (sep >= 0) c.mix.Load(line.Substring(sep + 1));
             if (c.mix.Empty) c.pool = 0f;
             s.Dirty(c);

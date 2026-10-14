@@ -87,6 +87,7 @@ namespace MadMax.Items
             if (id == Fertilizer) return "FERTILIZER";
             if (id == Pills) return "PILLS";
             if (id == Paper) return "PAPER";
+            if (MadMax.Building.SalvageDesigns.IsKit(id)) return MadMax.Building.SalvageDesigns.KitName(id);   // kit_prop: / kit_piece: (taken apart out there)
             if (IsCarKey(id)) { int a = id.IndexOf('_'), b = id.LastIndexOf('_'); return (b > a ? id.Substring(a + 1, b - a - 1).ToUpperInvariant() + " " : "") + "KEY"; }
             int us = id.IndexOf('_');
             return (us >= 0 ? id.Substring(us + 1) : id).Replace('_', ' ').ToUpperInvariant();
@@ -265,6 +266,8 @@ namespace MadMax.Items
             list.AddRange(FluidsRecipes());
             list.AddRange(BagsRecipes());
             list.AddRange(SafetyRecipes());
+            list.AddRange(RigRecipes());
+            list.AddRange(RailRecipes());
             list.AddRange(RangeBatches(list));
             foreach (var r in list)
             {

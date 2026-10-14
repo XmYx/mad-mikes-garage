@@ -164,12 +164,23 @@ namespace MadMax.Game
         }
 
         /// <summary>True once, the first frame the quest is no longer locked (its scene gets built).</summary>
+        /// <summary>A quest's scene is due (once). One scene opens a frame: a new world opens many quests at once and
+        /// building all their props in one frame stalled for seconds; the rest open on the next frames.</summary>
         static bool Opened(string id)
         {
-            if (Story.Story.StateOf(id) == Story.Story.State.Locked || Story.Story.Flag("hook:" + id)) return false;
-            Story.Story.SetFlag("hook:" + id);
+            if (openedFrame == UnityEngine.Time.frameCount) return false;
+            if (Story.Story.StateOf(id) == Story.Story.State.Locked) return false;
+            if (!hookKeys.TryGetValue(id, out var key)) hookKeys[id] = key = "hook:" + id;         // no new string per quest per frame
+            if (Story.Story.Flag(key)) return false;
+            Story.Story.SetFlag(key);
+            openedFrame = UnityEngine.Time.frameCount;
             return true;
         }
+        static int openedFrame = -1;
+        static readonly System.Collections.Generic.Dictionary<string, string> hookKeys = new System.Collections.Generic.Dictionary<string, string>();
+
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetOpened() => openedFrame = -1;
 
         static bool Running(string id) => Story.Story.StateOf(id) == Story.Story.State.Active;
     }

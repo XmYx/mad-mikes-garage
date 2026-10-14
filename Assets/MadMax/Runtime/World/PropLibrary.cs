@@ -16,6 +16,7 @@ namespace MadMax.World
             public VoxelGrid grid;
             public Mesh mesh;
             public float size = VoxelMesher.DefaultSize;
+            public VoxelMesher.MeshData data;              // made on any thread; the mesh comes from it on the main thread
         }
 
         static Template[] trees, rocks, shacks;
@@ -27,7 +28,7 @@ namespace MadMax.World
         {
             g.PruneUnsupported();
             g.Bevel();
-            return new Template { id = name, grid = g, mesh = VoxelMesher.Build(g, name, size), size = size };
+            return new Template { id = name, grid = g, data = VoxelMesher.BuildData(g, size), size = size };
         }
 
         /// <summary>Pristine grid of a template id (for rebuilding saved destruction).</summary>
@@ -42,21 +43,61 @@ namespace MadMax.World
             return BiomeProps.TemplateGrid(id) ?? SiteBuilder.TemplateGrid(id) ?? MadMax.Npc.NpcDirector.StallTemplate(id);
         }
 
+        /// <summary>Voxel size of a template id (salvaged designs mesh it at the same scale).</summary>
+        public static float TemplateSize(string id)
+        {
+            Ensure();
+            var l = Legacy(id);
+            if (l != null) return l.Value.size;
+            float s = BiomeProps.TemplateSize(id);
+            return s > 0f ? s : VoxelMesher.DefaultSize;
+        }
+
         static void Ensure()
         {
             // Meshes are destroyed when play mode ends but statics survive (no domain reload): rebuild if stale.
-            if (trees != null && trees[0].mesh && rocks[0].mesh && shacks[0].mesh && crate.mesh && table.mesh) return;
-            trees = new Template[4];
-            for (int i = 0; i < trees.Length; i++) { var g = new VoxelGrid().Mat(Wood); Scenery.DeadTree(g, i * 7 + 3, 14 + i * 4); trees[i] = T(g, "Tree" + i); }
-            rocks = new Template[4];
-            for (int i = 0; i < rocks.Length; i++) rocks[i] = T(Rock(i, 3 + i), "Rock" + i, 0.12f);
-            shacks = new Template[3];
-            for (int i = 0; i < shacks.Length; i++) shacks[i] = T(Shack(i), "Shack" + i);
-            crate = T(Crate(), "Crate");
-            table = T(Table(), "Table");
+            if (Alive()) return;
+            Template[] made;
+            var p = prewarm; prewarm = null;
+            try { made = p != null ? p.Result : Make(); }                                      // waits when the worker is still at it
+            catch (System.Exception e) { Debug.LogException(e); made = Make(); }
+            PropRemesher.Prebake(Finish(made));
+        }
+
+        static bool Alive() => trees != null && trees[0].mesh && rocks[0].mesh && shacks[0].mesh && crate.mesh && table.mesh;
+
+        static System.Threading.Tasks.Task<Template[]> prewarm;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetPrewarm() => prewarm = null;
+
+        /// <summary>Start the templates' grids and mesh data on a worker (load screen); <see cref="Ensure"/> takes them.</summary>
+        public static void Prewarm() { if (prewarm == null && !Alive()) prewarm = System.Threading.Tasks.Task.Run(Make); }
+        public static bool PrewarmDone => prewarm == null || prewarm.IsCompleted;
+        /// <summary>Load step: meshes for the prewarmed templates (and their colliders cooked) now.</summary>
+        public static void EnsureTemplates() => Ensure();
+
+        /// <summary>Every template, in the order of the fields: 4 trees, 4 rocks, 3 shacks, crate, table (pure: any thread).</summary>
+        static Template[] Make()
+        {
+            var l = new List<Template>();
+            for (int i = 0; i < 4; i++) { var g = new VoxelGrid().Mat(Wood); Scenery.DeadTree(g, i * 7 + 3, 14 + i * 4); l.Add(T(g, "Tree" + i)); }
+            for (int i = 0; i < 4; i++) l.Add(T(Rock(i, 3 + i), "Rock" + i, 0.12f));
+            for (int i = 0; i < 3; i++) l.Add(T(Shack(i), "Shack" + i));
+            l.Add(T(Crate(), "Crate"));
+            l.Add(T(Table(), "Table"));
+            return l.ToArray();
+        }
+
+        /// <summary>Meshes for made templates and the fields set; returns the meshes whose colliders are cooked.</summary>
+        static List<Mesh> Finish(Template[] made)
+        {
+            foreach (var t in made) { t.mesh = VoxelMesher.ToMesh(t.data, t.id); t.data = null; }
+            trees = new[] { made[0], made[1], made[2], made[3] };
+            rocks = new[] { made[4], made[5], made[6], made[7] };
+            shacks = new[] { made[8], made[9], made[10] };
+            crate = made[11]; table = made[12];
             var meshes = new List<Mesh>();
             foreach (var set in new[] { trees, rocks, shacks }) foreach (var t in set) meshes.Add(t.mesh);
-            PropRemesher.Prebake(meshes);
+            return meshes;
         }
 
         static VoxelGrid Rock(int seed, int r)
@@ -147,6 +188,16 @@ namespace MadMax.World
             var rnd = new System.Random(c.x * 73856093 ^ c.y * 19349663 ^ world.seed);
 
             BiomeProps.Populate(terrain, c, parent, mat, rnd, Legacy);
+        }
+
+        /// <summary><see cref="Populate"/> a piece at a time (streamed chunks: <see cref="DeformableTerrain"/> steps it
+        /// within its frame budget).</summary>
+        public static IEnumerator<int> PopulateSteps(DeformableTerrain terrain, Vector2Int c, Transform parent, Material mat)
+        {
+            if (!mat) yield break;
+            Ensure();
+            var rnd = new System.Random(c.x * 73856093 ^ c.y * 19349663 ^ terrain.World.seed);
+            foreach (var s in BiomeProps.PopulateSteps(terrain, c, parent, mat, rnd, Legacy)) yield return s;
         }
     }
 }

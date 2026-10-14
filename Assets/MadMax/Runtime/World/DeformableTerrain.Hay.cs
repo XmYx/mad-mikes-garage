@@ -54,7 +54,7 @@ namespace MadMax.World
         {
             if (ch.feature == null || ch.biome == null) return 0f;
             byte feat = ch.feature[k];
-            if (feat >= 2 || (ch.pave != null && ch.pave[k] != 0) || (ch.road != null && ch.road[k] > 0.25f)) return 0f;
+            if (!WorldGen.Grows(feat) || (ch.pave != null && ch.pave[k] != 0) || (ch.road != null && ch.road[k] > 0.25f)) return 0f;
             float water = ch.water != null ? ch.water[k] : float.NaN;
             float y = ch.h[k] + ch.d[k];
             var biome = (Biome)ch.biome[k];
@@ -74,8 +74,9 @@ namespace MadMax.World
                     if (!rows) return 0f;                                                              // bare furrows
                 }
             }
+            if (feat == TownPlan.FField) { rows = TownRow(gx, gz) && Hash(gi, gj) > 0.3f; if (!rows) return 0f; }
             bool shore = wetFoot || (ch.shore != null && ch.shore[k] > 0.3f && biome != Biome.Desert);   // reeds
-            float density = feat == 1 ? 0.05f : BaseDensity(biome);
+            float density = feat == 1 ? 0.05f : feat >= TownPlan.FSidewalk ? TownFloraDensity(feat) : BaseDensity(biome);
             density *= 0.45f + Mathf.PerlinNoise(gx * 0.13f + 7f, gz * 0.13f + 3f) * 1.1f;
             density *= 0.75f + wet * 0.5f;
             if (rows || shore) density = 0.9f;

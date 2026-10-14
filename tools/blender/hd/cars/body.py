@@ -36,7 +36,8 @@ class G:
     """Greenhouse spec."""
 
     def __init__(self, z0, z1, top, base, base_ratio=0.85, roof_ratio=0.8, er=1.0, crown=0.4, sill=0.35, frame=1.0,
-                 windshield=None, rear=None, roof=None, windows=(), open_windows=(), xp=6.0, rxp=None, hfull=None):
+                 windshield=None, rear=None, roof=None, windows=(), open_windows=(), xp=6.0, rxp=None, hfull=None,
+                 aline=None, cline=None):
         self.z0, self.z1 = z0, z1
         self.top = poly(top) if isinstance(top, list) else top
         self.base = poly(base) if isinstance(base, list) else (lambda z, b=base: b)
@@ -44,6 +45,9 @@ class G:
         self.windshield, self.rear, self.roof = windshield, rear, roof
         self.windows, self.open_windows = list(windows), list(open_windows)
         self.xp, self.rxp = xp, rxp if rxp is not None else xp
+        # side-window edges that follow the raked A / C pillars: ((z0, y0), (z1, y1)) in voxels; the first window ends
+        # behind `aline`, the last one in front of `cline` (the greenhouse is cut along both lines)
+        self.aline, self.cline = aline, cline
         if hfull is None:
             zs = [z0 + (z1 - z0) * i / 20 for i in range(21)]
             hfull = max(self.top(z) - self.base(z) for z in zs)
@@ -421,6 +425,12 @@ def build(veh, sp, seed=1):
         if sp.g.rxp != sp.g.xp:
             gx += [-sp.g.rxp, sp.g.rxp]
         _bisect_x(green, gx)
+        for ln in (sp.g.aline, sp.g.cline):
+            if ln:
+                (z0, y0), (z1, y1) = ln
+                nrm = Vector((0, z1 - z0, -(y1 - y0))).normalized()
+                geom = list(green.verts) + list(green.edges) + list(green.faces)
+                bmesh.ops.bisect_plane(green, geom=geom, dist=1e-4, plane_co=(0, y0, z0), plane_no=nrm)
         _dents(green, sp.dent * H.WEAR * 0.5, seed + 3)
         me = H._scratch()
         green.to_mesh(me)
@@ -442,9 +452,25 @@ def build(veh, sp, seed=1):
     def near_wheel(c):
         for w in sp.wheels:
             z, y, R, sx = w[:4]
-            if abs(c.x) > sx - 1.0 and (c.y - y - sp.arch_lift) ** 2 + (c.z - z) ** 2 < (R + sp.arch + 1.0) ** 2:
+            if abs(c.x) > sx - 1.0 and (c.y - y - sp.arch_lift) ** 2 + (c.z - z) ** 2 < (R + sp.arch + 0.45) ** 2:
                 return True
         return False
+
+    def side_of(ln, c):
+        (z0, y0), (z1, y1) = ln
+        t = (c.y - y0) / (y1 - y0) if abs(y1 - y0) > 1e-6 else 0.0
+        return c.z - (z0 + (z1 - z0) * t)
+
+    def win_ok(i, a, b, c):
+        if i == 0 and g.aline:
+            b = max(b, g.aline[0][0])
+            if side_of(g.aline, c) > 0:
+                return False
+        if i == len(g.windows) - 1 and g.cline:
+            a = min(a, g.cline[0][0])
+            if side_of(g.cline, c) < 0:
+                return False
+        return a <= c.z <= b
 
     part_of, mat_of = {}, {}
     dele = []
@@ -489,7 +515,7 @@ def build(veh, sp, seed=1):
                 if any(a <= c.z <= b for a, b in g.open_windows):
                     dele.append(f)
                     continue
-                glass = any(a <= c.z <= b for a, b in g.windows)
+                glass = any(win_ok(i, a, b, c) for i, (a, b) in enumerate(g.windows))
             elif s == SEC["garc"]:
                 glass = (inz(c.z, g.windshield) and abs(c.x) < g.xp) or (inz(c.z, g.rear) and abs(c.x) < g.rxp)
             if glass:

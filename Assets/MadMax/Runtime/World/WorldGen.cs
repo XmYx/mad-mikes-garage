@@ -5,12 +5,16 @@ namespace MadMax.World
 {
     public struct GroundSample
     {
-        public float height, baseWet, road, roadDist, along;
+        public float height, baseWet, road, roadDist, along, roadSide;
         public bool paved;
         public Biome biome;
         public float water;          // lake surface height (NaN = none)
         public float shore;          // 0..1, 1 = at the waterline
-        public byte feature;         // Site ground: 0 none, 1 rock (mesa slopes), 2 concrete floor (bunker), 3 gravel (tunnel floor)
+        public byte feature;         // Site ground: 0 none, 1 rock (mesa slopes), 2 concrete floor (bunker), 3 gravel (tunnel floor),
+                                     // 4 runway, 5 runway paint, 6 packed gravel (yard, crawlerway, megacity plaza); towns (TownPlan.F*):
+                                     // 7 sidewalk, 8 plaza/pedestrian paving, 9 park lawn, 10 yard lawn, 11 car park, 12 roundabout island,
+                                     // 13 street asphalt, 14 white paint, 15 field, 16 bare lot, 17 kerb, 18 yellow paint;
+                                     // railway (RailNetwork): 19 ballast, 20 platform / forecourt concrete
     }
 
     public enum Biome { Desert, Forest, Tropical, Nuclear, Village, Town, City, Tundra }
@@ -21,6 +25,8 @@ namespace MadMax.World
         public Biome kind;           // Village, Town or City
         public float radius, height;
         public int index;
+        /// <summary>Streets, lots and what stands on them (built with the world).</summary>
+        public TownPlan plan;
     }
 
     public class Lake
@@ -56,10 +62,14 @@ namespace MadMax.World
                 float radius = kind == Biome.Village ? 42f : kind == Biome.Town ? 58f : 95f;
                 settlements.Add(new Settlement { pos = p, kind = kind, radius = radius, height = BaseHeight(p.x, p.y), index = i });
             }
+            BuildTownPlans();                                                                   // town plans; highways rerouted along their boulevards
+            if (settlements.Count > 0) roads.spawnClear = settlements[0].radius + 26f;          // the start yard lies just outside the start town
             roads.SpawnPoint(out yardP, out yardDir);
             yardSide = Vector3.Cross(Vector3.up, yardDir);
+            FinishTownPlans();
             BuildRivers(new System.Random(seed * 31 + 7));
             if (MadMax.Game.GameRules.Current == null || !MadMax.Game.GameRules.Current.story) { BuildCity(); BuildMegaCity(); }   // the rolling cities' circuits and the megacity (roadmap 28; sandbox only so far)
+            BuildRail();                                                                        // stations, lines and points (WorldGen.Rail)
         }
 
         // ------------------------------------------------------------------ the start yard
@@ -174,7 +184,7 @@ namespace MadMax.World
             if (clear && rnd.NextDouble() < chance)
             {
                 float radius = b == Biome.Desert ? 12f + (float)rnd.NextDouble() * 10f : 18f + (float)rnd.NextDouble() * 30f;
-                foreach (var st in settlements) if ((st.pos - p).magnitude < st.radius + radius + 20f) { radius = 0f; break; }
+                foreach (var st in settlements) if ((st.pos - p).magnitude < st.radius + (st.plan != null ? st.plan.shoulder : 0f) + radius + 20f) { radius = 0f; break; }
                 if (radius > 0f)
                     lake = new Lake { pos = p, radius = radius, level = BaseHeight(p.x, p.y) - 0.4f, depth = 1.6f + (float)rnd.NextDouble() * 1.6f, toxic = b == Biome.Nuclear, seed = rnd.Next() };
             }
@@ -222,8 +232,10 @@ namespace MadMax.World
         {
             float h = (P(x, z, 0.0022f, 0) - 0.5f) * 46f;
             h += (P(x, z, 0.009f, 1) - 0.5f) * 10f;
-            float r = 1f - Mathf.Abs(P(x, z, 0.018f, 2) * 2f - 1f);
-            h += r * r * r * 4f;
+            // ridges: a rounded crest (smooth |u|) and wide, low flanks so vehicles can climb over them
+            float u = P(x, z, 0.013f, 2) * 2f - 1f;
+            float r = 1.1f - Mathf.Sqrt(u * u + 0.01f);
+            h += r * r * r * 3.4f;
             float b = Basin(x, z);
             h += (P(x, z, 0.11f, 3) - 0.5f) * 0.45f * (1f - b);
             h -= b * 3.5f;
@@ -258,14 +270,7 @@ namespace MadMax.World
             float jx = (P(x, z, 0.12f, 1) - 0.5f) * 10f + (Hash01(x, z) - 0.5f) * 3f;
             float jz = (P(x, z, 0.12f, 2) - 0.5f) * 10f + (Hash01(z, x) - 0.5f) * 3f;
             s.biome = settle != null ? settle.kind : NaturalBiome(x + jx, z + jz);
-            if (settle != null)
-            {
-                // settlements sit on graded ground (cities flat, villages follow the land a little)
-                float d = Vector2.Distance(new Vector2(x, z), settle.pos) / settle.radius;
-                float flat = Mathf.Clamp01((1.15f - d) / 0.4f) * (settle.kind == Biome.Village ? 0.6f : 0.95f);
-                h = Mathf.Lerp(h, settle.height, flat);
-                wet *= settle.kind == Biome.City ? 0.2f : 0.6f;
-            }
+            if (settle != null) wet *= settle.kind == Biome.City ? 0.2f : 0.6f;              // graded by its town plan below
             else
             {
                 var lake = LakeAt(x, z, out float t);
@@ -294,19 +299,20 @@ namespace MadMax.World
             if (hits.Count > 0)
             {
                 // weighted average of all nearby roads' graded heights: continuous at junctions
-                float roadMax = 0f, wSum = 0f, hSum = 0f, blend = 0f;
+                float roadMax = 0f, wSum = 0f, hSum = 0f, blend = 0f, nearest = float.MaxValue;
                 foreach (var q in hits)
                 {
+                    if (q.paved && q.dist < nearest) { nearest = q.dist; s.roadSide = q.side; }   // side of the nearest highway, off the road too
                     float half = q.width * 0.5f;
                     float hb = 1f - Mathf.Clamp01((q.dist - half - 0.5f) / (RoadNetwork.Reach - 1f));
-                    hb = hb * hb * (3f - 2f * hb);
+                    hb = Mathf.Lerp(hb, hb * hb * (3f - 2f * hb), 0.35f);                      // mostly linear: the gentlest bank for its width, soft at both ends
                     wSum += hb; hSum += hb * q.height; blend = Mathf.Max(blend, hb);
                     float onRoad = 1f - Mathf.Clamp01((q.dist - half) / 1.2f);
                     // paved wins on overlap so asphalt markings stay on top
                     if (onRoad > roadMax + 0.01f || (onRoad > 0.5f && q.paved && !s.paved))
                     {
                         roadMax = Mathf.Max(roadMax, onRoad);
-                        s.roadDist = q.dist; s.along = q.along; s.paved = q.paved;
+                        s.roadDist = q.dist; s.along = q.along; s.paved = q.paved; s.roadSide = q.side;
                     }
                 }
                 if (wSum > 0f) h = Mathf.Lerp(h, hSum / wSum, blend);
@@ -316,9 +322,12 @@ namespace MadMax.World
                 s.road = roadMax;
                 wet *= 1f - s.road * 0.85f;
             }
+            var town = PlanAt(x, z);
+            if (town != null) town.Grade(x, z, ref h, ref s, ref wet, yard);                    // streets, kerbs, lots: the town plan
             if (city != null) city.Grade(x, z, ref h, ref s);                                   // the rolling city's crawlerway and docks
             if (city2 != null) city2.Grade(x, z, ref h, ref s);                                 // the industrial city's independent crawlerway
             if (mega != null) mega.Grade(x, z, ref h, ref s);                                   // the megacity's plaza
+            if (rail != null) rail.Grade(x, z, ref h, ref s);                                   // rail beds, cuttings, embankments, station yards
             if (yard > 0.8f && s.road < 0.3f && s.feature == 0) s.feature = 6;                 // yard gravel
             s.height = h;
             s.baseWet = wet;

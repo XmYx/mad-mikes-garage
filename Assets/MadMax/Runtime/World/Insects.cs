@@ -50,7 +50,7 @@ namespace MadMax.World
             {
                 var me = gm.Player.transform.position;
                 foreach (var c in MadMax.Animals.Carcass.All)
-                    if (c && (c.transform.position - me).sqrMagnitude < 8f * 8f) { MadMax.Audio.Sfx.Loop(c, "insects", 0.25f, 1.6f, 10f); break; }
+                    if (c && (c.transform.position - me).sqrMagnitude < 8f * 8f) { MadMax.Audio.Sfx.Loop(c, "insects", 0.25f * MadMax.Game.GameSettings.Current.ambientVolume, 1.6f, 10f); break; }
             }
             if ((tick -= Time.deltaTime) > 0f) return;
             tick = 0.25f;

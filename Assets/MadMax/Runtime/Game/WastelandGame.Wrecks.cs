@@ -56,7 +56,7 @@ namespace MadMax.Game
                     dir = Quaternion.Euler(0, 40f + i * 55f, 0) * ya;
                     pos = yo + ya * (46f + i * 9f) + ys * 30f;
                 }
-                else if (i % 4 == 0)
+                else if (i % 4 == 0 && World.settlements.Count > 0 && World.settlements[0].plan == null)
                 {
                     // around a town square, off its streets
                     var t = World.roads.towns[rnd.Next(World.roads.towns.Count)];
@@ -81,9 +81,11 @@ namespace MadMax.Game
                 }
                 int wseed = rnd.Next();
                 if (i >= 3 && (World.YardWeight(pos.x, pos.z) > 0f || World.Sample(pos.x, pos.z).roadDist < 4.5f)) continue;   // never on a lane or in the yard
+                if (i >= 3 && World.InTown(pos.x, pos.z)) continue;                                   // towns park their own (PlanTownWrecks)
                 if (World.Reserved(pos.x, pos.z)) continue;                                              // campaign scenes stay clear
                 wreckPlans.Add(new WreckPlan { prefab = pf, pos = pos, dir = dir, seed = wseed, cold = i < 3 });
             }
+            PlanTownWrecks(prefabs, cars);
             // four in each scrapyard lot
             var yards = new List<(Vector3 pos, float yaw)>();
             MadMax.World.BiomeProps.Scrapyards(World, yards);
@@ -101,17 +103,32 @@ namespace MadMax.Game
             }
         }
 
-        /// <summary>New game: plan the wrecks, place the yard ones now; the rest spawn as the player comes near.</summary>
-        void SpawnWrecks(Vector3 spawn)
+        /// <summary>New game: plan the wrecks, place the yard ones now (one a frame); the rest spawn as the player comes near.</summary>
+        System.Collections.IEnumerator SpawnWrecks(Vector3 spawn)
         {
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
             PlanWrecks();
             wrecksPending.Clear();
-            for (int i = 0; i < wreckPlans.Count; i++) { if (i < 3 && wreckPlans[i].cold && i < wreckCount) SpawnWreck(i); else wrecksPending.Add(i); }
+            UnityEngine.Profiling.Profiler.EndSample();
+            for (int i = 0; i < wreckPlans.Count; i++)
+            {
+                if (i < 3 && wreckPlans[i].cold && i < wreckCount)
+                {
+                    yield return null;
+                    UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Wrecks");
+                    SpawnWreck(i);
+                    UnityEngine.Profiling.Profiler.EndSample();
+                }
+                else wrecksPending.Add(i);
+            }
         }
 
-        /// <summary>Spawn the next pending wreck within 220 m of the player (one every quarter second).</summary>
+        /// <summary>Spawn the next pending wreck within 220 m of the player (one every quarter second). A streamed wreck
+        /// is built over several frames (<see cref="SpawnWreckSteps"/>): copied under an inactive holder, woken and
+        /// ruined the next frame, its dents worked off within <see cref="WreckDentBudgetMs"/> a frame after that.</summary>
         void UpdateWreckStreaming()
         {
+            if (wreckJob != null) { StepWreckJob(); return; }
             if (wrecksPending.Count == 0 || Time.time < wreckCheck || (NetSession.Instance && NetSession.Instance.IsClient)) return;
             wreckCheck = Time.time + 0.25f;
             bool Near(Vector3 p, Vector3 f) { float dx = p.x - f.x, dz = p.z - f.z; return dx * dx + dz * dz < 220f * 220f; }
@@ -123,29 +140,77 @@ namespace MadMax.Game
                 if (!near) continue;
                 int idx = wrecksPending[k];
                 wrecksPending.RemoveAt(k);
-                SpawnWreck(idx);
+                wreckJob = SpawnWreckSteps(idx, true);
+                StepWreckJob();
                 return;
             }
         }
 
+        /// <summary>Main-thread time a streamed wreck's dents may take per frame.</summary>
+        const float WreckDentBudgetMs = 2f;
+        System.Collections.IEnumerator wreckJob;
+        Transform wreckHold;                                                                     // inactive: Instantiate copies there without Awake
+
+        void StepWreckJob()
+        {
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Wreck.Step");
+            if (!wreckJob.MoveNext()) wreckJob = null;
+            UnityEngine.Profiling.Profiler.EndSample();
+        }
+
+        /// <summary>A streamed wreck still being built is finished at once (a save must see it whole).</summary>
+        void FinishWreckSpawns()
+        {
+            while (wreckJob != null) if (!wreckJob.MoveNext()) wreckJob = null;
+        }
+
         void SpawnWreck(int index)
         {
-            if (index < 0 || index >= wreckPlans.Count) return;
+            var it = SpawnWreckSteps(index, false);
+            while (it.MoveNext()) { }
+        }
+
+        /// <summary>Dents a streamed wreck applies after its spawn frame: the meshes <see cref="VehicleDamage.DentAt"/>
+        /// would dent (taken at the ruin, in its order) and each dent in vehicle space (the same rolls, the same result).</summary>
+        class WreckDents
+        {
+            public readonly List<MeshFilter> meshes = new List<MeshFilter>();
+            public readonly List<(Vector3 local, Vector3 top, float depth, float radius)> dents = new List<(Vector3, Vector3, float, float)>();
+        }
+
+        System.Collections.IEnumerator SpawnWreckSteps(int index, bool staged)
+        {
+            if (index < 0 || index >= wreckPlans.Count) yield break;
             var plan = wreckPlans[index];
             var prefabs = WreckPrefabs();
-            if (plan.prefab >= prefabs.Count) return;
+            if (plan.prefab >= prefabs.Count) yield break;
             var prefab = prefabs[plan.prefab];
             var rnd = new System.Random(plan.seed);
             var pos = plan.pos;
             var rot = Quaternion.LookRotation(plan.dir.sqrMagnitude > 0.01f ? plan.dir : Vector3.forward);
             if (index < 3 && plan.cold && index < wreckCount) pos = FindClearSpot(pos, plan.dir, HalfExtents(prefab), rot);
-            else pos.y = terrain.Height(pos.x, pos.z) + 0.8f;
-            var go = Instantiate(prefab, pos, rot);
+            else pos.y = terrain.HeightNoLoad(pos.x, pos.z) + 0.8f;                              // settled below; no chunk generated for it
+            GameObject go;
+            if (staged)
+            {
+                if (!wreckHold) { var h = new GameObject("Wreck Spawn"); h.SetActive(false); wreckHold = h.transform; }
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Wreck.Instantiate");
+                go = Instantiate(prefab, pos, rot, wreckHold);                                   // copied, not awake yet
+                UnityEngine.Profiling.Profiler.EndSample();
+                yield return null;
+                if (!go) yield break;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Wreck.Wake");
+                go.transform.SetParent(null, true);                                              // Awake / OnEnable now
+                UnityEngine.Profiling.Profiler.EndSample();
+            }
+            else go = Instantiate(prefab, pos, rot);
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Wreck.Ruin");
             go.name = "Wreck " + prefab.name;
             var v = go.GetComponent<VehicleDriver>();
             if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = rnd.NextDouble() < 0.3;
             Register(v, v.driveable ? wrecks : null);
-            Ruin(v, rnd);
+            var later = staged ? new WreckDents() : null;
+            Ruin(v, rnd, later);
             if (index == 0 && plan.cold) TutorialPart(v);
             if (go.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 4f;
             if (go.TryGetComponent<VehicleSystems>(out var sys))
@@ -157,6 +222,25 @@ namespace MadMax.Game
             }
             v.Body.isKinematic = true;
             SettleOnGround(v);
+            UnityEngine.Profiling.Profiler.EndSample();
+            if (later == null || later.dents.Count == 0 || !settle) yield break;
+            // the dents: one mesh after another (each copied, dented, uploaded once), a couple of ms a frame
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int m = 0; m < later.meshes.Count; m++)
+            {
+                if (sw.Elapsed.TotalMilliseconds > WreckDentBudgetMs) { yield return null; sw.Restart(); }
+                if (!v || !settle) yield break;
+                var mf = later.meshes[m];
+                if (!mf) continue;
+                UnityEngine.Profiling.Profiler.BeginSample("MadMax.Game.Wreck.Dent");
+                var t = v.transform;
+                foreach (var d in later.dents)
+                {
+                    var w = t.TransformPoint(d.local);
+                    settle.DentMesh(mf, w, (t.TransformPoint(d.top) - w).normalized, d.depth, d.radius);
+                }
+                UnityEngine.Profiling.Profiler.EndSample();
+            }
         }
 
         /// <summary>The first yard wreck keeps a light bar on its roof: something to take off with the wrench and bolt onto
@@ -202,7 +286,9 @@ namespace MadMax.Game
             return v;
         }
 
-        void Ruin(VehicleDriver v, System.Random rnd)
+        /// <summary>Strip, scatter and damage a fresh wreck. With <paramref name="later"/> the dents are only rolled (same
+        /// rolls, same order) and left to the caller, unless it burns (the char works on the dented meshes).</summary>
+        void Ruin(VehicleDriver v, System.Random rnd, WreckDents later = null)
         {
             var chassis = v.GetComponent<VehicleChassis>();
             if (rnd.NextDouble() < 0.25 && v.TryGetComponent<VehicleArmor>(out var kit)) kit.RandomKit(rnd.Next(), 0.85f);   // someone's old war rig
@@ -219,27 +305,42 @@ namespace MadMax.Game
                     if (!p) continue;
                     float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
                     var at = v.transform.position + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * (3f + (float)rnd.NextDouble() * 3f);
-                    at.y = terrain.Height(at.x, at.z) + 0.4f;
+                    at.y = terrain.HeightNoLoad(at.x, at.z) + 0.4f;                                  // far off: no chunk generated for it
                     p.transform.SetPositionAndRotation(at, Quaternion.Euler(0, (float)rnd.NextDouble() * 360f, 90f * rnd.Next(2)));
                     if (p.TryGetComponent<Rigidbody>(out var rb)) rb.isKinematic = true;
                     p.damage = (float)rnd.NextDouble() * 0.6f;
                 }
                 else part.damage = (float)(rnd.NextDouble() * (part.category == PartCategory.Engine ? 0.95 : 0.8));
             }
+            int stash; bool burned;
             if (v.TryGetComponent<VehicleDamage>(out var dmg))
             {
                 var b = HalfExtents(v.gameObject);
+                var top = new Vector3(0, b.y, 0);
+                later?.dents.Clear();
+                var rolled = later != null ? later.dents : new List<(Vector3 local, Vector3 top, float depth, float radius)>();
                 int dents = 2 + rnd.Next(5);
                 for (int i = 0; i < dents; i++)
                 {
                     var local = new Vector3(((float)rnd.NextDouble() * 2f - 1f) * b.x, (float)rnd.NextDouble() * b.y * 2f, ((float)rnd.NextDouble() * 2f - 1f) * b.z);
-                    var w = v.transform.TransformPoint(local);
-                    dmg.DentAt(w, (v.transform.TransformPoint(new Vector3(0, b.y, 0)) - w).normalized, 0.06f + (float)rnd.NextDouble() * 0.14f, 0.4f + (float)rnd.NextDouble() * 0.6f);
+                    float depth = 0.06f + (float)rnd.NextDouble() * 0.14f;
+                    rolled.Add((local, top, depth, 0.4f + (float)rnd.NextDouble() * 0.6f));
                 }
                 dmg.AddFrameDamage((float)rnd.NextDouble() * 0.6f, rnd.NextDouble() < 0.5 ? -1f : 1f);
+                stash = rnd.Next();
+                burned = rnd.NextDouble() < 0.12;                                                    // burned out where it stopped
+                if (later != null && !burned) dmg.DentTargets(later.meshes);                         // dented by the caller, a mesh at a time
+                else
+                {
+                    foreach (var d in rolled)
+                    {
+                        var w = v.transform.TransformPoint(d.local);
+                        dmg.DentAt(w, (v.transform.TransformPoint(d.top) - w).normalized, d.depth, d.radius);
+                    }
+                    later?.dents.Clear();
+                }
             }
-            int stash = rnd.Next();
-            bool burned = rnd.NextDouble() < 0.12;                                                   // burned out where it stopped
+            else { stash = rnd.Next(); burned = rnd.NextDouble() < 0.12; }
             if (v.TryGetComponent<VehicleStorage>(out var storage) && !burned) storage.FillWreck(stash);   // a searchable trunk and glovebox
             if (burned && v.TryGetComponent<VehicleBurn>(out var vb)) vb.Char(false);
             if (v.TryGetComponent<VehicleIgnition>(out var ign)) ign.RollWreck(new System.Random(stash ^ 0x6b1d), storage);   // after the stash: the glovebox may hold the key
@@ -266,6 +367,7 @@ namespace MadMax.Game
                 if (v.aiDriven) { if (v.Body.isKinematic) Wake(v.Body); continue; }   // NPC drivers roam beyond the frozen zone
                 if (v.transform.parent && v.GetComponentInParent<TrailerDeck>()) continue;   // strapped on a transporter: stays kinematic, rides along
                 if (v.transform.parent && v.GetComponentInParent<MadMax.World.RollingCity>()) continue;   // strapped on the rolling city's deck
+                if (RigVehicle.OnStands(v)) continue;                                              // a moving base being built: held on its stands
                 var tc = v.GetComponent<TowCoupling>();
                 if (tc && tc.Tower) { v.Body.isKinematic = false; continue; }
                 float d = Dist(v.transform.position);
@@ -330,11 +432,75 @@ namespace MadMax.Game
 
         void Wake(Rigidbody rb)
         {
-            if (rb.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 3f;   // dropping back onto the ground
-            var p = rb.position;
-            p.y = Mathf.Max(p.y, terrain.Height(p.x, p.z) + 0.5f);
-            rb.position = p;
+            if (rb.TryGetComponent<VehicleDamage>(out var settle)) settle.graceUntil = Time.time + 3f;
+            // put down where it rests instead of dropping it (a lift to 0.5 m over the ground made everything that woke up
+            // fall, bounce and rock in front of the player), still and asleep until something touches it
+            if (rb.TryGetComponent<VehicleDriver>(out var v) && !v.transform.parent && v.transform.up.y >= 0.6f && v.HasWheels) SettleOnGround(v);
+            else GroundByColliders(rb);
             rb.isKinematic = false;
+            rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero;
+            rb.Sleep();
+        }
+
+        /// <summary>Move a (kinematic) body so its lowest collider just touches what is under it: out of the terrain if it
+        /// sank in, then down onto the ground, a rock or a deck below (within a metre).</summary>
+        void GroundByColliders(Rigidbody rb)
+        {
+            float sink = 0f;
+            foreach (var c in rb.GetComponentsInChildren<Collider>())
+            {
+                if (!c.enabled || c.isTrigger) continue;
+                var b = c.bounds;
+                float g = Mathf.Max(Mathf.Max(terrain.Height(b.min.x, b.min.z), terrain.Height(b.max.x, b.min.z)), Mathf.Max(terrain.Height(b.min.x, b.max.z), terrain.Height(b.max.x, b.max.z)));
+                g = Mathf.Max(g, terrain.Height(b.center.x, b.center.z));
+                sink = Mathf.Max(sink, g - b.min.y);
+            }
+            var p = rb.position;
+            if (sink > 0f) { p.y += sink + 0.01f; rb.position = p; rb.transform.position = p; }
+            if (rb.SweepTest(Vector3.down, out var hit, 1f, QueryTriggerInteraction.Ignore) && hit.distance > 0.02f)
+            { p.y -= hit.distance - 0.01f; rb.position = p; rb.transform.position = p; }
+        }
+
+        /// <summary>Behind the loading fade: wake everything near the player onto the ground and let it come to rest
+        /// (physics at 3x, at most <see cref="SettleStepsPerFrame"/> steps a frame), then send it to sleep, so nothing
+        /// settles, rocks or slides in view once the game starts.</summary>
+        const int SettleStepsPerFrame = 6;
+        /// <summary>The step cap to restore if the scene goes away mid-settle (-1: not settling).</summary>
+        float settleMaxDt = -1f;
+
+        System.Collections.IEnumerator SettleWorld()
+        {
+            if (!Player || !terrain) yield break;
+            var at = Current ? Current.transform.position : Player.transform.position;
+            yield return terrain.BuildAround(at, LoadBudgetMs, f => ScreenFader.Progress(0.88f + 0.06f * f));   // what the settings' view radius added
+            UnityEngine.Profiling.Profiler.BeginSample("MadMax.Start.Settle");
+            sleepCheck = 0f;
+            UpdateSleepers();
+            var settling = new List<Rigidbody>();
+            foreach (var v in vehicles) if (v && v != Current && !v.aiDriven && v.Body && !v.Body.isKinematic) settling.Add(v.Body);
+            foreach (var part in VehiclePart.Registry)
+                if (part && !part.Socket && !part.transform.parent && part.TryGetComponent<Rigidbody>(out var prb) && !prb.isKinematic) settling.Add(prb);
+            float scale = Time.timeScale, maxDt = Time.maximumDeltaTime, t0 = Time.realtimeSinceStartup;
+            UnityEngine.Profiling.Profiler.EndSample();
+            Time.timeScale = 3f;
+            settleMaxDt = maxDt;
+            Time.maximumDeltaTime = Time.fixedDeltaTime * SettleStepsPerFrame;                   // a slow frame must not run dozens of steps
+            // kept awake the whole time: Unity would put a slowly tipping heavy body to sleep half way over
+            int still = 0;
+            while (Time.realtimeSinceStartup - t0 < 3f && still < 20)
+            {
+                bool moving = false;
+                foreach (var rb in settling) if (rb) { rb.WakeUp(); if (rb.linearVelocity.sqrMagnitude > 1e-4f || rb.angularVelocity.sqrMagnitude > 1e-4f) moving = true; }
+                still = moving || Time.realtimeSinceStartup - t0 < 0.8f ? 0 : still + 1;
+                yield return null;
+            }
+            Time.timeScale = scale;
+            Time.maximumDeltaTime = maxDt;
+            settleMaxDt = -1f;
+            foreach (var v in vehicles)
+                if (v && v != Current && !v.aiDriven && v.Body && !v.Body.isKinematic) { v.Body.linearVelocity = Vector3.zero; v.Body.angularVelocity = Vector3.zero; v.Body.Sleep(); }
+            foreach (var part in VehiclePart.Registry)
+                if (part && !part.Socket && !part.transform.parent && part.TryGetComponent<Rigidbody>(out var rb) && !rb.isKinematic) { rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; rb.Sleep(); }
         }
     }
 }

@@ -58,8 +58,8 @@ namespace MadMax.Vehicles
                 case "Trabant": case "LanciaYpsilon": l.Add(S(Kind.Trunk, "TRUNK", 40f)); l.Add(S(Kind.Glovebox, "GLOVEBOX", 3f)); l.Add(S(Kind.Seats, "BACK SEAT", 20f)); return l;
                 case "Scavenger": l.Add(S(Kind.Trunk, "TRUNK", 90f)); l.Add(S(Kind.Glovebox, "GLOVEBOX", 5f)); l.Add(S(Kind.Seats, "BACK SEAT", 20f)); return l;
                 case "DuneBuggy": l.Add(S(Kind.Trunk, "CARGO NET", 25f)); return l;
-                case "Apc": l.Add(S(Kind.Trunk, "STOWAGE BIN", 150f)); l.Add(S(Kind.Glovebox, "MAP CASE", 5f)); return l;
-                case "SemiTractor": l.Add(S(Kind.Glovebox, "GLOVEBOX", 8f)); l.Add(S(Kind.Seats, "SLEEPER LOCKER", 60f)); return l;
+                case "APC": l.Add(S(Kind.Trunk, "STOWAGE BIN", 150f)); l.Add(S(Kind.Glovebox, "MAP CASE", 5f)); return l;
+                case "Semi": l.Add(S(Kind.Glovebox, "GLOVEBOX", 8f)); l.Add(S(Kind.Seats, "SLEEPER LOCKER", 60f)); return l;
                 case "DirtBike": l.Add(S(Kind.Saddlebags, "TAIL PACK", 10f)); return l;
                 case "Chopper": l.Add(S(Kind.Saddlebags, "SADDLEBAGS", 25f)); return l;
                 case "SidecarOutfit": l.Add(S(Kind.Saddlebags, "SIDECAR BOOT", 40f)); return l;

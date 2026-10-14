@@ -33,7 +33,7 @@ namespace MadMax.Game
         static Material bloodMat;
         static Mesh[] bloodMeshes;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { variants.Clear(); tinted.Clear(); voxelCovers.Clear(); bloodMat = null; bloodMeshes = null; ForceVoxel = false; }
+        static void ResetStatics() { variants.Clear(); tinted.Clear(); voxelCovers.Clear(); bloodMat = null; bloodMeshes = null; ForceVoxel = false; chainsByShape.Clear(); chainsOf = null; }
 
         // ------------------------------------------------------------------ choices
         /// <summary>The body shape for a look: <see cref="Appearance.body"/> when set (0 M, 1 M2, 2 F, 3 F2), else the
@@ -123,6 +123,20 @@ namespace MadMax.Game
             if (cut <= 0f) return full;
             if (best != null) return best;
             return hideIfUncut ? null : full;
+        }
+
+        static readonly Dictionary<string, Dictionary<string, HDCharacterCatalog.ChainBone>> chainsByShape = new Dictionary<string, Dictionary<string, HDCharacterCatalog.ChainBone>>();
+        static HDCharacterCatalog chainsOf;
+
+        /// <summary>Dangle-chain bones of a body shape (name -> rest offset), empty for packs without chains.</summary>
+        public static Dictionary<string, HDCharacterCatalog.ChainBone> Chains(HDCharacterCatalog cat, string shape)
+        {
+            if (chainsOf != cat) { chainsByShape.Clear(); chainsOf = cat; }
+            if (chainsByShape.TryGetValue(shape, out var d)) return d;
+            d = new Dictionary<string, HDCharacterCatalog.ChainBone>();
+            if (cat.chains != null) foreach (var c in cat.chains) if (c.shape == shape) d[c.name] = c;
+            chainsByShape[shape] = d;
+            return d;
         }
 
         public static HDCharacterCatalog.Piece First(HDCharacterCatalog cat, string shape, string kind, string piece = null)

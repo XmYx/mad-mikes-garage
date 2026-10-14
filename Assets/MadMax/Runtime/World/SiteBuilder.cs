@@ -113,6 +113,7 @@ namespace MadMax.World
             {
                 if ((kv.Value.site.pos - new Vector2(focus.x, focus.z)).magnitude < radius + kv.Value.site.reach + 150f) continue;
                 if (kv.Value.job != null && !kv.Value.job.IsCompleted) continue;
+                if (kv.Value.bake != null && !kv.Value.bake.IsCompleted) continue;            // never destroy a mesh PhysX is still cooking
                 (drop ??= new List<string>()).Add(kv.Key);
             }
             if (drop != null) foreach (var k in drop) { if (pieces[k].mesh) Object.Destroy(pieces[k].mesh); pieces.Remove(k); }
@@ -207,7 +208,9 @@ namespace MadMax.World
                 {
                     // the one flying machine left in the hangar (once per airfield; after that it is a saved vehicle)
                     var g = MadMax.Game.WastelandGame.Instance;
-                    if (g && g.FoundAircraft.Add(p.site.Key)) g.SpawnFound(e.visual, at + Vector3.up * 0.4f, q * Quaternion.Euler(0f, e.yaw, 0f));
+                    var net = MadMax.Net.NetSession.Instance;
+                    if (net && net.IsClient) { }                                                      // the host spawns it; clients get it as a vehicle
+                    else if (g && g.FoundAircraft.Add(p.site.Key)) g.SpawnFound(e.visual, at + Vector3.up * 0.4f, q * Quaternion.Euler(0f, e.yaw, 0f));
                 }
                 else if (e.kind == "lamp")
                 {

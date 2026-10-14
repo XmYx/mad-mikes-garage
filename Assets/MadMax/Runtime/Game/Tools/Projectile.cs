@@ -87,6 +87,7 @@ namespace MadMax.Game
             if (npc && (kind == Kind.Arrow || kind == Kind.Bolt)) npc.Bleed(12f);
             if (h.rigidbody && !h.rigidbody.isKinematic) h.rigidbody.AddForceAtPosition(dir * power * 6f, h.point, ForceMode.Impulse);
             MadMax.Audio.Sfx.Play(npc ? "punch" : "hit_wood", h.point, 0.5f, kind == Kind.Stone ? 1.5f : 1.2f, 20f);
+            MadMax.Game.Attention.Ping(h.point, kind == Kind.Stone ? MadMax.Game.Attention.Kind.Sound : MadMax.Game.Attention.Kind.Gunshot, 14f);   // a round striking close by
             Land(h.point, npc ? npc.transform : h.collider.transform);
         }
 

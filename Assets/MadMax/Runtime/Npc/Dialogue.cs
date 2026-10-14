@@ -122,7 +122,7 @@ namespace MadMax.Npc
             if (t == Tone.Threat)
             {
                 S.Set(NpcSave.Threatened);
-                NpcRegistry.Reputation = Mathf.Max(-100, NpcRegistry.Reputation - 1);
+                Factions.Shift(Faction.Settlers, -1);
                 if (P.temper == Temper.Nervous) { npc.Scare(12f); End(line + " (THEY RUN)"); return; }
                 if (S.disposition < -30 && (P.tool != null || P.temper == Temper.Proud || P.temper == Temper.Gruff)) { S.Set(NpcSave.Hostile); End(line + " (THEY GO FOR THEIR WEAPON)"); return; }
             }
@@ -204,6 +204,7 @@ namespace MadMax.Npc
             KeyChoice();                                                                        // mechanics cut keys for lost ones (Dialogue.Keys)
             QuartersChoice();                                                                   // the housing clerk aboard a city (Dialogue.Quarters)
             StolenTrail();                                                                      // salvagers name who sold them the player's part
+            SurgeonChoice();                                                                    // medical traders fit prosthetics (Dialogue.Surgeon)
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
             if (Cha >= 9 && !S.Has(NpcSave.Helped)) Add("[CHA 9] PEOPLE LIKE US SHOULD LOOK OUT FOR EACH OTHER.", Bond);
@@ -466,7 +467,7 @@ namespace MadMax.Npc
             }
             S.jobState = 2; S.Set(NpcSave.Helped);
             Change(15);
-            NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 3);
+            Factions.Shift(Faction.Settlers, 3);
             MadMax.Audio.Sfx.Play2D("cash", 0.6f);
             line = "YOU DID IT! " + reward;
             Hub(false);

@@ -59,6 +59,7 @@ namespace MadMax.Audio
                 case "engine_v8_blower": return 7200f;
                 case "engine_v8_forged": case "engine_v12_last": return 7800f;
                 case "engine_2stroke": return 4800f;
+                case "engine_twin_air": return 5200f;
                 case "engine_2stroke_aero": return 6500f;
                 case "engine_outboard": case "engine_vtwin": return 5800f;
                 case "engine_single": return 9500f;

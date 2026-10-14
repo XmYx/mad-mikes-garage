@@ -111,6 +111,7 @@ namespace MadMax.Building
             if (mode == Mode.Off) { g.Toast("THE PUMP IS OFF"); return; }
             float n = Move(3f);
             MadMax.Audio.Sfx.Play("creak", transform.position, 0.5f, 1.3f, 15f, 0.2f);
+            PieceMotion.Use(gameObject, "crank", 1.4f);
             g.Stats.Practice(MadMax.RPG.Skill.Athletics, 0.2f);
             g.Toast(n > 0.01f ? "PUMPED " + n.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " L " + lastSource : lastSource ?? "NOTHING MOVES");
         }

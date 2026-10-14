@@ -4,7 +4,8 @@ using UnityEngine;
 namespace MadMax.Game
 {
     /// <summary>Verlet hair: chains hang from the head, swing with movement and wind, collide with head and shoulders,
-    /// and spring back towards their rest direction. Each chain segment is a small voxel strand mesh.</summary>
+    /// and spring back towards their rest direction. Each chain segment is a small voxel strand mesh. Voxel rigs only:
+    /// HD hair swings on the rig's dangle chains (<see cref="ClothDynamics"/>).</summary>
     public class HairStrands : MonoBehaviour
     {
         class Chain
@@ -91,7 +92,9 @@ namespace MadMax.Game
             if (dt <= 0f) return;
             var headCenter = head.TransformPoint(new Vector3(0, 0.2f * rig.appearance.height, 0));
             var chestCenter = chest.TransformPoint(new Vector3(0, 0.3f, -0.02f));
-            var wind = new Vector3(Mathf.PerlinNoise(Time.time * 0.7f, 0.3f) - 0.4f, 0, Mathf.PerlinNoise(0.8f, Time.time * 0.6f) - 0.5f) * 1.5f;
+            // the world's wind (WindDust: veering direction, gusts) as air drag, plus a little flutter
+            float flutter = Mathf.PerlinNoise(Time.time * 2.3f, 0.3f) - 0.5f;
+            var wind = MadMax.World.Fx.Wind * (0.45f + 0.35f * MadMax.World.WindDust.Gust + 0.3f * flutter);
             foreach (var c in chains)
             {
                 c.pos[0] = head.TransformPoint(c.rootLocal);

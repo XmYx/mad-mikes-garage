@@ -54,27 +54,28 @@ namespace MadMax.Game
         }
 
         /// <summary>Crowds: mesh a shared-mesh character's parts on a worker thread. True once all of them are ready, so
-        /// the spawn itself only uploads meshes (a body is ~20 ms of voxel work).</summary>
-        public static bool Prewarm(Appearance a, List<string> outfit)
+        /// the spawn itself only uploads meshes (a body is ~20 ms of voxel work). <paramref name="condition"/> = the rig's
+        /// garment condition (worn-out garments are meshed torn, like <see cref="Rebuild"/> keys them).</summary>
+        public static bool Prewarm(Appearance a, List<string> outfit, System.Func<string, float> condition = null)
         {
-            if (HDHuman.Enabled) return PrewarmHD(a, outfit);
-            return PrewarmVoxel(a, outfit, true, true);
+            if (HDHuman.Enabled) return PrewarmHD(a, outfit, condition);
+            return PrewarmVoxel(a, outfit, true, true, condition);
         }
 
         /// <summary>HD crowds: the catalogue meshes are loaded with it; only garments without an HD mesh (and a hair cap
         /// the pack lacks) are voxel work.</summary>
-        static bool PrewarmHD(Appearance a, List<string> outfit)
+        static bool PrewarmHD(Appearance a, List<string> outfit, System.Func<string, float> condition)
         {
             var cat = HDCharacterCatalog.Instance;
             string shape = HDHuman.ShapeFor(a, cat);
-            if (shape == null || HDHuman.Body(cat, shape, a.skinTone) == null) return PrewarmVoxel(a, outfit, true, true);
+            if (shape == null || HDHuman.Body(cat, shape, a.skinTone) == null) return PrewarmVoxel(a, outfit, true, true, condition);
             var voxel = new List<string>();
             foreach (var id in outfit) if (!HDHuman.HasGarment(cat, shape, id)) voxel.Add(id);
             bool cap = a.hair != HairStyle.Bald && HDHuman.Hair(cat, shape, a.hair, 0f, false) == null;
-            return voxel.Count == 0 && !cap || PrewarmVoxel(a, voxel, false, cap);
+            return voxel.Count == 0 && !cap || PrewarmVoxel(a, voxel, false, cap, condition);
         }
 
-        static bool PrewarmVoxel(Appearance a, List<string> outfit, bool body, bool hair)
+        static bool PrewarmVoxel(Appearance a, List<string> outfit, bool body, bool hair, System.Func<string, float> condition)
         {
             string look = KeyOf(a) + "|";
             bool ready = true;
@@ -90,7 +91,8 @@ namespace MadMax.Game
             {
                 var d = ClothingLibrary.Get(id);
                 if (d == null) continue;
-                foreach (var part in d.coverage.Keys) { var pp = part; Need(look + d.id + pp, () => HumanDesign.GarmentData(d, pp, a)); }
+                bool torn = condition != null && condition(d.id) < 0.35f;                         // same key as Rebuild's Cached
+                foreach (var part in d.coverage.Keys) { var pp = part; Need(look + d.id + pp + (torn ? "t" : ""), () => HumanDesign.GarmentData(d, pp, a, torn)); }
                 if (d.prop != null) Need(look + d.id + "prop", () => HumanDesign.PropData(d, a));
             }
             if (hair) Need(look + "hair", () => HumanDesign.HairCapData(a));
@@ -113,7 +115,7 @@ namespace MadMax.Game
         public void Rebuild()
         {
             foreach (var o in owned) if (o) Destroy(o);
-            owned.Clear(); headRenderers.Clear(); bodyRenderers.Clear(); hdParts.Clear(); hdVoxel.Clear(); blood.Clear(); HDPieces.Clear();
+            owned.Clear(); headRenderers.Clear(); bodyRenderers.Clear(); hdParts.Clear(); hdVoxel.Clear(); blood.Clear(); HDPieces.Clear(); chainBones.Clear();
             var saved = new Dictionary<BodyPart, Quaternion>();
             foreach (var kv in bones) if (kv.Value) { saved[kv.Key] = kv.Value.localRotation; Destroy(kv.Value.gameObject); }
             bones.Clear();
@@ -160,6 +162,8 @@ namespace MadMax.Game
             Eye.SetParent(bones[BodyPart.Head], false);
             Eye.localPosition = new Vector3(0, 0.195f * appearance.height, 0.1f);
             owned.Add(Eye.gameObject);
+            HumanFace.Attach(this);                                                             // blinks, eye look-at (HD eye pivots / voxel lids)
+            SetupCloth();                                                                       // HD coat tails / hair chains (ClothDynamics)
 
             if (strands) Destroy(strands);
             if (noStrands || IsHD) return;
@@ -205,7 +209,7 @@ namespace MadMax.Game
             SetHeadVisible(v);
         }
 
-        public void ResetHair() { if (strands) strands.ResetChains(); }
+        public void ResetHair() { if (strands) strands.ResetChains(); if (cloth) cloth.ResetChains(); }
 
         public Transform Bone(BodyPart p) => bones[p];
 

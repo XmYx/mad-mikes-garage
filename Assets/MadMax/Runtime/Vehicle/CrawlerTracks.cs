@@ -17,6 +17,7 @@ namespace MadMax.Vehicles
             public bool left;
             public Transform[] links;
             public readonly List<Transform> rollers = new List<Transform>();
+            public float scale = 1f;     // big tracks (moving bases): links grow with the road wheels
         }
 
         VehicleDriver driver;
@@ -28,7 +29,18 @@ namespace MadMax.Vehicles
         static readonly Dictionary<int, Mesh> linkMeshes = new Dictionary<int, Mesh>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => linkMeshes.Clear();
 
-        void Start()
+        void Start() => Setup();
+
+        /// <summary>Re-lay the belts after the road wheels changed (tracks mounted on a built moving base).</summary>
+        public void Rebuild()
+        {
+            if (root) Destroy(root.gameObject);
+            root = null; sides = null; belts = null;
+            enabled = true;
+            Setup();
+        }
+
+        void Setup()
         {
             driver = GetComponent<VehicleDriver>();
             var body = transform.Find("Body");
@@ -47,8 +59,9 @@ namespace MadMax.Vehicles
                 var sd = sides[k] = new Side { left = k == 0 };
                 driver.TrackProfile(sd.left, prof);
                 if (prof.Count < 2) continue;
-                BuildPath(sd.left);
-                int n = Mathf.Max(8, Mathf.RoundToInt(cum[cum.Count - 1] / Pitch));
+                sd.scale = Mathf.Clamp(prof[0].radius / 0.34f, 1f, 6f);
+                BuildPath(sd.left, sd.scale);
+                int n = Mathf.Max(8, Mathf.RoundToInt(cum[cum.Count - 1] / (Pitch * sd.scale)));
                 var mesh = LinkMesh(Mathf.Max(3, Mathf.RoundToInt(prof[0].width / VoxelMesher.DefaultSize)));
                 sd.links = new Transform[n];
                 for (int i = 0; i < n; i++)
@@ -57,6 +70,7 @@ namespace MadMax.Vehicles
                     go.transform.SetParent(root, false);
                     go.GetComponent<MeshFilter>().sharedMesh = mesh;
                     go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                    go.transform.localScale = new Vector3(1f, sd.scale, sd.scale);
                     sd.links[i] = go.transform;
                 }
                 // road wheels of their own for the three middle contacts (sprocket and idler are the mounted parts)
@@ -92,13 +106,13 @@ namespace MadMax.Vehicles
 
         /// <summary>The belt centreline (vehicle space): bottom run under the road wheels, round the rear sprocket, back
         /// along the top, round the front idler. Fills <see cref="path"/> and the cumulative lengths <see cref="cum"/>.</summary>
-        void BuildPath(bool left)
+        void BuildPath(bool left, float scale = 1f)
         {
             path.Clear(); cum.Clear();
             var f = prof[0]; var r = prof[prof.Count - 1];
             float x = f.axle.x + (left ? -0.5f : 0.5f) * f.width;
-            float rr = f.radius + Half;
-            foreach (var p in prof) path.Add(new Vector3(x, p.axle.y - p.radius - Half, p.axle.z));
+            float rr = f.radius + Half * scale;
+            foreach (var p in prof) path.Add(new Vector3(x, p.axle.y - p.radius - Half * scale, p.axle.z));
             for (int i = 1; i <= 8; i++)
             {
                 float a = i / 8f * Mathf.PI;
@@ -139,7 +153,7 @@ namespace MadMax.Vehicles
                 if (sd == null || sd.links == null) continue;
                 driver.TrackProfile(sd.left, prof);
                 if (prof.Count < 2) continue;
-                BuildPath(sd.left);
+                BuildPath(sd.left, sd.scale);
                 float total = cum[cum.Count - 1], step = total / sd.links.Length, travel = driver.TrackTravel(sd.left);
                 for (int i = 0; i < sd.links.Length; i++)
                 {

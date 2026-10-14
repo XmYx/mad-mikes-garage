@@ -34,3 +34,12 @@ Not published in these sources and therefore estimated from class norms: track w
 standard sizes, e.g. 126p 135/80 R12, BX 165/70 R14, F-100 G78-15), overhang split, and every profile point between the
 published overall dimensions. Fiat 126p note: the real car has rectangular headlamps and tail lamps; it is modelled that way.
 The fictional cars carry no real badges, names or logos.
+
+Likeness pass (2026-10-12): every profile in `refdata.py` was re-fitted against generated side / three-quarter reference
+pictures (kept outside the repo; used for feature shapes only, the published dimensions above stay the ground truth) and
+checked with `likeness_render.py` (orthographic side / front / rear / three-quarter on a plain stage:
+`blender -b blend/<Name>.blend -P likeness_render.py -- <dir>`, then `python3 likeness_render.py montage <dir> <Name> <png>`).
+Signature cues are data flags handled in `refbuild.py`: `aslope`/`apillar`, `cslope`/`cpillar_w` (side glass following
+raked pillars), `arch_gap`/`arch_lift` (wheel-arch clearance; dark liners are added inside every lofted arch),
+`quarter_louvre` (126p), `vent_panel` + `spoiler_lip` (BX), `arch_flares` (205), `mudflaps` (Volvo 240), `split_grille`
+(F-series), `twotone` = roof panel only (Trabant).

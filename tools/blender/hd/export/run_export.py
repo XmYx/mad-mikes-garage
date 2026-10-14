@@ -43,6 +43,12 @@ LOG = os.environ.get("HD_EXPORT_LOG", REPO + "/Logs/hd_export.log")
 LOGDIR = REPO + "/Logs/hd_export"
 STATE = REPO + "/Logs/hd_export_state"
 CAP = {"furniture": 512, "items": 512, "parts": 512, "vegetation": 256}
+# home furniture carries photo textures (wood grain, quilts, wallpaper: textures/world) that blur at 512: 1024 atlases
+# (~4x the PNG size of those ~30 pieces; cozy pass 2026-10-12)
+CAP_BLEND = {n: 1024 for n in ("home_furn_beds", "home_furn_storage", "home_furn_kitchen", "home2_furn_home2_seating",
+                               "home2_furn_home2_storage", "home2_furn_home2_bath",
+                               "city_furn_city_decks", "city_furn_city_cabins", "rig_furn_rig_frames_small", "rig_furn_rig_frames_big")}
+# (city decks / cabins and the rig frames span 2-14 m: 512 px atlases would blur them, 2026-10-13)
 
 
 def log(msg):
@@ -83,7 +89,9 @@ def jobs():
         n = os.path.basename(f)[:-6]
         J["world/" + n] = ("world", f, ["--max-size", str(CAP["vegetation"])] if n.startswith("vegetation") else [])
     for f in sorted(glob.glob(w + "/furniture/*.blend")):
-        J["furniture/" + os.path.basename(f)[:-6]] = ("furniture", f, ["--max-size", str(CAP["furniture"])])
+        n = os.path.basename(f)[:-6]
+        cap = CAP_BLEND.get(n)
+        J["furniture/" + n] = ("furniture", f, ["--size", str(cap), "--max-size", str(cap)] if cap else ["--max-size", str(CAP["furniture"])])
     for f in sorted(glob.glob(w + "/animals/*.blend")):
         J["animals/" + os.path.basename(f)[:-6]] = ("animals", f, [])
     for f in sorted(glob.glob(SRC["character"] + "/character/blend/wardrobe_*.blend")):

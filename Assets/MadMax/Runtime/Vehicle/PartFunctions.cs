@@ -25,7 +25,8 @@ namespace MadMax.Vehicles
                     var n = Node(p, UtilityKind.Water, new Vector3(0f, 0.4f, 0f));
                     n.waterCapacity = 400f;
                     go.AddComponent<WaterSource>().mode = WaterSource.Mode.Rain;
-                    Use(go.AddComponent<WaterOutlet>()).kind = WaterOutlet.Kind.Barrel;
+                    Use(go.AddComponent<TankHose>());                                           // to and from built water pieces / a lake (first: its keys win)
+                    go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Barrel;
                     break;
                 }
                 case "cargo_generator":
@@ -56,7 +57,7 @@ namespace MadMax.Vehicles
             }
         }
 
-        static T Use<T>(T c) where T : MonoBehaviour { Interactables.Add(c); return c; }
+        static T Use<T>(T c) where T : MonoBehaviour { Interactables.RemoveAll(m => !m); Interactables.Add(c); return c; }   // destroyed parts drop out
 
         static void Box(GameObject go, string title, float kg)
         {

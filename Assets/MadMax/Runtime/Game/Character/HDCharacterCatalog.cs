@@ -11,7 +11,7 @@ namespace MadMax.Game
     /// covers say which body triangles a garment hides.</summary>
     public class HDCharacterCatalog : ScriptableObject
     {
-        public const int Version = 3;
+        public const int Version = 4;                 // 4: dangle-chain bones (ChainBone) for cloth / hair motion
 
         [Serializable]
         public class Piece
@@ -44,8 +44,20 @@ namespace MadMax.Game
             public int[] bits;
         }
 
+        /// <summary>A dangle-chain bone of a body shape's rig (ClothDynamics): rest offset of its head from its parent's
+        /// head (identity rest rotations, so offsets are plain translations); "&lt;last&gt;_tip" marks a chain's end.</summary>
+        [Serializable]
+        public class ChainBone
+        {
+            public string shape;
+            public string name;
+            public string parent;         // body bone or the previous chain bone
+            public Vector3 offset;
+        }
+
         public int version;
         public string builtAt;
+        public List<ChainBone> chains = new List<ChainBone>();
         public List<Piece> pieces = new List<Piece>();
         public List<Cover> covers = new List<Cover>();
         public List<string> shapes = new List<string>();

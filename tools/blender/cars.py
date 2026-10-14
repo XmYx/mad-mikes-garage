@@ -336,9 +336,19 @@ def preview(car, path):
     scene.collection.objects.link(cam)
     scene.camera = cam
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = car.L * 1.15
-    for tag, loc, rot in (("side", (0, -8, 0.75), (math.pi / 2, 0, 0)), ("34", (6.5, -6.5, 3.6), (math.radians(66), 0, math.radians(45)))):
-        cam.location, cam.rotation_euler = loc, rot
+    hmax = max(h for _, h in car.c["top"])
+    centre = Vector((0, 0, (hmax + LIFT) / 2))                        # aim at the middle of the body, not the origin
+    aspect = scene.render.resolution_x / scene.render.resolution_y
+    for tag, offset in (("side", Vector((0, -8, 0))), ("34", Vector((6.5, -6.5, 3.6)))):
+        cam.location = centre + offset
+        cam.rotation_euler = (-offset).to_track_quat("-Z", "Y").to_euler()
+        # frame the projected body: its bounding box corners onto the camera plane, plus a margin
+        right = cam.rotation_euler.to_matrix() @ Vector((1, 0, 0))
+        up = cam.rotation_euler.to_matrix() @ Vector((0, 1, 0))
+        corners = [Vector((x, y, z)) - centre for x in (-car.L / 2, car.L / 2) for y in (-car.W / 2, car.W / 2) for z in (0, hmax + LIFT)]
+        w = max(abs(c.dot(right)) for c in corners) * 2
+        h = max(abs(c.dot(up)) for c in corners) * 2
+        cam.data.ortho_scale = max(w, h * aspect) * 1.12
         scene.render.filepath = f"{path}_{tag}.png"
         bpy.ops.render.render(write_still=True)
 

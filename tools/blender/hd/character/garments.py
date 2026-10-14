@@ -12,87 +12,95 @@ from build_lib import FINE_H
 
 # material key -> (hex, kind, options) ; colours from ClothingLibrary / Pal ramps
 MATS = {
-    "under": ("3a3634", "cloth", {}),
-    "tshirt": ("dcd8c8", "cloth", {}),
-    "tshirt_worn": ("c4c0b0", "cloth", {"grime": 0.6}),
-    "tank": ("8c5634", "cloth", {}),
-    "hoodie": ("4f4842", "knit", {}),
-    "sweater": ("2e5024", "knit", {}),
-    "sweater_band": ("eeeadc", "knit", {}),
-    "jacket": ("302d33", "leather", {}),
-    "work_orange": ("a64c20", "canvas", {"grime": 0.58, "scale": 1.4}),
-    "work_grey": ("55534d", "knit", {"grime": 0.5, "scale": 1.8}),
-    "work_patch": ("b9a77e", "canvas", {"grime": 0.62, "scale": 2.0}),
-    "work_stitch": ("d0a16b", "canvas", {"grime": 0.5, "scale": 2.2}),
-    "cargo_olive": ("34392c", "denim", {"grime": 0.58, "scale": 1.6}),
-    "cargo_patch": ("70664e", "canvas", {"grime": 0.65, "scale": 2.0}),
+    "under": ("3a3634", "cloth", {"tex": "jersey"}),
+    "tshirt": ("dcd8c8", "cloth", {"tex": "jersey"}),
+    "tshirt_worn": ("c4c0b0", "cloth", {"grime": 0.6, "tex": "jersey"}),
+    "tank": ("8c5634", "cloth", {"tex": "jersey"}),
+    "hoodie": ("4f4842", "knit", {"tex": "fleece"}),
+    "sweater": ("2e5024", "knit", {"tex": "knit_sweater"}),
+    "sweater_band": ("eeeadc", "knit", {"tex": "knit_sweater"}),
+    "jacket": ("302d33", "leather", {"tex": "leather_black"}),
+    "work_orange": ("a64c20", "canvas", {"grime": 0.58, "scale": 1.4, "tex": "canvas_sand"}),
+    "work_grey": ("55534d", "knit", {"grime": 0.5, "scale": 1.8, "tex": "knit_sweater"}),
+    "work_patch": ("b9a77e", "canvas", {"grime": 0.62, "scale": 2.0, "tex": "canvas_patched"}),
+    "work_stitch": ("d0a16b", "canvas", {"grime": 0.5, "scale": 0.6, "tex": "seam_strip"}),
+    "cargo_olive": ("34392c", "denim", {"grime": 0.58, "scale": 1.6, "tex": "denim_olive"}),
+    "cargo_patch": ("70664e", "canvas", {"grime": 0.65, "scale": 2.0, "tex": "canvas_patched"}),
     "cyber_cream": ("c5bda4", "metal", {"hex2": "766d58", "metal": 0.55, "grime": 0.45}),
     "cyber_dark": ("252629", "metal", {"hex2": "101316", "metal": 0.8}),
     "cyber_rust": ("9d4821", "metal", {"hex2": "4c2418", "metal": 0.55}),
-    "cyber_rubber": ("18191a", "rubber", {}),
-    "satchel_canvas": ("74664b", "canvas", {"grime": 0.65, "scale": 1.8}),
-    "satchel_leather": ("3c3022", "leather", {"grime": 0.5}),
+    "cyber_rubber": ("18191a", "rubber", {"tex": "rubber"}),
+    "satchel_canvas": ("74664b", "canvas", {"grime": 0.65, "scale": 1.8, "tex": "canvas_sand"}),
+    "satchel_leather": ("3c3022", "leather", {"grime": 0.5, "tex": "leather_worn"}),
     "satchel_metal": ("967044", "metal", {"hex2": "4c3020", "metal": 0.55}),
-    "duster": ("74492a", "leather", {}),
-    "labcoat": ("eeeadc", "cloth", {"grime": 0.5}),
-    "vest": ("a8967a", "canvas", {}),
-    "vest_pocket": ("8a7a64", "canvas", {}),
-    "bomber": ("2a3832", "cloth", {}),
-    "fleece": ("dcd8c8", "knit", {"scale": 2.0}),
-    "pants": ("8c5634", "cloth", {}),
-    "jeans": ("2c3c52", "denim", {}),
-    "overalls": ("243866", "denim", {}),
-    "belt": ("3a2414", "leather", {}),
-    "boots": ("56361e", "leather", {}),
-    "sole": ("18171c", "rubber", {}),
-    "cboots": ("232127", "leather", {}),
-    "gloves": ("232127", "leather", {}),
-    "fingerless": ("302d33", "knit", {}),
-    "cowboy": ("74492a", "cloth", {"rough": 0.7}),
-    "hatband": ("18171c", "leather", {}),
-    "sunhat": ("a8967a", "canvas", {}),
-    "beanie": ("7e261c", "knit", {}),
+    "duster": ("74492a", "leather", {"tex": "leather_waxed"}),
+    "labcoat": ("eeeadc", "cloth", {"grime": 0.5, "tex": "canvas_sand"}),
+    "vest": ("a8967a", "canvas", {"tex": "canvas_sand"}),
+    "vest_pocket": ("8a7a64", "canvas", {"tex": "canvas_patched"}),
+    "bomber": ("2a3832", "cloth", {"tex": "cordura"}),
+    "fleece": ("dcd8c8", "knit", {"scale": 2.0, "tex": "fleece"}),
+    "pants": ("8c5634", "cloth", {"tex": "denim_olive"}),
+    "jeans": ("2c3c52", "denim", {"tex": "denim_blue"}),
+    "overalls": ("243866", "denim", {"tex": "denim_faded"}),
+    "belt": ("3a2414", "leather", {"tex": "leather_brown"}),
+    "boots": ("56361e", "leather", {"tex": "leather_worn"}),
+    "sole": ("18171c", "rubber", {"tex": "rubber"}),
+    "cboots": ("232127", "leather", {"tex": "leather_black"}),
+    "gloves": ("232127", "leather", {"tex": "leather_black"}),
+    "fingerless": ("302d33", "knit", {"tex": "wool_coarse"}),
+    "cowboy": ("74492a", "cloth", {"rough": 0.7, "tex": "felt"}),
+    "hatband": ("18171c", "leather", {"tex": "leather_brown"}),
+    "sunhat": ("a8967a", "canvas", {"tex": "straw"}),
+    "beanie": ("7e261c", "knit", {"tex": "knit_beanie"}),
     "helmet": ("4f4842", "metal", {"hex2": "80401d", "metal": 0.7}),
     "chrome": ("aeb1b8", "metal", {"hex2": "5e2c15"}),
     "brass": ("a0582c", "metal", {"hex2": "3f1e10"}),
-    "strap": ("18171c", "leather", {}),
+    "strap": ("18171c", "leather", {"tex": "webbing"}),
     "amber": ("d08a30", "lens", {"rough": 0.05}),
     "glass": ("2c3c52", "lens", {"rough": 0.05}),
-    "bandana": ("7e261c", "cloth", {}),
-    "shemagh": ("dcd8c8", "check", {"hex2": "232127"}),
-    "scarf": ("5a1a14", "stripe", {"hex2": "dcd8c8"}),
-    "rubber": ("232127", "rubber", {}),
+    "bandana": ("7e261c", "cloth", {"tex": "jersey"}),
+    "shemagh": ("dcd8c8", "check", {"hex2": "232127", "tex": "check_shemagh"}),
+    "scarf": ("5a1a14", "stripe", {"hex2": "dcd8c8", "tex": "stripe_poncho"}),
+    "rubber": ("232127", "rubber", {"tex": "rubber"}),
     "filter": ("6b3e24", "plastic", {}),
     "bone": ("eeeadc", "plastic", {"grime": 0.5}),
     "plate": ("4f4842", "metal", {"hex2": "80401d", "metal": 0.6}),
     "plate_rust": ("80401d", "metal", {"hex2": "3f1e10", "metal": 0.3}),
-    "kevlar": ("243866", "cloth", {}),
-    "pouch": ("8c5634", "canvas", {}),
-    "leather_brown": ("74492a", "leather", {}),
-    "backpack": ("a06e1e", "canvas", {}),
-    "pack_dark": ("7c5214", "canvas", {}),
-    "milpack": ("6b3e24", "canvas", {}),
-    "bedroll": ("2e5024", "knit", {}),
+    "kevlar": ("243866", "cloth", {"tex": "kevlar"}),
+    "pouch": ("8c5634", "canvas", {"tex": "cordura"}),
+    "leather_brown": ("74492a", "leather", {"tex": "leather_brown"}),
+    "backpack": ("a06e1e", "canvas", {"tex": "canvas_sand"}),
+    "pack_dark": ("7c5214", "canvas", {"tex": "webbing"}),
+    "milpack": ("6b3e24", "canvas", {"tex": "cordura"}),
+    "bedroll": ("2e5024", "knit", {"tex": "wool_coarse"}),
     "wood": ("93603a", "plastic", {"rough": 0.7}),
     "red_handle": ("7c1c22", "plastic", {}),
-    "poncho": ("6b3e24", "stripe", {"hex2": "a65c2e"}),
-    "hazmat": ("c48c2a", "rubber", {"rough": 0.45}),
-    "hazmat_trim": ("18171c", "rubber", {}),
-    "dive_canvas": ("a8967a", "canvas", {"grime": 0.5}),
+    "poncho": ("6b3e24", "stripe", {"hex2": "a65c2e", "tex": "stripe_poncho"}),
+    "hazmat": ("c48c2a", "rubber", {"rough": 0.45, "tex": "hazmat_vinyl"}),
+    "hazmat_trim": ("18171c", "rubber", {"tex": "rubber"}),
+    "dive_canvas": ("a8967a", "canvas", {"grime": 0.5, "tex": "canvas_patched"}),
     "dive_brass": ("b07a34", "metal", {"hex2": "5e3a14", "metal": 0.9}),
     "tank_yellow": ("c4a030", "metal", {"hex2": "4f4842", "metal": 0.5}),
     "weld": ("302d33", "plastic", {"rough": 0.6}),
     "weld_lens": ("1a2a18", "lens", {"rough": 0.05}),
     "chitin": ("4a5220", "plastic", {"rough": 0.25, "hex2": "2a3014"}),
-    "tyre": ("1c1918", "rubber", {}),
+    "tyre": ("1c1918", "rubber", {"tex": "rubber"}),
     "moto": ("7e261c", "plastic", {"rough": 0.2}),
-    "veil": ("dcd8c8", "cloth", {"grime": 0.2}),
-    "navy_pack": ("2c3c52", "canvas", {}),
-    "black_pack": ("232127", "canvas", {}),
-    "olive_pack": ("4a5a26", "canvas", {}),
-    "sand_pack": ("bb8a54", "canvas", {}),
+    "veil": ("dcd8c8", "cloth", {"grime": 0.2, "tex": "jersey"}),
+    "navy_pack": ("2c3c52", "canvas", {"tex": "cordura"}),
+    "black_pack": ("232127", "canvas", {"tex": "cordura"}),
+    "olive_pack": ("4a5a26", "canvas", {"tex": "canvas_olive"}),
+    "sand_pack": ("bb8a54", "canvas", {"tex": "canvas_sand"}),
     "gunmetal": ("38332f", "metal", {"hex2": "18171c", "metal": 0.8}),
-    "suitcase": ("6b3e24", "leather", {}),
+    "suitcase": ("6b3e24", "leather", {"tex": "leather_worn"}),
+    # 2026-10-12 wardrobe pass: winter parka (ClothingLibrary "coat", Pal.Olive), its fur trim, quilted lining, hardware
+    "coat": ("6b3e24", "canvas", {"tex": "canvas_olive", "grime": 0.5, "scale": 1.3}),
+    "coat_quilt": ("34392c", "cloth", {"tex": "quilted", "grime": 0.3}),
+    "fur": ("a8967a", "cloth", {"tex": "fur", "grime": 0.25, "rough": 0.95}),
+    "cord": ("c4b294", "cloth", {"tex": "webbing", "scale": 2.0, "grime": 0.3}),
+    "suede": ("74492a", "leather", {"tex": "suede", "rough": 0.8}),
+    "rib_dark": ("232127", "knit", {"tex": "knit_beanie", "scale": 1.6}),
+    "lace": ("3a2414", "cloth", {"tex": "webbing", "scale": 3.0, "grime": 0.4}),
 }
 
 
@@ -164,6 +172,70 @@ def smooth_union(a, b, k):
     return b + (a - b) * hh - k * hh * (1 - hh)
 
 
+# ---------------------------------------------------------------- detail helpers (2026-10-12 wardrobe pass)
+def arc(c, part):
+    """Part-local x, y, z plus the angle around the part's axis (0 = front +z, +pi/2 = +x)."""
+    x, y, z = c.loc(part)
+    return x, y, z, np.arctan2(x, z)
+
+
+def stamp(c, du, dv, off, h, ru, rv=None, ring=0.0, keep=None, rnd=0.0, B=None):
+    """A plate that follows the surface layer off .. off + h over |du| < ru, |dv| < rv (box, corner radius rnd) or
+    sqrt(du² + dv²) < ru (disc). ring > 0 keeps only a rim of that width (eyelets, buckle frames, D-rings).
+    keep: an extra field (< 0 keeps), e.g. -z for the front only."""
+    if rv is None:
+        d = np.sqrt(du * du + dv * dv) - ru
+    else:
+        qx, qy = np.abs(du) - (ru - rnd), np.abs(dv) - (rv - rnd)
+        d = np.sqrt(np.maximum(qx, 0) ** 2 + np.maximum(qy, 0) ** 2) + np.minimum(np.maximum(qx, qy), 0) - rnd
+    if ring:
+        d = np.abs(d + ring) - ring
+    # solid from the skin up to off + h (a band floating at off left plates hovering over the shell; what lies under the
+    # garment is hidden or culled with the inner faces). B: the same field precomputed for many stamps
+    G = np.maximum(c.F - (off + h) if B is None else B, d)
+    return G if keep is None else np.maximum(G, keep)
+
+
+def ridge(c, d, off, w=0.003, h=0.0025, limit=None):
+    """A raised welt / piping / seam on the layer at `off`: where |d| < w, up to off + h. limit (< 0 keeps) bounds it
+    to the garment (its coverage field)."""
+    G = np.maximum(c.F - (off + h), np.abs(d) - w)
+    return G if limit is None else np.maximum(G, limit)
+
+
+def rib_hem(c, part, t, off, w=0.012, side=-1, n=48, amp=0.0014):
+    """A knitted rib band (cuff, waistband, collar): a hem whose surface rises and falls n times around the part."""
+    u, L = c.along(part)
+    x, y, z, a = arc(c, part)
+    G = np.maximum(c.F - off - amp * np.cos(n * a), np.abs(u - (t * L + side * w)) - w)
+    return only(c, [part], G)
+
+
+def _hash01(i):
+    return np.abs(np.sin(i * 12.9898 + 78.233) * 43758.5453) % 1.0
+
+
+def fray(G, s, p, depth=0.022, period=0.011, width=0.0035, seed=0):
+    """A torn / tattered edge: s = distance inside the garment from its edge (>= 0 inside), p = arc length along the
+    edge. Cuts V notches of random depth (0.3..1 x depth) so the hem ends in ragged points. One boundary loop (slots cut
+    right through left thousands of sliver edges the decimator could not collapse); `width` sharpens the notch tips."""
+    i = np.floor(p / period)
+    f = p / period - i
+    dep = depth * (0.3 + 0.7 * _hash01(i + 31 * seed))
+    v = 1.0 - np.abs(2.0 * f - 1.0)
+    notch = dep * v ** (1.0 + 60.0 * width)
+    return np.maximum(G, notch - s)
+
+
+def zipper(c, part, x0, y0, y1, off, keep=None):
+    """Zip teeth along y (part-local) at x0: a narrow toothed strip from y0 to y1 on the layer at off."""
+    x, y, z = c.loc(part)
+    teeth = np.abs(((y + 0.003) % 0.006) - 0.003) - 0.0016
+    d = np.maximum(np.abs(x - x0) - 0.0042, np.maximum(y0 - y, y - y1))
+    G = np.maximum(np.maximum(band(c, off, off + 0.0035), d), np.minimum(teeth, np.abs(x - x0) - 0.0016))
+    return G if keep is None else np.maximum(G, keep)
+
+
 ARMS = ["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"]
 LEGS = ["ThighL", "ThighR", "ShinL", "ShinR"]
 TORSO = ["Pelvis", "Chest"]
@@ -198,8 +270,25 @@ def tshirt(h, mat="tshirt"):
         G = shell(c, off, {"Chest": (0, 1), "Head": (0, 0.2), "UpperArmL": (0, 0.45), "UpperArmR": (0, 0.45), "Pelvis": (0, 0.42)})
         G = neck_hole(c, G, 0.066, 0.012, 0.5)
         G = U(G, hems(c, ["UpperArmL", "UpperArmR"], 0.45, 0.0125, 0.008))
+        # rib collar, shoulder + side seams, a turned bottom hem
+        xh, yh, zh = c.loc("Head")
+        xc, yc, zc = c.loc("Chest")
+        lim = c.cover({"Chest": (0, 1), "Pelvis": (0, 0.42)})
+        collar = ridge(c, np.sqrt(xh * xh + (zh + 0.004) ** 2) - 0.073, 0.0105, 0.0075, 0.0035,
+                       np.maximum(np.maximum(lim, yh - (0.012 - 0.5 * zh) - 0.004), -0.07 - yh))
+        seams = ridge(c, zc + 0.006, 0.01, 0.0028, 0.0022,
+                      np.maximum(lim, np.minimum(np.maximum(0.35 - yc, 0.07 - np.abs(xc)), 0.115 - np.abs(xc))))
+        G = U(G, only(c, ["Chest", "Pelvis", "Head"], U(collar, seams)), hem(c, "Pelvis", 0.42, 0.0185, 0.008))
+        if mat == "tshirt_worn":
+            # worn through: a ragged hem and a few moth holes front and back
+            x, y, z = c.loc("Pelvis")
+            G = fray(G, y - (0.12 - 0.42 * 0.2) * c.hum.h, np.arctan2(x, z) * 0.16, depth=0.025, period=0.03, width=0.004, seed=3)
+            for hx, hy, hr, sz in ((0.06, 0.12, 0.011, 1), (-0.08, 0.2, 0.008, 1), (0.03, 0.26, 0.009, -1), (-0.05, 0.08, 0.012, -1)):
+                G = np.maximum(G, -np.maximum(np.sqrt((xc - hx) ** 2 + (yc - hy) ** 2) - hr, -sz * zc))
         return G
-    return [piece("tshirt", mat, f, TORSO + ["Head", "UpperArmL", "UpperArmR"], tris=2600)]
+    # the worn one has its own geometry (ragged hem, holes): own piece name, so the piece cache doesn't share it
+    # (asymmetric holes: the symmetric decimator would stall, so the worn one decimates freely)
+    return [piece(mat, mat, f, TORSO + ["Head", "UpperArmL", "UpperArmR"], tris=3000, sym=mat != "tshirt_worn")]   # 2600 -> 3000: collar, seams, hem
 
 
 def tank(h):
@@ -220,14 +309,20 @@ def hoodie(h):
         hood = c.prims([P("Chest", "ell", c=(0, 0.45, -0.075), rad=(0.105, 0.075, 0.07), k=0.03),
                         P("Chest", "ell", c=(0, 0.47, -0.035), rad=(0.085, 0.05, 0.06), op="sub", k=0.02)])
         pocket = c.prims([P("Chest", "box", c=(0, 0.075, 0.105), half=(0.08, 0.05, 0.012), round=0.009, k=0.012)])
-        cuffs = hems(c, ["ForearmL", "ForearmR"], 0.9, 0.0145, 0.012)
-        waist = hem(c, "Pelvis", 0.5, 0.025, 0.014)
-        return U(smooth_union(G, hood, 0.02), pocket, cuffs, waist)
+        cuffs = U(rib_hem(c, "ForearmL", 0.9, 0.0145, 0.014), rib_hem(c, "ForearmR", 0.9, 0.0145, 0.014))
+        waist = rib_hem(c, "Pelvis", 0.5, 0.025, 0.016, n=90)
+        # hood rim (a rolled edge round the face opening) and the pocket's bound openings
+        rim = c.prims([P("Chest", "ell", c=(0, 0.47, -0.035), rad=(0.093, 0.058, 0.068), k=0.02)])
+        rim = np.maximum(np.abs(rim) - 0.006, -(hood + 0.002))
+        x, y, z = c.loc("Chest")
+        lips = U(*[ridge(c, (x - sx * 0.07) + sx * (y - 0.075) * 0.9, 0.024, 0.004, 0.003,
+                         np.maximum(np.abs(y - 0.075) - 0.045, -z)) for sx in (-1, 1)])
+        return U(smooth_union(G, hood, 0.02), pocket, cuffs, waist, np.maximum(rim, -(c.F - 0.01)), only(c, ["Chest"], lips))
     def strings(c):
         x, y, z = c.loc("Chest")
         return c.prims([P("Chest", "cap", a=(sx * 0.03, 0.43, 0.075), b=(sx * 0.034, 0.33, 0.112), ra=0.0035, rb=0.0035) for sx in (-1, 1)]
                        + [P("Chest", "sph", c=(sx * 0.034, 0.33, 0.112), r=0.006) for sx in (-1, 1)])
-    return [piece("hoodie", "hoodie", f, TORSO + ["Head"] + ARMS, tris=3600),
+    return [piece("hoodie", "hoodie", f, TORSO + ["Head"] + ARMS, tris=3600, allowed=list(PI) + ["Hood1", "Hood2"]),
             piece("hoodie_strings", "fleece", strings, ["Chest"], res=FINE_H, tris=300, smooth=1, allowed=["Chest"])]
 
 
@@ -236,14 +331,27 @@ def sweater(h):
         G = shell(c, 0.012, {"Chest": (0, 1), "Head": (0, 0.2), "Pelvis": (0, 0.45), "UpperArmL": (0, 1), "UpperArmR": (0, 1),
                              "ForearmL": (0, 0.95), "ForearmR": (0, 0.95)})
         G = neck_hole(c, G, 0.064, 0.03, 0.3)
-        return U(G, hems(c, ["ForearmL", "ForearmR"], 0.95, 0.015, 0.014), hem(c, "Pelvis", 0.45, 0.016, 0.016),
-                 only(c, ["Head", "Chest"], np.maximum(band(c, 0.0, 0.019), np.maximum(c.loc("Head")[1] - 0.045, -0.03 - c.loc("Head")[1]))))
+        xh, yh, zh, ah = arc(c, "Head")
+        collar = np.maximum(band(c, 0.0, 0.019 + 0.0016 * np.cos(40 * ah)), np.maximum(yh - 0.045, -0.03 - yh))   # ribbed roll neck
+        xc, yc, zc = c.loc("Chest")
+        raglan = ridge(c, zc + 0.004, 0.012, 0.003, 0.0025, np.maximum(0.33 - yc, 0.075 - np.abs(xc)))
+        return U(G, rib_hem(c, "ForearmL", 0.95, 0.015, 0.016), rib_hem(c, "ForearmR", 0.95, 0.015, 0.016),
+                 rib_hem(c, "Pelvis", 0.45, 0.016, 0.02, n=90), only(c, ["Head", "Chest"], collar), only(c, ["Chest"], raglan))
+    def patches(c):
+        # suede elbow patches, a little proud of the knit
+        out = []
+        for s_ in "LR":
+            u, L = c.along("Forearm" + s_)
+            x, y, z, a = arc(c, "Forearm" + s_)
+            out.append(only(c, ["Forearm" + s_, "UpperArm" + s_], stamp(c, u - 0.02, (np.abs(a) - math.pi) * 0.045, 0.012, 0.006, 0.045, 0.03, rnd=0.012)))
+        return U(*out)
     def bandf(c):
         x, y, z = c.loc("Chest")
         G = only(c, ["Chest", "UpperArmL", "UpperArmR"], np.maximum(c.F - 0.0135, np.abs(y - 0.275 * c.hum.h) - 0.028))
         return G
-    return [piece("sweater", "sweater", f, TORSO + ["Head"] + ARMS, tris=3200),
-            piece("sweater_band", "sweater_band", bandf, ["Chest", "UpperArmL", "UpperArmR"], tris=1200)]
+    return [piece("sweater", "sweater", f, TORSO + ["Head"] + ARMS, tris=3800),                 # 3200 -> 3800: ribbing
+            piece("sweater_band", "sweater_band", bandf, ["Chest", "UpperArmL", "UpperArmR"], tris=1200),
+            piece("sweater_patches", "suede", patches, ARMS, tris=500, allowed=ARMS, smooth=1)]
 
 
 def _coat_collar(c, o_in, o_out, top=0.07, open_z=0.03):
@@ -252,8 +360,25 @@ def _coat_collar(c, o_in, o_out, top=0.07, open_z=0.03):
     return only(c, ["Head", "Chest"], np.maximum(G, z - open_z))
 
 
+def _jacket_details(c):
+    """Biker-jacket trim: epaulettes, slanted welt pockets, back yoke seam, side waist tabs."""
+    x, y, z = c.loc("Chest")
+    xp, yp, zp = c.loc("Pelvis")
+    lim = c.cover({"Chest": (0, 1), "Pelvis": (0, 0.36)})
+    out = []
+    for sx in (-1, 1):
+        out.append(stamp(c, np.abs(x) - 0.135, z + 0.004, 0.019, 0.005, 0.05, 0.014, keep=np.maximum(0.3 - y, sx * -x), rnd=0.006))
+        du = x - sx * 0.075
+        out.append(stamp(c, du, (y - 0.12) - 0.35 * du * sx, 0.019, 0.004, 0.038, 0.007, keep=-z, rnd=0.003))
+        out.append(stamp(c, xp - sx * 0.16 * c.hum.w, yp - (0.12 - 0.36 * 0.2 * 0.92) * c.hum.h, 0.024, 0.005, 0.03, 0.012, rnd=0.004))
+    out.append(ridge(c, y - 0.3, 0.018, 0.003, 0.0025, np.maximum(lim, z)))
+    return only(c, ["Chest", "Pelvis"], U(*out))
+
+
 def jacket(h):
     def f(c):
+        return U(plain(c), _jacket_details(c))
+    def plain(c):
         off = 0.016 + 0.006 * np.clip((1.04 * c.hum.h - wy(c)) / 0.08, 0, 1)
         G = shell(c, off, {"Chest": (0, 1), "Head": (0, 0.2), "Pelvis": (0, 0.36), "UpperArmL": (0, 1), "UpperArmR": (0, 1),
                            "ForearmL": (0, 0.92), "ForearmR": (0, 0.92)})
@@ -267,16 +392,23 @@ def jacket(h):
     def zip_(c):
         x, y, z = c.loc("Chest")
         G = np.maximum(np.maximum(np.abs(x - 0.011) - 0.0035, band(c, 0.014, 0.022)), np.maximum(y - 0.3, -0.045 - y))
-        return only(c, ["Chest", "Pelvis"], np.maximum(G, -z))
-    return [piece("jacket", "jacket", f, TORSO + ["Head"] + ARMS, tris=4200),
-            piece("jacket_zip", "chrome", zip_, ["Chest", "Pelvis"], res=FINE_H, tris=500, smooth=1, allowed=["Chest", "Pelvis"], sym=False)]
+        G = np.maximum(G, -z)
+        hw = [stamp(c, x - 0.011, y - 0.27, 0.02, 0.005, 0.0055, 0.012, keep=-z, rnd=0.002)]               # zip pull
+        for sx in (-1, 1):
+            du = x - sx * 0.075
+            hw.append(stamp(c, du, (y - 0.12) - 0.35 * du * sx, 0.021, 0.004, 0.034, 0.0022, keep=-z))      # pocket zips
+            hw.append(stamp(c, du + sx * 0.03, (y - 0.12) - 0.35 * (-sx * 0.03) * sx, 0.022, 0.005, 0.004, 0.009, keep=-z))
+            hw.append(stamp(c, np.abs(x) - 0.09, z + 0.004, 0.023, 0.005, 0.007, keep=np.maximum(0.3 - y, sx * -x)))  # epaulette studs
+        return only(c, ["Chest", "Pelvis"], U(G, *hw))
+    return [dict(piece("jacket", "jacket", f, TORSO + ["Head"] + ARMS, tris=4800), plain=plain),   # 4200 -> 4800: trim
+            piece("jacket_zip", "chrome", zip_, ["Chest", "Pelvis"], res=FINE_H, tris=900, smooth=1, allowed=["Chest", "Pelvis"], sym=False)]
 
 
 def work_jacket(h):
     # Reference lead's worn orange utility jacket: a shaped shell, raised grey hood/collar,
     # reinforced elbows, layered patch pockets, zipper tape, and small stitched repair panels.
     base = jacket(h)[0]
-    base["name"], base["field"], base["mat"] = "work_jacket", base["field"], "work_orange"
+    base["name"], base["field"], base["mat"] = "work_jacket", base.get("plain", base["field"]), "work_orange"
 
     def hood(c):
         x, y, z = c.loc("Head")
@@ -314,7 +446,20 @@ def work_jacket(h):
         shoulder = c.prims([P("Chest", "cap", a=(sx*0.05, 0.32, 0.11), b=(sx*0.19, 0.29, 0.055), ra=0.0045, rb=0.0045, k=0.003) for sx in (-1, 1)])
         return only(c, ["Chest", "Pelvis"], np.minimum(front, shoulder))
 
+    def hardware(c):
+        x, y, z = c.loc("Chest")
+        xh, yh, zh = c.loc("Head")
+        hw = [stamp(c, x - 0.011, y - 0.27, 0.02, 0.005, 0.0055, 0.012, keep=-z, rnd=0.002),               # zip pull
+              np.maximum(np.maximum(np.abs(x - 0.011) - 0.0035, band(c, 0.014, 0.022)), np.maximum(np.maximum(y - 0.3, -0.045 - y), -z))]
+        hw += [stamp(c, x - sx * 0.07, y - 0.252, 0.03, 0.006, 0.0065, keep=-z) for sx in (-1, 1)]         # flap snaps
+        hw += [stamp(c, x - sx * 0.035, y - 0.335, 0.03, 0.006, 0.005, keep=-z) for sx in (-1, 1)]         # hood cord eyelets
+        return only(c, ["Chest", "Pelvis"], U(*hw))
+    def cords(c):
+        x, y, z = c.loc("Chest")
+        return only(c, ["Chest"], U(*[stamp(c, x - sx * 0.035, y - 0.285, 0.026, 0.005, 0.0032, 0.05, keep=-z) for sx in (-1, 1)]))
     return [piece("work_jacket", "work_orange", base["field"], TORSO + ["Head"] + ARMS, tris=5600),
+            piece("work_jacket_hw", "chrome", hardware, TORSO, res=FINE_H, tris=700, allowed=["Chest", "Pelvis"], hides=False, sym=False, smooth=1),
+            piece("work_jacket_cords", "cord", cords, ["Chest"], res=FINE_H, tris=300, allowed=["Chest"], hides=False, smooth=1),
             piece("work_hood", "work_grey", hood, ["Head", "Chest"], tris=1500, allowed=["Head", "Chest"]),
             piece("work_pockets", "work_patch", pockets, ["Chest", "Pelvis"], tris=1400, allowed=["Chest", "Pelvis"], smooth=1),
             piece("work_elbow_patches", "work_patch", repairs, ["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"], tris=1200, allowed=["UpperArmL", "UpperArmR", "ForearmL", "ForearmR"], smooth=1),
@@ -328,16 +473,27 @@ def bomber(h):
         G = neck_hole(c, G, 0.074, 0.02, 0.5)
         x, y, z = c.loc("Chest")
         G = U(G, c.prims([P("Chest", "box", c=(sx * 0.07, 0.2, 0.105), half=(0.03, 0.035, 0.01), round=0.007) for sx in (-1, 1)]))
-        return U(G, hems(c, ["ForearmL", "ForearmR"], 0.95, 0.022, 0.013), hem(c, "Pelvis", 0.3, 0.026, 0.016))
+        # MA-1 sleeve pen pocket on the left upper arm, knit cuffs and waistband, shoulder seams
+        xa, ya, za, aa = arc(c, "UpperArmL")
+        ua, La = c.along("UpperArmL")
+        sleeve = only(c, ["UpperArmL"], stamp(c, (aa + math.pi / 2) * 0.05, ua - 0.1, 0.017, 0.007, 0.022, 0.045, rnd=0.006))
+        ribs = U(rib_hem(c, "ForearmL", 0.95, 0.019, 0.014, side=1), rib_hem(c, "ForearmR", 0.95, 0.019, 0.014, side=1),
+                 rib_hem(c, "Pelvis", 0.3, 0.026, 0.02, n=90))
+        seams = ridge(c, z + 0.004, 0.017, 0.003, 0.0025, np.maximum(0.33 - y, 0.075 - np.abs(x)))
+        return U(G, hems(c, ["ForearmL", "ForearmR"], 0.95, 0.022, 0.013), ribs, sleeve, only(c, ["Chest"], seams))
     def collar(c):
         return _coat_collar(c, 0.014, 0.034, 0.065, 0.06)
     def zip_(c):
         x, y, z = c.loc("Chest")
         G = np.maximum(np.maximum(np.abs(x) - 0.0035, band(c, 0.015, 0.023)), np.maximum(y - 0.42, -0.05 - y))
-        return only(c, ["Chest", "Pelvis"], np.maximum(G, -z))
-    return [piece("bomber", "bomber", f, TORSO + ["Head"] + ARMS, tris=3800),
+        pull = stamp(c, x - 0.004, y - 0.38, 0.021, 0.005, 0.0055, 0.012, keep=-z, rnd=0.002)
+        xa, ya, za, aa = arc(c, "UpperArmL")
+        ua, La = c.along("UpperArmL")
+        spull = only(c, ["UpperArmL"], stamp(c, (aa + math.pi / 2) * 0.05 - 0.012, ua - 0.06, 0.024, 0.005, 0.004, 0.009, rnd=0.002))
+        return U(only(c, ["Chest", "Pelvis"], U(np.maximum(G, -z), pull)), spull)
+    return [piece("bomber", "bomber", f, TORSO + ["Head"] + ARMS, tris=4400, sym=False),       # 3800 -> 4400: ribs, sleeve pocket (one side)
             piece("bomber_collar", "fleece", collar, ["Chest", "Head"], tris=900, allowed=["Chest", "Head"]),
-            piece("bomber_zip", "chrome", zip_, ["Chest", "Pelvis"], res=FINE_H, tris=400, smooth=1, allowed=["Chest", "Pelvis"])]
+            piece("bomber_zip", "chrome", zip_, ["Chest", "Pelvis", "UpperArmL"], res=FINE_H, tris=500, smooth=1, allowed=["Chest", "Pelvis", "UpperArmL"], sym=False)]
 
 
 def duster(h, mat="duster"):
@@ -348,7 +504,7 @@ def duster(h, mat="duster"):
         G = neck_hole(c, G, 0.075, 0.025, 0.9)
         x, y, z = c.loc("Pelvis")
         skirt = c.prims([P("Pelvis", "cap", a=(0, 0.0, -0.012), b=(0, -0.64 * c.hum.h, -0.04), ra=0.17 * c.hum.w, rb=0.255, k=0.04)])
-        skirt = np.maximum(skirt, -0.64 * c.hum.h - y)
+        skirt = np.maximum(np.maximum(skirt, -(skirt + 0.008)), -0.64 * c.hum.h - y)     # a hanging sheet, not a solid drum
         G = smooth_union(G, skirt, 0.03)
         gap = 0.004 + 0.07 * np.clip((-0.02 - y) / 0.6, 0, 1)
         G = np.maximum(G, np.minimum(gap - np.abs(x), np.minimum(z, 0.0 - y)))         # front opening below the waist
@@ -358,8 +514,91 @@ def duster(h, mat="duster"):
         cape = np.maximum(cape, 0.3 - yc)
         cape = np.maximum(cape, -(c.F - 0.03))
         cape = neck_hole(c, cape, 0.08, 0.0, 0.9)
-        return U(G, _coat_collar(c, 0.02, 0.036, 0.085, 0.03), hems(c, ["ForearmL", "ForearmR"], 0.9, 0.024, 0.014), cape)
-    return [piece(mat, mat, f, TORSO + ["Head"] + ARMS + LEGS, tris=5200)]
+        G = U(G, _coat_collar(c, 0.02, 0.036, 0.085, 0.03), hems(c, ["ForearmL", "ForearmR"], 0.9, 0.024, 0.014), cape)
+        # hip pocket flaps, a back half-belt, the front edges and shoulder seams as raised welts
+        lim = c.cover({"Chest": (0, 1), "Pelvis": (0, 1)})
+        flaps = U(*[stamp(c, x - sx * 0.1, y + 0.02, 0.026, 0.007, 0.05, 0.016, keep=-z, rnd=0.005) for sx in (-1, 1)])
+        belt = stamp(c, x, y - 0.06, 0.026, 0.006, 0.09, 0.016, keep=z, rnd=0.004)
+        edge = ridge(c, np.abs(xc) - 0.012, 0.022, 0.0045, 0.003, np.maximum(lim, np.maximum(-zc, yc - 0.3)))
+        G = U(G, only(c, ["Pelvis", "Chest"], U(flaps, belt)), edge)
+        if mat == "duster":
+            # tattered hem: the skirt's bottom edge and the front opening break into strips
+            bottom = -0.64 * c.hum.h
+            G = fray(G, y - bottom, np.abs(np.arctan2(x, z)) * 0.26, depth=0.06, period=0.035, width=0.004)   # mirror-symmetric
+        return G
+    def buttons(c):
+        xc, yc, zc = c.loc("Chest")
+        x, y, z = c.loc("Pelvis")
+        bt = [stamp(c, xc + 0.03, yc - yy, 0.025, 0.007, 0.0085, keep=-zc) for yy in (0.08, 0.15, 0.22, 0.29)]
+        bt += [stamp(c, x - sx * 0.07, y - 0.06, 0.026, 0.006, 0.007, keep=z) for sx in (-1, 1)]       # half-belt buttons
+        bt += [stamp(c, x - sx * 0.1, y + 0.016, 0.03, 0.006, 0.006, keep=-z) for sx in (-1, 1)]       # flap buttons
+        return only(c, ["Chest", "Pelvis"], U(*bt))
+    hw = "bone" if mat == "labcoat" else "brass"
+    return [piece(mat, mat, f, TORSO + ["Head"] + ARMS + LEGS, tris=6000,          # 5200 -> 6000: flaps, belt, welts, fray
+                  allowed=list(PI) + ["TailL1", "TailL2", "TailL3", "TailR1", "TailR2", "TailR3", "TailB1", "TailB2", "TailB3"]),   # skirt swings on the coat-tail chains
+            piece(mat + "_buttons", hw, buttons, TORSO, res=FINE_H, tris=700, allowed=TORSO, hides=False, sym=False, smooth=1)]
+
+
+def coat(h):
+    """Winter parka (ClothingLibrary 'coat'): quilted shell to mid-thigh, storm placket with snaps, flap pockets, a hood
+    lying on the back lined with quilted nylon, fur ruff, drawstrings and knit inner cuffs."""
+    COV = {"Chest": (0, 1), "Head": (0, 0.2), "Pelvis": (0, 1), "UpperArmL": (0, 1), "UpperArmR": (0, 1),
+           "ForearmL": (0, 0.93), "ForearmR": (0, 0.93), "ThighL": (0, 0.42), "ThighR": (0, 0.42)}
+    def hood_e(c):
+        return c.prims([P("Chest", "ell", c=(0, 0.39, -0.145), rad=(0.115, 0.07, 0.055), k=0.02)])
+    def f(c):
+        quilt = 0.0065 * np.abs(np.sin(math.pi * wy(c) / 0.08)) - 0.003           # puffed channels between stitched seams
+        off = 0.024 + quilt + 0.006 * np.clip((1.0 * c.hum.h - wy(c)) / 0.3, 0, 1)
+        G = shell(c, off, COV)
+        G = neck_hole(c, G, 0.08, 0.03, 0.4)
+        x, y, z = c.loc("Pelvis")
+        skirt = c.prims([P("Pelvis", "cap", a=(0, 0.0, -0.012), b=(0, -0.3 * c.hum.h, -0.03), ra=0.175 * c.hum.w, rb=0.215, k=0.04)])
+        G = smooth_union(G, np.maximum(np.maximum(skirt, -(skirt + 0.01)), -0.3 * c.hum.h - y), 0.03)   # sheet, not a drum
+        xc, yc, zc = c.loc("Chest")
+        E = hood_e(c)
+        hood = np.maximum(np.maximum(E, -(E + 0.009)), yc - 0.41)                   # folded hood, open at the top
+        lim = c.cover({"Chest": (0, 1), "Pelvis": (0, 1)})
+        placket = ridge(c, xc, 0.026, 0.016, 0.006, np.maximum(lim, np.maximum(-zc, np.maximum(yc - 0.41, -0.09 - y))))
+        pk = []
+        for sx in (-1, 1):
+            pk.append(stamp(c, x - sx * 0.095, y + 0.03, 0.024, 0.01, 0.06, 0.065, keep=-z, rnd=0.01))           # bellows pockets
+            pk.append(stamp(c, x - sx * 0.095, y - 0.032, 0.03, 0.008, 0.064, 0.02, keep=-z, rnd=0.006))         # their flaps
+            pk.append(stamp(c, xc - sx * 0.08, yc - 0.25, 0.026, 0.008, 0.045, 0.012, keep=-zc, rnd=0.005))      # chest flaps
+        collar = _coat_collar(c, 0.024, 0.04, 0.085, 0.2)
+        hems_ = U(hem(c, "Pelvis", 0.99, 0.03, 0.012), hems(c, ["ForearmL", "ForearmR"], 0.93, 0.03, 0.012))
+        return U(G, hood, only(c, ["Chest", "Pelvis"], U(placket, *pk)), collar, hems_)
+    def lining(c):
+        E = hood_e(c)
+        return np.maximum(np.maximum(E + 0.006, -(E + 0.013)), c.loc("Chest")[1] - 0.41)   # 7 mm: a 4 mm sheet breaks up on the grid
+    def fur(c):
+        x, y, z = c.loc("Chest")
+        ring = c.prims([P("Chest", "tor", c=(0, 0.465, -0.025), R=0.1, r=0.024, rot=rot_x(22))])
+        tuft = 0.0045 * np.sin(x * 210 + 1.3) * np.sin(y * 190) * np.sin(z * 230 + 0.7)
+        return np.maximum(ring + tuft, -(c.F - 0.03))
+    def cords(c):
+        xc, yc, zc = c.loc("Chest")
+        x, y, z = c.loc("Pelvis")
+        cs = [stamp(c, xc - sx * 0.03, yc - 0.37, 0.034, 0.005, 0.0035, 0.045, keep=-zc) for sx in (-1, 1)]
+        cs += [stamp(c, x - sx * 0.15 * c.hum.w, y + 0.16, 0.028, 0.005, 0.0035, 0.03, keep=-z) for sx in (-1, 1)]
+        return only(c, ["Chest", "Pelvis"], U(*cs))
+    def hardware(c):
+        xc, yc, zc = c.loc("Chest")
+        x, y, z = c.loc("Pelvis")
+        hw = [stamp(c, xc, yc - yy, 0.031, 0.006, 0.0075, keep=-zc) for yy in (0.06, 0.14, 0.22, 0.3, 0.38)]       # placket snaps
+        hw += [stamp(c, xc - sx * 0.03, yc - 0.32, 0.036, 0.009, 0.0075, keep=-zc) for sx in (-1, 1)]              # cord toggles
+        hw += [stamp(c, x - sx * 0.15 * c.hum.w, y + 0.13, 0.03, 0.009, 0.007, keep=-z) for sx in (-1, 1)]
+        hw += [stamp(c, x - sx * 0.095, y - 0.035, 0.036, 0.006, 0.007, keep=-z) for sx in (-1, 1)]               # flap snaps
+        hw += [stamp(c, xc - sx * 0.08, yc - 0.25, 0.032, 0.006, 0.006, keep=-zc) for sx in (-1, 1)]
+        return only(c, ["Chest", "Pelvis"], U(*hw))
+    def cuffs(c):
+        return U(rib_hem(c, "ForearmL", 0.93, 0.016, 0.011, side=1), rib_hem(c, "ForearmR", 0.93, 0.016, 0.011, side=1))
+    hood_ex = (np.array([-0.2, 1.25, -0.3]), np.array([0.2, 1.55, 0.05]))
+    return [piece("coat", "coat", f, TORSO + ["Head"] + ARMS + LEGS, extra=hood_ex, tris=6400),
+            piece("coat_lining", "coat_quilt", lining, ["Chest"], extra=hood_ex, res=FINE_H, tris=700, allowed=["Chest"], hides=False),
+            piece("coat_fur", "fur", fur, ["Chest", "Head"], tris=1800, allowed=["Chest", "Head"], hides=False),
+            piece("coat_cords", "cord", cords, TORSO, res=FINE_H, tris=400, allowed=TORSO, hides=False, smooth=1),
+            piece("coat_snaps", "gunmetal", hardware, TORSO, res=FINE_H, tris=900, allowed=TORSO, hides=False, smooth=1),
+            piece("coat_cuffs", "rib_dark", cuffs, ["ForearmL", "ForearmR", "HandL", "HandR"], tris=900, allowed=["ForearmL", "ForearmR"])]
 
 
 def vest(h):
@@ -382,7 +621,16 @@ def vest(h):
         return np.maximum(G, np.minimum(0.008 - np.abs(x), z))
     return [piece("vest", "vest", f, TORSO + ["Head"], tris=2400, allowed=TORSO + ["Head", "UpperArmL", "UpperArmR"]),
             piece("vest_pockets", "vest_pocket", pockets, ["Chest"], tris=600, allowed=["Chest"], smooth=1, sharp=50),
-            piece("vest_stripes", "plate_rust", stripes, TORSO, tris=1600, allowed=TORSO, smooth=1)]
+            piece("vest_stripes", "plate_rust", stripes, TORSO, tris=1600, allowed=TORSO, smooth=1),
+            piece("vest_snaps", "brass", _vest_snaps, TORSO, res=FINE_H, tris=500, allowed=TORSO, hides=False, smooth=1)]
+
+
+def _vest_snaps(c):
+    """Press studs on the four pocket flaps and toggles down the front opening."""
+    x, y, z = c.loc("Chest")
+    st = [stamp(c, x - sx * 0.065, y - yy - 0.022, 0.033, 0.006, 0.006, keep=-z) for sx in (-1, 1) for yy in (0.1, 0.24)]
+    st += [stamp(c, x - sx * 0.016, y - yy, 0.024, 0.006, 0.0055, keep=-z) for sx in (-1, 1) for yy in (0.06, 0.16, 0.26)]
+    return only(c, ["Chest"], U(*st))
 
 
 def _legs_shell(c, off, shin_t, waist_y=0.045, thigh_t=1.0):
@@ -399,22 +647,59 @@ def _belt(c, off=0.011, y0=0.025):
     return only(c, ["Chest", "Pelvis"], np.maximum(c.F - off, np.abs(y - y0 * c.hum.h) - 0.017))
 
 
+def _wrap(a):
+    return np.arctan2(np.sin(a), np.cos(a))
+
+
+def _trouser_details(c, legs_cov, off=0.0075):
+    """Belt loops, out- and inseams, front pocket openings and the fly: raised welts on any trousers."""
+    xc, yc, zc, ac = arc(c, "Chest")
+    x, y, z = c.loc("Pelvis")
+    yb = 0.025 * c.hum.h
+    loops = [stamp(c, _wrap(ac - a0) * 0.14, yc - yb, 0.0125, 0.004, 0.0055, 0.021) for a0 in (0.42, -0.42, 1.3, -1.3, 2.35, -2.35, math.pi)]
+    seams = []
+    for s_ in "LR":
+        for part in ("Thigh" + s_, "Shin" + s_):
+            xl, yl, zl, al = arc(c, part)
+            seams.append(only(c, [part], ridge(c, (np.abs(al) - math.pi / 2) * 0.06, off, 0.0026, 0.002)))
+    lim = c.cover(legs_cov)
+    pockets = [ridge(c, np.sqrt((x - sx * 0.135) ** 2 + (y - 0.06) ** 2) - 0.06, off, 0.003, 0.0022,
+                     np.maximum(np.maximum(-z, sx * (x - sx * 0.135)), y - 0.06)) for sx in (-1, 1)]
+    fly = ridge(c, x + 0.014 - 0.6 * np.clip(-0.035 - y, 0, 0.03), off, 0.0028, 0.002, np.maximum(np.maximum(-z, y - 0.07), -0.07 - y))
+    return np.maximum(U(only(c, ["Chest", "Pelvis"], U(*loops)), *seams, only(c, ["Pelvis"], U(fly, *pockets))), lim)
+
+
+def _buckle(c, y0=0.025):
+    """A belt buckle: frame + prong at the front centre of the belt (Chest-local height y0 x body height)."""
+    x, y, z = c.loc("Chest")
+    dy = y - y0 * c.hum.h
+    frame = stamp(c, x, dy, 0.0105, 0.006, 0.026, 0.021, ring=0.005, keep=-z, rnd=0.005)
+    prong = stamp(c, x + 0.006, dy, 0.0105, 0.005, 0.017, 0.0022, keep=-z)
+    return only(c, ["Chest", "Pelvis"], U(frame, prong))
+
+
 def pants(h, shin_t=0.85, name="pants", mat="pants"):
     short = shin_t < 0.6
     def f(c):
         if short:
             G = _legs_shell(c, 0.0075, 0, thigh_t=shin_t)
-            return U(G, hems(c, ["ThighL", "ThighR"], shin_t, 0.011, 0.01))
+            G = U(G, hems(c, ["ThighL", "ThighR"], shin_t, 0.011, 0.01))
+            return U(G, _trouser_details(c, {"Pelvis": (0, 1), "ThighL": (0, shin_t), "ThighR": (0, shin_t), "Chest": (0, 0.25)}))
         G = _legs_shell(c, 0.0075, shin_t)
         pk = [P("Thigh" + s, "box", c=(sx * 0.074 * c.hum.w, -0.22, 0.004), half=(0.014, 0.055, 0.05), round=0.009, rot=rot_z(sx * 4))
               for s, sx in (("L", -1), ("R", 1))]
-        return U(G, c.prims(pk), hems(c, ["ShinL", "ShinR"], shin_t, 0.011, 0.01))
-    return [piece(name, mat, f, TORSO + LEGS, tris=3200),
-            piece(name + "_belt", "belt", lambda c: _belt(c), TORSO, tris=600, allowed=TORSO)]
+        # cargo flaps over the thigh pockets
+        flaps = [P("Thigh" + s, "box", c=(sx * 0.08 * c.hum.w, -0.16, 0.004), half=(0.016, 0.014, 0.053), round=0.006, rot=rot_z(sx * 4))
+                 for s, sx in (("L", -1), ("R", 1))]
+        cov = {"Pelvis": (0, 1), "ThighL": (0, 1), "ThighR": (0, 1), "ShinL": (0, shin_t), "ShinR": (0, shin_t), "Chest": (0, 0.25)}
+        return U(G, c.prims(pk + flaps), hems(c, ["ShinL", "ShinR"], shin_t, 0.011, 0.01), _trouser_details(c, cov))
+    return [piece(name, mat, f, TORSO + LEGS, tris=3800),            # 3200 -> 3800: loops, seams, flaps, fly
+            piece(name + "_belt", "belt", lambda c: _belt(c), TORSO, tris=600, allowed=TORSO),
+            piece(name + "_buckle", "chrome", _buckle, TORSO, res=FINE_H, tris=300, allowed=TORSO, hides=False, smooth=1)]
 
 
 def patched_cargo(h):
-    base, belt = pants(h, 0.85, "patched_cargo", "cargo_olive")
+    base, belt, buckle = pants(h, 0.85, "patched_cargo", "cargo_olive")
 
     def cargo_pockets(c):
         items = []
@@ -437,7 +722,7 @@ def patched_cargo(h):
                  for b, a in (("ThighL", -8), ("ThighR", 7), ("ShinL", 5), ("ShinR", -6))]
         return only(c, ["ThighL", "ThighR", "ShinL", "ShinR"], c.prims(items))
 
-    return [piece("patched_cargo", "cargo_olive", base["field"], TORSO + LEGS, tris=4100), belt,
+    return [piece("patched_cargo", "cargo_olive", base["field"], TORSO + LEGS, tris=4400), belt, buckle,   # 4100 -> 4400: trouser trim
             piece("patched_cargo_pockets", "satchel_canvas", cargo_pockets, ["ThighL", "ThighR"], tris=1300, allowed=["ThighL", "ThighR"], smooth=1),
             piece("patched_cargo_knees", "cyber_rust", knees, ["ShinL", "ShinR"], tris=1100, allowed=["ShinL", "ShinR"], smooth=1),
             piece("patched_cargo_mends", "cargo_patch", mends, ["ThighL", "ThighR", "ShinL", "ShinR"], tris=600, allowed=["ThighL", "ThighR", "ShinL", "ShinR"], smooth=1)]
@@ -448,9 +733,19 @@ def jeans(h):
         G = _legs_shell(c, 0.0075, 0.88)
         x, y, z = c.loc("Pelvis")
         back = c.prims([P("Pelvis", "box", c=(sx * 0.065, -0.02, -0.112), half=(0.04, 0.045, 0.01), round=0.006, rot=rot_x(12)) for sx in (-1, 1)])
-        return U(G, back, hems(c, ["ShinL", "ShinR"], 0.88, 0.011, 0.01))
-    return [piece("jeans", "jeans", f, TORSO + LEGS, tris=3200),
-            piece("jeans_belt", "belt", lambda c: _belt(c), TORSO, tris=600, allowed=TORSO)]
+        yoke = ridge(c, y - 0.04 + 0.25 * np.abs(x), 0.0075, 0.003, 0.0022, z)            # the back yoke's V seam
+        cov = {"Pelvis": (0, 1), "ThighL": (0, 1), "ThighR": (0, 1), "ShinL": (0, 0.88), "ShinR": (0, 0.88), "Chest": (0, 0.25)}
+        return U(G, back, hems(c, ["ShinL", "ShinR"], 0.88, 0.011, 0.01), _trouser_details(c, cov), only(c, ["Pelvis"], yoke))
+    def rivets(c):
+        x, y, z = c.loc("Pelvis")
+        xc, yc, zc = c.loc("Chest")
+        rv = [stamp(c, x - sx * 0.077, y - 0.058, 0.0075, 0.004, 0.0042, keep=-z) for sx in (-1, 1)]       # pocket corners
+        rv += [stamp(c, xc, yc - (0.025 * c.hum.h + 0.03), 0.009, 0.005, 0.0065, keep=-zc)]               # top button
+        return only(c, ["Pelvis", "Chest"], U(*rv))
+    return [piece("jeans", "jeans", f, TORSO + LEGS, tris=3800),             # 3200 -> 3800: loops, seams, yoke, fly
+            piece("jeans_belt", "belt", lambda c: _belt(c), TORSO, tris=600, allowed=TORSO),
+            piece("jeans_buckle", "chrome", _buckle, TORSO, res=FINE_H, tris=300, allowed=TORSO, hides=False, smooth=1),
+            piece("jeans_rivets", "brass", rivets, TORSO, res=FINE_H, tris=200, allowed=TORSO, hides=False, smooth=1)]
 
 
 def shorts(h):
@@ -468,11 +763,28 @@ def overalls(h):
         keep = np.minimum(np.minimum(bib, backp), strap)
         G = np.where(c.label == PI["Chest"], np.maximum(G, keep), G)
         pocket = c.prims([P("Chest", "box", c=(0, 0.23 * hh, 0.112), half=(0.06, 0.045, 0.01), round=0.006)])
-        return U(G, pocket, hems(c, ["ShinL", "ShinR"], 0.9, 0.017, 0.011))
+        # double-stitched bib edge, side seams, a hammer loop on the right thigh, knee patches
+        cov = {"Pelvis": (0, 1), "ThighL": (0, 1), "ThighR": (0, 1), "ShinL": (0, 0.9), "ShinR": (0, 0.9), "Chest": (0, 1)}
+        bibedge = ridge(c, np.abs(x) - 0.1, 0.014, 0.003, 0.0025, np.maximum(np.maximum(-z, y - 0.31 * hh), 0.08 * hh - y))
+        xt, yt, zt, at = arc(c, "ThighR")
+        ut, Lt = c.along("ThighR")
+        loop = only(c, ["ThighR"], stamp(c, (at - math.pi / 2) * 0.06, ut - 0.2, 0.013, 0.005, 0.012, 0.035, rnd=0.004))
+        knees = []
+        for s_ in "LR":
+            xs, ys, zs, as_ = arc(c, "Shin" + s_)
+            us, Ls = c.along("Shin" + s_)
+            knees.append(only(c, ["Shin" + s_], stamp(c, as_ * 0.055, us - 0.03, 0.013, 0.004, 0.05, 0.055, rnd=0.012)))
+        trim = U(_trouser_details(c, cov, 0.014), only(c, ["Chest"], bibedge), loop, *knees)
+        return U(G, pocket, hems(c, ["ShinL", "ShinR"], 0.9, 0.017, 0.011), trim)
     def buttons(c):
-        return c.prims([P("Chest", "cyl", c=(sx * 0.068, 0.3 * c.hum.h, 0.112), r=0.012, halfh=0.004, round=0.002, rot=rot_x(90)) for sx in (-1, 1)])
-    return [piece("overalls", "overalls", f, TORSO + LEGS, tris=4000),
-            piece("overalls_buttons", "chrome", buttons, ["Chest"], res=FINE_H, tris=300, allowed=["Chest"], smooth=0)]
+        x, y, z = c.loc("Chest")
+        hw = [P("Chest", "cyl", c=(sx * 0.068, 0.27 * c.hum.h, 0.112), r=0.010, halfh=0.004, round=0.002, rot=rot_x(90)) for sx in (-1, 1)]
+        dy = y - 0.3 * c.hum.h
+        buckles = [stamp(c, x - sx * 0.068, dy, 0.016, 0.007, 0.021, 0.016, ring=0.0045, keep=-z, rnd=0.004) for sx in (-1, 1)]
+        side = [stamp(c, x - sx * 0.125, y - 0.06 * c.hum.h, 0.015, 0.005, 0.0075, keep=-np.abs(x) + 0.09) for sx in (-1, 1)]
+        return U(c.prims(hw), only(c, ["Chest", "Pelvis"], U(*buckles, *side)))
+    return [piece("overalls", "overalls", f, TORSO + LEGS, tris=4600),          # 4000 -> 4600: seams, loop, knee patches
+            piece("overalls_buttons", "chrome", buttons, ["Chest"], res=FINE_H, tris=700, allowed=["Chest"], smooth=0)]
 
 
 def boots(h, name="boots", mat="boots", top=0.72):
@@ -487,7 +799,50 @@ def boots(h, name="boots", mat="boots", top=0.72):
             x, y, z = c.loc("Foot" + s)
             G = np.maximum(G, np.where(c.label == PI["Foot" + s], -0.048 - y, G))
         cuff = hems(c, ["ShinL", "ShinR"], top, 0.017, 0.012, side=1)
-        return U(G, cuff)
+        # toe cap and heel counter seams, a pull tab at the back of the shaft
+        trim = []
+        for s in "LR":
+            x, y, z = c.loc("Foot" + s)
+            trim.append(only(c, ["Foot" + s], ridge(c, z - 0.118 + 0.25 * np.abs(x), 0.013, 0.0028, 0.0025, -0.045 - y)))
+            trim.append(only(c, ["Foot" + s], ridge(c, y + 0.012 + 0.15 * np.abs(x), 0.013, 0.0028, 0.0025, z + 0.01)))
+            u, L = c.along("Shin" + s)
+            xs, ys, zs, a = arc(c, "Shin" + s)
+            trim.append(only(c, ["Shin" + s], stamp(c, (np.abs(a) - math.pi) * 0.05, u - top * L + 0.006, 0.013, 0.005, 0.009, 0.022, rnd=0.004)))
+        return U(G, cuff, *trim)
+    def _eyelet_rows(c):
+        """Eyelet centres per side: (part, du field, dv field list) on the instep (foot) and up the shaft front."""
+        out = []
+        for s in "LR":
+            x, y, z = c.loc("Foot" + s)
+            u, L = c.along("Shin" + s)
+            xs, ys, zs, a = arc(c, "Shin" + s)
+            ft = [(z - zz) for zz in (0.035, 0.06, 0.085)]
+            sh = [(u - uu) for uu in np.arange(top * L + 0.012, L - 0.005, 0.024)]
+            out.append(("Foot" + s, x, ft, -(y + 0.015)))
+            out.append(("Shin" + s, a * 0.05, sh, -zs))
+        return out
+    def eyelets(c):
+        B = c.F - 0.018
+        G = np.full(c.grid.shape, 1.0, np.float32)
+        for part, du, dvs, keep in _eyelet_rows(c):
+            P_ = np.full(c.grid.shape, 1.0, np.float32)
+            for dv in dvs:
+                for sx in (-1, 1):
+                    P_ = np.minimum(P_, np.abs(np.sqrt((du - sx * 0.019) ** 2 + dv * dv) - 0.0045 + 0.0018) - 0.0018)
+            G = np.minimum(G, only(c, [part], np.maximum(np.maximum(P_, B), keep)))
+        return G
+    def laces(c):
+        out = []
+        for part, du, dvs, keep in _eyelet_rows(c):
+            # criss-cross between the eyelet rows: the lace's x follows a triangle wave of the eyelet spacing
+            step = 0.025 if part.startswith("Foot") else 0.024
+            t = np.abs(((dvs[0] / step) % 2.0) - 1.0)
+            cross = np.minimum(np.abs(du - 0.019 * (2 * t - 1)), np.abs(du + 0.019 * (2 * t - 1)))
+            G = np.maximum(band(c, 0.0125, 0.0195), cross - 0.0022)
+            G = np.maximum(G, np.maximum(np.abs(du) - 0.021, keep))
+            G = np.maximum(G, np.maximum(-dvs[0], dvs[-1]))                 # between the first and last eyelet
+            out.append(only(c, [part], G))
+        return U(*out)
     def sole(c):
         out = []
         for s in "LR":
@@ -495,7 +850,12 @@ def boots(h, name="boots", mat="boots", top=0.72):
             out.append(P("Foot" + s, "box", c=(0, -0.045, -0.035), half=(0.042, 0.017, 0.03), round=0.008, k=0.004))
         return c.prims(out)
     pcs = [piece(name, mat, f, ["FootL", "FootR", "ShinL", "ShinR"], tris=2200, allowed=["FootL", "FootR", "ShinL", "ShinR"]),
-           piece(name + "_sole", "sole", sole, ["FootL", "FootR"], tris=600, allowed=["FootL", "FootR"], sharp=45, smooth=1)]
+           piece(name + "_sole", "sole", sole, ["FootL", "FootR"], tris=600, allowed=["FootL", "FootR"], sharp=45, smooth=1),
+           piece(name + "_eyelets", "gunmetal" if name == "combat_boots" else "brass", eyelets, ["FootL", "FootR", "ShinL", "ShinR"],
+                 res=FINE_H, tris=900, allowed=["FootL", "FootR", "ShinL", "ShinR"], hides=False, smooth=1)]
+    if name != "combat_boots":
+        pcs.append(piece(name + "_laces", "lace", laces, ["FootL", "FootR", "ShinL", "ShinR"], res=FINE_H, tris=900,
+                         allowed=["FootL", "FootR", "ShinL", "ShinR"], hides=False, smooth=1))
     if name == "combat_boots":
         def laces(c):
             out = []
@@ -542,13 +902,19 @@ def cowboy(h):
         r = np.sqrt((x / 0.18) ** 2 + ((z + 0.005) / 0.205) ** 2)
         yb = 0.238 * s + 0.045 * np.clip(np.abs(x) / 0.18, 0, 1) ** 2 - 0.012 * np.clip(z / 0.2, 0, 1)
         brim = np.maximum(np.abs(y - yb) - 0.0045, (r - 1) * 0.18)
-        return smooth_union(cr, brim, 0.012)
+        binding = np.maximum(np.abs(y - yb) - 0.0068, np.abs((r - 0.982) * 0.19) - 0.0034)      # bound brim edge
+        return U(smooth_union(cr, brim, 0.012), binding)
     def bandf(c):
         x, y, z = c.loc("Head")
         cr = c.prims([P("Head", "ell", c=(0, 0.275 * c.hum.h, -0.01), rad=(0.098, 0.079, 0.112))])
         return np.maximum(cr, np.abs(y - 0.255 * c.hum.h) - 0.011)
-    return [piece("cowboy", "cowboy", crown, ["Head"], extra=_hat_box(h, 0.24), tris=1800, allowed=["Head"], hides=False),
-            piece("cowboy_band", "hatband", bandf, ["Head"], tris=500, allowed=["Head"], hides=False)]
+    def concho(c):
+        s = c.hum.h
+        return c.prims([P("Head", "cyl", c=(0.097, 0.255 * s, 0.0), r=0.012, halfh=0.0035, round=0.002, rot=rot_z(90)),
+                        P("Head", "box", c=(0.099, 0.255 * s, -0.022), half=(0.003, 0.009, 0.007), round=0.002)])
+    return [piece("cowboy", "cowboy", crown, ["Head"], extra=_hat_box(h, 0.24), tris=2000, allowed=["Head"], hides=False),
+            piece("cowboy_band", "hatband", bandf, ["Head"], tris=500, allowed=["Head"], hides=False),
+            piece("cowboy_concho", "chrome", concho, ["Head"], extra=_hat_box(h, 0.24), res=FINE_H, tris=200, allowed=["Head"], hides=False, sym=False, smooth=1)]
 
 
 def _hat_box(h, r):
@@ -565,7 +931,9 @@ def sunhat(h):
         r = np.sqrt(x * x + (z + 0.005) ** 2)
         yb = 0.235 * s - 0.05 * np.clip((r - 0.09) / 0.15, 0, 1) ** 1.6
         brim = np.maximum(np.abs(y - yb) - 0.004, r - 0.235)
-        return smooth_union(cr, brim, 0.015)
+        binding = np.maximum(np.abs(y - yb) - 0.0062, np.abs(r - 0.2315) - 0.0038)          # whipped straw edge
+        crease = np.maximum(np.abs(y - 0.3 * s) - 0.004, -(cr + 0.002))                      # pinched crown ring
+        return U(np.maximum(smooth_union(cr, brim, 0.015), -crease), binding)
     def bandf(c):
         x, y, z = c.loc("Head")
         cr = c.prims([P("Head", "ell", c=(0, 0.272 * c.hum.h, -0.008), rad=(0.102, 0.074, 0.11))])
@@ -578,10 +946,11 @@ def beanie(h):
     def f(c):
         x, y, z = c.loc("Head")
         s = c.hum.h
-        G = np.maximum(c.F - 0.016, 0.225 * s - y)
+        rib = np.cos(56 * np.arctan2(x, z))                                                  # knit ribs
+        G = np.maximum(c.F - 0.016 - 0.0009 * rib, 0.225 * s - y)
         top = c.prims([P("Head", "ell", c=(0, 0.3 * s, -0.025), rad=(0.075, 0.055, 0.085), k=0.01)])
         G = smooth_union(G, np.maximum(top, 0.24 * s - y), 0.02)
-        fold = np.maximum(c.F - 0.022, np.abs(y - 0.243 * s) - 0.019)
+        fold = np.maximum(c.F - 0.022 - 0.0016 * rib, np.abs(y - 0.243 * s) - 0.019)
         return U(G, np.maximum(fold, 0.225 * s - y))
     return [piece("beanie", "beanie", f, ["Head"], extra=_hat_box(h, 0.14), tris=1500, allowed=["Head"], hides=False)]
 
@@ -625,10 +994,18 @@ def goggles(h, up=False, name="goggles"):
         s = c.hum.h
         return c.prims([P("Head", "cyl", c=(sx * 0.034, (0.2 + dy) * s, 0.111 + dz + (0.004 if up else 0)), r=0.0175, halfh=0.0035, round=0.002, rot=tilt @ rot_x(90))
                         for sx in (-1, 1)])
+    def rims(c):
+        s = c.hum.h
+        # bezel rings round the lenses, rivets where the strap meets the cups
+        return c.prims([P("Head", "tor", c=(sx * 0.034, (0.2 + dy) * s, 0.1105 + dz + (0.004 if up else 0)), R=0.019, r=0.0032, rot=tilt @ rot_x(90))
+                        for sx in (-1, 1)]
+                       + [P("Head", "cyl", c=(sx * 0.058, (0.2 + dy) * s, 0.094 + dz), r=0.0045, halfh=0.003, round=0.001, rot=rot_y(sx * 60) @ rot_x(90))
+                          for sx in (-1, 1)])
     ex = _hat_box(h, 0.13)
     return [piece(name + "_strap", "strap", strap, ["Head"], extra=ex, res=FINE_H, tris=900, allowed=["Head"], hides=False),
             piece(name + "_cups", "rubber", cups, ["Head"], extra=ex, res=FINE_H, tris=900, allowed=["Head"], hides=False, smooth=1),
-            piece(name + "_lens", "amber", lens, ["Head"], extra=ex, res=FINE_H, tris=300, allowed=["Head"], hides=False, smooth=0)]
+            piece(name + "_lens", "amber", lens, ["Head"], extra=ex, res=FINE_H, tris=300, allowed=["Head"], hides=False, smooth=0),
+            piece(name + "_rims", "brass", rims, ["Head"], extra=ex, res=FINE_H, tris=500, allowed=["Head"], hides=False, smooth=1)]
 
 
 def bandana(h):
@@ -652,8 +1029,11 @@ def shemagh(h):
         drape = only(c, ["Chest"], np.maximum(c.F - 0.02, c.loc("Chest")[1] * -1 + 0.37 * s))
         tail = c.prims([P("Chest", "cap", a=(0.05, 0.42, -0.06), b=(0.09, 0.2, -0.11), ra=0.035, rb=0.05, k=0.03)])
         tail = np.maximum(tail, -(c.F - 0.015))
-        return U(smooth_union(G, drape, 0.02), tail)
-    return [piece("shemagh", "shemagh", f, ["Head", "Chest"], extra=_hat_box(h, 0.14), tris=2400, allowed=["Head", "Chest"])]
+        # knotted tassels hanging off the tail end
+        tass = c.prims([P("Chest", "cap", a=(0.066 + 0.012 * i, 0.165, -0.11), b=(0.067 + 0.013 * i, 0.118 - 0.008 * (i % 2), -0.112),
+                          ra=0.0045, rb=0.0035, k=0.003) for i in range(5)])
+        return U(smooth_union(G, drape, 0.02), tail, np.maximum(tass, -(c.F - 0.012)))
+    return [piece("shemagh", "shemagh", f, ["Head", "Chest"], extra=_hat_box(h, 0.14), tris=2400, allowed=["Head", "Chest", "StrapR"])]   # tail swings off the right shoulder
 
 
 def scarf(h):
@@ -664,8 +1044,15 @@ def scarf(h):
         G = only(c, ["Head", "Chest"], G)
         tails = c.prims([P("Chest", "box", c=(0.045, 0.33, 0.115), half=(0.028, 0.08, 0.006), round=0.005, rot=rot_x(-12) @ rot_z(-6), k=0.01),
                          P("Chest", "box", c=(0.012, 0.36, 0.122), half=(0.026, 0.06, 0.006), round=0.005, rot=rot_x(-10) @ rot_z(8), k=0.01)])
-        return smooth_union(G, tails, 0.015)
-    return [piece("scarf", "scarf", f, ["Head", "Chest"], tris=1400, allowed=["Head", "Chest"])]
+        # fringe: short yarn strands below each tail's end
+        fr = []
+        for (cx, cy, cz, hw_, ang) in ((0.045, 0.33 - 0.08, 0.115 - 0.017, 0.028, -6), (0.012, 0.36 - 0.06, 0.122 - 0.011, 0.026, 8)):
+            for i in range(5):
+                dx = -hw_ + 0.0035 + i * (2 * hw_ - 0.007) / 4
+                x0 = cx + dx * math.cos(math.radians(ang)); y0 = cy + dx * math.sin(math.radians(ang))
+                fr.append(P("Chest", "cap", a=(x0, y0 + 0.004, cz), b=(x0 + 0.002 * (i - 2), y0 - 0.022 - 0.004 * (i % 2), cz - 0.004), ra=0.0028, rb=0.0024, k=0.002))
+        return U(smooth_union(G, tails, 0.015), c.prims(fr))
+    return [piece("scarf", "scarf", f, ["Head", "Chest"], tris=1400, allowed=["Head", "Chest", "ScarfL1", "ScarfL2", "ScarfR1", "ScarfR2"])]
 
 
 def gasmask(h):
@@ -681,11 +1068,22 @@ def gasmask(h):
                         for sx in (-1, 1)])
     def canister(c):
         s = c.hum.h
-        return c.prims([P("Head", "cyl", c=(0, 0.125 * s, 0.128), r=0.03, halfh=0.024, round=0.006, rot=rot_x(70)),
-                        P("Head", "cyl", c=(0, 0.13 * s, 0.108), r=0.022, halfh=0.012, round=0.004, rot=rot_x(70))])
+        C = c.prims([P("Head", "cyl", c=(0, 0.125 * s, 0.128), r=0.03, halfh=0.024, round=0.006, rot=rot_x(70)),
+                     P("Head", "cyl", c=(0, 0.13 * s, 0.108), r=0.022, halfh=0.012, round=0.004, rot=rot_x(70))])
+        # knurled grip grooves round the filter and a perforated cap
+        x, y, z = c.loc("Head")
+        ax = np.array([0.0, math.cos(math.radians(70)), math.sin(math.radians(70))])     # rot_x(70) of the cylinder's y
+        t = (y - 0.125 * s) * ax[1] + (z - 0.128) * ax[2]
+        grooves = np.maximum(np.abs(((t + 0.004) % 0.008) - 0.004) - 0.0012, -(C + 0.0018))
+        return np.maximum(C, -np.maximum(grooves, np.abs(t) - 0.016))
+    def rims(c):
+        s = c.hum.h
+        return c.prims([P("Head", "tor", c=(sx * 0.034, 0.198 * s, 0.107), R=0.021, r=0.003, rot=rot_y(sx * 14) @ rot_x(90)) for sx in (-1, 1)]
+                       + [P("Head", "tor", c=(0, 0.125 * s + 0.0082, 0.1506), R=0.028, r=0.0032, rot=rot_x(70))])
     return [piece("gasmask", "rubber", f, ["Head"], extra=_hat_box(h, 0.15), tris=1600, allowed=["Head"], hides=False),
             piece("gasmask_lens", "glass", lens, ["Head"], extra=_hat_box(h, 0.15), res=FINE_H, tris=400, allowed=["Head"], hides=False, smooth=0),
-            piece("gasmask_filter", "filter", canister, ["Head"], extra=_hat_box(h, 0.18), res=FINE_H, tris=600, allowed=["Head"], hides=False, sharp=50, smooth=0)]
+            piece("gasmask_filter", "filter", canister, ["Head"], extra=_hat_box(h, 0.18), res=FINE_H, tris=900, allowed=["Head"], hides=False, sharp=50, smooth=0),
+            piece("gasmask_rims", "gunmetal", rims, ["Head"], extra=_hat_box(h, 0.18), res=FINE_H, tris=500, allowed=["Head"], hides=False, smooth=1)]
 
 
 def skull_mask(h):
@@ -760,7 +1158,17 @@ def vest_kevlar(h):
                        + [P("Chest", "box", c=(xx, 0.155, 0.142), half=(0.025, 0.006, 0.02), round=0.003) for xx in (-0.08, -0.028, 0.028, 0.08)])
     return [piece("vest_kevlar", "kevlar", f, TORSO + ["Head"], tris=2400, allowed=TORSO + ["UpperArmL", "UpperArmR"]),
             piece("vest_kevlar_straps", "kevlar", straps, ["Chest"], tris=600, allowed=["Chest"]),
-            piece("vest_kevlar_pouches", "pouch", pouches, ["Chest"], tris=1200, allowed=["Chest"], sharp=50, smooth=1)]
+            piece("vest_kevlar_pouches", "pouch", pouches, ["Chest"], tris=1200, allowed=["Chest"], sharp=50, smooth=1),
+            piece("vest_kevlar_buckles", "gunmetal", _kevlar_hw, TORSO, res=FINE_H, tris=500, allowed=TORSO, hides=False, smooth=1)]
+
+
+def _kevlar_hw(c):
+    """Side-release buckles on the shoulder straps and the cummerbund, pouch flap studs."""
+    x, y, z = c.loc("Chest")
+    hw = [stamp(c, x - sx * 0.075, y - 0.33, 0.026, 0.006, 0.014, 0.011, keep=-z, rnd=0.003) for sx in (-1, 1)]
+    hw += [stamp(c, x - sx * 0.15, y - 0.06, 0.026, 0.006, 0.011, 0.014, rnd=0.003) for sx in (-1, 1)]
+    studs = c.prims([P("Chest", "cyl", c=(xx, 0.13, 0.149), r=0.0045, halfh=0.0025, round=0.001, rot=rot_x(90)) for xx in (-0.08, -0.028, 0.028, 0.08)])
+    return U(only(c, ["Chest", "Pelvis"], U(*hw)), studs)
 
 
 def shoulder(h):
@@ -844,11 +1252,21 @@ def backpack(h):
     def roll(c):
         return c.prims([P("Chest", "cyl", c=(0, 0.47, -0.17), r=0.048, halfh=0.15, round=0.02, rot=rot_z(90))])
     def buckles(c):
-        return c.prims([P("Chest", "box", c=(sx * 0.072, 0.27, 0.12), half=(0.018, 0.012, 0.004), round=0.002, rot=rot_x(-18)) for sx in (-1, 1)]
-                       + [P("Chest", "box", c=(0, 0.33, -0.25), half=(0.012, 0.016, 0.004), round=0.002)])
-    return [piece("backpack", "backpack", bag, ["Chest"], extra=(np.array([-0.2, 1.0, -0.36]), np.array([0.2, 1.6, 0.0])), tris=1800, allowed=["Chest"], hides=False),
+        x, y, z = c.loc("Chest")
+        drings = [stamp(c, x - sx * 0.072, y - 0.2, 0.0165, 0.004, 0.009, ring=0.0024, keep=-z) for sx in (-1, 1)]   # D-rings on the straps
+        return U(c.prims([P("Chest", "box", c=(sx * 0.072, 0.27, 0.12), half=(0.018, 0.012, 0.004), round=0.002, rot=rot_x(-18)) for sx in (-1, 1)]
+                         + [P("Chest", "box", c=(0, 0.33, -0.25), half=(0.012, 0.016, 0.004), round=0.002)]
+                         + [P("Chest", "box", c=(sx * 0.06, 0.255, -0.287), half=(0.016, 0.011, 0.004), round=0.002) for sx in (-1, 1)]   # lid strap buckles
+                         + [P("Chest", "box", c=(sx * 0.162, 0.2, -0.175), half=(0.004, 0.011, 0.016), round=0.002) for sx in (-1, 1)]),  # side cinch buckles
+                 only(c, ["Chest"], U(*drings)))
+    def webbing(c):
+        # lid straps down over the front pocket and cinch straps round the side pockets
+        return c.prims([P("Chest", "box", c=(sx * 0.06, 0.31, -0.262), half=(0.0125, 0.105, 0.004), round=0.002, rot=rot_x(-8)) for sx in (-1, 1)]
+                       + [P("Chest", "box", c=(sx * 0.158, 0.2, -0.175), half=(0.006, 0.012, 0.045), round=0.002) for sx in (-1, 1)])
+    return [piece("backpack", "backpack", bag, ["Chest"], extra=(np.array([-0.2, 1.0, -0.36]), np.array([0.2, 1.6, 0.0])), tris=1800, allowed=["Chest", "Bag1", "Bag2"], hides=False),
+            piece("backpack_webbing", "pack_dark", webbing, ["Chest"], extra=(np.array([-0.2, 1.0, -0.36]), np.array([0.2, 1.6, 0.0])), res=FINE_H, tris=500, allowed=["Chest", "Bag1", "Bag2"], hides=False, smooth=1),
             piece("backpack_straps", "pack_dark", straps, ["Chest"], tris=800, allowed=["Chest"]),
-            piece("backpack_roll", "bedroll", roll, ["Chest"], extra=(np.array([-0.24, 1.38, -0.3]), np.array([0.24, 1.6, -0.05])), tris=700, allowed=["Chest"], hides=False),
+            piece("backpack_roll", "bedroll", roll, ["Chest"], extra=(np.array([-0.24, 1.38, -0.3]), np.array([0.24, 1.6, -0.05])), tris=700, allowed=["Chest", "Bag1", "Bag2"], hides=False),
             piece("backpack_buckles", "chrome", buckles, ["Chest"], extra=(np.array([-0.1, 1.2, -0.3]), np.array([0.1, 1.4, 0.2])), res=FINE_H, tris=300, allowed=["Chest"], hides=False, smooth=0)]
 
 
@@ -862,9 +1280,22 @@ def milpack(h):
         return U(B, webbing)
     def pouch(c):
         return c.prims([P("Chest", "box", c=(0, 0.16, -0.285), half=(0.08, 0.06, 0.02), round=0.012)])
-    return [piece("milpack", "milpack", bag, ["Chest"], extra=(np.array([-0.22, 1.0, -0.36]), np.array([0.22, 1.6, 0.0])), tris=2200, allowed=["Chest"], hides=False),
-            piece("milpack_pouch", "bedroll", pouch, ["Chest"], extra=(np.array([-0.12, 1.1, -0.34]), np.array([0.12, 1.3, -0.2])), tris=400, allowed=["Chest"], hides=False),
-            piece("milpack_straps", "milpack", lambda c: _pack_straps(c, 0.017), ["Chest"], tris=800, allowed=["Chest"])]
+    return [piece("milpack", "milpack", bag, ["Chest"], extra=(np.array([-0.22, 1.0, -0.36]), np.array([0.22, 1.6, 0.0])), tris=2200, allowed=["Chest", "Bag1", "Bag2"], hides=False),
+            piece("milpack_pouch", "bedroll", pouch, ["Chest"], extra=(np.array([-0.12, 1.1, -0.34]), np.array([0.12, 1.3, -0.2])), tris=400, allowed=["Chest", "Bag1", "Bag2"], hides=False),
+            piece("milpack_straps", "milpack", lambda c: _pack_straps(c, 0.017), ["Chest"], tris=800, allowed=["Chest"]),
+            piece("milpack_buckles", "gunmetal", _milpack_hw, ["Chest"], extra=(np.array([-0.22, 1.0, -0.36]), np.array([0.22, 1.6, 0.2])),
+                  res=FINE_H, tris=600, allowed=["Chest", "Bag1", "Bag2"], hides=False, smooth=1)]
+
+
+def _milpack_hw(c):
+    """Quick-release buckles on the pouch and lid, D-rings and sternum-strap clips on the shoulder straps."""
+    x, y, z = c.loc("Chest")
+    hw = [P("Chest", "box", c=(sx * 0.05, 0.215, -0.307), half=(0.014, 0.018, 0.005), round=0.003) for sx in (-1, 1)]
+    hw += [P("Chest", "box", c=(sx * 0.08, 0.43, -0.278), half=(0.015, 0.012, 0.005), round=0.003) for sx in (-1, 1)]
+    hw += [P("Chest", "box", c=(sx * 0.187, 0.16, -0.19), half=(0.005, 0.012, 0.016), round=0.002) for sx in (-1, 1)]
+    drings = [stamp(c, x - sx * 0.072, y - 0.21, 0.0175, 0.004, 0.009, ring=0.0024, keep=-z) for sx in (-1, 1)]
+    clips = [stamp(c, x - sx * 0.072, y - 0.29, 0.0175, 0.005, 0.014, 0.01, keep=-z, rnd=0.003) for sx in (-1, 1)]
+    return U(c.prims(hw), only(c, ["Chest"], U(*drings, *clips)))
 
 
 def toolbelt(h):
@@ -934,7 +1365,7 @@ def poncho(h):
         s = c.hum.h
         H_ = c.prims([P("Head", "ell", c=(0, 0.13 * s, -0.07), rad=(0.11, 0.1, 0.08), k=0.02)])
         return np.maximum(np.maximum(H_, -(H_ + 0.008)), y - 0.2 * s)
-    return [piece("poncho", "poncho", f, TORSO + ["Head"] + ARMS + ["ThighL", "ThighR"], tris=4200, allowed=FULL_BODY + ["Head"]),
+    return [piece("poncho", "poncho", f, TORSO + ["Head"] + ARMS + ["ThighL", "ThighR"], tris=4200, allowed=FULL_BODY + ["Head", "TailL1", "TailL2", "TailL3", "TailR1", "TailR2", "TailR3", "TailB1", "TailB2", "TailB3"]),
             piece("poncho_hood", "poncho", hood, ["Head"], extra=_hat_box(h, 0.16), tris=900, allowed=["Head"], hides=False)]
 
 
@@ -955,9 +1386,18 @@ def hazmat(h):
     def trim(c):
         return U(hems(c, ["ForearmL", "ForearmR"], 0.95, 0.02, 0.016), hems(c, ["ShinL", "ShinR"], 0.95, 0.02, 0.018),
                  only(c, ["Pelvis"], np.maximum(c.F - 0.022, np.abs(c.loc("Pelvis")[1] - 0.045 * c.hum.h) - 0.016)))
+    def booties(c):
+        # ClothingLibrary's hazmat covers the feet: taped overshoes with a thick sole
+        G = shell(c, 0.016, {"FootL": (0, 1), "FootR": (0, 1), "ShinL": (0.9, 1), "ShinR": (0.9, 1)})
+        for s_ in "LR":
+            x, y, z = c.loc("Foot" + s_)
+            G = np.maximum(G, np.where(c.label == PI["Foot" + s_], -0.05 - y, G))
+        return G
     return [piece("hazmat", "hazmat", f, FULL_BODY + ["Head"], tris=5200, allowed=FULL_BODY + ["Head"]),
             piece("hazmat_trim", "hazmat_trim", trim, ["ForearmL", "ForearmR", "ShinL", "ShinR", "Pelvis"], tris=1200,
-                  allowed=["ForearmL", "ForearmR", "ShinL", "ShinR", "Pelvis"])]
+                  allowed=["ForearmL", "ForearmR", "ShinL", "ShinR", "Pelvis"]),
+            piece("hazmat_booties", "hazmat_trim", booties, ["FootL", "FootR", "ShinL", "ShinR"], tris=1400,
+                  allowed=["FootL", "FootR", "ShinL", "ShinR"])]
 
 
 def dive_suit(h):
@@ -1004,8 +1444,8 @@ def air_tank(h):
         return c.prims([P("Chest", "cyl", c=(sx * 0.062, 0.45, -0.2), r=0.018, halfh=0.03, round=0.006) for sx in (-1, 1)]
                        + [P("Chest", "cap", a=(-0.062, 0.48, -0.2), b=(0.062, 0.48, -0.2), ra=0.01, rb=0.01)])
     ex = (np.array([-0.2, 0.95, -0.34]), np.array([0.2, 1.62, 0.0]))
-    return [piece("air_tank", "tank_yellow", tanks, ["Chest"], extra=ex, tris=1600, allowed=["Chest"], hides=False),
-            piece("air_tank_valves", "chrome", valves, ["Chest"], extra=ex, res=FINE_H, tris=600, allowed=["Chest"], hides=False, smooth=0),
+    return [piece("air_tank", "tank_yellow", tanks, ["Chest"], extra=ex, tris=1600, allowed=["Chest", "Bag1", "Bag2"], hides=False),
+            piece("air_tank_valves", "chrome", valves, ["Chest"], extra=ex, res=FINE_H, tris=600, allowed=["Chest", "Bag1", "Bag2"], hides=False, smooth=0),
             piece("air_tank_straps", "strap", lambda c: _pack_straps(c, 0.016), ["Chest"], tris=800, allowed=["Chest"])]
 
 
@@ -1150,8 +1590,8 @@ def gun_belt(h):
                         P("ThighR", "cyl", c=(0.077, -0.015, 0.02), r=0.012, halfh=0.012, round=0.003, rot=rot_z(90))])
     ex = (np.array([0.02, 0.55, -0.15]), np.array([0.32, 1.1, 0.18]))
     return [piece("gun_belt", "leather_brown", _belt_band, ["Pelvis"], tris=900, allowed=["Pelvis", "Chest"]),
-            piece("gun_belt_holster", "belt", holster, ["ThighR"], extra=ex, tris=600, allowed=["ThighR", "Pelvis"], hides=False, sym=False),
-            piece("gun_belt_pistol", "gunmetal", gun, ["ThighR"], extra=ex, res=FINE_H, tris=500, allowed=["ThighR", "Pelvis"], hides=False, sym=False, smooth=0)]
+            piece("gun_belt_holster", "belt", holster, ["ThighR"], extra=ex, tris=600, allowed=["ThighR", "Pelvis", "Holster1"], hides=False, sym=False),
+            piece("gun_belt_pistol", "gunmetal", gun, ["ThighR"], extra=ex, res=FINE_H, tris=500, allowed=["ThighR", "Pelvis", "Holster1"], hides=False, sym=False, smooth=0)]
 
 
 def fanny_bag(h):
@@ -1173,17 +1613,17 @@ def _pack(h, name, mat, w, hgt, d, y0=0.24, frame=False, roll=None):
                         P("Chest", "box", c=(0, y0 - hgt * 0.45, -0.12 - 2 * d), half=(w * 0.75, hgt * 0.35, 0.02), round=0.015, k=0.012),
                         P("Chest", "ell", c=(0, y0 + hgt, -0.12 - d), rad=(w, 0.035, d * 1.05), k=0.02)])
     ex = (np.array([-w - 0.08, 0.9, -0.2 - 2.6 * d]), np.array([w + 0.08, 1.75, 0.0]))
-    out = [piece(name, mat, bag, ["Chest"], extra=ex, tris=1800, allowed=["Chest"], hides=False),
+    out = [piece(name, mat, bag, ["Chest"], extra=ex, tris=1800, allowed=["Chest", "Bag1", "Bag2"], hides=False),
            piece(name + "_straps", "strap" if mat != "black_pack" else "pack_dark", lambda c: _pack_straps(c, 0.016), ["Chest"], tris=800, allowed=["Chest"])]
     if frame:
         def tubes(c):
             return c.prims([P("Chest", "cap", a=(sx * (w + 0.015), y0 - hgt - 0.05, -0.1), b=(sx * (w + 0.015), y0 + hgt + 0.12, -0.12), ra=0.011, rb=0.011) for sx in (-1, 1)]
                            + [P("Chest", "cap", a=(-(w + 0.015), y0 + hgt + 0.12, -0.12), b=(w + 0.015, y0 + hgt + 0.12, -0.12), ra=0.011, rb=0.011),
                               P("Chest", "cap", a=(-(w + 0.015), y0 - hgt - 0.05, -0.1), b=(w + 0.015, y0 - hgt - 0.05, -0.1), ra=0.011, rb=0.011)])
-        out.append(piece(name + "_frame", "chrome", tubes, ["Chest"], extra=(ex[0] - 0.05, ex[1] + 0.1), res=FINE_H, tris=900, allowed=["Chest"], hides=False, smooth=0))
+        out.append(piece(name + "_frame", "chrome", tubes, ["Chest"], extra=(ex[0] - 0.05, ex[1] + 0.1), res=FINE_H, tris=900, allowed=["Chest", "Bag1", "Bag2"], hides=False, smooth=0))
     if roll:
         out.append(piece(name + "_roll", roll, lambda c: c.prims([P("Chest", "cyl", c=(0, y0 + hgt + 0.06, -0.12 - d), r=0.045, halfh=w + 0.02, round=0.02, rot=rot_z(90))]),
-                         ["Chest"], extra=(ex[0], ex[1] + 0.12), tris=700, allowed=["Chest"], hides=False))
+                         ["Chest"], extra=(ex[0], ex[1] + 0.12), tris=700, allowed=["Chest", "Bag1", "Bag2"], hides=False))
     return out
 
 
@@ -1218,7 +1658,7 @@ def _shoulder_bag(h, name, mat, back=False, w=0.12, hh=0.09, d=0.04):
         return c.prims([P("Pelvis", "box", c=(0.17 * c.hum.w, 0.0, 0.02), half=(d, hh, w), round=0.025, rot=rot_y(-10), k=0.02)])
     ex = (np.array([-0.3, 0.75, -0.3]), np.array([0.32, 1.35, 0.25]))
     return [piece(name + "_strap", mat, strap, ["Chest"], tris=800, allowed=["Chest", "Pelvis"], sym=False),
-            piece(name, mat, bag, ["Chest"] if back else ["Pelvis"], extra=ex, tris=1200, allowed=["Chest", "Pelvis", "ThighR"], hides=False, sym=False)]
+            piece(name, mat, bag, ["Chest"] if back else ["Pelvis"], extra=ex, tris=1200, allowed=["Chest", "Pelvis", "ThighR", "StrapR", "Bag1", "Bag2"], hides=False, sym=False)]
 
 
 def shoulder_bag(h):
@@ -1233,7 +1673,7 @@ def canvas_satchel(h):
     def strap(c):
         xc, yc, zc = c.loc("Chest")
         path = np.abs(0.55 * (xc + 0.15) + 0.83 * (yc - 0.4)) - 0.018
-        return only(c, ["Chest", "Pelvis"], np.maximum(c.F - 0.018, path))
+        return only(c, ["Chest", "Pelvis"], np.maximum(c.F - 0.03, path))      # over a jacket (0.016-0.022), not through it
 
     def body(c):
         # Soft but structured field satchel at the left hip, with a gusseted body and a folded top flap.
@@ -1251,8 +1691,8 @@ def canvas_satchel(h):
         return only(c, ["Pelvis"], c.prims(items))
 
     return [piece("canvas_satchel_strap", "satchel_leather", strap, ["Chest", "Pelvis"], tris=900, allowed=["Chest", "Pelvis"], sym=False),
-            piece("canvas_satchel", "satchel_canvas", body, ["Pelvis"], extra=(np.array([-0.34, 0.73, -0.16]), np.array([0.05, 1.2, 0.17])), tris=1700, allowed=["Pelvis"], sym=False),
-            piece("canvas_satchel_fittings", "satchel_metal", fittings, ["Pelvis"], tris=450, allowed=["Pelvis"], sym=False)]
+            piece("canvas_satchel", "satchel_canvas", body, ["Pelvis"], extra=(np.array([-0.34, 0.73, -0.16]), np.array([0.05, 1.2, 0.17])), tris=1700, allowed=["Pelvis", "StrapL"], sym=False),
+            piece("canvas_satchel_fittings", "satchel_metal", fittings, ["Pelvis"], tris=450, allowed=["Pelvis", "StrapL"], sym=False)]
 
 
 def pros_cyber_arm(h):
@@ -1323,6 +1763,7 @@ GARMENTS.update({
     "duffel": (duffel, "Hand"), "suitcase": (suitcase, "Hand"),
     "work_jacket": (work_jacket, "Outer"), "patched_cargo": (patched_cargo, "Legs"),
     "pros_cyber_arm": (pros_cyber_arm, "Prosthetic"),
+    "coat": (coat, "Outer"),
 })
 HEADWEAR.update({"dive_helmet": 0.0, "moto_helmet": 0.0, "bee_veil": 0.232})
 

@@ -31,6 +31,7 @@ namespace MadMax.World
             if (All.Count >= MaxFires) return null;
             var terrain = DeformableTerrain.Instance;
             if (terrain && terrain.WaterDepth(pos.x, pos.z) > 0.2f && pos.y < terrain.WaterLevel(pos.x, pos.z) + 0.2f) return null;
+            MadMax.Game.Attention.Ping(pos, MadMax.Game.Attention.Kind.Fire, 25f);              // flames catching: heads turn
             var go = new GameObject("Fire");
             go.transform.position = pos;
             if (attach) go.transform.SetParent(attach, true);
@@ -49,9 +50,10 @@ namespace MadMax.World
             foreach (var f in All)
             {
                 if (!f || (f.transform.position - pos).sqrMagnitude > radius * radius) continue;
+                n++;
+                if (litres <= 0f) continue;                                                     // a probe: is any fire in reach?
                 f.fuel = Mathf.Max(0f, f.fuel - litres * 8f);
                 f.intensity *= 0.5f;
-                n++;
             }
             return n;
         }

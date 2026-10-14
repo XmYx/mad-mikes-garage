@@ -101,6 +101,7 @@ namespace MadMax.Building
             if (secondary) return;
             Tick();
             int h = Mathf.FloorToInt(honey), w = Mathf.FloorToInt(wax);
+            PieceMotion.Use(gameObject, "lid", 2.5f);                                              // lift the roof and look in
             if (h + w <= 0) { g.Toast("THE BEES NEED MORE TIME (FORAGE " + ForageName + ")"); return; }
             bool safe = Protected(g);
             int spilled = safe ? 0 : Mathf.CeilToInt(h * 0.3f);

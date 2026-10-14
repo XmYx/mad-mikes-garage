@@ -16,6 +16,7 @@ namespace MadMax.World
         /// <param name="crater">Crater depth at the centre (m); 0 = none.</param>
         public static void Blast(Vector3 at, float radius, float power, float crater, GameObject source, bool authority)
         {
+            MadMax.Game.Attention.Ping(at, MadMax.Game.Attention.Kind.Explosion, Mathf.Max(120f, radius * 40f));
             MadMax.Audio.Sfx.Play("explosion", at, 1f, Random.Range(0.85f, 1.05f), 250f);
             var fx = DebrisSystem.Instance;
             for (int i = 0; i < 18; i++) Fx.Smoke(at + Random.insideUnitSphere * radius * 0.4f, Random.insideUnitSphere * 3f + Vector3.up * 3f, 0.9f, new Color(0.3f, 0.28f, 0.26f, 0.8f), 3.5f);

@@ -69,7 +69,7 @@ namespace MadMax.World
         Color32 RoadColor(Chunk ch, int k, float hs, float gx, float gz, int gi, int gj)
         {
             byte kind = ch.pave[k];
-            float wet = Weather.Wetness;
+            float wet = ToneWet;
             Color32 col;
             switch (kind)
             {
@@ -102,7 +102,7 @@ namespace MadMax.World
                 }
             }
             if (kind != PavePothole && Puddle(gx, gz)) col = hs > 0.85f ? WaterHi : Color32.Lerp(Water, col, 0.3f);
-            float snow = Weather.SnowAt(gz);
+            float snow = ToneSnow(gz);
             if (snow > 0.3f) { col = Color32.Lerp(col, SnowCol, Mathf.Round(snow * 2f) / 3f); if (snow > 0.6f) cellClass = (byte)TerrainClass.Snow; }
             return col;
         }

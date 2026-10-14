@@ -7,9 +7,17 @@ namespace MadMax.Voxel
     {
         public static Color32 Hex(string h)
         {
+            if (h != null && (h.Length == 6 || h.Length == 8))                                  // pure C# (palettes are built on worker threads too)
+            {
+                int r = Byte(h, 0), g = Byte(h, 2), b = Byte(h, 4), a = h.Length == 8 ? Byte(h, 6) : 255;
+                if ((r | g | b | a) >= 0) return new Color32((byte)r, (byte)g, (byte)b, (byte)a);
+            }
             ColorUtility.TryParseHtmlString("#" + h, out var c);
             return c;
         }
+
+        static int Byte(string h, int i) { int hi = Nibble(h[i]), lo = Nibble(h[i + 1]); return hi < 0 || lo < 0 ? -1 : hi * 16 + lo; }
+        static int Nibble(char c) => c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
 
         static Color32[] R(params string[] hex) { var r = new Color32[hex.Length]; for (int i = 0; i < hex.Length; i++) r[i] = Hex(hex[i]); return r; }
 

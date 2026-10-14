@@ -237,7 +237,7 @@ namespace MadMax.Game
             st.Set(MadMax.Npc.NpcSave.Helped);
             var f = MadMax.Npc.Factions.Of(patient);
             if (f != MadMax.Npc.Faction.None) MadMax.Npc.Factions.Shift(f, 2);
-            MadMax.Npc.NpcRegistry.Reputation = Mathf.Min(100, MadMax.Npc.NpcRegistry.Reputation + 1);
+            if (f != MadMax.Npc.Faction.Settlers) MadMax.Npc.Factions.Shift(MadMax.Npc.Faction.Settlers, 1);
             Toast(medic.KnownName + " PATCHED UP " + patient.KnownName + ": THEY WON'T FORGET IT");
             NoteMedicWord(medic, patient);
             Journal.Add("CREW", medic.KnownName + " TREATED " + patient.KnownName + (f != MadMax.Npc.Faction.None ? " (" + MadMax.Npc.Factions.Names[(int)f] + ")" : ""));

@@ -149,7 +149,7 @@ namespace MadMax.Npc
             if (!over && alive == 0)
             {
                 over = true;
-                NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 2);
+                Factions.Shift(Faction.Settlers, 2);
                 if (target) PostHomestead(target.transform.position, true);
                 if (gang != null) { gang.save.losses = Mathf.Min(3, gang.save.losses + 1); game.Toast("RAID REPELLED: THE " + gang.Gang + " WILL BE THINNER ON THE ROAD"); }
                 else game.Toast("RAID REPELLED");

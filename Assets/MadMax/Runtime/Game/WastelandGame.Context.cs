@@ -43,7 +43,7 @@ namespace MadMax.Game
         public Component ContextHover { get; private set; }
         public bool ContextHoverFromCursor { get; private set; }
         /// <summary>Walking up to a context menu's target.</summary>
-        public bool ContextWalking => walkOption != null;
+        public bool ContextWalking => walkOption != null || UsePending;
         /// <summary>Dead and the respawn list is up.</summary>
         public bool AwaitingRespawn => dying && respawnOpenedAt >= 0f;
         /// <summary>The target of the last context menu.</summary>
@@ -90,6 +90,7 @@ namespace MadMax.Game
             if (Player.Ragdolled || (Build && Build.Active) || PlacingItem) return false;
             if (Player.Tool is FishingRodTool rod && rod.Busy) return false;
             if (rmb && (Player.Tool is RangedTool || Player.Tool is GrappleTool || Player.Tool is BinocularsTool)) return false;   // RMB aims / looks
+            if (rmb && GuardOwnsRmb) return false;                                              // RMB guards in a fight
             return true;
         }
 
@@ -352,6 +353,7 @@ namespace MadMax.Game
             ContextActions.Register("world.piece", (g, t, into) => g.PieceOptions(t, into));
             ContextActions.Register("world.item", (g, t, into) => g.WorldItemOptions(t, into));
             ContextActions.Register("world.ground", (g, t, into) => g.GroundOptions(t, into));
+            ContextActions.Register("body.rest", (g, t, into) => g.RestOptions(t, into));          // sit / lie down, go prone (WastelandGame.BodyRest)
             ContextActions.Register("pack.item", (g, t, into) => { if (t.item != null) into.AddRange(g.ItemUseOptions(t.item)); });
             ContextActions.Register("crew.radio", (g, t, into) => { if (t.item == null) g.CrewRadioOptions(into); });
         }
@@ -364,7 +366,8 @@ namespace MadMax.Game
             into.Add(Opt("RADIO THE CREW: COME TO ME", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.Come), false));
             into.Add(Opt("RADIO THE CREW: HOLD WHERE YOU ARE", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.Hold), false));
             bool car = MadMax.Npc.Companions.CarFor(this, null) != null;
-            into.Add(Opt("RADIO THE CREW: BRING A CAR", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.BringCar), false, car ? null : "NO SPARE CAR NEAR THEM"));
+            into.Add(Opt("RADIO THE CREW: BRING A CAR", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.BringCar), false, car ? null : "NO SPARE CAR NEAR THEM (OR NO KEY)"));
+            into.Add(Opt("RADIO THE CREW: DRIVE A CAR TO MY WAYPOINT", () => MadMax.Npc.Companions.RadioOrder(this, MadMax.Npc.Companions.Order.ToWaypoint), false, !HasWaypoint ? "NO WAYPOINT SET" : car || MadMax.Npc.Companions.AnyDriving() ? null : "NO SPARE CAR NEAR THEM (OR NO KEY)"));
         }
 
         static readonly Regex CtxToken = new Regex(@"\[([^\]]+)\]\s*([^\[]*)");
@@ -390,7 +393,8 @@ namespace MadMax.Game
                     if (k == "E" || k == "T")
                     {
                         bool sec = k == "T";
-                        into.Add(Opt(label, () => { use.Use(this, sec); if (comp && comp.TryGetComponent<Placeable>(out var pl)) pl.Dirty(); }, true, null, sec ? Controls.Act.Second : Controls.Act.Use));
+                        var prm = pr;
+                        into.Add(Opt(label, () => UseInteractable(comp, use, sec, prm), true, null, sec ? Controls.Act.Second : Controls.Act.Use));   // with the body (WastelandGame.UseAnim)
                         any = true;
                     }
                     else
@@ -642,6 +646,7 @@ namespace MadMax.Game
             if (n >= w.count) { int c = w.count; return PickUpItem(w) ? c : 0; }
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient && w.netId != 0) return 0;                                    // the host hands out whole stacks only
+            CanTaken(w, n);
             using (Inventory.Source("PICKED UP")) GiveToPack(w.key, n, w.quality);
             w.count -= n; w.Refresh();
             MadMax.Audio.Sfx.Play("pickup", w.transform.position, 0.5f, 1.1f, 20f);

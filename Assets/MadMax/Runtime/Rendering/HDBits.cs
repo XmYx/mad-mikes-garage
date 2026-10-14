@@ -115,11 +115,11 @@ namespace MadMax.Rendering
             string key = "bulb" + voxel.GetEntityId();
             if (Cached(key, out var m)) return m;
             var bd = voxel.bounds;
-            var cols = voxel.colors32;
+            var cols = voxel.isReadable ? voxel.colors32 : System.Array.Empty<Color32>();   // imported meshes without Read/Write
             long rr = 0, gg = 0, bb = 0;
             foreach (var c in cols) { rr += c.r; gg += c.g; bb += c.b; }
             int n = Mathf.Max(1, cols.Length);
-            var col = new Color32((byte)(rr / n), (byte)(gg / n), (byte)(bb / n), 255);
+            var col = cols.Length > 0 ? new Color32((byte)(rr / n), (byte)(gg / n), (byte)(bb / n), 255) : Pal.LightY;
             var b = new HDShapes();
             b.Ellipsoid(bd.center, bd.extents * 1.02f, col, 12, 8);
             for (int i = 0; i < b.c.Count; i++) b.c[i] = col;                                         // even glow, no underside shade

@@ -112,7 +112,7 @@ namespace MadMax.Game.Acceptance
                 yield return new WaitForSeconds(1.2f);
                 HDAuditScenarios.Audit(c, "cabin_" + cn, car.transform.position, 6f);
                 var dash = car.GetComponent<VehicleDashboard>();
-                c.Note(cn + " dashboard: " + (dash ? (dash.IsHD ? "HD geometry" : "pixel canvas") + ", " + dash.offsetFromEye.magnitude.ToString("0.00") + " m from the eye" : "none"));
+                c.Note(cn + " dashboard: " + (dash ? (dash.StyleId ?? "no") + " cluster, " + (dash.IsHD ? "HDLit" : "PixelVoxel") + ", " + dash.offsetFromEye.magnitude.ToString("0.00") + " m from the eye" : "none"));
                 c.Screenshot("hd_audit_cabin_" + cn);
                 yield return null;
                 g.Exit();

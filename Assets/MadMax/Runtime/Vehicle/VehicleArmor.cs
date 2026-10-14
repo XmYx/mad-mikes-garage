@@ -125,13 +125,28 @@ namespace MadMax.Vehicles
             return share;
         }
 
+        /// <summary>Fire around the vehicle chars every fitted plate (rubber composite fastest, steel slowest); burnt-through
+        /// plates fall off like crushed ones.</summary>
+        public void Scorch(float amount)
+        {
+            if (!Any || amount <= 0f) return;
+            for (int i = 0; i < Zones; i++)
+            {
+                if (mat[i] == ArmorMat.None) continue;
+                var st = Mats[(int)mat[i]];
+                condition[i] -= amount * st.fire * st.wear * 0.15f;
+                if (condition[i] <= 0f) TearOff((ArmorZone)i);
+            }
+        }
+
         void TearOff(ArmorZone z)
         {
             int i = (int)z;
             var fx = MadMax.World.DebrisSystem.Instance;
-            if (fx && shown[i] && shown[i].TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh)
+            if (fx && shown[i] && shown[i].TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable)
             {
                 var v = mf.sharedMesh.vertices; var c = mf.sharedMesh.colors32;
+                if (c.Length < v.Length) c = new Color32[v.Length];
                 var chunks = new List<MadMax.World.DebrisSystem.Chunk>();
                 for (int k = 0; k < 40 && v.Length > 0; k++) { int r = Random.Range(0, v.Length); chunks.Add(new MadMax.World.DebrisSystem.Chunk { position = mf.transform.TransformPoint(v[r]), color = c[r] }); }
                 fx.Emit(chunks, 0.07f, Vector3.up * 2f);

@@ -127,8 +127,7 @@ namespace MadMax.Npc
             if (job != null)
             {
                 job.completed = true;
-                Contracts.Pay(g, job);
-                Factions.Shift(Faction.FuelGuild, 6);
+                Contracts.Pay(g, job);                                                          // pays the Guild standing too
             }
             g.Toast("THE GUILD RIG MADE IT");
             Cleanup();

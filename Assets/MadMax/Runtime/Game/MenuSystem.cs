@@ -57,9 +57,9 @@ namespace MadMax.Game
         readonly List<Item> items = new List<Item>();
         static readonly string[] SettingsTabs = { "GAMEPLAY", "MOUSE & CAMERA", "GRAPHICS", "AUDIO", "INTERFACE", "EFFECTS" };
         bool slotsSave;
-        Vector2 mapCenter; float mapMpp = 4f; Vector2Int mapMouse; Vector3 mapUnderMouse; string mapHover;
+        Vector2 mapCenter; float mapMpp = 4f, mapMppTarget = 4f; Vector2Int mapMouse; Vector3 mapUnderMouse; string mapHover;
         bool mapDrag; Vector2 mapDragFrom; float mapDragMoved;
-        static readonly float[] MapZooms = { 1f, 2f, 4f, 8f, 16f };
+        const float MapMppMin = 0.5f, MapMppMax = 24f;
         void OpenSlots(bool save) { slotsSave = save; var from = Current; Open(Page.Slots); settingsFrom = from; }
         int settingsTab = -1;
         Controls.Act? rebinding;
@@ -89,6 +89,7 @@ namespace MadMax.Game
             {
                 var me = game.Current ? game.Current.transform.position : game.Player.transform.position;
                 mapCenter = new Vector2(me.x, me.z);
+                mapMppTarget = mapMpp;
             }
             Current = p;
             cursor = 0; scroll = 0;
@@ -338,6 +339,7 @@ namespace MadMax.Game
                         Opt("FLIGHT MODEL", () => s.simFlight ? "SIMULATION" : "ASSISTED", d => s.simFlight = !s.simFlight);
                         Opt("FLIGHT PITCH", () => s.flightStick ? "STICK (UP DIVES)" : "UP CLIMBS", d => s.flightStick = !s.flightStick);
                         Opt("SIDECAR HANDLING", () => s.vintageSidecar ? "VINTAGE" : "ASSISTED", d => s.vintageSidecar = !s.vintageSidecar);
+                        Opt("STEERING ASSIST", () => s.steerAssist ? "ON" : "OFF", d => s.steerAssist = !s.steerAssist);
                         Opt("BLOOD", () => s.blood ? "ON" : "OFF", d => s.blood = !s.blood);
                         Opt("GET IN / OUT ANIMATION", () => s.boardingAnimation ? "ON" : "OFF", d => s.boardingAnimation = !s.boardingAnimation);
                         Opt("WORK ANIMATION", () => s.workAnimation ? "ON" : "OFF", d => s.workAnimation = !s.workAnimation);
@@ -352,6 +354,8 @@ namespace MadMax.Game
                         Opt("FIRST PERSON FOV", () => Mathf.RoundToInt(s.fovFirst) + " DEG", d => s.fovFirst = Mathf.Clamp(s.fovFirst + d * 5f, 40f, 95f));
                         Opt("THIRD PERSON FOV", () => Mathf.RoundToInt(s.fovThird) + " DEG", d => s.fovThird = Mathf.Clamp(s.fovThird + d * 5f, 35f, 90f));
                         Opt("CAMERA SHAKE", () => s.cameraShake ? "ON" : "OFF", d => s.cameraShake = !s.cameraShake);
+                        Opt("OVERHEAD FOLLOWS HEADING", () => s.headingFollow ? "ON" : "OFF", d => s.headingFollow = !s.headingFollow);
+                        Opt("OVERHEAD HEIGHT", () => Mathf.RoundToInt(s.overheadHeight * 100) + "%", d => s.overheadHeight = Mathf.Clamp(Mathf.Round((s.overheadHeight + d * 0.1f) * 10f) / 10f, 0.6f, 1.6f));
                         Opt("LINE OF SIGHT", () => s.lineOfSight ? "ON" : "OFF", d => s.lineOfSight = !s.lineOfSight);
                     }
                     else if (settingsTab == 2)
@@ -400,6 +404,7 @@ namespace MadMax.Game
                         Opt("HUD SIZE", () => s.hudScale <= 0 ? "WITH PIXEL SIZE" : GameSettings.PixelHeights[s.hudScale - 1] + " LINES", d => s.hudScale = Mathf.Clamp(s.hudScale - d, 0, GameSettings.PixelHeights.Length));
                         Opt("HD HUD", () => s.hdHud ? "ON (SHARP ICONS AND TEXT)" : "OFF (PIXEL ART)", d => s.hdHud = !s.hdHud);
                         Opt("HD MAP", () => s.hdMap ? "ON (SCREEN DETAIL)" : "OFF (PIXEL ART)", d => s.hdMap = !s.hdMap);
+                        Opt("MINIMAP", () => s.minimapNorthUp ? "NORTH UP" : "HEADING UP (TURNS WITH THE VIEW)", d => s.minimapNorthUp = !s.minimapNorthUp);
                         Opt("HUD FONT", () => s.hudFont == 1 ? "PIXEL" : s.hudFont == 2 ? "HD" : "AUTO (HD WITH FULL RES OR HD HUD)", d => s.hudFont = (s.hudFont + d + 3) % 3);
                         Opt("COLOUR-BLIND HUD", () => s.colourBlind ? "ON (BLUE / ORANGE)" : "OFF", d => s.colourBlind = !s.colourBlind);
                         Opt("HINTS", () => s.hints ? "ON" : "OFF", d => s.hints = !s.hints);
@@ -411,9 +416,16 @@ namespace MadMax.Game
                 {
                     // the base at a glance, live jobs (ENTER: waypoint to where they lead), then the notebook
                     var ledger = new List<string>();
-                    game.HomeLedger(ledger);
+                    var ledgerActs = new List<WastelandGame.LedgerAction>();
+                    game.HomeLedger(ledger, ledgerActs);
                     items.Add(new Item { label = "- HOME -", enabled = () => false });
-                    foreach (var l in ledger) { var ll = l; items.Add(new Item { label = ll.Length > 66 ? ll.Substring(0, 64) + ".." : ll, hint = ll.Length > 66 ? ll : null, enabled = () => false }); }
+                    for (int li = 0; li < ledger.Count; li++)
+                    {
+                        var ll = ledger[li]; var la = li < ledgerActs.Count ? ledgerActs[li] : default;   // HOME lines with actions (waypoint + details)
+                        string lab = ll.Length > 66 ? ll.Substring(0, 64) + ".." : ll;
+                        if (!la.on) items.Add(new Item { label = lab, hint = ll.Length > 66 ? ll : null, enabled = () => false });
+                        else items.Add(new Item { label = lab, hint = la.hint ?? ll, confirm = () => { if (la.what != null) { game.SetWaypoint(la.at, la.what); Close(); } else game.Toast(la.hint); } });
+                    }
                     items.Add(new Item { label = "- JOBS -", enabled = () => false });
                     int jobsFrom = items.Count;
                     var jp = new List<WastelandGame.Pin>();
@@ -446,6 +458,10 @@ namespace MadMax.Game
                         var pp = pin;
                         items.Add(new Item { label = pp.label, confirm = () => { game.SetWaypoint(pp.pos, "WORKSHOP"); Close(); }, hint = "ENTER: SET A WAYPOINT HOME" });
                     }
+                    var cities = new List<WastelandGame.CityLine>();                                  // timetables (WastelandGame.CityTimetable)
+                    game.CityTimetable(cities);
+                    if (cities.Count > 0) items.Add(new Item { label = "- ROLLING CITIES -", enabled = () => false });
+                    foreach (var cl in cities) { var cc = cl; items.Add(cc.dock == Vector3.zero ? new Item { label = cc.label, value = () => cc.when, enabled = () => false } : new Item { label = cc.label, value = () => cc.when, confirm = () => { game.SetWaypoint(cc.dock, cc.label); Close(); }, hint = "ENTER: SET A WAYPOINT AT THE DOCK" }); }
                     foreach (var e in Journal.Entries)
                     {
                         var en = e;
@@ -474,7 +490,7 @@ namespace MadMax.Game
                     for (int i = 0; i < Controls.Count; i++)
                     {
                         var act = (Controls.Act)i;
-                        if (act >= Controls.Act.DevWeather && !LaunchOptions.Dev) continue;
+                        if (Controls.IsDev(act) && !LaunchOptions.Dev) continue;                  // tool keys, context, loot, craft come after the dev keys
                         items.Add(new Item
                         {
                             label = Controls.Labels[i],
@@ -1177,18 +1193,33 @@ namespace MadMax.Game
             }
             if (pad != null) pan += pad.leftStick.ReadValue();
             mapCenter += pan * mapMpp * 120f * dt;
-            int zi = System.Array.IndexOf(MapZooms, mapMpp); if (zi < 0) zi = 2;
-            int dz = 0;
-            if (kb != null && (kb.equalsKey.wasPressedThisFrame || kb.numpadPlusKey.wasPressedThisFrame)) dz = -1;
-            if (kb != null && (kb.minusKey.wasPressedThisFrame || kb.numpadMinusKey.wasPressedThisFrame)) dz = 1;
-            if (mouse != null) { float wheel = mouse.scroll.ReadValue().y; if (wheel > 0.01f) dz = -1; else if (wheel < -0.01f) dz = 1; }
-            if (pad != null) { if (pad.rightShoulder.wasPressedThisFrame) dz = -1; if (pad.leftShoulder.wasPressedThisFrame) dz = 1; }
-            if (dz != 0) mapMpp = MapZooms[Mathf.Clamp(zi + dz, 0, MapZooms.Length - 1)];
+            // smooth zoom: wheel notches and +/- taps step the target, held keys / shoulders zoom steadily; the point under
+            // the mouse (or the centre) stays put while the scale eases toward the target
+            float zoom = 0f;
+            if (kb != null && (kb.equalsKey.wasPressedThisFrame || kb.numpadPlusKey.wasPressedThisFrame)) zoom -= 1f;
+            if (kb != null && (kb.minusKey.wasPressedThisFrame || kb.numpadMinusKey.wasPressedThisFrame)) zoom += 1f;
+            if (mouse != null) { float wheel = mouse.scroll.ReadValue().y; if (wheel > 0.01f) zoom -= 1f; else if (wheel < -0.01f) zoom += 1f; }
+            if (pad != null) zoom += ((pad.leftShoulder.isPressed ? 1f : 0f) - (pad.rightShoulder.isPressed ? 1f : 0f)) * 2.5f * dt;
+            if (kb != null) zoom += ((kb.minusKey.isPressed || kb.numpadMinusKey.isPressed ? 1f : 0f) - (kb.equalsKey.isPressed || kb.numpadPlusKey.isPressed ? 1f : 0f)) * 1.5f * dt;
+            if (zoom != 0f) mapMppTarget = Mathf.Clamp(mapMppTarget * Mathf.Pow(1.4f, zoom), MapMppMin, MapMppMax);
             var canvas = PixelHud.Canvas;
             if (mouse != null && canvas != null)
             {
                 var m = mouse.position.ReadValue();
                 mapMouse = new Vector2Int(Mathf.FloorToInt(m.x / Screen.width * canvas.w), Mathf.FloorToInt((1f - m.y / Screen.height) * canvas.h));
+            }
+            if (Mathf.Abs(mapMpp - mapMppTarget) > 1e-4f && canvas != null)
+            {
+                int fx = 6, fy = 16, fw = canvas.w - 12, fh = canvas.h - 32;                       // the map frame (DrawMap)
+                var anchor = mouse != null && mapMouse.x >= fx && mapMouse.y >= fy && mapMouse.x < fx + fw && mapMouse.y < fy + fh
+                    ? new Vector2(mapMouse.x - (fx + fw / 2), mapMouse.y - (fy + fh / 2)) : Vector2.zero;
+                var world = mapCenter + new Vector2(anchor.x, -anchor.y) * mapMpp;
+                float next = Mathf.Abs(mapMpp - mapMppTarget) < 0.002f ? mapMppTarget : Mathf.Exp(Mathf.Lerp(Mathf.Log(mapMpp), Mathf.Log(mapMppTarget), 1f - Mathf.Exp(-12f * dt)));
+                mapMpp = next;
+                mapCenter = world - new Vector2(anchor.x, -anchor.y) * mapMpp;
+            }
+            if (mouse != null && canvas != null)
+            {
                 if (mouse.leftButton.wasPressedThisFrame) { mapDrag = true; mapDragFrom = mapMouse; mapDragMoved = 0f; }
                 if (mapDrag && mouse.leftButton.isPressed)
                 {
@@ -1199,13 +1230,22 @@ namespace MadMax.Game
                 if (mapDrag && mouse.leftButton.wasReleasedThisFrame)
                 {
                     mapDrag = false;
-                    if (mapDragMoved < 3f) game.SetWaypoint(mapUnderMouse, mapHover);                  // a click, not a drag
+                    if (mapDragMoved < 3f) MapClick(mapUnderMouse);                                  // a click, not a drag
                 }
                 if (mouse.rightButton.wasPressedThisFrame) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); }
             }
-            if (kb != null && kb.xKey.wasPressedThisFrame) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); }
-            if ((kb != null && kb.enterKey.wasPressedThisFrame) || (pad != null && pad.buttonSouth.wasPressedThisFrame)) game.SetWaypoint(new Vector3(mapCenter.x, 0f, mapCenter.y), mapHover);
+            if ((kb != null && kb.xKey.wasPressedThisFrame) || (pad != null && pad.buttonWest.wasPressedThisFrame)) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); }
+            if ((kb != null && kb.enterKey.wasPressedThisFrame) || (pad != null && pad.buttonSouth.wasPressedThisFrame)) MapClick(new Vector3(mapCenter.x, 0f, mapCenter.y));
             if (kb != null && kb.cKey.wasPressedThisFrame && game.Player) { var me = game.Current ? game.Current.transform.position : game.Player.transform.position; mapCenter = new Vector2(me.x, me.z); }
+        }
+
+        /// <summary>A click (or ENTER / pad A at the centre cross) on the map: on the waypoint it clears it, elsewhere
+        /// it sets it there.</summary>
+        void MapClick(Vector3 at)
+        {
+            var d = new Vector2(at.x - game.Waypoint.x, at.z - game.Waypoint.z);
+            if (game.HasWaypoint && d.magnitude < 6f * mapMpp) { game.ClearWaypoint(); game.Toast("WAYPOINT CLEARED"); return; }
+            game.SetWaypoint(at, mapHover);
         }
 
         void DrawMap(PixelCanvas c)
@@ -1221,11 +1261,12 @@ namespace MadMax.Game
                 c.Frame(x - 1, y - 1, w + 2, h + 2, Dim);
                 // centre cross (pad / keyboard waypoint)
                 c.Set(focus.x, focus.y, Dim); c.Set(focus.x - 2, focus.y, Dim); c.Set(focus.x + 2, focus.y, Dim); c.Set(focus.x, focus.y - 2, Dim); c.Set(focus.x, focus.y + 2, Dim);
+                hud.DrawMapLegend(c, x + 3, y + h - 57);
                 if (mapHover != null) { int tw = PixelCanvas.TextWidth(mapHover) + 6; int tx = Mathf.Clamp(under.x + 6, 2, c.w - tw - 2); c.Panel(tx, under.y - 12, tw, 9); c.Text(tx + 3, under.y - 10, mapHover, Amber); }
             }
-            string title = "MAP  " + Mathf.RoundToInt(mapMpp * 100) / 100f + " M/PX" + (game.HasWaypoint ? "   WAYPOINT " + Mathf.RoundToInt(Vector3.Distance(game.Waypoint, game.Current ? game.Current.transform.position : game.Player.transform.position)) + " M" : "");
+            string title = "MAP  " + mapMpp.ToString(mapMpp < 10f ? "0.0" : "0", System.Globalization.CultureInfo.InvariantCulture) + " M/PX" + (game.HasWaypoint ? "   WAYPOINT " + PixelHud.FormatDistance(game.WaypointDistance) : "");
             c.Text(x, 5, title, Amber);
-            string help = "DRAG/WASD PAN  WHEEL ZOOM  CLICK WAYPOINT  RMB/X CLEAR  C CENTRE  TAB JOURNAL  ESC BACK";
+            string help = "DRAG/WASD PAN  WHEEL ZOOM  CLICK SET/CLEAR WAYPOINT  RMB/X CLEAR  C CENTRE  TAB JOURNAL  ESC BACK";
             c.Text((c.w - PixelCanvas.TextWidth(help)) / 2, c.h - 11, help, Dim);
             c.Text(c.w - 118, 5, "B BUNKER T TUNNEL A AIRFIELD", new Color32(150, 200, 255, 255));
         }

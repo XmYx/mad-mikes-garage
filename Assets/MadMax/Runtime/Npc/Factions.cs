@@ -106,6 +106,9 @@ namespace MadMax.Npc
             return Faction.Settlers;
         }
 
+        /// <summary>How far either side of a gang's road counts as its ground (m).</summary>
+        public const float RoadTerritory = 120f;
+
         /// <summary>Whose ground this is: a settlement's faction, a raider gang's road, or no one's.</summary>
         public static Faction TerritoryAt(Vector3 p)
         {
@@ -115,8 +118,8 @@ namespace MadMax.Npc
             if (st != null) return OfSettlement(st);
             var d = NpcDirector.Instance;
             if (!d) return Faction.None;
-            var gang = d.NearestRaiders(p, out float dist);
-            return gang != null && dist < 350f ? OfGang(gang.Gang) : Faction.None;
+            var gang = d.RaidersByRoad(p);                                                      // the gang that rides the road here
+            return gang != null && gang.RoadDistance(p) < RoadTerritory ? OfGang(gang.Gang) : Faction.None;
         }
 
         /// <summary>Which faction a person answers to.</summary>
@@ -158,6 +161,13 @@ namespace MadMax.Npc
             MadMax.Audio.Sfx.Play2D("cash", 0.7f);
         }
 
+        /// <summary>What a faction guard carries (also when a saved crew is rebuilt).</summary>
+        public static void GuardKit(NpcProfile p)
+        {
+            p.tool = "tool_pipe_shotgun";
+            if (!p.outfit.Contains("vest_scrap")) p.outfit.Add("vest_scrap");
+        }
+
         /// <summary>Allied settlers, Guild or Remnants send a guard to ride with you (a companion, if there is room).</summary>
         static void Guard(WastelandGame g, Faction f)
         {
@@ -168,8 +178,7 @@ namespace MadMax.Npc
             var pos = g.Player.transform.position - g.Player.transform.forward * 3f;
             if (t) pos.y = t.Height(pos.x, pos.z) + 0.1f;
             var p = NpcProfile.Make("guard:" + (int)f, NpcRole.Wanderer, 7919 * ((int)f + 3));
-            p.tool = "tool_pipe_shotgun";
-            p.outfit.Add("vest_scrap");
+            GuardKit(p);
             var n = Npc.Spawn(p, pos, g.Player.transform.eulerAngles.y, null, g.propMaterial);
             Companions.Recruit(g, n);
             g.Toast("THE " + Names[(int)f] + " SEND " + p.Name + " TO RIDE WITH YOU");

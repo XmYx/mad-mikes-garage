@@ -65,7 +65,7 @@ namespace MadMax.Building
                     for (int i = 0; i < 8; i++)
                     {
                         var q = transform.position + Quaternion.Euler(0, i * 45f, 0) * Vector3.forward * 2.2f;
-                        if (t.WaterDepth(q.x, q.z) > 0.05f) { Irrigate(1f); break; }
+                        if (t.WaterDepthNoLoad(q.x, q.z) > 0.05f) { Irrigate(1f); break; }   // a bed far from the player: no chunk made for it
                     }
             }
             var def = FoodLibrary.Crop(crop);

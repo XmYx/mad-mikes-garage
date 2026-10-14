@@ -25,6 +25,7 @@ namespace MadMax.Npc
         static readonly Dictionary<int, sbyte> open = new Dictionary<int, sbyte>();   // 1 free, 0 blocked
         static readonly List<(float f, int k)> heap = new List<(float, int)>();
         static readonly Dictionary<int, float> ground = new Dictionary<int, float>();
+        static readonly List<Vector3> cellScratch = new List<Vector3>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { frame = used = 0; }
@@ -119,7 +120,7 @@ namespace MadMax.Npc
             }
             if (bestK == start) return false;
             // walk back, then keep only the corners
-            var cells = new List<Vector3>();
+            var cells = cellScratch; cells.Clear();
             for (int k = bestK; k != start; k = came[k]) { var c = Centre(k % w, k / w); c.y = Ground(k, k % w, k / w); cells.Add(c); }
             cells.Reverse();
             var prev = from;

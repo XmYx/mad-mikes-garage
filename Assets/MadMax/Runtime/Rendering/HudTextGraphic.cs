@@ -37,16 +37,19 @@ namespace MadMax.Rendering
             if (source == null || source.runs == null || !Atlas) return;
             var r = rectTransform.rect;
             float sx = r.width / source.w, sy = r.height / source.h;
-            foreach (var run in source.runs)
+            for (int ri = 0; ri < source.runs.Count; ri++)
             {
-                float x = run.x;
+                var run = source.runs[ri];
+                float x = run.x, y = run.y, sc = run.scale;
+                if (run.fs > 0f) { x = run.fx; y = run.fy; sc = run.fs; }                          // HD HUD: fractional place and size
                 foreach (char ch in run.text)
                 {
                     int gi = ch < 128 ? index[ch] : -1;
                     if (gi >= 0 && ch != ' ')
                     {
+                        if (vh.currentVertCount > 64000) return;
                         // the glyph box: 3.6 x 5 logical pixels around the 3x5 cell (top-left origin, y down)
-                        float gx0 = x - 0.3f * run.scale, gx1 = gx0 + 3.6f * run.scale, gy0 = run.y, gy1 = run.y + 5f * run.scale;
+                        float gx0 = x - 0.3f * sc, gx1 = gx0 + 3.6f * sc, gy0 = y, gy1 = y + 5f * sc;
                         float u0 = (gi % PerRow) * CellW / AtlasW, u1 = u0 + CellW / AtlasW;
                         float v1 = 1f - (gi / PerRow) * CellH / AtlasH, v0 = v1 - CellH / AtlasH;
                         int b = vh.currentVertCount;
@@ -57,7 +60,7 @@ namespace MadMax.Rendering
                         vh.AddVert(P(gx1, gy1), run.color, new Vector4(u1, v0));
                         vh.AddTriangle(b, b + 1, b + 2); vh.AddTriangle(b, b + 2, b + 3);
                     }
-                    x += 4 * run.scale;
+                    x += 4 * sc;
                 }
             }
         }

@@ -10,13 +10,14 @@ namespace MadMax.Game
 {
     /// <summary>Save / load / new game. Loading reloads the scene and rebuilds the world from the save
     /// (vehicles with their parts and fluids, loose parts, built pieces, destroyed props, inventory, player).
-    /// Not saved: terrain ruts, dents, crate positions.</summary>
+    /// Ruts, dents, moved crates, the storm and fires are saved too (see CaptureSave).</summary>
     public partial class WastelandGame
     {
         public void NewGame()
         {
             if (!played) { played = true; ScreenFader.FadeThrough(() => Menus.Close(), 0.3f); return; }     // fresh world already running behind the menu
             SaveSystem.SkipMenu = true;
+            SaveSystem.SlotOwned = false;
             Reload();
         }
 
@@ -28,6 +29,7 @@ namespace MadMax.Game
             SaveSystem.PendingLook = look.Clone();
             SaveSystem.PendingHost = host;
             SaveSystem.SkipMenu = true;
+            SaveSystem.SlotOwned = false;                                                   // a new run owns no slot until it saves
             Reload();
         }
 
@@ -41,6 +43,7 @@ namespace MadMax.Game
             var data = SaveSystem.Read(slot);
             if (data == null) { Toast("NO SAVE FOUND"); return; }
             SaveSystem.Slot = slot == 0 ? SaveSystem.Slot : slot;                       // an autosave keeps saving to the slot it came from
+            if (slot > 0) SaveSystem.SlotOwned = true;
             SaveSystem.Pending = data;
             Reload();
         }
@@ -58,7 +61,7 @@ namespace MadMax.Game
         {
             if (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient) { Toast("ONLY THE HOST CAN SAVE"); return; }
             SaveSystem.Write(CaptureSave(), slot, SaveSummary());
-            if (slot > 0) SaveSystem.Slot = slot;
+            if (slot > 0) { SaveSystem.Slot = slot; SaveSystem.SlotOwned = true; }
             autosaveAt = Time.unscaledTime + Mathf.Max(1, GameSettings.Current.autosaveMinutes) * 60f;
             Toast(slot == 0 ? "AUTOSAVED" : "GAME SAVED (SLOT " + slot + ")");
         }
@@ -95,6 +98,7 @@ namespace MadMax.Game
         /// <summary>Snapshot of the world (also the join payload for network clients).</summary>
         public SaveData CaptureSave(bool forNetwork = false)
         {
+            FinishWreckSpawns();                                                                 // a streamed wreck mid-build is saved whole
             var d = new SaveData { seed = seed, raining = Weather.Raining, wetness = Weather.Wetness, snow = Weather.Snow, temperature = Weather.BaseTemperature, lakeRise = Weather.LakeRise, hours = DayNight.Hours, day = DayNight.Day, searched = new List<string>(Lootable.Searched), hasSpawn = spawnPoint.HasValue, spawn = spawnPoint ?? Vector3.zero, resources = Inventory.ResourceArray, rules = Rules, stats = Stats };
             if (cameraRig) d.cameraMode = (int)cameraRig.mode;
             foreach (var kv in Inventory.Items) if (kv.Value > 0) d.items.Add(new ItemSave { id = kv.Key, count = kv.Value });
@@ -129,7 +133,7 @@ namespace MadMax.Game
             if (MadMax.Npc.NpcDirector.Instance) d.convoys = MadMax.Npc.NpcDirector.Instance.SaveConvoys();
 
             vehicles.RemoveAll(v => !v);
-            var saved = vehicles.FindAll(v => !v.aiDriven);            // NPC-driven vehicles come back with their convoy
+            var saved = vehicles.FindAll(KeptInSave);                  // NPC-driven vehicles come back with their convoy (fleet cars a companion drives stay)
             foreach (var v in saved)
             {
                 var vs = new VehicleSave
@@ -153,6 +157,7 @@ namespace MadMax.Game
                 if (v.TryGetComponent<VehicleBurn>(out var vb)) vs.burn = vb.SaveState();
                 if (v.TryGetComponent<VehicleIgnition>(out var vi)) vs.ignition = vi.SaveState();
                 if (v.TryGetComponent<VehicleStorage>(out var vst)) vs.storage = vst.SaveState();
+                vs.rig = RigVehicle.SaveLayout(v);                                                  // built moving base
                 foreach (var dm in v.GetComponentsInChildren<DeformableMesh>())
                 {
                     var st = dm.SaveState();
@@ -167,6 +172,7 @@ namespace MadMax.Game
                     d.loose.Add(new LooseSave { part = part.partId, state = part.SaveState(), q = part.quality + 1, position = part.transform.position, rotation = part.transform.rotation, damage = part.damage, netId = part.netId });
             foreach (var p in FindObjectsByType<Placeable>(FindObjectsSortMode.None))
             {
+                if (RigVehicle.IsLayoutPiece(p)) continue;                                          // in its rig's layout (VehicleSave.rig)
                 var chassis = p.GetComponentInParent<VehicleChassis>();
                 int vi = chassis ? saved.IndexOf(chassis.GetComponent<VehicleDriver>()) : -1;
                 var rc = vi < 0 ? p.GetComponentInParent<CityHost>() : null;
@@ -251,15 +257,31 @@ namespace MadMax.Game
             return go.GetComponent<VehiclePart>();
         }
 
+        /// <summary>Vehicles written to the save: everything but NPC-driven ones, except fleet cars (a companion at the wheel).</summary>
+        bool KeptInSave(VehicleDriver v) => v && (!v.aiDriven || fleet.Contains(v));
+
+        /// <summary>Where a fleet car lands in <see cref="Fleet"/> after the save is loaded (fleet order = save order); −1 = not saved.</summary>
+        public int SavedFleetIndex(VehicleDriver v)
+        {
+            int i = 0;
+            foreach (var x in vehicles)
+            {
+                if (!KeptInSave(x) || !fleet.Contains(x)) continue;
+                if (x == v) return i;
+                i++;
+            }
+            return -1;
+        }
+
         void RestoreVehicles(SaveData d)
         {
             var spawned = new List<VehicleDriver>();
             foreach (var vs in d.vehicles)
             {
                 var prefab = PrefabFor(vs.design);
-                if (!prefab) { spawned.Add(null); continue; }
-                var go = Instantiate(prefab, vs.position, vs.rotation);
-                if (vs.wreck) go.name = "Wreck " + prefab.name;
+                var go = prefab ? Instantiate(prefab, vs.position, vs.rotation) : RigVehicle.Restore(vs.rig, vs.position, vs.rotation, propMaterial);   // or a built moving base
+                if (!go) { spawned.Add(null); continue; }
+                if (vs.wreck && prefab) go.name = "Wreck " + prefab.name;
                 go.GetComponent<VehicleDriver>().netId = vs.netId;
                 go.GetComponent<VehicleDriver>().owner = vs.owner;
                 if (go.TryGetComponent<InteriorSpace>(out var interior)) interior.furnish = false;   // pieces come from the save

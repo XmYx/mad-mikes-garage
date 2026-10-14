@@ -127,8 +127,10 @@ def aerial(veh, x, y, z, h=6.0):
     put(veh, "Body", join(cyl((x, y, z), (x, y + h, z - 0.5), 0.06, 4), cyl((x, y - 0.2, z), (x, y + 0.2, z), 0.25, 8)), ["chrome"])
 
 
-def interior(veh, f, dashZ, seatZ, dx, cw=8, rear_bench=False, bucket=False, rear_off=10, dash_w=8, back_h=7.6):
-    """Interior(): dashboard, wheel, two seats, optional rear bench (voxel layout from VehicleDesigns.Interior)."""
+def interior(veh, f, dashZ, seatZ, dx, cw=8, rear_bench=False, bucket=False, rear_off=10, dash_w=8, back_h=7.6, dy=0.0):
+    """Interior(): dashboard, wheel, two seats, optional rear bench (voxel layout from VehicleDesigns.Interior).
+    `dy` moves the dash, wheel and gauges up/down (the dash top sits just above the belt line)."""
+    import bmesh as _bm
     dash = join(rbox((0, f + 6.6, dashZ + 1.5), (2 * dash_w + 1, 3.2, 4.0), 0.6, 2),
                 rbox((dx, f + 8.4, dashZ + 0.3), (3.6, 1.0, 1.6), 0.35, 2))
     for fc in dash.faces:
@@ -147,7 +149,13 @@ def interior(veh, f, dashZ, seatZ, dx, cw=8, rear_bench=False, bucket=False, rea
     for b in (lever, knob):
         for fc in b.faces:
             fc.material_index = 1
-    put(veh, "Interior", join(dash, st, lever, knob, *gauges), ["dash", "plastic", "chrome"])
+    tunnel = rbox((0, f + 0.9, dashZ - 2.5), (2.2, 1.8, 7.0), 0.5, 2)
+    for fc in tunnel.faces:
+        fc.material_index = 1
+    allb = join(dash, st, *gauges)
+    if dy:
+        xform(allb, (0, dy, 0))
+    put(veh, "Interior", join(allb, lever, knob, tunnel), ["dash", "plastic", "chrome"])
     put(veh, "Seat_Driver", H.seat_bm(dx - 2, dx + 2, f, seatZ, bucket, back_h=back_h), ["leather"], origin=(dx, f + 1, seatZ - 2))
     put(veh, "Seat_Passenger", H.seat_bm(-dx - 2, -dx + 2, f, seatZ, bucket, back_h=back_h), ["leather"], origin=(-dx, f + 1, seatZ - 2))
     if rear_bench:
@@ -201,3 +209,73 @@ def flare(veh, z, y, r0, r1, x, mat="plastic", part="Body", thick=1.0, a0=0, a1=
             pts.append((s * (x + thick * 0.35), yy, z + math.cos(a) * (r0 + r1) / 2))
         bm = H.sweep(pts, H.rrect(thick, r1 - r0, min(thick, r1 - r0) * 0.45, 3), up=(1, 0, 0))
         put(veh, part, bm, [mat])
+
+
+def arch_liner(veh, zc, yc, Ra, x_in, x_out, y_floor, mat="wheelwell", n=22):
+    """Dark wheel-house liner inside a lofted arch (both sides): a half tube of radius `Ra` round the axle
+    (zc, yc) from the inner wall `x_in` to just inside the skin `x_out`, closed by the inner wall, so the arch reads as
+    a wheel well instead of a hole through the car."""
+    import bmesh
+    s0 = max(-0.95, min(0.0, (y_floor - yc) / Ra))
+    a0 = math.asin(s0)
+    angs = [a0 + (math.pi - 2 * a0) * i / n for i in range(n + 1)]
+    for sg in (1, -1):
+        bm = bmesh.new()
+        outer = [bm.verts.new((sg * x_out, yc + math.sin(a) * Ra, zc + math.cos(a) * Ra)) for a in angs]
+        inner = [bm.verts.new((sg * x_in, yc + math.sin(a) * Ra, zc + math.cos(a) * Ra)) for a in angs]
+        for i in range(n):
+            f = bm.faces.new((outer[i], outer[i + 1], inner[i + 1], inner[i]))
+            c = f.calc_center_median()
+            f.normal_update()
+            if f.normal.dot(Vector((c.x, yc, zc)) - c) < 0:
+                f.normal_flip()
+        w = bm.faces.new(inner)
+        w.normal_update()
+        if w.normal.x * sg < 0:
+            w.normal_flip()
+        put(veh, "Body", bm, [mat])
+
+
+def door_cards(veh, bvh, sp, belt, f):
+    """Trim panels on the inside of every door (card, armrest, pull handle): seen through the glass and in first person."""
+    for name, za, zb, sock in sp.doors:
+        zm, L = (za + zb) / 2, zb - za
+        top = belt - 0.5
+        if top - f < 4:
+            continue
+        for sgn, sfx in ((1, "_R"), (-1, "_L")):
+            xs = None
+            for hy in ((top + f) / 2, top - 0.2, f + 1.5):
+                for zz in (za + 0.8, zm, zb - 0.8):
+                    p, n = side_point(bvh, hy, zz, sgn)
+                    if p is not None:
+                        xs = abs(p.x) if xs is None else min(xs, abs(p.x))
+            if xs is None:
+                continue
+            xs -= 0.55
+            card = rbox((sgn * xs, (top + f + 1) / 2, zm), (0.3, top - f - 1, L - 1.0), 0.12, 1)
+            arm = rbox((sgn * (xs - 0.45), f + 5.2, zm - L * 0.08), (0.8, 0.7, L * 0.42), 0.25, 2)
+            pocket = rbox((sgn * (xs - 0.2), f + 2.2, zm + L * 0.05), (0.35, 1.6, L * 0.55), 0.1, 1)
+            for fc in arm.faces:
+                fc.material_index = 1
+            for fc in pocket.faces:
+                fc.material_index = 1
+            pull = rbox((sgn * (xs - 0.25), top - 1.3, za + 2.2), (0.3, 0.35, 1.2), 0.1, 1)
+            for fc in pull.faces:
+                fc.material_index = 2
+            put(veh, name + sfx, join(card, arm, pocket, pull), ["interior_trim", "plastic", "chrome"])
+
+
+def pedals(veh, f, dashZ, dx):
+    """Clutch, brake and throttle on short arms under the dash in front of the driver."""
+    parts = []
+    for i, ox in enumerate((-1.3, 0.0, 1.3)):
+        x = dx + ox
+        w = 0.9 if i < 2 else 0.6
+        h = 0.9 if i < 2 else 1.6
+        pad = rbox((x, f + 1.6 + (0.3 if i < 2 else 0.0), dashZ + 0.2), (w, h, 0.25), 0.08, 1, rot=(math.radians(-20), 0, 0))
+        arm = cyl((x, f + 2.2, dashZ + 0.3), (x, f + 5.0, dashZ + 1.1), 0.1, 5)
+        for fc in arm.faces:
+            fc.material_index = 1
+        parts += [pad, arm]
+    put(veh, "Interior", join(*parts), ["rubber", "steel_dark"])

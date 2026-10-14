@@ -10,7 +10,7 @@ namespace MadMax.Vehicles
         public string partId;
         public PartCategory category;
         [Tooltip("Physical size bracket; a socket only accepts parts up to its maxSizeClass.")]
-        [Range(1, 4)] public int sizeClass = 1;
+        [Range(1, 5)] public int sizeClass = 1;
         public float mass = 25f;
         [Tooltip("Wheels: rolling radius in metres (for future drive/physics code).")]
         public float radius;

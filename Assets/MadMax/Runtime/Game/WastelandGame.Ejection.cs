@@ -10,7 +10,7 @@ namespace MadMax.Game
     public partial class WastelandGame
     {
         /// <summary>Collision Δv (m/s, impulse / mass as <see cref="VehicleDamage"/> measures it) that throws the driver out.</summary>
-        public const float EjectOpenDv = 9f, EjectClosedDv = 22f;
+        public const float EjectOpenDv = 13f, EjectClosedDv = 22f;
 
         /// <summary>The last ejection (tests, the HUD): when, the launch velocity, the travel before the crash, why.</summary>
         public struct Ejection { public float time; public Vector3 launch, travel, from; public string why; public VehicleDriver vehicle; }

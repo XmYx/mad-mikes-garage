@@ -100,12 +100,14 @@ namespace MadMax.Game
                 if (d.y > -2f && d.y < 0.5f && new Vector2(d.x, d.z).sqrMagnitude < 1f)
                 {
                     w.count += n; w.Refresh(); w.Body.WakeUp();
+                    CanDropped(w, n);                                                               // a can keeps its contents (CanStates)
                     MadMax.Audio.Sfx.Play("pickup", at, 0.3f, 0.7f, 15f);
                     net?.SendItemSpawn(w, Vector3.zero);
                     return w;
                 }
             }
             var item = SpawnWorldItem(key, n, q, at, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f), null);
+            CanDropped(item, n);
             item.Body.linearVelocity = vel;
             item.Body.angularVelocity = Random.insideUnitSphere * 2f;
             MadMax.Audio.Sfx.Play("pickup", at, 0.3f, 0.7f, 15f);
@@ -173,6 +175,7 @@ namespace MadMax.Game
             if (!w || w.count <= 0) return false;
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient && w.netId != 0) return net.RequestItemTake(w);                // the host hands it over (once)
+            CanTaken(w, w.count);
             using (Inventory.Source("PICKED UP")) GiveToPack(w.key, w.count, w.quality);
             MadMax.Audio.Sfx.Play("pickup", w.transform.position, 0.5f, 1.1f, 20f);
             StoryLooted(w.transform.position, w.key);
@@ -497,6 +500,7 @@ namespace MadMax.Game
                 w.placed = f[4] == "1";
                 if (joined && f.Length > 10 && uint.TryParse(f[10], NumberStyles.Integer, ItemsInv, out uint nid)) w.netId = nid;
                 if (w.Body) w.Body.isKinematic = true;                                           // woken near the player
+                MadMax.Vehicles.LifterKit.RestoreBale(w);                                        // a crushed bale keeps its look
             }
             worldItemTick = 0f;
         }

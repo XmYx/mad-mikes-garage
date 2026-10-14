@@ -20,7 +20,7 @@ namespace MadMax.World
     public partial class WorldGen
     {
         public readonly List<River> rivers = new List<River>();
-        const float RiverCell = 48f, RiverStep = 16f, BankWidth = 7f;
+        const float RiverCell = 48f, RiverStep = 16f, BankWidth = 7f, ValleyWidth = 32f;   // valley: how far a deep cut grades its banks
         readonly Dictionary<Vector2Int, List<Vector2Int>> riverGrid = new Dictionary<Vector2Int, List<Vector2Int>>();   // (river, segment)
 
         void BuildRivers(System.Random r)
@@ -72,7 +72,7 @@ namespace MadMax.World
                 rivers.Add(river);
                 for (int i = 0; i + 1 < pts.Count; i++)
                 {
-                    float reach = river.half[i + 1] + BankWidth + 2f;
+                    float reach = river.half[i + 1] + ValleyWidth + 2f;
                     var a = pts[i]; var b = pts[i + 1];
                     int x0 = Mathf.FloorToInt((Mathf.Min(a.x, b.x) - reach) / RiverCell), x1 = Mathf.FloorToInt((Mathf.Max(a.x, b.x) + reach) / RiverCell);
                     int z0 = Mathf.FloorToInt((Mathf.Min(a.y, b.y) - reach) / RiverCell), z1 = Mathf.FloorToInt((Mathf.Max(a.y, b.y) + reach) / RiverCell);
@@ -101,7 +101,11 @@ namespace MadMax.World
 
         /// <summary>Nearest river course at a point: water level, channel half-width and the distance from the centre line
         /// (false when no river is within its bank).</summary>
-        public bool RiverAt(float x, float z, out float level, out float half, out float dist)
+        public bool RiverAt(float x, float z, out float level, out float half, out float dist) => RiverNear(x, z, BankWidth, out level, out half, out dist);
+
+        /// <summary>The nearest river course within <paramref name="reach"/> m of its water (<see cref="RiverAt"/> uses the
+        /// bank, the valley shaping the wider <see cref="ValleyWidth"/>). Thread-safe.</summary>
+        bool RiverNear(float x, float z, float reach, out float level, out float half, out float dist)
         {
             level = half = 0f; dist = float.MaxValue;
             if (!riverGrid.TryGetValue(new Vector2Int(Mathf.FloorToInt(x / RiverCell), Mathf.FloorToInt(z / RiverCell)), out var list)) return false;
@@ -118,7 +122,7 @@ namespace MadMax.World
                 level = Mathf.Lerp(rv.level[rs.y], rv.level[rs.y + 1], t);
                 half = Mathf.Lerp(rv.half[rs.y], rv.half[rs.y + 1], t);
             }
-            return dist < half + BankWidth;
+            return dist < half + reach;
         }
 
         /// <summary>The current at a point (xz, m/s): downstream along the course, fastest mid-channel and where the bed
@@ -151,7 +155,7 @@ namespace MadMax.World
         float ShapeRiver(float x, float z, ref float h, ref GroundSample s, ref float wet, out float fordLevel)
         {
             fordLevel = float.NaN;
-            if (!RiverAt(x, z, out float level, out float half, out float dist)) return 0f;
+            if (!RiverNear(x, z, ValleyWidth, out float level, out float half, out float dist)) return 0f;
             float depth = 0.7f + half * 0.08f;
             if (dist < half)
             {
@@ -160,10 +164,13 @@ namespace MadMax.World
             }
             else
             {
-                float u = Mathf.Clamp01((dist - half) / BankWidth);
-                u = u * u * (3f - 2f * u);
+                // the bank widens with the cut so a deep valley stays climbable (~23°), mostly linear
+                float bank = Mathf.Clamp((h - level) * 2.8f, BankWidth, ValleyWidth);
+                float u = Mathf.Clamp01((dist - half) / bank);
+                u = Mathf.Lerp(u, u * u * (3f - 2f * u), 0.35f);
                 h = Mathf.Min(h, Mathf.Lerp(level + 0.1f, h, u));
             }
+            if (dist >= half + BankWidth) return 0f;                                             // valley side: shaped only, no water, ford or wet band
             bool dry = NaturalBiome(x, z) == Biome.Desert;
             if (!dry) fordLevel = level;                                                          // the track dips towards it across the whole bank
             if (!dry && dist < half + 1.5f && (float.IsNaN(s.water) || s.water < level)) s.water = level;

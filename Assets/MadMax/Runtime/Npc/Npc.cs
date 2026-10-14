@@ -109,6 +109,7 @@ namespace MadMax.Npc
             n.rig.appearance = p.look.Clone();
             n.rig.appearance.lost = n.State.lost;                                               // limbs lost in an earlier fight (Npc.Limbs)
             n.rig.outfit.AddRange(p.outfit);
+            n.rig.condition = p.Condition;                                                     // worn clothes (NpcLooks): same on proxies
             n.rig.Rebuild();
             n.anim = new HumanAnimator(n.rig);
             n.anim.Footstep += left => n.OnFootstep();
@@ -166,13 +167,14 @@ namespace MadMax.Npc
         public const byte FlagDead = 1, FlagSitting = 2, FlagSurrender = 4, FlagSwing = 8, FlagAsleep = 16;
 
         /// <summary>Replication flags for the host's snapshot.</summary>
-        public byte NetFlags => (byte)((mode == Mode.Dead ? FlagDead : 0) | (seated ? FlagSitting : 0) | (mode == Mode.Surrender ? FlagSurrender : 0) | (swing >= 0f ? FlagSwing : 0) | (asleep ? FlagAsleep : 0));
+        public byte NetFlags => (byte)((mode == Mode.Dead ? FlagDead : 0) | (seated ? FlagSitting : 0) | (mode == Mode.Surrender ? FlagSurrender : 0) | (swing >= 0f ? FlagSwing : 0) | (asleep ? FlagAsleep : 0) | ReactFlags);
         public float NetSpeed => Flat(lastVelocity).magnitude;
 
         public void ProxyState(Vector3 pos, float yaw, float speed, byte flags)
         {
             if (!proxy) return;
             if (proxyFlags == 0 && proxyPos == Vector3.zero) transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
+            if (flags != proxyFlags) ProxyFlagsChanged(proxyFlags, flags);
             proxyPos = pos; proxyYaw = yaw; proxySpeed = speed; proxyFlags = flags;
             if ((flags & FlagDead) != 0 && mode != Mode.Dead) ProxyDie();
         }
@@ -187,11 +189,18 @@ namespace MadMax.Npc
             bool sit = (proxyFlags & (FlagSitting | FlagAsleep)) != 0;
             if ((proxyFlags & FlagSwing) != 0 && swing < 0f) swing = 0f;
             if (swing >= 0f) { swing += dt / (tool ? tool.swingDuration : 0.5f); if (swing >= 1f) swing = -1f; }
+            float rt = -1f;
+            string react = swing >= 0f ? null : Reaction(out rt);
+            bool guard = (proxyFlags & FlagGuard) != 0 && tool && swing < 0f && !sit && HumanClips.Get(ToolHolds.Port) != null;
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = proxySpeed, grounded = true, sitting = sit, lounging = sit,
-                tool = (proxyFlags & FlagSurrender) != 0 ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : tool.IdlePose) : (ToolPose?)null,
-                twoHanded = tool && tool.TwoHanded
+                tool = (proxyFlags & FlagSurrender) != 0 ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : guard ? (ToolPose?)null : tool.IdlePose) : (ToolPose?)null,
+                twoHanded = tool && tool.TwoHanded, hold = guard ? ToolHolds.Port : null,
+                grip2 = guard && tool.TwoHanded ? tool.transform : null,
+                action = swing >= 0f ? PlayerCharacter.SwingClip(tool) : react, actionT = swing >= 0f ? swing : react != null ? rt : -1f,
+                actionHit = swing >= 0f && tool ? tool.strikeAt : 0f,
+                hitFrom = HitFromLocal, hitT = HitT
             });
         }
 
@@ -234,6 +243,12 @@ namespace MadMax.Npc
             }
             if (Riding) { RideTick(g, dt); return; }
             if (Driving) { DriveTick(g); return; }
+            if (climbLadder && ClimbTick(dt)) return;                                          // on a ladder (Npc.Ladders)
+            // level of detail: calm people far from the player think, move and animate every 2nd / 4th frame (staggered
+            // by person), on the time gathered meanwhile; anyone fighting, fleeing, talking or near stays every frame
+            int every = LodInterval(g);
+            if (every > 1 && (Time.frameCount + lodSlot) % every != 0) { lodDt = Mathf.Min(lodDt + dt, LodMaxDt); return; }
+            dt = Mathf.Min(dt + lodDt, LodMaxDt); lodDt = 0f;
             var terrain = DeformableTerrain.Instance;
             // wanderers light a torch after dark
             if (Profile.role == NpcRole.Wanderer && Profile.tool == null && !companion && !Surrendered && (DayNight.Darkness > 0.45f) != (tool is LightTool))
@@ -244,7 +259,7 @@ namespace MadMax.Npc
             float dPlayer = Vector3.Distance(me, playerPos);
             if (leaving && dPlayer > 170f) { Destroy(gameObject); return; }
             UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.RunOver");
-            RunOver(g);
+            RunOver(g, dt);
             UnityEngine.Profiling.Profiler.EndSample();
 
             Vector3 move = Vector3.zero;
@@ -253,9 +268,10 @@ namespace MadMax.Npc
             if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.PickFoe"); foe = PickFoe(g); UnityEngine.Profiling.Profiler.EndSample(); }
             if (Surrendered) mode = Mode.Surrender;
             else if (foe) mode = Mode.Fight;
-            else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching: harder to spot
+            else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Prone ? 16f : mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching / prone: harder to spot
             else if (mode != Mode.Flee || Time.time > fleeUntil) mode = Routine();
             if (mode != Mode.Gather) LeaveFire();
+            if (mode != Mode.Wander) EndChore();                                              // Npc.Chores
             if (mode != Mode.Sleep && asleep) SetAsleep(false);
 
             bool sieging = raiding && !foe && (dPlayer > 22f || g.Vitals.Dead);
@@ -271,6 +287,7 @@ namespace MadMax.Npc
                     else if (Time.time > faceUntil) FaceYaw(homeYaw, dt);
                     break;
                 case Mode.Wander:
+                    if (ChoreTick(me, dt, ref move, ref speed)) break;                         // the season's work (Npc.Chores)
                     if (!hasGoal || Time.time > repath || Flat(goal - me).magnitude < 0.6f)
                     {
                         if (hasGoal && Flat(goal - me).magnitude < 0.6f && Random.value < 0.6f) { hasGoal = false; repath = Time.time + Random.Range(3f, 9f); break; }  // linger
@@ -305,6 +322,7 @@ namespace MadMax.Npc
             if (asleep) return;                                                               // indoors till morning
             if (Time.time < chatUntil && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Gather) && !seated) { move = Vector3.zero; speed = 0f; faceTarget = chatAt; faceUntil = chatUntil; }   // chatting with a neighbour
             if (mode != Mode.Fight && mode != Mode.Surrender && dPlayer < 3.5f && !g.Current) { faceTarget = playerPos; faceUntil = Time.time + 2f; }
+            if (!seated && aboard == null && mode != Mode.Dead) Dodge(g, me, ref move, ref speed);           // a car coming through: jump clear (Npc.Dodge)
             if (DefenceHazard.All.Count > 0) speed *= DefenceHazard.SlowAt(me);                // snagged in barbed wire
             if (rig.appearance.lost != 0) speed *= LimbPace;                                   // hopping on one leg, crawling on none
 
@@ -355,22 +373,49 @@ namespace MadMax.Npc
             bool near = gm && gm.Player && (mode == Mode.Stand || mode == Mode.Wander || mode == Mode.Follow)
                         && (gm.Player.transform.position - transform.position).sqrMagnitude < 3.5f * 3.5f;
             anim.LookAt = talking || near ? gm.Player.Eye.position : (Vector3?)null;
+            // a bang close by: a start (attention); not in the middle of a fight
+            Vector3 noiseAt = default;
+            var startle = anim.Attention != null ? anim.Attention.TakeReaction(out noiseAt) : null;
+            if (startle == "startle" && Vector3.Dot(noiseAt - transform.position, transform.right) < 0f && HumanClips.Get("startle_l") != null) startle = "startle_l";   // turns toward it
+            if (startle != null && swing < 0f && reactClip == null && mode != Mode.Fight && !seated) { reactClip = HumanClips.Get(startle) != null ? startle : "flinch"; reactAt = Time.time; }
             float rt = -1f;
             string react = swing >= 0f ? null : Reaction(out rt);
             // carried at rest; a gun is up at the shoulder while fighting at range
             string hold = tool && swing < 0f && !seated && mode != Mode.Surrender && !(mode == Mode.Fight && Ranged) ? ToolHolds.Clip(tool) : null;
+            bool guardUp = Guarding && tool && swing < 0f && !seated && HumanClips.Get(ToolHolds.Port) != null;
+            if (guardUp) hold = ToolHolds.Port;                                                // the weapon up across the body
             anim.Tick(dt, new HumanAnimator.State
             {
                 speed = moved, grounded = seated || cc.isGrounded, verticalSpeed = seated ? 0f : vy, sitting = seated, lounging = seated,
                 tool = mode == Mode.Surrender ? HandsUp : tool ? (swing >= 0f ? tool.Pose(swing) : hold == null ? tool.IdlePose : null) : (ToolPose?)null,
                 twoHanded = tool && tool.TwoHanded, talking = talking, hold = hold,
-                grip2 = !tool || mode == Mode.Surrender ? null : swing >= 0f ? tool.SecondGrip : hold != null && tool.HoldTwoHands ? tool.transform : null,
+                stress = mode == Mode.Flee || mode == Mode.Fight || mode == Mode.Surrender ? 1f : health < maxHealth * 0.5f ? 0.6f : 0f,
+                grip2 = !tool || mode == Mode.Surrender ? null : swing >= 0f ? tool.SecondGrip : hold != null && (tool.HoldTwoHands || guardUp && tool.TwoHanded) ? tool.transform : null,
                 action = swing >= 0f ? PlayerCharacter.SwingClip(tool) : react, actionT = swing >= 0f ? swing : react != null ? rt : -1f,
-                actionHit = swing >= 0f && tool ? tool.strikeAt : 0f
+                actionHit = swing >= 0f && tool ? tool.strikeAt : 0f,
+                hitFrom = HitFromLocal, hitT = HitT,
+                heat = HumanAnimator.HeatOf(MadMax.World.Weather.Temperature)                    // idles: wipe the brow / shiver
             });
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+
+        // ---- brain level of detail
+        /// <summary>Within this of the player (or the driven vehicle) every frame; to <see cref="LodFar"/> every 2nd, beyond every 4th.</summary>
+        public const float LodNear = 40f, LodFar = 80f;
+        const float LodMaxDt = 0.25f;
+        float lodDt;
+        int lodSlot => Profile != null ? Profile.seed & 0x7fff : 0;
+
+        /// <summary>Frames between this person's ticks right now (1 = every frame).</summary>
+        int LodInterval(WastelandGame g)
+        {
+            if (companion || aggro || raiding || mode == Mode.Fight || mode == Mode.Flee || mode == Mode.Surrender || swing >= 0f
+                || reactClip != null || Time.time < staggerUntil || Time.time < chatUntil || fireTarget || tending || tendedBy
+                || boutHit != null || Hostile || (g.Menus && g.Menus.TalkingTo == this)) return 1;
+            float d2 = (transform.position - g.FocusPos).sqrMagnitude;
+            return d2 < LodNear * LodNear ? 1 : d2 < LodFar * LodFar ? 2 : 4;
+        }
 
         const float StaggerTime = 0.45f;
 
@@ -419,6 +464,7 @@ namespace MadMax.Npc
                 attackCd = Mathf.Max(attackCd, 0.45f);
             }
             reactAt = Time.time;
+            SetReactFrom(-direction, heavy);                                                   // gives way from the side it came from
         }
 
         // ---- pathfinding (NpcPath): straight at the goal when the way is clear, else along a grid route
@@ -433,6 +479,7 @@ namespace MadMax.Npc
             var me = transform.position;
             var direct = Flat(p - me);
             if (direct.sqrMagnitude < 0.36f || aboard) return direct;                         // aboard a city: its routes are clear
+            if (LadderStep(me, p, out var climb)) return climb;                                  // another level: by a ladder (Npc.Ladders)
             if (Time.time >= routeCheck || Flat(p - routeGoal).sqrMagnitude > 9f)
             {
                 routeCheck = Time.time + 0.8f + Random.value * 0.6f;                              // staggered across people
@@ -470,6 +517,7 @@ namespace MadMax.Npc
 
         void PickGoal(DeformableTerrain terrain)
         {
+            if (NextOnBeat()) return;                                                            // town residents walk their sidewalk beat
             for (int i = 0; i < 6; i++)
             {
                 var c = Random.insideUnitCircle * homeRadius;
@@ -883,9 +931,10 @@ namespace MadMax.Npc
             var pp = g.Player.transform.position;
             if (Vector3.Distance(pp, transform.position) > 2f || Vector3.Dot(Flat(pp - transform.position).normalized, transform.forward) < 0.3f) { MadMax.Audio.Sfx.Play("punch", hitAt, 0.3f, 0.7f); return; }
             if (boutStrike != null) { boutStrike(this); MadMax.Audio.Sfx.Play("punch", pp + Vector3.up, 0.6f, 1.1f); return; }   // a supervised bout scores it
+            if (g.GuardAgainst(this, power, out bool broke)) return;                            // parried or blocked (WastelandGame.Guard)
             g.HitBladed = Limbs.Bladed(Profile.tool);
             g.Vitals.Hurt(Random.Range(7f, 13f) * power, "MELEE");
-            g.Player.React(power >= 1.2f);
+            g.Player.React(power >= 1.2f || broke, transform.position - pp);
             BloodStains.Splash(pp, 0.4f);
             MadMax.Audio.Sfx.Play(tool && tool.id.Contains("machete") ? "scratch" : "punch", pp + Vector3.up, 0.8f);
         }
@@ -907,6 +956,7 @@ namespace MadMax.Npc
             MadMax.Audio.Sfx.Play("shotgun", muzzle, 0.9f, Random.Range(0.95f, 1.1f), 110f);
             var fx = DebrisSystem.Instance;
             if (fx) for (int i = 0; i < 3; i++) fx.EmitPuff(muzzle + aim * 0.6f, new Color32(255, 200, 90, 255), 0.06f, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
+            GunFx.Report(muzzle, aim, transform.right, false);                                   // a shotgun keeps its shells
             if (Random.value < Mathf.Clamp01(1.05f - dist / 22f)) f.ApplyHit(f.transform.position + Vector3.up, aim, 0.45f, 0.1f, gameObject);
         }
 
@@ -920,6 +970,7 @@ namespace MadMax.Npc
             var fx = DebrisSystem.Instance;
             var aim = (target - muzzle).normalized;
             if (fx) for (int i = 0; i < 4; i++) fx.EmitPuff(muzzle + aim * 0.6f, new Color32(255, 200, 90, 255), 0.07f * power, aim * Random.Range(2f, 5f) + Random.insideUnitSphere, 0.12f);
+            GunFx.Report(muzzle, aim, Vector3.Cross(Vector3.up, aim).normalized, power > 1f, Mathf.Min(power, 1.4f));   // turret rounds eject brass
             float moving = g.Current ? Mathf.Abs(g.Current.ForwardSpeed) : g.Player.Velocity.magnitude;
             float chance = Mathf.Clamp01(1.05f - dist / 20f - moving * 0.03f);
             if (SmokeScreen.Blocks(muzzle, target)) chance *= 0.15f;                            // firing blind into smoke
@@ -949,11 +1000,13 @@ namespace MadMax.Npc
         /// <summary>Fast vehicles knock people over: checked a little ahead of the bumper, so the hit lands before the
         /// car meets the (immovable) CharacterController capsule. The person is thrown along the car's path as a limp
         /// body (<see cref="BodyKnock"/>); whoever survives gets up again a few seconds later.</summary>
-        void RunOver(WastelandGame g)
+        void RunOver(WastelandGame g, float dt)
         {
             var me = transform.position + Vector3.up * 0.8f;
-            foreach (var v in g.AllVehicles)
+            var all = g.AllVehicles;
+            for (int vi = 0; vi < all.Count; vi++)                                               // indexed: no boxed enumerator per person per frame
             {
+                var v = all[vi];
                 if (!v || !v.Body || v.Body.isKinematic) continue;
                 var d = v.transform.position - transform.position;
                 if (d.sqrMagnitude > 64f) continue;
@@ -961,7 +1014,7 @@ namespace MadMax.Npc
                 float sp = vel.magnitude;
                 if (sp < 4f) continue;
                 var cp = VehicleStorage.Closest(v, me);
-                if (!BodyKnock.InPath(me - cp, vel, 0.5f, sp * Mathf.Max(0.05f, Time.deltaTime * 2f))) continue;   // touching, or about to: not passing close beside
+                if (!BodyKnock.InPath(me - cp, vel, 0.5f, sp * Mathf.Max(0.05f, dt * 2f))) continue;   // touching, or about to (by the next tick): not passing close beside
                 ApplyHit(transform.position + Vector3.up, vel.normalized, sp * sp * 0.03f, 0.3f, v.gameObject);
                 NpcVoice.CarHit(this);
                 if (mode != Mode.Dead) KnockDown(vel);
@@ -1013,10 +1066,12 @@ namespace MadMax.Npc
             if (proxy)                                                                         // the host decides; blood here at once
             {
                 BloodStains.Splash(point, Mathf.Clamp01(power * 0.5f));
+                ProxyReact(-direction, power >= 0.9f);                                          // the striker sees it land at once
                 MadMax.Net.NetSession.Instance?.SendActorHit(netId, point, direction, power, radius);
                 return;
             }
             if (boutHit != null && boutHit(this, point, direction, power, source)) return;       // a supervised bout scores it instead
+            if (TryGuard(point, direction, power, source)) return;                              // caught on their weapon (Npc.Guard)
             // their armour: gunfire (player guns, vehicle weapons) or blows
             var gp = WastelandGame.Instance;
             int kind = (int)DamageKind.Melee;

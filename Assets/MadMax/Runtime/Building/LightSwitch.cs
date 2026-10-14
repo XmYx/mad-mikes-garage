@@ -50,6 +50,7 @@ namespace MadMax.Building
 
         void Update()
         {
+            TweenLever();
             if ((poll -= Time.deltaTime) > 0f) return;
             poll = 1f;
             Resolve();
@@ -75,14 +76,25 @@ namespace MadMax.Building
         {
             bool changed = value != on;
             on = value;
-            if (changed) MadMax.Audio.Sfx.Play("click", transform.position, 0.6f, on ? 1.25f : 1.05f, 12f);
-            ShowLever();
+            if (changed) MadMax.Audio.Sfx.Play("click", transform.position, 0.6f, on ? 1.25f : 1.05f, 12f);   // the lever tweens over (TweenLever)
             Resolve();
             GetComponent<Placeable>()?.Dirty();
             if (byHand) flipped?.Invoke(this);
         }
 
-        void ShowLever() { if (lever) lever.localRotation = Quaternion.Euler(on ? 35f : -35f, 0f, 0f); }
+        float leverAngle = float.NaN;
+        /// <summary>Snap the lever to the state (load, start).</summary>
+        void ShowLever() { leverAngle = float.NaN; TweenLever(); }
+
+        /// <summary>The lever flips over in 0.15 s.</summary>
+        void TweenLever()
+        {
+            if (!lever) return;
+            float target = on ? 35f : -35f;
+            if (leverAngle == target) return;
+            leverAngle = float.IsNaN(leverAngle) ? target : Mathf.MoveTowards(leverAngle, target, Time.deltaTime * 70f / 0.15f);
+            lever.localRotation = Quaternion.Euler(leverAngle, 0f, 0f);
+        }
 
         public string SaveState() => on ? "1" : "0";
         public void LoadState(string s) { on = s != "0"; ShowLever(); if (started) Resolve(); }

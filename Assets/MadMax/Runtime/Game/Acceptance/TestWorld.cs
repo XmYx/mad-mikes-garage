@@ -36,7 +36,7 @@ namespace MadMax.Game.Acceptance
                     var p = origin + along * (sign * k);
                     if (Usable(p, radius, lane, along * sign)) { pad = new Vector3(p.x, t.Height(p.x, p.z), p.z); dir = along * sign; return true; }
                 }
-            for (int k = 0; k < 300; k++)
+            for (int k = 0; k < 560; k++)                                                    // out to ~150 m (town plans and rail beds took the near ground)
             {
                 float a = k * 2.39996f, r = 12f + k * 0.25f;
                 var p = focus + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r;

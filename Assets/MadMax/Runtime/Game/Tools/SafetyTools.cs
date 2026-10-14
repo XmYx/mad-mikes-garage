@@ -28,7 +28,7 @@ namespace MadMax.Game
                 var m = go.AddComponent<MeleeTool>();
                 m.tip = tip; tip.localPosition = new Vector3(0f, -14f * VoxelMesher.DefaultSize, 0f);
                 m.power = 0.3f; m.hitRadius = 0.25f; m.carveRadius = 0.08f; m.wearPerHit = 0.01f;
-                m.swingDuration = 0.7f; m.strikeAt = 0.45f; m.style = ToolStyle.Thrust;
+                m.swingDuration = 0.7f; m.strikeAt = 0.45f; m.style = ToolStyle.Thrust; m.oneHanded = true;
                 return m;
             });
             ToolLibrary.Extra[HandRadio] = (RadioModel, (go, tip) =>
