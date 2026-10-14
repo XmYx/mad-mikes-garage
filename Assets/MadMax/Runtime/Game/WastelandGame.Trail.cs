@@ -186,6 +186,7 @@ namespace MadMax.Game
             if (GangWhereabouts(gang, from, out var at))
             {
                 SetWaypoint(at, gang, true);
+                if (MadMax.Npc.Trade.InTransit(id)) MarkWary(gang);                               // word gets back: the boss car will run
                 Journal.Add("RAID", "THE " + gang + (MadMax.Npc.Trade.InTransit(id) ? " STILL CARRY YOUR " + what + " IN THEIR BOSS'S CAR" : " SOLD ON YOUR " + what) + " - THEY RIDE " + NpcLore.Distance(Flat(at - from)) + " " + NpcLore.Compass(at.x - from.x, at.z - from.z) + " (WAYPOINT SET)");
             }
             else Journal.Add("RAID", "THE " + gang + " SOLD ON YOUR " + what);

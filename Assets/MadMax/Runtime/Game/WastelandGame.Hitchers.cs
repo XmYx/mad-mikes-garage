@@ -94,7 +94,7 @@ namespace MadMax.Game
             string tn = Market.TownName(town);
             n.State.disposition = Mathf.Min(100, n.State.disposition + 20);
             n.State.Set(NpcSave.Helped);
-            NoteRescued(n);                                                                        // remembered for a week
+            NoteRescued(n, town);                                                                  // remembered for a week, a tip on the radio
             var f = Factions.OfSettlement(town);
             Factions.Shift(f != Faction.None ? f : Faction.Settlers, 3);
             Factions.Shift(Faction.FuelGuild, 2);

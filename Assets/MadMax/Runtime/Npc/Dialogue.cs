@@ -49,6 +49,7 @@ namespace MadMax.Npc
             {
                 Hub();
                 if (WastelandGame.Rescued(S)) line = "IT'S " + g.Stats.name + "! THE ONE WHO PICKED ME UP OFF THE ROAD." + (P.Vendor ? " YOU PAY FRIENDS' PRICES THIS WEEK." : "");   // hitchers remember
+                else if (g.AskAfterLeg(P) is string leg) line = leg;                                   // the neighbour who looked in
             }
         }
 

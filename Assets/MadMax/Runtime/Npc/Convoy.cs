@@ -17,7 +17,7 @@ namespace MadMax.Npc
     /// Raiders that spot the player close in and the boss steps out to demand a toll (parley through
     /// <see cref="Dialogue"/>); refuse, attack or run and they hunt: ramming, shotgun blasts, fire bottles, crews
     /// bailing out of wrecked cars to fight on foot. Towns are safe ground.</summary>
-    public class Convoy
+    public partial class Convoy
     {
         public enum Phase { Travel, Stopped, Confront, Parley, Attack, Leave, Flee, Gone }
         public enum Outcome { Paid, Scared, Fooled, Recruited, Failed }
@@ -160,7 +160,7 @@ namespace MadMax.Npc
                                       * (Factions.Hostile(Factions.OfGang(Gang)) ? 1.3f : 1f)                                                                          // they are looking for you
                                       * (!g.Current && g.Player && g.Player.Crouching ? 0.55f : 1f);                                                                   // low in the scrub
                         if (Friendly) { if (dist < 30f && Time.time > truceUntil) { truceUntil = Time.time + 120f; MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f); g.Toast("THE " + Gang + " HONK A GREETING"); } }
-                        else if (Time.time > truceUntil && !inTown && dist < sight) Confront(g);
+                        else if (Time.time > truceUntil && !inTown && dist < sight) { if (WastelandGame.GangRuns(Gang) && cars.Count > 0 && cars[0] && cars[0].enabled) Run(g, target); else Confront(g); }   // wary with your part: the boss car runs
                     }
                     else if (dist < 22f && (!g.Current || Mathf.Abs(g.Current.ForwardSpeed) < 3f) && !Carrying(g)) Stop(g);
                     break;
@@ -183,7 +183,8 @@ namespace MadMax.Npc
                     if (dist > 220f || inTown) Leave();
                     break;
                 case Phase.Flee:
-                    if (timer > 60f) { phase = Phase.Travel; foreach (var c in cars) if (c) c.cruise = 12f; }
+                    if (running) RunTick(g, target, dist, dt);
+                    else if (timer > 60f) { phase = Phase.Travel; foreach (var c in cars) if (c) c.cruise = 12f; }
                     break;
             }
             BailOut(g);

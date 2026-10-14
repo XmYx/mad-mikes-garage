@@ -157,13 +157,14 @@ namespace MadMax.Game
             MedicCalls.Remove(town.index);
             string tn = Market.TownName(town);
             Inventory.Add(ResourceType.Scrap, MedicFee);
+            string used = MedicSpends(medic);                                                      // their dressings; the town pays part in bandages
             var f = Factions.OfSettlement(town);
             Factions.Shift(f != Faction.None ? f : Faction.Settlers, 3);
             NpcRegistry.Reputation = Mathf.Min(100, NpcRegistry.Reputation + 2);
             Companions.Practise(medic.Profile);
             LastMedicHelp = tn;
             TownNews.Post(medic.KnownName + " OF " + Stats.name + "'S CREW SPENT A HARD DAY AT " + tn + "'S SICKBEDS", new Vector3(town.pos.x, 0f, town.pos.y));
-            Toast(medic.KnownName + " GETS TO WORK ON " + tn + "'S HURT: " + MedicFee + " SCRAP AND THE TOWN'S THANKS");
+            Toast(medic.KnownName + " GETS TO WORK ON " + tn + "'S HURT WITH " + used + ": " + MedicFee + " SCRAP, " + TownPaysBandages + " BANDAGES AND THE TOWN'S THANKS");
             Journal.Add("CREW", medic.KnownName + " HELPED OUT AT " + tn);
             return true;
         }
@@ -182,7 +183,7 @@ namespace MadMax.Game
         // ------------------------------------------------------------------ rumoured caches
 
         /// <summary>A buried stash heard of in town talk: a search circle until spotted (binoculars) or walked onto.</summary>
-        public class Cache { public string key; public Vector3 at; public float radius; public bool spotted, found; }
+        public class Cache { public string key; public Vector3 at; public float radius; public bool spotted, found, dug, lost; public float heard = DayNight.TotalDays; }
         public readonly List<Cache> Caches = new List<Cache>();
         public const float CacheRadius = 160f, CacheSpawnReach = 70f, CacheFindReach = 4f;
         public const string CacheTable = "cache";
@@ -268,6 +269,7 @@ namespace MadMax.Game
                 else box.inventory.AddItem(id, n);
             }
             if (ItemCatalog.TotalWeight(box.inventory) <= 0f) box.inventory.AddItem("food_can", 2);
+            CacheRivals(c, box, at);                                                               // left too long: somebody dug it up first
             cacheBoxes[c.key] = box;
             return box;
         }
@@ -276,6 +278,7 @@ namespace MadMax.Game
         {
             c.found = true;
             TickLookFor("A BURIED STASH");
+            if (c.dug) { Toast(DugUpNote(c)); return; }
             Toast("FOUND THE BURIED STASH BY THE POST (OPEN IT: [E])");
             Journal.Add("FOUND", "DUG OUT A BURIED STASH");
         }
@@ -366,7 +369,9 @@ namespace MadMax.Game
             string food = VisitFood[rnd.Next(VisitFood.Length)];
             if (FoodLibrary.Get(food) == null) food = "food_bread";
             Inventory.AddItem(food);
-            LastVisit = "A NEIGHBOUR FROM " + Market.TownName(town) + " LOOKED IN WITH " + ItemIds.Name(food);
+            var who = ResidentOf(town, rnd);                                                       // a real resident of that town
+            LastVisit = who != null ? NeighbourCame(who, food) + " FROM " + Market.TownName(town)
+                                    : "A NEIGHBOUR FROM " + Market.TownName(town) + " LOOKED IN WITH " + ItemIds.Name(food);
             MadMax.Audio.Sfx.Play("door_close", home, 0.5f, 1.1f, 20f, 1f);
             return LastVisit;
         }
@@ -380,6 +385,7 @@ namespace MadMax.Game
         {
             UpdateMedicCalls();
             UpdateCaches();
+            UpdateNightly1014();
         }
 
         void SaveNightly1013(SaveData d)
@@ -388,12 +394,15 @@ namespace MadMax.Game
             foreach (var kv in MedicWord) d.crewRoad.Add("w|" + kv.Key + "|" + kv.Value);
             foreach (var kv in MedicCalls) d.crewRoad.Add("m|" + kv.Key + "|" + kv.Value);
             foreach (var c in Caches)
-                d.crewRoad.Add("c|" + c.key + "|" + c.at.x.ToString("0.#", RoadInv) + "|" + c.at.y.ToString("0.#", RoadInv) + "|" + c.at.z.ToString("0.#", RoadInv) + "|" + (c.spotted ? 1 : 0) + "|" + (c.found ? 1 : 0));
+                d.crewRoad.Add("c|" + c.key + "|" + c.at.x.ToString("0.#", RoadInv) + "|" + c.at.y.ToString("0.#", RoadInv) + "|" + c.at.z.ToString("0.#", RoadInv) + "|" + (c.spotted ? 1 : 0) + "|" + (c.found ? 1 : 0)
+                               + "|" + c.heard.ToString("0.###", RoadInv) + "|" + (c.dug ? 1 : 0) + "|" + (c.lost ? 1 : 0));
+            Save1014(d.crewRoad);
         }
 
         void LoadNightly1013(SaveData d)
         {
             MedicWord.Clear(); MedicCalls.Clear(); Caches.Clear(); cacheBoxes.Clear();
+            Clear1014();
             if (d.crewRoad == null) return;
             foreach (var line in d.crewRoad)
             {
@@ -404,7 +413,12 @@ namespace MadMax.Game
                     && float.TryParse(f[2], System.Globalization.NumberStyles.Float, RoadInv, out float x)
                     && float.TryParse(f[3], System.Globalization.NumberStyles.Float, RoadInv, out float y)
                     && float.TryParse(f[4], System.Globalization.NumberStyles.Float, RoadInv, out float z))
-                    Caches.Add(new Cache { key = f[1], at = new Vector3(x, y, z), radius = CacheRadius, spotted = f[5] == "1", found = f[6] == "1" });
+                {
+                    var c = new Cache { key = f[1], at = new Vector3(x, y, z), radius = CacheRadius, spotted = f[5] == "1", found = f[6] == "1" };
+                    if (f.Length >= 10 && float.TryParse(f[7], System.Globalization.NumberStyles.Float, RoadInv, out float heard)) { c.heard = heard; c.dug = f[8] == "1"; c.lost = f[9] == "1"; }
+                    Caches.Add(c);
+                }
+                else Load1014(f);
             }
         }
     }

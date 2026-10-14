@@ -540,6 +540,8 @@ namespace MadMax.Npc
         }
 
         static int Stable(string s) { unchecked { int h = 17; foreach (char c in s) h = h * 31 + c; return h; } }
+        /// <summary>The seed salt of a spot id (profiles of spot people built elsewhere match the director's).</summary>
+        public static int StableKey(string id) => Stable(id);
 
         /// <summary>A recruited person: the director lets go of their spot (and never spawns a copy).</summary>
         public void Release(Npc n)

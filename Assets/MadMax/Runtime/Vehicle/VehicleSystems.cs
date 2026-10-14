@@ -329,6 +329,27 @@ namespace MadMax.Vehicles
         /// <summary>Running with the oil pressure not yet up: the OIL lamp glows amber.</summary>
         public bool OilPressureLow => Started && HasEngine && OilPressure < OilLampBelow;
 
+        /// <summary>Worn bearings, tired oil and a low sump bleed pressure, worst at idle (2026-10-14): 1 = a healthy
+        /// engine; a worn one sags towards ~0.35 at idle and recovers some with revs, so the needle (and the lamp
+        /// flickering at a hot idle) tells the engine's state before a fault does.</summary>
+        public float OilWear
+        {
+            get
+            {
+                var e = driver ? driver.Engine : null;
+                var ep = e ? e.GetComponent<VehiclePart>() : null;
+                float dmg = ep ? Mathf.Clamp01(ep.damage) : 0f;
+                float low = oilInFuel || oilCapacity <= 0 ? 0f : Mathf.Clamp01((0.6f - OilFraction) / 0.6f);
+                return Mathf.Clamp01(dmg * 0.9f + (1f - Mathf.Clamp01(oilLife)) * 0.35f + low * 0.5f);
+            }
+        }
+
+        public float OilSagAt(float rpm01)
+        {
+            float hot = Mathf.Clamp01((Temperature - 60f) / 40f);                                         // thin hot oil shows it most
+            return 1f - OilWear * (0.55f + 0.2f * hot) * (1f - 0.6f * Mathf.Clamp01(rpm01 * 2f));
+        }
+
         void UpdateOilPressure(EngineStats engine, float dt)
         {
             if (engine) engine.fastIdle = FastIdleShare;
@@ -337,7 +358,7 @@ namespace MadMax.Vehicles
             {
                 float rpm = engine.maxRpm > 0f ? Mathf.Clamp01(driver.Rpm / engine.maxRpm) : 0f;
                 float thick = 1f + 0.5f * Mathf.Clamp01((40f - Temperature) / 60f);                  // cold oil reads high once it flows
-                target = (1f + 3.5f * rpm) * thick * Mathf.Clamp01(OilFraction * 2.5f);
+                target = (1f + 3.5f * rpm) * thick * Mathf.Clamp01(OilFraction * 2.5f) * OilSagAt(rpm);
             }
             float tau = target > OilPressure ? OilRiseSeconds : target <= 0f ? 0.25f : 0.6f;          // drops fast with the engine off
             OilPressure = Mathf.MoveTowards(OilPressure, target, Mathf.Max(0.05f, Mathf.Abs(target - OilPressure)) * dt / tau);

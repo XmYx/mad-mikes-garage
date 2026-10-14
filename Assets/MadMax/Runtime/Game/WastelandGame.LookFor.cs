@@ -70,6 +70,7 @@ namespace MadMax.Game
                 if (ids.Count == 0 || !GangWhereabouts(gang, me, out var at)) continue;
                 into.Add(new Pin { label = "THE " + gang + " (YOUR " + (ids.Count == 1 ? ItemName(ids[0]) : ids.Count + " PARTS") + ")", pos = at, color = col });
             }
+            LookFor1014(into, col);                                                                // whoever dug up a stash
         }
     }
 }

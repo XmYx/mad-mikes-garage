@@ -1618,18 +1618,39 @@ Not released tonight: `/` was 100 % full (1.2 GB free) and `share/` held other s
 Library/Temp on tmpfs).
 
 ### Suggestions (tie the experience together)
-- [ ] **Oil-pressure needle**: a real gauge on the pixel and HD dashboards (the lamp is the only read-out now), with a
+- [x] **Oil-pressure needle** (2026-10-14: the sag — `VehicleSystems.OilWear` (engine damage, tired oil, low sump) pulls the pressure down at a hot idle to ~0.35 of a healthy engine's, revs bring part of it back (`OilSagAt`); the OIL lamp flickers on a worn engine at idle; the dial itself lives in the instrument-cluster work; scenario `vehicle.oil_sag`): a real gauge on the pixel and HD dashboards, with a
   sagging needle on worn engines and low oil — the gauge tells the engine's health before a fault does.
-- [ ] **Neighbours by name**: the neighbour who visits the laid-up player is a real resident of that town (their
+- [x] **Neighbours by name** (2026-10-14: the visitor is one of the town's residents (`ResidentOf`: the same spot profiles `NpcDirector` walks about, skipping the dead), named in the toast, met, disposition +5; next talk opens with the leg (`AskAfterLeg`, once, +2); saved; scenario `npc.neighbour_by_name`): the neighbour who visits the laid-up player is a real resident of that town (their
   `NpcProfile`), disposition +5 per visit, and asks after the leg next time they meet.
-- [ ] **Cache rivals**: other scavengers hear the same rumour; a cache left a few days is found dug up with tracks
+- [x] **Cache rivals** (2026-10-14: a cache heard of ≥ 3 days ago is dug up first 65 % of the time (`RivalBeatYou`, per cache): a fresh hole and spoil heap, the crate tipped out empty, footprints to a digger walking to the nearest town with the loot in a sack (LOOK FOR pin); caught on foot they drop half (more with Charisma) and run, killed they drop it all, left > 300 m behind or reaching town it is gone; scenario `ui.cache_rivals`): other scavengers hear the same rumour; a cache left a few days is found dug up with tracks
   leading off (a wanderer carrying the loot) — the circle is a race, not a chore.
-- [ ] **Boss car chase**: once the gang knows the player wants the part back (after asking the salvager), the boss car
+- [x] **Boss car chase** (2026-10-14: the salvager naming the gang marks it wary for 3 days (`MarkWary`); seen, a wary gang still carrying the part runs (`Convoy.Run`: the boss car takes its road away from the player at 26 m/s, re-checked every 4 s, escorts chase the player); disabled or boxed in for 2.5 s the crew come out fighting (then open the trunk), 260 m ahead it got away; saved; scenario `towns.boss_car_chase`): once the gang knows the player wants the part back (after asking the salvager), the boss car
   runs instead of parking for a toll — a chase on the road named by the trail.
-- [ ] **Medic's kit runs dry**: a town call uses the medic's bandages; the town pays part in medical supplies, and an
+- [x] **Medic's kit runs dry** (2026-10-14: a town call uses the medic's first-aid kit or two bandages and the town adds two bandages to the fee (`MedicSpends`); a crew medic with no kit, bandage or splint says so once a day — on the home frequency when posted away with a radio (`UpdateMedicKit`); scenario `npc.medic_kit`): a town call uses the medic's bandages; the town pays part in medical supplies, and an
   empty kit makes the medic say so on the radio — supplies become a crew errand.
-- [ ] **Hitcher network**: rescued survivors tip the player off once (a cache, a gang's route, a cheap part) on the
+- [x] **Hitcher network** (2026-10-14: each survivor brought in calls once, 1–4 days later by day, on the home frequency (`HitcherTip`): this week's stash near their town onto LOOK FOR (60 %), else where the nearest raider gang rides; `Rescues` saved in `crewRoad`; scenario `npc.hitcher_tip`. Not yet: the cheap part): rescued survivors tip the player off once (a cache, a gang's route, a cheap part) on the
   radio before their week runs out.
+
+## Scheduled update (2026-10-14)
+Done this pass (ticked above): all six open suggestions of 2026-10-13 — the oil-pressure sag of a worn engine,
+neighbours by name who ask after the leg, cache rivals (a hole, tracks, a digger to catch), the boss car chase, the
+medic's kit running dry (towns pay in bandages), the hitcher network (radio tips). Scenarios in
+`Acceptance/Blocks/ScheduledScenarios1014.cs` — all six pass in a headless Linux player built from the worktree, with ui.cache_rumour,
+npc.medic_word, body.lie_up, towns.boss_car, npc.hitcher(_remembers), vehicle.frost_gauges, ui.look_for and towns.take_back.
+
+### Suggestions (tie the experience together)
+- [ ] **Digger's word**: a digger let go remembers being caught — they turn up in the town they walked to and tell
+  the stall (prices +10 % for a few days), or, spared with their half, tip the player off about the next stash.
+- [ ] **Chase on the radio**: a running boss car calls its gang (raider convoys nearby converge on the road) — a long
+  chase brings the rest of the gang; a short one doesn't.
+- [ ] **Neighbour's errand**: the neighbour who visited asks a small favour later (water for their garden, a part for
+  their pump) — the visit opens a thread instead of ending at a meal.
+- [ ] **Medic restock at the stall**: a crew medic standing in town with an empty kit buys bandages at the stall out
+  of the crew's scrap (asks first on the radio) — the errand runs itself once the player trusts them.
+- [ ] **Oil gauge on the pixel dash**: a small OIL bar beside the temperature bar on the pixel cluster, so the sag is
+  seen in every view, not only on the heavy/rugged HD dials.
+- [ ] **A tip's cheap part**: the hitcher network's third kind — a stall in their town holds one part for the player
+  at half price until the week is out.
 
 ## User requests (2026-10-09, night: generated cities)
 - [~] **Replace the tracked cities with the Blender-generated ones** (2026-10-09: `World/RollingCity/TrackedCity*.cs` ports modelbench/lib/citygen.py line for line through `CityKit` (box/span/beam/tube/lathe/ring/loft/wing/cable/ladder/railing, generator axes → deck-local game axes, per-vertex weathered `CM` palette, glow mesh on an unlit material, collision mesh of solid spans); both circuits carry a profile (Granite Falls 104 × 54 m, Saint Rust 120 × 58 m; `CityRoute.tracked` sets deck size, deck height 26.7 m, pose chord, bed and pier gap); crawler units with trucks, trestles, slewing rings, chain drives and four belt phases; walkable panel blocks (storey modules shared per floor: corridor, stair core, flats with furniture, balconies, AC, dishes, laundry; shops on the ground floor); halls, plants, banded chimneys, crane, pipe trunk with cabin stacks, pods, pilot bridge, railings with collision walls, lamps served by `CityLights`; high docks with lattice pier, stair tower and `CityLift`; `IDeckCarrier` carries the player on lifts. Pixel mode is only the shader over the same geometry. Scenario `city.ride` passes. Open: LOD for far views, smoke per stack size, HD look check, the old voxel profiles retired from the menu text)
