@@ -1,4 +1,5 @@
 using MadMax.Items;
+using MadMax.World;
 using UnityEngine;
 
 namespace MadMax.Building
@@ -11,6 +12,34 @@ namespace MadMax.Building
         public Kind kind;
         UtilityNode node;
         void Awake() => node = GetComponent<UtilityNode>();
+
+        /// <summary>Shower: seconds the rose sprays after use, the head height (piece space) and the spray (2026-10-15:
+        /// used to be one burst of puffs).</summary>
+        public const float ShowerSeconds = 5f;
+        static readonly Vector3 Rose = new Vector3(0f, 2.2f, 0f);
+        float sprayUntil, dropT;
+        public bool Spraying => Time.time < sprayUntil;
+        public void Spray(float seconds) => sprayUntil = Time.time + seconds;
+
+        Droplets spray;
+
+        void Update()
+        {
+            if (spray) spray.emitting = Spraying;
+            if (!Spraying) return;
+            if (!spray)
+                spray = Droplets.Attach(gameObject, 36, (int i, out Vector3 at, out Vector3 v) =>
+                {
+                    var off = Random.insideUnitCircle * 0.11f;
+                    at = Rose + new Vector3(off.x, -0.03f, off.y);
+                    v = new Vector3(off.x * 3f, -Random.Range(1.2f, 2.2f), off.y * 3f);
+                }, 0.045f, 0.75f);
+            float left = sprayUntil - Time.time;
+            MadMax.Audio.Sfx.Loop(this, "pour", Mathf.Clamp01(left / 0.6f) * 0.45f, 1.25f, 10f);
+            if ((dropT -= Time.deltaTime) > 0f) return;
+            dropT = 0.25f;                                                                         // steam off a hot shower
+            MadMax.World.Fx.Smoke(transform.TransformPoint(new Vector3(0f, 0.3f, 0f)) + Random.insideUnitSphere * 0.25f, Vector3.up * 0.3f, 0.2f, new Color(0.9f, 0.92f, 0.95f, 0.3f), 1.4f);
+        }
 
         public string Prompt(MadMax.Game.WastelandGame g)
         {
@@ -43,7 +72,8 @@ namespace MadMax.Building
                 float got = UtilityGrid.Draw(node, 10f, out bool clean);
                 if (got < 9.9f) { g.Toast("NOT ENOUGH WATER"); return; }
                 g.Wash(clean ? 100f : 60f, "SHOWERED");
-                for (int i = 0; i < 20; i++) MadMax.World.Fx.Smoke(transform.position + Vector3.up * (1.2f + Random.value), Vector3.down * 2f + Random.insideUnitSphere * 0.3f, 0.12f, new Color(0.75f, 0.85f, 0.95f, 0.6f), 0.6f);
+                sprayUntil = Time.time + ShowerSeconds;                                          // the rose runs a while (Update)
+                PieceMotion.Use(gameObject, "turn", ShowerSeconds);
                 return;
             }
             if (!secondary)

@@ -1734,18 +1734,60 @@ medic's kit running dry (towns pay in bandages), the hitcher network (radio tips
 npc.medic_word, body.lie_up, towns.boss_car, npc.hitcher(_remembers), vehicle.frost_gauges, ui.look_for and towns.take_back.
 
 ### Suggestions (tie the experience together)
-- [ ] **Digger's word**: a digger let go remembers being caught — they turn up in the town they walked to and tell
+- [x] **Digger's word**: a digger let go remembers being caught — they turn up in the town they walked to and tell
   the stall (prices +10 % for a few days), or, spared with their half, tip the player off about the next stash.
-- [ ] **Chase on the radio**: a running boss car calls its gang (raider convoys nearby converge on the road) — a long
+- [x] **Chase on the radio**: a running boss car calls its gang (raider convoys nearby converge on the road) — a long
   chase brings the rest of the gang; a short one doesn't.
-- [ ] **Neighbour's errand**: the neighbour who visited asks a small favour later (water for their garden, a part for
+- [x] **Neighbour's errand**: the neighbour who visited asks a small favour later (water for their garden, a part for
   their pump) — the visit opens a thread instead of ending at a meal.
-- [ ] **Medic restock at the stall**: a crew medic standing in town with an empty kit buys bandages at the stall out
+- [x] **Medic restock at the stall**: a crew medic standing in town with an empty kit buys bandages at the stall out
   of the crew's scrap (asks first on the radio) — the errand runs itself once the player trusts them.
-- [ ] **Oil gauge on the pixel dash**: a small OIL bar beside the temperature bar on the pixel cluster, so the sag is
+- [x] **Oil gauge on the pixel dash**: a small OIL bar beside the temperature bar on the pixel cluster, so the sag is
   seen in every view, not only on the heavy/rugged HD dials.
-- [ ] **A tip's cheap part**: the hitcher network's third kind — a stall in their town holds one part for the player
+- [x] **A tip's cheap part**: the hitcher network's third kind — a stall in their town holds one part for the player
   at half price until the week is out.
+
+## Scheduled update (2026-10-15)
+Done this pass (ticked above): all six open suggestions of 2026-10-14 — the digger's word (`DiggerWord`: a caught
+digger sours their town's stalls +10 % for a few days and tells the town news, or, let off with their half, finds the
+player in town with the next stash), the chase on the radio (`Convoy.Call`: a boss car running 20 s calls its gang;
+columns within reach hurry along their road to the call and attack on sight), the neighbour's errand (water for the
+garden, pump leathers, seed potatoes: asked two days after the visit, waved over in town, on LOOK FOR), the medic
+restocking at the stall (asks once a day, then buys 3 bandages out of the crew's scrap when trusted), the oil-pressure
+bar on both vehicle panels (lamp threshold marked), and a tip's held part (`Trade.Held`: half price at the parts stall
+until the week is out).
+
+Liveliness audit of placed pieces (sections 2, 8, 9, 18 — what stood still while in use):
+- [x] **TV picture**: a playing tape shows a moving 40×30 programme on the screen (road movie, newsreader, cartoon,
+  workshop show by tape) with scan roll, tracking noise and cuts; the room light follows the picture's brightness.
+- [x] **Bees and flies** (`World/Swarm`): bees work in and out of the hive mouth by day (forage, rain, cold); flies
+  circle a fresh latrine pit. Tiny shared-mesh specks, animated only within 28 m of the camera.
+- [x] **Shower and sprinkler spray** (`World/Droplets`: pooled pixel-sized droplets on ballistic paths, since smoke
+  puffs did not read at pixel resolution): the shower rose runs for 5 s (falling drops, steam, water loop) instead of
+  one burst; a sprinkler's turning head throws water for 7 s after it waters.
+- [x] **The piece in work** (`Building/StationWork`): hand-work stations (workbench, garage, gunsmith, sewing, leather,
+  forge, machine shop, loom, spinning) show the item being made at the output point, growing with the job, turned now
+  and then, nudged on each tool tap.
+- [x] `tools/compile_check.py` removes its temporary DLLs (643 dirs ≈ 5 GB had piled up on the tmpfs).
+
+Scenarios in `Acceptance/Blocks/ScheduledScenarios1015.cs` (trade.digger_word, raid.chase_radio, npc.neighbour_errand,
+npc.medic_restock, trade.held_part, ui.oil_pressure_bar, living.tv_picture, living.pieces).
+
+### Suggestions (tie the experience together)
+- [ ] **Sprinkler arc**: the jet's droplets reach ~1.5 m but stay under ~0.7 m (they barely rise, though they are
+  launched at ~3 m/s upward; the shower's fall as expected) — find why, then tune it into a proper arc.
+- [ ] **Moving parts in the HD models**: the spinning wheel, loom beater, saw blades and sprinkler head have no named
+  movers (`Wheel`, `Piston`, `Blade`), so `PieceMotion` cannot turn them — add movers in `tools/blender/hd/furniture`
+  and matching voxel cuts, then re-render.
+- [ ] **Sawdust and shavings**: saw benches and the sawmill throw sawdust while a job runs and leave a small pile at the
+  output (swept up as a little wood).
+- [ ] **Honey bees on the beds**: bees from a hive visit flowering beds within 14 m (a few specks over the flowers),
+  so the forage number has a visible source.
+- [ ] **Flies follow rot**: carcasses, spoiled food left in the open and an unwashed player draw the same flies.
+- [ ] **What's on tonight**: tapes keep their programme by name (the mechanic tape shows the workshop show, the news
+  tape the newsreader), and an NPC sitting near a playing TV watches it.
+- [ ] **The favour returned**: a neighbour whose favour was done keeps an eye on the player's base while they are
+  away (a radio word when raiders come near).
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)

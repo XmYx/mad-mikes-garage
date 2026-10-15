@@ -39,8 +39,9 @@ namespace MadMax.Game
         }
 
         /// <summary>The visit makes them a known neighbour: met, a little warmer, and they will ask after the leg.</summary>
-        string NeighbourCame(NpcProfile p, string food)
+        string NeighbourCame(NpcProfile p, string food, Settlement town = null)
         {
+            PlanNeighbourErrand(p, town);                                                          // the visit opens a thread (2026-10-15)
             var s = NpcRegistry.Get(p);
             s.Set(NpcSave.Met);
             s.disposition = Mathf.Min(100, s.disposition + NeighbourWarmth);
@@ -205,6 +206,7 @@ namespace MadMax.Game
                 dropped++;
             }
             foreach (var kv in new List<KeyValuePair<string, MadMax.Npc.Npc>>(Diggers)) if (kv.Value == n) Diggers.Remove(kv.Key);
+            if (diggerTown.TryGetValue(n, out var home)) DiggerWord(n, home);                      // the digger's word (2026-10-15)
             diggerTown.Remove(n);
             n.Scare(30f);
             Toast(n.Profile.Name + ": \"FINDERS KEEPERS... ALL RIGHT, ALL RIGHT, HALF!\" (" + dropped + " DROPPED, [E] TAKE)");
@@ -338,7 +340,9 @@ namespace MadMax.Game
             var tp = new Vector3(town.pos.x, 0f, town.pos.y);
             string tip = null;
             var rnd = new System.Random(Market.Seed(seed, id.GetHashCode() + 17));
-            if (rnd.NextDouble() < 0.6)
+            double roll = rnd.NextDouble();
+            if (roll >= 0.45 && roll < 0.7) tip = HoldPartTip(id, town, NpcRegistry.Peek(id));                        // a part held at half price (2026-10-15)
+            if (tip == null && roll < 0.6)
             {
                 var c = CacheNear(town, DayNight.Day / 7);
                 if (c != null && !Caches.Exists(k => k.key == c.key))
@@ -377,6 +381,7 @@ namespace MadMax.Game
             UpdateDiggers();
             UpdateMedicKit();
             UpdateHitcherTips();
+            UpdateNightly1015();
         }
 
         void LookFor1014(List<Pin> into, Color32 col)
@@ -384,6 +389,7 @@ namespace MadMax.Game
             foreach (var kv in Diggers)
                 if (kv.Value && kv.Value.Alive && kv.Value.pack && Lootable.HasAny(kv.Value.pack.inventory))
                     into.Add(new Pin { label = "WHOEVER DUG UP THE STASH", pos = kv.Value.transform.position, color = col });
+            LookFor1015(into, col);
         }
 
         void Save1014(List<string> lines)
@@ -391,6 +397,7 @@ namespace MadMax.Game
             foreach (var kv in NeighbourVisits) lines.Add("n|" + kv.Key + "|" + kv.Value + "|" + (legAsked.Contains(kv.Key) ? 1 : 0));
             foreach (var kv in GangWary) lines.Add("g|" + kv.Key + "|" + kv.Value);
             foreach (var kv in Rescues) lines.Add("h|" + kv.Key + "|" + kv.Value.town + "|" + (kv.Value.tipped ? 1 : 0) + "|" + (kv.Value.name ?? "").Replace("|", " "));
+            Save1015(lines);
         }
 
         void Load1014(string[] f)
@@ -398,6 +405,7 @@ namespace MadMax.Game
             if (f[0] == "n" && f.Length >= 4 && int.TryParse(f[2], out int day)) { NeighbourVisits[f[1]] = day; if (f[3] == "1") legAsked.Add(f[1]); }
             else if (f[0] == "g" && f.Length >= 3 && int.TryParse(f[2], out int until)) GangWary[f[1]] = until;
             else if (f[0] == "h" && f.Length >= 4 && int.TryParse(f[2], out int t)) Rescues[f[1]] = new Rescue { town = t, tipped = f[3] == "1", name = f.Length >= 5 && f[4].Length > 0 ? f[4] : null };
+            else Load1015(f);
         }
 
         void Clear1014()
@@ -405,6 +413,7 @@ namespace MadMax.Game
             NeighbourVisits.Clear(); legAsked.Clear(); GangWary.Clear(); Rescues.Clear(); kitWarnDay.Clear();
             foreach (var n in Diggers.Values) if (n) Destroy(n.gameObject);
             Diggers.Clear(); diggerTown.Clear();
+            Clear1015();
         }
     }
 }

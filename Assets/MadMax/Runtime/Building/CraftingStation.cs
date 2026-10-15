@@ -28,6 +28,7 @@ namespace MadMax.Building
         /// <summary>A queued job; <see cref="costMult"/> is the crafter's cost multiplier when the inputs were paid (the refund on cancel).</summary>
         public class Job { public string recipe; public float progress, speed = 1f, costMult = 1f; public ResourceType paidFuel; }
         public readonly List<Job> queue = new List<Job>();
+        StationWork work;
         /// <summary>Finished items waiting for the crafter.</summary>
         public readonly Inventory tray = new Inventory();
         /// <summary>Average make (0 crude .. 2 fine) of each item id waiting in the tray (saved with it).</summary>
@@ -87,11 +88,16 @@ namespace MadMax.Building
         void Update()
         {
             if (node && watts > 0f) node.demand = watts * (Busy ? 1f : 0.1f);
-            if (queue.Count == 0 || !Powered) return;
+            if (queue.Count == 0 || !Powered) { if (work) work.Hide(); return; }
             var job = queue[0];
             var r = RecipeLibrary.Get(job.recipe);
             if (r == null) { queue.RemoveAt(0); return; }
             job.progress += Time.deltaTime * job.speed / RecipeLibrary.Seconds(r);
+            if (StationWork.HandWork(type))                                                        // the piece in work on the bench
+            {
+                if (!work) work = gameObject.AddComponent<StationWork>();
+                work.Show(r, job.progress, OutputPoint);
+            }
             var loop = WorkLoop(type, out float loopVol);
             if (loop != null) MadMax.Audio.Sfx.Loop(this, loop, loopVol, 1f, 18f);
             // a little life while it works: sparks at benches, smoke at fires
@@ -110,16 +116,18 @@ namespace MadMax.Building
                         MadMax.World.Fx.Smoke(OutputPoint + Vector3.up * 0.15f, Vector3.up * 0.45f + MadMax.World.Fx.Wind * 0.08f, 0.18f, steam, 1.6f);
                     }
                     if (type == "forge" && Random.value < 0.6f)
-                        MadMax.Audio.Sfx.Play("anvil", OutputPoint, 0.3f, Random.Range(0.92f, 1.08f), 16f, 0.4f);
+                    { MadMax.Audio.Sfx.Play("anvil", OutputPoint, 0.3f, Random.Range(0.92f, 1.08f), 16f, 0.4f); if (work) work.Tap(); }
                     else if (type == "garage" || type == "workbench" || type == "gunsmith")
                     {
                         MadMax.World.Fx.Sparks(OutputPoint, Vector3.up, 2, MadMax.Voxel.Pal.Accent);
+                        if (work) work.Tap();
                         MadMax.Audio.Sfx.Play("ratchet", OutputPoint, 0.14f, 0.9f, 7f, 0.8f);
                     }
                 }
             }
             if (job.progress < 1f) return;
             queue.RemoveAt(0);
+            if (work) work.Hide();
             MadMax.Game.WastelandGame.Instance?.FinishJob(r, this);
             Dirty();
         }

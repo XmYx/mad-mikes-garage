@@ -1023,6 +1023,7 @@ namespace MadMax.Game
                 }
                 Gauge(fx, y + 11, "O", sys.oilInFuel ? 1f : sys.OilFraction, ResourceInfo.Color(ResourceType.Oil));
                 Gauge(fx, y + 18, "C", sys.usesCoolant ? sys.CoolantFraction : 1f, ResourceInfo.Color(ResourceType.Coolant));
+                if (sys.HasEngine) OilPressureBar(fx, y + 25, sys);
                 var fault = sys.FaultText();
                 if (fault != null && (Time.unscaledTime * 2f) % 2f > 0.6f)
                 {
@@ -1091,6 +1092,22 @@ namespace MadMax.Game
             canvas.Text(x, y, label, Dim);
             Bar(x + 5, y + 2, 36, v, v < 0.15f && label != "T" ? Red : c);
         }
+
+        /// <summary>Oil pressure (2026-10-15): a "P" bar beside the oil level with the lamp threshold marked, so a sag at
+        /// idle or a slow frosty rise shows in every view, not only on the HD dials.</summary>
+        void OilPressureBar(int x, int y, VehicleSystems sys)
+        {
+            float t = OilPressureShare(sys);
+            canvas.Text(x, y, "P", Dim);
+            var c = sys.OilPressureLow ? ((Time.unscaledTime * 2f) % 1f > 0.4f ? Amber : Red) : new Color32(150, 170, 120, 255);
+            Bar(x + 5, y + 2, 36, t, c);
+            int tick = x + 5 + Mathf.RoundToInt(36f * VehicleSystems.OilLampBelow / OilScaleBar);
+            if (!HD) canvas.Rect(tick, y + 1, 1, 4, Dim);
+        }
+
+        /// <summary>Full scale of the oil pressure bars (bar).</summary>
+        public const float OilScaleBar = 5f;
+        public static float OilPressureShare(VehicleSystems sys) => sys ? Mathf.Clamp01(sys.OilPressure / OilScaleBar) : 0f;
 
         void Bar(int x, int y, int w, float v, Color32 c)
         {

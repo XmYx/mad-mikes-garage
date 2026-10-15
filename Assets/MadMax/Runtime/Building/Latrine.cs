@@ -14,6 +14,10 @@ namespace MadMax.Building
 
         int Bags => Mathf.FloorToInt(ripe / PerBag);
 
+        /// <summary>Flies over a fresh pit (fewer in the cold and at night).</summary>
+        void Start() => Swarm.Attach(gameObject, Swarm.Kind.Flies, new Vector3(0f, 0.9f, 0.6f), 0.45f, 6,
+            () => fresh < 1f || DayNight.Darkness > 0.6f || Weather.TemperatureAt(transform.position.z) < 4f ? 0f : Mathf.Clamp01(0.3f + fresh / 150f));
+
         public string Prompt(MadMax.Game.WastelandGame g) =>
             (g.Stats.waste >= 20f ? "[E] USE LATRINE" : "LATRINE") + (Bags > 0 ? "  [T] DIG OUT COMPOST (" + Bags + ")" : fresh > 1f ? "  (COMPOSTING)" : "");
 

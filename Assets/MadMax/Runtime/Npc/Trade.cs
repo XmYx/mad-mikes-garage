@@ -122,7 +122,7 @@ namespace MadMax.Npc
 
         /// <summary>The faction the current trader answers to (prices by standing, roadmap 21).</summary>
         public static Faction Seller = Faction.None;
-        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f) * Factions.PriceFactor(Seller)));
+        public static int BuyPrice(string id, float bargain) => Mathf.Max(1, Mathf.CeilToInt(Value(id) * Market.Factor(Town, id) * (1.45f - bargain) * (TownQuests.Friend(Town) ? 0.9f : 1f) * Factions.PriceFactor(Seller) * SourFactor));
         public static int SellPrice(string id, float bargain) => Mathf.Max(0, Mathf.FloorToInt(Value(id) * (Town == null ? 0.9f : Market.Factor(Town, id)) * (0.45f + bargain * 0.8f) * (TownQuests.Friend(Town) ? 1.1f : 1f) / Factions.PriceFactor(Seller)));
 
         // ------------------------------------------------------------------ stock
@@ -223,6 +223,7 @@ namespace MadMax.Npc
             var list = new List<Offer>();
             if (p.kind == ScavengerKind) { HaulStock(p, list, bargain); return list; }          // only what they stripped
             if (p.kind == "salvage") MarketHaulStock(list, bargain);                             // what scavengers brought in off the road
+            HeldStock(p, list, bargain);                                                         // a part a rescued survivor had held (Trade.Held)
             if (p.kind == null || !sells.TryGetValue(p.kind, out var l)) return list;
             int day = MadMax.World.DayNight.Day;
             var r = new System.Random(p.seed * 31 + day * 977);
@@ -275,7 +276,8 @@ namespace MadMax.Npc
             if (chits > 0) g.Inventory.TakeItem(Contracts.Chit, chits);
             g.Inventory.TrySpend(ResourceType.Scrap, cost - chits * ChitValue);
             Market.Bought(Town, o.id, n);
-            if (IsHaulNote(o.note)) TakeFromMarketHaul(o.id, n);                           // off a wreck: gone for good, the daily stock untouched
+            if (o.note == HeldNote) { if (Town != null) Held.Remove(Town.index); }
+            else if (IsHaulNote(o.note)) TakeFromMarketHaul(o.id, n);                           // off a wreck: gone for good, the daily stock untouched
             else vendor.State.AddBought(o.id, n, MadMax.World.DayNight.Day);
             if (vendor.Profile.kind == ScavengerKind) TakeFromHaul(vendor.Profile, o.id, n);
             vendor.State.disposition = Mathf.Min(100, vendor.State.disposition + 1);

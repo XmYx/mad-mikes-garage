@@ -204,6 +204,7 @@ namespace MadMax.Npc
             KeyChoice();                                                                        // mechanics cut keys for lost ones (Dialogue.Keys)
             QuartersChoice();                                                                   // the housing clerk aboard a city (Dialogue.Quarters)
             StolenTrail();                                                                      // salvagers name who sold them the player's part
+            NeighbourChoice();                                                                  // the neighbour's favour (Dialogue.Neighbours)
             SurgeonChoice();                                                                    // medical traders fit prosthetics (Dialogue.Surgeon)
             if (!smallTalked) Add("(SMALL TALK)", SmallTalk);
             if (Cha >= 7 && S.revealed < 3 && S.disposition >= 5) Add("[CHA 7] YOU CAN TRUST ME. WHAT'S REALLY ON YOUR MIND?", Confide);
@@ -249,6 +250,7 @@ namespace MadMax.Npc
                     if (Companions.Study(npc.Profile, g.Inventory)) End("...HUH. SO THAT'S HOW A SPLINT SITS. GOT IT.");
                     else CompanionHub();
                 }, "THEIR DRESSINGS STOP BEING ROUGH");
+            MedicShopChoice();                                                                  // a trusted medic restocks in town (Dialogue.Neighbours)
             var car = SpareCar();
             if (car) Add("TAKE THE " + WastelandGame.Name(car) + " AND FOLLOW ME.", () => { npc.order = 0; npc.TakeWheel(car); End("I'LL STAY ON YOUR TAIL."); }, "THEY DRIVE IT BEHIND YOU; GET IN IT YOURSELF TO TAKE IT BACK");
             Add("(T OPENS THEIR PACK)  WE'RE DONE. GO YOUR OWN WAY.", () => { Companions.Dismiss(g, npc); End("...FINE. TAKE CARE OUT THERE."); }, "THEY LEAVE, DROPPING WHAT THEY CARRY FOR YOU");

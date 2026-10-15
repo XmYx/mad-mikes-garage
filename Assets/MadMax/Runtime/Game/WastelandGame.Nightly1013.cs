@@ -370,7 +370,7 @@ namespace MadMax.Game
             if (FoodLibrary.Get(food) == null) food = "food_bread";
             Inventory.AddItem(food);
             var who = ResidentOf(town, rnd);                                                       // a real resident of that town
-            LastVisit = who != null ? NeighbourCame(who, food) + " FROM " + Market.TownName(town)
+            LastVisit = who != null ? NeighbourCame(who, food, town) + " FROM " + Market.TownName(town)
                                     : "A NEIGHBOUR FROM " + Market.TownName(town) + " LOOKED IN WITH " + ItemIds.Name(food);
             MadMax.Audio.Sfx.Play("door_close", home, 0.5f, 1.1f, 20f, 1f);
             return LastVisit;

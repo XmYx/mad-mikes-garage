@@ -18,6 +18,7 @@ namespace MadMax.Npc
         {
             var lead = cars[0];
             running = true; phase = Phase.Flee; timer = 0f; boxedT = 0f; redirectT = 0f;
+            ResetChase();
             lead.SetPath(route, AwayDir(lead.transform.position, target.position));
             lead.cruise = RunSpeed;
             for (int i = 1; i < cars.Count; i++)
@@ -46,6 +47,7 @@ namespace MadMax.Npc
             var lead = cars.Count > 0 ? cars[0] : null;
             if (!lead || !lead.enabled || lead.Disabled) { running = false; Attack(g); return; }   // stopped by force: the crew fight (BailOut puts them out)
             float speed = lead.Vehicle ? Mathf.Abs(lead.Vehicle.ForwardSpeed) : 0f;
+            ChaseRadio(g, lead.transform.position, dt);                                            // a long chase calls the gang (Convoy.Call)
             boxedT = speed < 2f && dist < 14f && timer > 3f ? boxedT + dt : 0f;
             if (boxedT > BoxedSeconds)
             {

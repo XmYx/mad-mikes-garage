@@ -101,6 +101,13 @@ namespace MadMax.Game
             if (sys)
             {
                 MiniBar(bx, py + 12f, bw, G.Oil, sys.oilInFuel ? 1f : sys.OilFraction, OilCol);
+                if (sys.HasEngine)                                                                   // oil pressure: a thin strip under the level, lamp mark
+                {
+                    float pt = OilPressureShare(sys);
+                    HBar(bx + 10f, py + 15.2f, bw - 10f, 1.1f, pt, sys.OilPressureLow ? (Blink(2f, 0.6f) ? Amber : Red) : new Color32(150, 170, 120, 255));
+                    float mk = bx + 10f + (bw - 10f) * VehicleSystems.OilLampBelow / OilScaleBar;
+                    V.Line(mk, py + 14.6f, mk, py + 16.9f, 0.3f, Dim);
+                }
                 MiniBar(bx, py + 19f, bw, G.Drop, sys.usesCoolant ? sys.CoolantFraction : 1f, CoolCol);
             }
             if (boat)

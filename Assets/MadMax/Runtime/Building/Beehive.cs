@@ -28,6 +28,16 @@ namespace MadMax.Building
         float checkT, buzzT;
 
         void OnEnable() => All.Add(this);
+        void Start() => Swarm.Attach(gameObject, Swarm.Kind.Bees, new Vector3(0f, 0.5f, 0.42f), 1.6f, 7, Busy);
+
+        /// <summary>How busy the hive mouth is: by day, dry and warm enough, scaled by forage (the visible bees).</summary>
+        public float Busy()
+        {
+            if (DayNight.Darkness > 0.5f || Weather.Raining) return 0f;
+            float temp = Weather.TemperatureAt(transform.position.z);
+            if (temp < 8f) return 0.1f;
+            return Mathf.Clamp(0.3f + 0.6f * forage, 0.2f, 1f);
+        }
         void OnDisable() => All.Remove(this);
 
         void Update()

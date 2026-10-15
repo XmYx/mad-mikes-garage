@@ -133,7 +133,7 @@ namespace MadMax.Npc
             }
             if (!Spawned)
             {
-                travel += speed * dt;
+                if (!AnswerTravel(dt)) travel += speed * dt;                                       // answering a gang call: toward it (Convoy.Call)
                 var p = PointAt(travel, out _);
                 if (Flat(p - focus).magnitude < 140f) Spawn(g);
                 return;
@@ -159,8 +159,9 @@ namespace MadMax.Npc
                                       * (Disguised(g) ? 0.35f : 1f)                                                                                                  // our own colours on the doors
                                       * (Factions.Hostile(Factions.OfGang(Gang)) ? 1.3f : 1f)                                                                          // they are looking for you
                                       * (!g.Current && g.Player && g.Player.Prone ? 0.35f : !g.Current && g.Player && g.Player.Crouching ? 0.55f : 1f);              // low in the scrub, flat in the dirt
+                        if (Answering) sight *= 3f;                                                    // called in: they are looking for you
                         if (Friendly) { if (dist < 30f && Time.time > truceUntil) { truceUntil = Time.time + 120f; MadMax.Audio.Sfx.Play("horn", leadPos, 0.8f, 1.2f, 120f); g.Toast("THE " + Gang + " HONK A GREETING"); } }
-                        else if (Time.time > truceUntil && !inTown && dist < sight) { if (WastelandGame.GangRuns(Gang) && cars.Count > 0 && cars[0] && cars[0].enabled) Run(g, target); else Confront(g); }   // wary with your part: the boss car runs
+                        else if (Time.time > truceUntil && !inTown && dist < sight) { if (WastelandGame.GangRuns(Gang) && cars.Count > 0 && cars[0] && cars[0].enabled) Run(g, target); else if (Answering) { callUntil = 0f; Attack(g); } else Confront(g); }   // wary with your part: the boss car runs
                     }
                     else if (dist < 22f && (!g.Current || Mathf.Abs(g.Current.ForwardSpeed) < 3f) && !Carrying(g)) Stop(g);
                     break;

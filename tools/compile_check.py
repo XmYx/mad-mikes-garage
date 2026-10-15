@@ -6,7 +6,7 @@ checkout that the editor doesn't have open (git worktrees used by parallel agent
 
 Needs the main project's Library (the editor must have compiled it once): the response files and package DLLs come
 from there."""
-import os, re, subprocess, sys, tempfile
+import os, re, shutil, subprocess, sys, tempfile
 
 MAIN = "/home/magix/PycharmProjects/MadMaxUnity/share"
 UNITY = "/home/magix/Unity/Hub/Editor/6000.6.3f1/Editor/Data"
@@ -67,10 +67,13 @@ def build(rsp_name, root, editor, extra_refs, out_dll):
 def main():
     root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.getcwd())
     tmp = tempfile.mkdtemp(prefix="madmax_csc_")
-    runtime = os.path.join(tmp, "Assembly-CSharp.dll")
-    errs = build("Assembly-CSharp.rsp", root, False, [], runtime)
-    if not errs:
-        errs = build("Assembly-CSharp-Editor.rsp", root, True, [runtime], os.path.join(tmp, "Assembly-CSharp-Editor.dll"))
+    try:                                                   # the DLLs are throwaway: never leave them on tmpfs
+        runtime = os.path.join(tmp, "Assembly-CSharp.dll")
+        errs = build("Assembly-CSharp.rsp", root, False, [], runtime)
+        if not errs:
+            errs = build("Assembly-CSharp-Editor.rsp", root, True, [runtime], os.path.join(tmp, "Assembly-CSharp-Editor.dll"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     for e in errs:
         print(e.replace(root + "/", ""))
     print("OK" if not errs else "%d error(s)" % len(errs))

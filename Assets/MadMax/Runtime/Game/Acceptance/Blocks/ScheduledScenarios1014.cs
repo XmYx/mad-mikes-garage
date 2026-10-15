@@ -251,7 +251,7 @@ namespace MadMax.Game.Acceptance
             if (!c.Check(town != null, "a town")) yield break;
             var n = ScheduledScenarios1012.Person(g, "test:tipper", NpcRole.Trader, 61, ScheduledScenarios1012.Beside(g, 3f));
             yield return new WaitForSeconds(0.3f);
-            g.Rescues.Clear(); g.Caches.Clear();
+            g.Rescues.Clear(); g.Caches.Clear(); MadMax.Npc.Trade.Held.Clear();
             n.State.rescuedDay = DayNight.Day;
             g.Rescues[n.Profile.id] = new WastelandGame.Rescue { town = town.index, name = n.Profile.Name };
             int day = WastelandGame.TipDay(n.State);
@@ -259,7 +259,7 @@ namespace MadMax.Game.Acceptance
             WastelandGame.LastTip = null;
             string tip = g.HitcherTip(n.Profile.id);
             c.Note(tip);
-            c.Check(tip != null && tip.Contains(n.Profile.Name) && (tip.Contains("STASH") || tip.Contains("RIDING")), "a tip in their voice");
+            c.Check(tip != null && tip.Contains(n.Profile.Name) && (tip.Contains("STASH") || tip.Contains("RIDING") || tip.Contains("HOLDING")), "a tip in their voice");
             c.Check(tip == null || !tip.Contains("STASH") || g.Caches.Count == 1, "a stash tip goes onto LOOK FOR");
             c.Check(g.Rescues[n.Profile.id].tipped, "one tip each");
             var d = new SaveData();
