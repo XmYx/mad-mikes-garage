@@ -270,7 +270,8 @@ namespace MadMax.Npc
             else if (foe) mode = Mode.Fight;
             else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Prone ? 16f : mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching / prone: harder to spot
             else if (mode != Mode.Flee || Time.time > fleeUntil) mode = Routine();
-            if (mode != Mode.Gather) LeaveFire();
+            if ((mode != Mode.Stand && mode != Mode.Wander) || foe) EndTv();                   // Npc.Tv
+            if (mode != Mode.Gather && !tvSeat) LeaveFire();
             if (mode != Mode.Wander) EndChore();                                              // Npc.Chores
             if (mode != Mode.Sleep && asleep) SetAsleep(false);
 
@@ -280,6 +281,7 @@ namespace MadMax.Npc
             else if (tending && !foe && TendTick(me, dt, ref move, ref speed)) { }
             else if (!foe && tendedBy && tendedBy.tending && tendedBy.tendWho == this) { faceTarget = tendedBy.transform.position; faceUntil = Time.time + 0.5f; }   // waits for the medic
             else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
+            else if (!foe && WatchTv(me, dt, ref move, ref speed)) { }                           // a playing TV nearby (Npc.Tv)
             else switch (mode)
             {
                 case Mode.Stand:
@@ -331,7 +333,7 @@ namespace MadMax.Npc
             if (staggering && !seated) { move = staggerDir; speed = 2.6f * (staggerUntil - Time.time) / StaggerTime; }
 
             float moved = 0f;
-            if (seated) SitAtFire();
+            if (seated) { if (tvSeat) SitOnTv(); else SitAtFire(); }
             else
             {
                 // movement: CharacterController against buildings and props, gravity, stuck → sidestep / new goal

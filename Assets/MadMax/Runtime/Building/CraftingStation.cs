@@ -29,6 +29,7 @@ namespace MadMax.Building
         public class Job { public string recipe; public float progress, speed = 1f, costMult = 1f; public ResourceType paidFuel; }
         public readonly List<Job> queue = new List<Job>();
         StationWork work;
+        Sawdust sawdust;
         /// <summary>Finished items waiting for the crafter.</summary>
         public readonly Inventory tray = new Inventory();
         /// <summary>Average make (0 crude .. 2 fine) of each item id waiting in the tray (saved with it).</summary>
@@ -98,6 +99,11 @@ namespace MadMax.Building
                 if (!work) work = gameObject.AddComponent<StationWork>();
                 work.Show(r, job.progress, OutputPoint);
             }
+            if (type == "saw_bench" || type == "sawmill")                                           // dust off the blade, a pile in front (Sawdust)
+            {
+                if (!sawdust) { sawdust = GetComponent<Sawdust>(); if (!sawdust) { sawdust = gameObject.AddComponent<Sawdust>(); sawdust.mill = type == "sawmill"; } }
+                sawdust.Cut();
+            }
             var loop = WorkLoop(type, out float loopVol);
             if (loop != null) MadMax.Audio.Sfx.Loop(this, loop, loopVol, 1f, 18f);
             // a little life while it works: sparks at benches, smoke at fires
@@ -128,6 +134,7 @@ namespace MadMax.Building
             if (job.progress < 1f) return;
             queue.RemoveAt(0);
             if (work) work.Hide();
+            if (sawdust) sawdust.JobDone(r);
             MadMax.Game.WastelandGame.Instance?.FinishJob(r, this);
             Dirty();
         }

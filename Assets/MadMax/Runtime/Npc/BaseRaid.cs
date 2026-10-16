@@ -20,10 +20,16 @@ namespace MadMax.Npc
         public static float NextDay = -1f;
         /// <summary>What happened while the player was away (shown on return). Saved.</summary>
         public static string Report;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Instance = null; NextDay = -1f; Report = null; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Instance = null; NextDay = -1f; Report = null; NeighbourHelp = null; }
 
         public static readonly float[] Intervals = { 0f, 6f, 3f, 1.5f };
         public bool Live => party.Count > 0 && !over;
+        /// <summary>Help from the neighbours when a raid is fought out while the player is away (2026-10-16: a neighbour
+        /// whose favour was done keeps watch): defence added and who turned out (WastelandGame.NeighbourHelp).</summary>
+        public delegate int Help(ClaimFlag claim, out string who);
+        public static Help NeighbourHelp;
+        /// <summary>The claim the next raid goes for (the most built-up one; null: none).</summary>
+        public static ClaimFlag TargetClaim() => PickClaim();
 
         readonly List<Npc> party = new List<Npc>();
         ClaimFlag target;
@@ -179,6 +185,8 @@ namespace MadMax.Npc
         {
             float strength = Strength * 2f + DayNight.Day * 0.2f;
             int defence = claim.Defence();
+            string helpers = null;
+            if (NeighbourHelp != null) defence += NeighbourHelp(claim, out helpers);
             DefenceWorks.SpendMines(claim);                                                    // they walk into some of the mines
             foreach (var p in Placeable.All)                                                 // turrets spend a belt
                 if (p && claim.Inside(p.transform.position) && p.TryGetComponent<AutoTurret>(out var tur) && tur.on)
@@ -186,7 +194,7 @@ namespace MadMax.Npc
                     if (tur.rounds > 0) tur.rounds = 0;
                     else if (p.TryGetComponent<Container>(out var box)) box.inventory.TakeItem("ammo_mg");
                 }
-            if (defence >= strength * Random.Range(0.7f, 1.3f)) { Report = "YOUR DEFENCES DROVE OFF A RAID ON YOUR BASE"; PostHomestead(claim.transform.position, true); return; }
+            if (defence >= strength * Random.Range(0.7f, 1.3f)) { Report = helpers != null ? helpers + " TURNED OUT WITH YOUR DEFENCES AND DROVE OFF A RAID ON YOUR BASE" : "YOUR DEFENCES DROVE OFF A RAID ON YOUR BASE"; PostHomestead(claim.transform.position, true); return; }
             int wreck = Mathf.Clamp(Mathf.RoundToInt(strength - defence), 1, 6);
             var outer = new List<Placeable>();
             foreach (var p in Placeable.All) if (p && !p.GetComponentInParent<Rigidbody>() && claim.Inside(p.transform.position) && !p.GetComponent<ClaimFlag>()) outer.Add(p);
@@ -202,7 +210,7 @@ namespace MadMax.Npc
             bool looted = Loot(claim, 0.3f);
             int stripped = StripVehicles(claim, wreck);
             PostHomestead(claim.transform.position, false);
-            Report = "YOUR BASE WAS RAIDED: " + broken + " PIECES WRECKED" + (looted ? ", STORES LOOTED" : "") + (stripped > 0 ? ", " + stripped + " VEHICLE" + (stripped > 1 ? "S" : "") + " SIPHONED AND STRIPPED" : "");
+            Report = (helpers != null ? helpers + " COULDN'T HOLD THEM. " : "") + "YOUR BASE WAS RAIDED: " + broken + " PIECES WRECKED" + (looted ? ", STORES LOOTED" : "") + (stripped > 0 ? ", " + stripped + " VEHICLE" + (stripped > 1 ? "S" : "") + " SIPHONED AND STRIPPED" : "");
         }
 
         /// <summary>Vehicles parked on the claim: raiders siphon half the tank and carry off a part or two.</summary>

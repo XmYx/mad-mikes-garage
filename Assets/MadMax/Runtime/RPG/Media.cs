@@ -54,6 +54,8 @@ namespace MadMax.RPG
             B("book_first_aid", "FIELD FIRST AID", Skill.Survival, 140, 25),
             B("book_charm", "HOW TO MAKE FRIENDS AFTER THE END", Skill.Speech, 150, 25),
             B("vhs_salesman", "VHS: SUPER SALESMAN SEMINAR", Skill.Speech, 180, 30),
+            B("vhs_garage", "VHS: GARAGE HOUR", Skill.Mechanics, 160, 30),
+            B("vhs_garden", "VHS: GROW YOUR OWN", Skill.Farming, 160, 30),
             B("book_railways", "THE RAILWAYMAN'S HANDBOOK", Skill.Rail, 170, 30, "k_rail"),
         };
 

@@ -45,6 +45,7 @@ namespace MadMax.Building
             if ((checkT -= Time.deltaTime) > 0f) return;
             checkT = 2f;
             Tick();
+            if (Time.time >= bedsAt) { bedsAt = Time.time + 2f; UpdateBedBees(); }
             var g = MadMax.Game.WastelandGame.Instance;
             if ((buzzT -= 2f) <= 0f && g && g.Player && DayNight.Darkness < 0.5f && (g.Player.transform.position - transform.position).sqrMagnitude < 12f * 12f)
             {
@@ -68,6 +69,37 @@ namespace MadMax.Building
             honey = Mathf.Min(HoneyCap, honey + days * 0.8f * forage * season * wet);
             wax = Mathf.Min(WaxCap, wax + days * 0.25f * forage * season);
             GetComponent<Placeable>()?.Dirty();
+        }
+
+        // ------------------------------------------------------------------ bees on the beds (2026-10-16)
+        static float bedsAt;
+
+        /// <summary>A bed the bees work: a living crop past a third grown that flowers.</summary>
+        public static bool Flowers(GardenPlot plot) => plot && plot.crop != null && plot.health > 0f && plot.growth > 0.3f && Flowering.Contains(plot.crop);
+
+        /// <summary>How busy the bees are over <paramref name="plot"/>: the busiest hive within <see cref="Reach"/> (0 = none).</summary>
+        public static float BedBees(GardenPlot plot)
+        {
+            if (!Flowers(plot)) return 0f;
+            float best = 0f;
+            foreach (var h in All)
+                if (h && (h.transform.position - plot.transform.position).sqrMagnitude < Reach * Reach) best = Mathf.Max(best, h.Busy());
+            return best;
+        }
+
+        /// <summary>Give every flowering bed near a hive its foragers (a few specks hopping over the flowers), so the
+        /// forage number has a visible source.</summary>
+        static void UpdateBedBees()
+        {
+            foreach (var plot in GardenPlot.All)
+            {
+                if (!plot || plot.GetComponent<Swarm>() || BedBees(plot) <= 0f) continue;
+                var b = new Bounds(plot.transform.position, Vector3.one * 0.8f);
+                foreach (var r in plot.GetComponentsInChildren<Renderer>()) if (!(r is ParticleSystemRenderer)) b.Encapsulate(r.bounds);
+                float half = Mathf.Clamp(Mathf.Max(Mathf.Min(b.extents.x, b.extents.z) * 0.8f, 0.45f * Mathf.Sqrt(plot.yieldScale)), 0.3f, 1.2f);
+                var p = plot;
+                Swarm.Attach(plot.gameObject, Swarm.Kind.Forage, new Vector3(0f, 0.45f, 0f), half, Mathf.Clamp(Mathf.RoundToInt(3f * p.yieldScale), 3, 6), () => BedBees(p));
+            }
         }
 
         /// <summary>What the bees find: 0.35 anywhere, more in green country, most over flowering beds and fruit trees.</summary>

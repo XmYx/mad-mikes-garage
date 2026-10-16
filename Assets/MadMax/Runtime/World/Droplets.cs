@@ -5,7 +5,10 @@ namespace MadMax.World
 {
     /// <summary>Visible water (2026-10-15): a small pool of pixel-sized droplets on ballistic paths — a shower rose, a
     /// sprinkler's turning jet. Smoke puffs were too faint to read at pixel resolution. Shared cube mesh and one Unlit
-    /// material; only animated while <see cref="emitting"/> and within <see cref="Reach"/> m of the camera.</summary>
+    /// material; only animated while <see cref="emitting"/> and within <see cref="Reach"/> m of the camera.
+    /// 2026-10-16: paths are integrated in ≤ 1/120 s steps with the exact ballistic term (one big step at a low frame
+    /// rate used to eat a jet's whole climb, so the sprinkler stayed under 0.7 m), optional air <see cref="drag"/>
+    /// (sawdust drifts) and a colour per emitter.</summary>
     public class Droplets : MonoBehaviour
     {
         /// <summary>Emitter: (index, out local start, out local velocity) for a new droplet.</summary>
@@ -13,6 +16,12 @@ namespace MadMax.World
         public Source source;
         public bool emitting;
         public float size = 0.05f, life = 0.7f, floorY = 0.02f;
+        /// <summary>Air drag (1/s): 0 = water drops, ~3 = sawdust that drifts on the air.</summary>
+        public float drag;
+        /// <summary>Droplets that reached the floor since the emitter was made (sawdust piles count them).</summary>
+        public int Landed { get; private set; }
+        /// <summary>Called with the local landing point of each droplet that reaches the floor.</summary>
+        public Action<Vector3> landed;
         public const float Reach = 50f;
         /// <summary>Droplets in the air now (tests).</summary>
         public int Airborne { get; private set; }
@@ -33,23 +42,38 @@ namespace MadMax.World
         Vector3[] pos, vel;
         float[] age;
         static Mesh cube;
-        static Material water;
+        static readonly System.Collections.Generic.Dictionary<Color32, Material> mats = new System.Collections.Generic.Dictionary<Color32, Material>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => mats.Clear();
+        Color32 tint = new Color32(184, 219, 255, 255);
 
-        public static Droplets Attach(GameObject go, int count, Source source, float size = 0.05f, float life = 0.7f)
+        public static Droplets Attach(GameObject go, int count, Source source, float size = 0.05f, float life = 0.7f) =>
+            Attach(go, count, source, new Color(0.72f, 0.86f, 1f), size, life);
+
+        public static Droplets Attach(GameObject go, int count, Source source, Color color, float size, float life, float drag = 0f)
         {
             var d = go.AddComponent<Droplets>();
-            d.source = source; d.size = size; d.life = life;
+            d.source = source; d.size = size; d.life = life; d.drag = drag; d.tint = color;
             d.Build(count);
             return d;
+        }
+
+        /// <summary>The ballistic step with gravity <paramref name="g"/> over <paramref name="dt"/>, in sub-steps of at
+        /// most 1/120 s (exact for drag 0 at any frame rate).</summary>
+        public static void Step(ref Vector3 p, ref Vector3 v, Vector3 g, float drag, float dt)
+        {
+            int n = Mathf.Clamp(Mathf.CeilToInt(dt * 120f), 1, 12);
+            float h = dt / n, keep = drag > 0f ? Mathf.Exp(-drag * h) : 1f;
+            for (int k = 0; k < n; k++) { p += v * h + g * (0.5f * h * h); v = (v + g * h) * keep; }
         }
 
         void Build(int count)
         {
             if (!cube) { var t = GameObject.CreatePrimitive(PrimitiveType.Cube); cube = t.GetComponent<MeshFilter>().sharedMesh; Destroy(t); }
-            if (!water)
+            if (!mats.TryGetValue(tint, out var water) || !water)
             {
                 water = new Material(Fx.RuntimeShader("Unlit", "Universal Render Pipeline/Unlit"));
-                water.SetColor("_BaseColor", new Color(0.72f, 0.86f, 1f));
+                water.SetColor("_BaseColor", tint);
+                mats[tint] = water;
             }
             drops = new Transform[count]; pos = new Vector3[count]; vel = new Vector3[count]; age = new float[count];
             for (int i = 0; i < count; i++)
@@ -82,9 +106,9 @@ namespace MadMax.World
                 if (alive)
                 {
                     age[i] += dt;
-                    vel[i] += g * dt;
-                    pos[i] += vel[i] * dt;
-                    if (age[i] > life || pos[i].y < floorY) alive = false;
+                    Step(ref pos[i], ref vel[i], g, drag, dt);
+                    if (pos[i].y < floorY) { alive = false; Landed++; if (landed != null) landed(new Vector3(pos[i].x, floorY, pos[i].z)); }
+                    else if (age[i] > life) alive = false;
                 }
                 else age[i] += dt;
                 if (!alive && emitting && near && source != null && age[i] >= life)

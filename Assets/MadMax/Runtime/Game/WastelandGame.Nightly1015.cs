@@ -268,6 +268,7 @@ namespace MadMax.Game
             UpdateDiggerTips();
             UpdateNeighbourErrands();
             UpdateMedicRestock();
+            UpdateNightly1016();
         }
 
         void LookFor1015(List<Pin> into, Color32 col)
@@ -294,6 +295,7 @@ namespace MadMax.Game
             foreach (var kv in NeighbourErrands) lines.Add("e|" + kv.Key + "|" + kv.Value.kind + "|" + kv.Value.state + "|" + kv.Value.due + "|" + kv.Value.town + "|" + (kv.Value.name ?? "").Replace("|", " "));
             foreach (var id in MedicMayShop) lines.Add("s|" + id);
             foreach (var kv in MadMax.Npc.Trade.Held) lines.Add("p|" + kv.Key + "|" + kv.Value.id + "|" + kv.Value.until);
+            Save1016(lines);
         }
 
         void Load1015(string[] f)
@@ -304,12 +306,14 @@ namespace MadMax.Game
                 NeighbourErrands[f[1]] = new NeighbourErrand { kind = Mathf.Clamp(k, 0, NeighbourAsks.Length - 1), state = st, due = due, town = et, name = f[6].Length > 0 ? f[6] : null };
             else if (f[0] == "s" && f.Length >= 2) MedicMayShop.Add(f[1]);
             else if (f[0] == "p" && f.Length >= 4 && int.TryParse(f[1], out int pt) && int.TryParse(f[3], out int until)) MadMax.Npc.Trade.Held[pt] = (f[2], until);
+            else Load1016(f);
         }
 
         void Clear1015()
         {
             SourStalls.Clear(); DiggerTips.Clear(); NeighbourErrands.Clear(); MedicMayShop.Clear(); restockDay.Clear(); askedShopDay.Clear();
             MadMax.Npc.Trade.Held.Clear();
+            Clear1016();
         }
     }
 }

@@ -1774,20 +1774,50 @@ Scenarios in `Acceptance/Blocks/ScheduledScenarios1015.cs` (trade.digger_word, r
 npc.medic_restock, trade.held_part, ui.oil_pressure_bar, living.tv_picture, living.pieces).
 
 ### Suggestions (tie the experience together)
-- [ ] **Sprinkler arc**: the jet's droplets reach ~1.5 m but stay under ~0.7 m (they barely rise, though they are
-  launched at ~3 m/s upward; the shower's fall as expected) — find why, then tune it into a proper arc.
+- [x] **Sprinkler arc** (2026-10-16): the cause was the integrator — one semi-implicit Euler step per frame took the
+  whole climb off at a low frame rate (at 0.3 s a 3 m/s drop rose 2 cm). `Droplets.Step` now integrates in ≤ 1/120 s
+  steps with the exact ballistic term; the jet rises ~1.1 m and carries ~3.5 m (to `reach`), one drop in four breaks up
+  at the nozzle and falls close in, and the impact head ticks 5° every 0.11 s across ±135° and springs back (click).
 - [ ] **Moving parts in the HD models**: the spinning wheel, loom beater, saw blades and sprinkler head have no named
   movers (`Wheel`, `Piston`, `Blade`), so `PieceMotion` cannot turn them — add movers in `tools/blender/hd/furniture`
   and matching voxel cuts, then re-render.
-- [ ] **Sawdust and shavings**: saw benches and the sawmill throw sawdust while a job runs and leave a small pile at the
-  output (swept up as a little wood).
-- [ ] **Honey bees on the beds**: bees from a hive visit flowering beds within 14 m (a few specks over the flowers),
-  so the forage number has a visible source.
-- [ ] **Flies follow rot**: carcasses, spoiled food left in the open and an unwashed player draw the same flies.
-- [ ] **What's on tonight**: tapes keep their programme by name (the mechanic tape shows the workshop show, the news
-  tape the newsreader), and an NPC sitting near a playing TV watches it.
-- [ ] **The favour returned**: a neighbour whose favour was done keeps an eye on the player's base while they are
-  away (a radio word when raiders come near).
+- [x] **Sawdust and shavings** (2026-10-16, `Building/Sawdust`): dust drifts off the blade while a cut runs (slow,
+  drag-bound droplets; the mill throws more and further); each finished job leaves its share of the wood (hand saw
+  30 %, mill 10 %) as a growing cone on the floor in front of the cut; [E] sweeps whole logs' worth up as wood.
+- [x] **Honey bees on the beds** (2026-10-16): every flowering bed within a hive's 14 m gets foragers
+  (`Swarm.Kind.Forage`: hop flower to flower, hover, jink), as busy as the busiest hive in reach (`Beehive.BedBees`).
+- [x] **Flies follow rot** (2026-10-16): carcasses past their first hours (thicker with age, fewer at night / in rain,
+  none in the cold), rotten food on the ground, and a player below 30 hygiene (`PlayerFlies`; a swarm that follows them)
+  draw flies. Food left out on the ground now spoils where it lies (×1.5, ×3 above 25 °C, host only).
+- [x] **What's on tonight** (2026-10-16): each tape its own programme (`TvSet.ShowFor`): driving school = road movie,
+  survival = a night camp, karate = a dojo bout (slow-motion replays), demolition = the derby, salesman = the seminar
+  with a climbing chart, new tapes GARAGE HOUR (workshop show) and GROW YOUR OWN (time-lapse garden). Anyone idling
+  within 12 m of a playing set (`Npc.Tv`) takes a free seat facing it or stands to watch, and gets up when it stops.
+- [x] **The favour returned** (2026-10-16): a neighbour whose errand was done (town within 3 km of the claim) radios
+  the home frequency while the player is away — scouts seen a few hours before a raid (waypoint home), a raider column
+  passing (once a day) — and turns out with their neighbours when a raid is fought in the player's absence (+3 defence
+  each, at most two; named in the report).
+
+## Scheduled update (2026-10-16)
+Done this pass (ticked above): six of the seven open suggestions of 2026-10-15 — the sprinkler arc (a real bug in the
+droplet integrator, now exact at any frame rate; impact-head ticking), sawdust at the saws, bees on the flowering beds,
+flies following rot (with food that spoils in the open), a programme per tape plus people who watch the TV, and the
+neighbour's watch over the base. Not done: movers in the HD furniture models (needs a Blender re-render).
+
+Scenarios in `Acceptance/Blocks/ScheduledScenarios1016.cs` (living.sprinkler_arc, living.sawdust, living.bed_bees,
+living.flies_rot, living.tv_programmes, npc.neighbour_watch).
+
+### Suggestions (tie the experience together)
+- [ ] **Wet ground under the sprinkler**: landing droplets darken the ground in the jet's circle (a wet decal or the
+  `Spills` water film locally, without replicating every drop).
+- [ ] **Sawdust uses**: sawdust as bedding for the stable and the latrine (cuts its flies), and as tinder for the stove.
+- [ ] **Smell and company**: NPCs keep their distance from an unwashed player with flies (a line, −disposition on a
+  first meeting); companions say so.
+- [ ] **Scraps for the animals**: rotten food thrown to pigs/chickens at a trough instead of rotting in the yard.
+- [ ] **Watch together**: the player sitting beside a watching companion shares a line about the programme (karate
+  tape: a sparring offer; derby: a dare to the arena).
+- [ ] **Neighbours' lamps**: the watching neighbour's house shows a lit lamp at night on the map / journal HOME line, and
+  the player can radio back ("ALL WELL?") from the home frequency.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
