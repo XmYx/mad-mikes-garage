@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prop Foundry</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<style>
+:root { --bg:#16181a; --panel:#202427; --edge:#343a3e; --ink:#ece4d2; --dim:#9a9a8c; --accent:#e6b76c; --good:#82d25a; --bad:#eb4f3c; --run:#6ab0e6; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui, sans-serif; }
+header { position:sticky; top:0; z-index:5; display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 16px; background:#111314ee; border-bottom:1px solid var(--edge); }
+h1 { font-size:16px; margin:0 8px 0 0; letter-spacing:.04em; }
+.pill { padding:3px 10px; border-radius:99px; background:var(--panel); border:1px solid var(--edge); color:var(--dim); font-size:12px; }
+.pill.run { color:var(--run); border-color:var(--run); }
+button, select, input, textarea { font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--edge); border-radius:6px; }
+button { padding:5px 10px; cursor:pointer; }
+button:hover { border-color:var(--accent); }
+button.primary { background:var(--accent); color:#1b1408; border-color:var(--accent); font-weight:600; }
+main { display:grid; grid-template-columns:200px 1fr; min-height:calc(100vh - 50px); }
+nav { border-right:1px solid var(--edge); padding:12px; }
+nav .set { display:flex; justify-content:space-between; padding:6px 8px; border-radius:6px; cursor:pointer; color:var(--dim); }
+nav .set.on { background:var(--panel); color:var(--ink); }
+nav .count { font-size:12px; color:var(--dim); }
+section { padding:14px 16px 120px; }
+.toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:12px; }
+.card { background:var(--panel); border:1px solid var(--edge); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+.media { display:grid; grid-template-columns:1fr 1fr; height:150px; background:#fff; }
+.media img { width:100%; height:150px; object-fit:contain; background:#fff; }
+.media .model { position:relative; background:#2a2e31; display:flex; align-items:center; justify-content:center; color:var(--dim); cursor:pointer; font-size:12px; }
+.media .model img { position:absolute; inset:0; background:#2a2e31; filter:saturate(.25) brightness(.7); }
+.media .model span { position:relative; color:var(--ink); font-weight:600; }
+.body { padding:8px 10px; display:flex; flex-direction:column; gap:6px; }
+.row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.id { font-weight:600; }
+.status { font-size:12px; color:var(--dim); margin-left:auto; }
+.status.run { color:var(--run); } .status.ok { color:var(--good); } .status.bad { color:var(--bad); }
+textarea { width:100%; min-height:54px; padding:6px; resize:vertical; }
+textarea.dirty { border-color:var(--accent); }
+input.num { width:64px; padding:3px 5px; }
+.variants { display:flex; gap:4px; overflow-x:auto; padding-bottom:2px; min-height:4px; }
+.variants img { width:38px; height:38px; object-fit:contain; background:#fff; border:2px solid transparent; border-radius:4px; cursor:pointer; flex:none; }
+.variants img.on { border-color:var(--accent); }
+.small { font-size:12px; padding:3px 8px; }
+#log { position:fixed; left:0; right:0; bottom:0; max-height:110px; overflow:auto; background:#0d0f10ee; border-top:1px solid var(--edge); font:12px/1.4 ui-monospace, monospace; color:var(--dim); padding:6px 16px; }
+dialog { background:var(--panel); color:var(--ink); border:1px solid var(--edge); border-radius:12px; padding:0; width:min(900px, 94vw); }
+dialog model-viewer { width:100%; height:70vh; background:#2a2e31; }
+dialog .bar { display:flex; justify-content:space-between; padding:8px 12px; }
+.add { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:16px 0 0; padding:10px; border:1px dashed var(--edge); border-radius:10px; }
+.add input[type=text] { padding:5px 8px; }
+details summary { cursor:pointer; color:var(--dim); font-size:12px; }
+@media (max-width:700px) { main { grid-template-columns:1fr; } nav { border-right:0; border-bottom:1px solid var(--edge); display:flex; gap:6px; flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>PROP FOUNDRY</h1>
+  <span id="job" class="pill">idle</span>
+  <span id="queue" class="pill">queue 0</span>
+  <span id="comfy" class="pill">ComfyUI off</span>
+  <button class="small primary" onclick="genAll()">Generate ALL sets</button>
+  <button class="small" onclick="api('/api/clear',{})">clear queue</button>
+  <span id="err" class="pill" style="display:none;color:var(--bad);border-color:var(--bad)"></span>
+</header>
+<main>
+  <nav>
+    <div id="sets"></div>
+    <div class="row" style="margin-top:12px"><input id="newset" type="text" placeholder="new set" style="width:110px;padding:4px"><button class="small" onclick="newSet()">+</button></div>
+  </nav>
+  <section>
+    <div class="toolbar">
+      <b id="title"></b>
+      <button onclick="job({kind:'image',missing:true})">Draw missing pictures</button>
+      <button onclick="job({kind:'model',missing:true})">Make missing 3D</button>
+      <button onclick="job({kind:'both',missing:true})">Do everything missing</button>
+      <button class="primary" onclick="publish()">Publish set to game</button>
+      <span id="pub" class="pill"></span>
+      <span id="hold" style="display:none" class="pill run">ON HOLD — nothing generates until you <button class="small primary" onclick="approve()">approve this set</button></span>
+    </div>
+    <details><summary>Style prompt for the whole set (added to every prompt)</summary>
+      <textarea id="style" style="margin:6px 0"></textarea><button class="small" onclick="saveStyle()">save style</button>
+    </details>
+    <div class="grid" id="grid" style="margin-top:12px"></div>
+    <div class="add">
+      <b>Add item</b>
+      <input id="a_id" type="text" placeholder="id (lower_case)" style="width:150px">
+      <input id="a_prompt" type="text" placeholder="what it is: rusty camping stove with a kettle on it" style="flex:1;min-width:220px">
+      size <input id="a_size" class="num" type="number" step="0.05" value="1.0"> m
+      <select id="a_mount"><option>floor</option><option>surface</option><option>wall</option><option>ceiling</option></select>
+      <button class="primary" onclick="addItem()">add + draw</button>
+    </div>
+  </section>
+</main>
+<div id="log"></div>
+<dialog id="dlg"><div class="bar"><b id="dlgTitle"></b><button class="small" onclick="dlg.close()">close</button></div>
+  <model-viewer id="mv" camera-controls auto-rotate shadow-intensity="1" exposure="1.1" environment-image="neutral"></model-viewer></dialog>
+<script>
+let S = null, cur = localStorage.getItem('pf_set') || 'kitchen';
+const cards = {};
+const $ = id => document.getElementById(id);
+async function api(path, body) {
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const j = await r.json();
+  const e = $('err'); if (j.error) { e.textContent = j.error; e.style.display = ''; clearTimeout(e.t); e.t = setTimeout(() => e.style.display = 'none', 6000); }
+  refresh(); return j;
+}
+function genAll() { if (confirm('Queue every missing picture and 3D model in all sets (including the on-hold vehicle sets)?')) api('/api/all', {approve_held:true}); }
+function job(o) { api('/api/job', Object.assign({set:cur}, o)); }
+function publish() { if (confirm('Fix up and export set "' + cur + '" into the HD pack?')) api('/api/publish', {set:cur}); }
+function approve() { if (confirm('Approve set "' + cur + '" for generation?')) api('/api/approve', {set:cur}); }
+function saveStyle() { api('/api/style', {set:cur, style:$('style').value}); }
+function newSet() { const n = $('newset').value.trim(); if (n) api('/api/newset', {set:n}).then(j => { if (j.ok) { cur = n; localStorage.setItem('pf_set', n); } }); }
+function addItem() {
+  const id = $('a_id').value.trim(), prompt = $('a_prompt').value.trim();
+  if (!id || !prompt) { $('err').textContent = 'id and prompt please'; $('err').style.display = ''; return; }
+  api('/api/prop', {set:cur, id, prompt, size_m:+$('a_size').value, mount:$('a_mount').value})
+    .then(j => { if (j.ok) { api('/api/job', {set:cur, id, kind:'image'}); $('a_id').value = $('a_prompt').value = ''; } });
+}
+function view3d(p) { $('dlgTitle').textContent = p.id; $('mv').src = `/files/${cur}/glb/${p.id}.glb?${p.glb}`; $('dlg').showModal(); }
+function upload(p) {
+  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+  i.onchange = () => { const f = i.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => api('/api/upload', {set:cur, id:p.id, data:rd.result}); rd.readAsDataURL(f); };
+  i.click();
+}
+function cls(st) { return /fail/.test(st) ? 'bad' : /queued|running|drawing/.test(st) ? 'run' : /done|picture|uploaded|ready/.test(st) ? 'ok' : ''; }
+function card() {
+  const c = document.createElement('div'); c.className = 'card';
+  c.innerHTML = `<div class="media"><img class="pic" alt=""><div class="model"></div></div>
+    <div class="body">
+      <div class="row"><span class="id"></span><span class="status"></span></div>
+      <div class="src" style="font-size:11px;color:var(--dim)"></div>
+      <textarea class="prompt"></textarea>
+      <div class="row">size <input class="num size" type="number" step="0.05"> m
+        <select class="mount"><option>floor</option><option>surface</option><option>wall</option><option>ceiling</option></select>
+        faces <input class="num faces" type="number" step="500"></div>
+      <div class="variants"></div>
+      <div class="row">
+        <button class="small save">save</button>
+        <button class="small reroll" title="new seed, keeps the old pictures as variants">re-roll picture</button>
+        <button class="small draw" title="same seed, new prompt">redraw</button>
+        <button class="small make">make 3D</button>
+        <button class="small up">upload picture</button>
+        <button class="small del" title="remove from set">✕</button>
+      </div></div>`;
+  const q = s => c.querySelector(s);
+  q('.prompt').oninput = () => q('.prompt').classList.add('dirty');
+  const save = () => { q('.prompt').classList.remove('dirty'); return api('/api/prop', {set:cur, id:c.pid, prompt:q('.prompt').value, size_m:+q('.size').value, mount:q('.mount').value, faces:+q('.faces').value}); };
+  q('.save').onclick = save;
+  q('.reroll').onclick = () => save().then(() => api('/api/job', {set:cur, id:c.pid, kind:'image', reroll:true}));
+  q('.draw').onclick = () => save().then(() => api('/api/job', {set:cur, id:c.pid, kind:'image'}));
+  q('.make').onclick = () => api('/api/job', {set:cur, id:c.pid, kind:'model'});
+  q('.up').onclick = () => upload(c.p);
+  q('.del').onclick = () => { if (confirm('Remove ' + c.pid + ' from the set?')) api('/api/delete', {set:cur, id:c.pid}); };
+  q('.model').onclick = () => { if (c.p.glb) view3d(c.p); };
+  return c;
+}
+function update(c, p) {
+  const q = s => c.querySelector(s);
+  c.pid = p.id; c.p = p;
+  q('.id').textContent = p.id;
+  q('.src').textContent = p.source ? 'replaces ' + p.source + (p.note ? ' — ' + p.note : '') : '';
+  const label = p.status || (p.glb ? '3D ready' : p.image ? 'picture ready' : 'no picture');
+  const st = q('.status'); st.textContent = label; st.className = 'status ' + cls(label);
+  const src = p.image ? `/files/${cur}/images/${p.id}.png?${p.image}` : '';
+  const pic = q('.pic'); if (pic.dataset.src !== src) { pic.dataset.src = src; if (src) pic.src = src; else pic.removeAttribute('src'); }
+  const mk = (p.glb ? 'g' : 'n') + src;
+  if (q('.model').dataset.k !== mk) { q('.model').dataset.k = mk; q('.model').innerHTML = p.glb ? `<img src="${src}" alt=""><span>▶ view 3D</span>` : 'no 3D yet'; }
+  const pr = q('.prompt'); if (document.activeElement !== pr && !pr.classList.contains('dirty')) pr.value = p.prompt;
+  for (const [k, v] of [['.size', p.size_m], ['.faces', p.faces]]) if (document.activeElement !== q(k)) q(k).value = v;
+  if (document.activeElement !== q('.mount')) q('.mount').value = p.mount;
+  const vs = q('.variants'), key = p.variants.join(',') + '|' + p.seed;
+  if (vs.dataset.key !== key) {
+    vs.dataset.key = key; vs.innerHTML = '';
+    for (const v of p.variants) {
+      const seed = +v.split('@')[1].slice(0, -4);
+      const im = document.createElement('img'); im.src = `/files/${cur}/images/${v}`; im.title = 'seed ' + seed + ' — click to use';
+      if (seed === p.seed) im.className = 'on';
+      im.onclick = () => api('/api/pick', {set:cur, id:p.id, variant:v});
+      vs.appendChild(im);
+    }
+  }
+}
+function render() {
+  const sets = S.sets; if (!sets.find(s => s.set === cur) && sets.length) cur = sets[0].set;
+  $('sets').innerHTML = '';
+  for (const s of sets) {
+    const d = document.createElement('div'); d.className = 'set' + (s.set === cur ? ' on' : '');
+    d.innerHTML = `<span>${s.set}${s.hold ? ' ⏸' : ''}</span><span class="count">${s.props.filter(p => p.glb).length}/${s.props.length}</span>`;
+    d.onclick = () => { cur = s.set; localStorage.setItem('pf_set', cur); for (const k in cards) { cards[k].remove(); delete cards[k]; } render(); };
+    $('sets').appendChild(d);
+  }
+  const s = sets.find(s => s.set === cur); if (!s) return;
+  $('title').textContent = s.set;
+  $('pub').textContent = s.published ? 'published blend exists' : 'not published yet';
+  $('hold').style.display = s.hold ? '' : 'none';
+  if (document.activeElement !== $('style')) $('style').value = s.style;
+  const seen = new Set();
+  for (const p of s.props) {
+    const k = cur + '/' + p.id; seen.add(k);
+    if (!cards[k]) { cards[k] = card(); $('grid').appendChild(cards[k]); }
+    update(cards[k], p);
+  }
+  for (const k in cards) if (!seen.has(k)) { cards[k].remove(); delete cards[k]; }
+  const j = S.current;
+  $('job').textContent = j ? `${j.kind} ${j.set}/${j.id || (j.ids || []).join(',')} · ${Math.round(Date.now() / 1000 - S.since)}s` : 'idle';
+  $('job').className = 'pill' + (j ? ' run' : '');
+  $('queue').textContent = 'queue ' + S.queue.length;
+  $('comfy').textContent = S.comfy ? 'ComfyUI on' : 'ComfyUI off';
+  $('log').innerHTML = S.log.slice().reverse().map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>');
+}
+async function refresh() { try { S = await (await fetch('/api/state')).json(); render(); } catch (e) {} }
+refresh(); setInterval(refresh, 2000);
+</script>
+</body>
+</html>
