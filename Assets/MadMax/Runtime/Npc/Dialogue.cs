@@ -59,6 +59,8 @@ namespace MadMax.Npc
         /// according to temperament.</summary>
         void FirstLook()
         {
+            int smell = g.SmellReaction(P.temper);                                                   // flies on an unwashed player (2026-10-17)
+            if (g.SmellNote(P.temper, smell) is string sn) { S.disposition = Mathf.Clamp(S.disposition + smell, -100, 100); line += "  " + sn; }
             string style = g.OutfitStyle();
             if (style == null) return;
             int d = NpcLore.StyleReaction(P.temper, style);

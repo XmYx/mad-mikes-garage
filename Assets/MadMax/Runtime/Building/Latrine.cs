@@ -14,9 +14,25 @@ namespace MadMax.Building
 
         int Bags => Mathf.FloorToInt(ripe / PerBag);
 
-        /// <summary>Flies over a fresh pit (fewer in the cold and at night).</summary>
+        /// <summary>Flies over a fresh pit (fewer in the cold and at night; a scoop of sawdust keeps most of them off).</summary>
         void Start() => Swarm.Attach(gameObject, Swarm.Kind.Flies, new Vector3(0f, 0.9f, 0.6f), 0.45f, 6,
-            () => fresh < 1f || DayNight.Darkness > 0.6f || Weather.TemperatureAt(transform.position.z) < 4f ? 0f : Mathf.Clamp01(0.3f + fresh / 150f));
+            () => fresh < 1f || DayNight.Darkness > 0.6f || Weather.TemperatureAt(transform.position.z) < 4f ? 0f : Mathf.Clamp01(0.3f + fresh / 150f) * (Covered ? CoveredFlies : 1f));
+
+        /// <summary>Sawdust toilet (2026-10-17): with a sack of sawdust in the pack a scoop goes down after each use. A
+        /// covered pit draws a fraction of the flies and composts faster (carbon with the nitrogen) for a day.</summary>
+        public float coveredUntil = -1f;
+        public const float CoveredFlies = 0.15f, CoveredRot = 1.5f;
+        public bool Covered => DayNight.TotalDays < coveredUntil;
+
+        /// <summary>A scoop of sawdust from <paramref name="inv"/> over the pit (one sack lasts six uses).</summary>
+        public bool Cover(MadMax.Items.Inventory inv)
+        {
+            if (inv == null || inv.GetItem(Sawdust.Sack) <= 0) return false;
+            if (++scoops >= 6) { scoops = 0; inv.TakeItem(Sawdust.Sack); }
+            coveredUntil = DayNight.TotalDays + 1f;
+            return true;
+        }
+        int scoops;
 
         public string Prompt(MadMax.Game.WastelandGame g) =>
             (g.Stats.waste >= 20f ? "[E] USE LATRINE" : "LATRINE") + (Bags > 0 ? "  [T] DIG OUT COMPOST (" + Bags + ")" : fresh > 1f ? "  (COMPOSTING)" : "");
@@ -45,7 +61,7 @@ namespace MadMax.Building
                 g.Stats.waste = 0f;
                 g.Stats.Practice(MadMax.RPG.Skill.Survival, 0.5f);
                 MadMax.Audio.Sfx.Play("door_close", transform.position, 0.6f);
-                g.Toast("RELIEVED");
+                g.Toast(Cover(g.Inventory) ? "RELIEVED. A SCOOP OF SAWDUST AFTER" : "RELIEVED");
                 GetComponent<Placeable>()?.Dirty();
             }, 0.8f);
         }
@@ -54,7 +70,7 @@ namespace MadMax.Building
         {
             float now = DayNight.TotalDays * 24f;
             if (lastT < 0f || now < lastT) { lastT = now; return; }
-            float rot = Mathf.Min(fresh, (now - lastT) * RotPerHour);
+            float rot = Mathf.Min(fresh, (now - lastT) * RotPerHour * (Covered ? CoveredRot : 1f));
             lastT = now;
             if (rot <= 0f) return;
             fresh -= rot; ripe += rot;

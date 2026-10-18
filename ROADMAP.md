@@ -1808,16 +1808,50 @@ Scenarios in `Acceptance/Blocks/ScheduledScenarios1016.cs` (living.sprinkler_arc
 living.flies_rot, living.tv_programmes, npc.neighbour_watch).
 
 ### Suggestions (tie the experience together)
-- [ ] **Wet ground under the sprinkler**: landing droplets darken the ground in the jet's circle (a wet decal or the
-  `Spills` water film locally, without replicating every drop).
-- [ ] **Sawdust uses**: sawdust as bedding for the stable and the latrine (cuts its flies), and as tinder for the stove.
-- [ ] **Smell and company**: NPCs keep their distance from an unwashed player with flies (a line, −disposition on a
-  first meeting); companions say so.
-- [ ] **Scraps for the animals**: rotten food thrown to pigs/chickens at a trough instead of rotting in the yard.
-- [ ] **Watch together**: the player sitting beside a watching companion shares a line about the programme (karate
-  tape: a sparring offer; derby: a dare to the arena).
-- [ ] **Neighbours' lamps**: the watching neighbour's house shows a lit lamp at night on the map / journal HOME line, and
-  the player can radio back ("ALL WELL?") from the home frequency.
+- [x] **Wet ground under the sprinkler** (2026-10-17): each spray pours its water (`Sprinkler.WetGround`, 6 L) into
+  `Spills` at ten points across the ±135° fan between 1 m and the reach — the soil soaks it and shows darker in patches
+  where the jet lands, paving gets a film, it dries by evaporation; a handful of replicated pours by the host, not every drop.
+- [x] **Sawdust uses** (2026-10-17): [T] at a pile bags it (`use_sawdust`, SACK OF SAWDUST, half a log each). A sack in
+  the pack goes a scoop at a time down the latrine after each use (six scoops a sack: a covered pit draws 15 % of the flies
+  and composts ×1.5 for a day), spreads as stable bedding when the manger is filled (a pale floor in the stalls that browns
+  over three days; dung comes out half again with it), and, used from the hotbar, soaks up a spill (4 L of fuel, oil or
+  water within 1.6 m). Tinder for the stove was swapped for the spill: stoves have no lighting step to feed.
+- [x] **Smell and company** (2026-10-17): a first meeting with an unwashed player costs disposition by temperament (proud
+  −6/−12 … friendly −1/−2, the joker laughs it off) with an aside; townsfolk passing within 2.6 m remark on it in a speech
+  bubble (once a day each, one every 20 s at most); a companion says so once a day and the WASH hint shows.
+- [x] **Scraps for the animals** (2026-10-17, `Animals/Animal.Scraps`): kept pigs, chickens, goats and dogs spot food on
+  the ground within 9 m of home, trot over, root/peck for 3 s and eat it (pigs and dogs take rotten food); three scraps feed
+  a pig for the day (chicken one, goat/dog two). Drop the kitchen waste in the yard instead of carrying it to a trough.
+- [x] **Watch together** (2026-10-17): sitting within 3.5 m of a companion or acquaintance watching a tape gets a line
+  about the programme (two per show, once per person, show and day); a companion warms to it (+2), the karate tape is a
+  guard lesson (melee practice), the derby a dare to the rolling city's arena (journal).
+- [x] **Neighbours' lamps** (2026-10-17): the watching neighbour's town shows on the map (gold LAMP LIT 16–23 h at dusk,
+  WATCHING YOUR PLACE otherwise) and on the HOME ledger line; with a handheld radio in the pack, the context menu offers
+  RADIO <NAME>: ALL WELL? while away — the answer reads the base (`HomeWorries`: power, water, pantry…), warns of raiders
+  due, or nobody answers after 23 h.
+
+## Scheduled update (2026-10-17)
+Done this pass (ticked above): all six open suggestions of 2026-10-16 — wet ground under the sprinkler (real `Spills`
+water, so it soaks, darkens and dries), sawdust in use (sacks; the sawdust toilet, stable bedding, soaking spills), kept
+animals eating scraps off the ground, people noticing the smell, watching TV together, and the neighbour's lamp with
+ALL WELL? on the radio. None of the new state is saved (latrine cover, bedding, remarks are per session).
+
+Scenarios in `Acceptance/Blocks/ScheduledScenarios1017.cs` (living.sprinkler_wet, living.sawdust_uses, animals.scraps,
+npc.smell, living.watch_together, npc.neighbour_lamp).
+
+### Suggestions (tie the experience together)
+- [ ] **Save the chores**: latrine cover and stable bedding in their `IPlaceState` (append fields, keep the old format
+  readable), so a reload doesn't undo a day's work.
+- [ ] **Animals at the bedding**: kept animals lie down on fresh bedding at night (`State.Sleep` inside a bedded stable)
+  and heal faster on it; a dirty stable (bedding gone, manure piled) draws flies.
+- [ ] **Puddles that call birds**: crows and sparrows drink at a sprinkler's puddles and worm the wet soil (a reason to
+  set a scarecrow).
+- [ ] **Washing as a moment**: washing at a lake / shower / rain clears the flies with a visible splash and the crew
+  comments ("BETTER"), so the smell loop closes on screen.
+- [ ] **Neighbour visits back**: after a few ALL WELL? calls the neighbour drops by the base in person (walks over in the
+  afternoon, sits by the fire, leaves a gift), feeding the existing `NeighbourVisit` chain.
+- [ ] **The pigs' own trough**: a slop bucket piece by the kitchen that collects food scraps automatically (spoiled
+  pantry food, butcher leftovers) for the pigs to empty.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)

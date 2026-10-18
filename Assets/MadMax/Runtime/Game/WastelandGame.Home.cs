@@ -130,6 +130,7 @@ namespace MadMax.Game
                 if (prod > 0f || use > 0f || whMax > 0f)
                     into.Add("  POWER " + Mathf.RoundToInt(prod) + " W IN / " + Mathf.RoundToInt(use) + " W OUT" + (whMax > 0f ? ", BATTERY " + Mathf.RoundToInt(100f * wh / whMax) + "%" : "") + (shed > 0 ? ", " + shed + " SHED" : ""));
                 if (waterMax > 0f) into.Add("  WATER " + Mathf.RoundToInt(water) + " / " + Mathf.RoundToInt(waterMax) + " L");
+                if (NeighbourLedgerLine(claim) is string nl) into.Add(nl);                                // who keeps an eye on it (Nightly1017)
                 into.Add("  " + (worn > 0 ? worn + (worn == 1 ? " PIECE" : " PIECES") + " WEATHERED (REPAIR IN BUILD MODE)" : "EVERY PIECE SOUND"));
                 if (worn > 0) WornAction(claim, Act);
             }

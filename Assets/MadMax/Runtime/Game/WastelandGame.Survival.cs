@@ -336,6 +336,7 @@ namespace MadMax.Game
                 if (UseSewingKit()) Inventory.TakeItem(id);
                 return;
             }
+            if (id == Sawdust.Sack) { UseSawdust(); return; }                                       // soaks up a spill (Nightly1017)
             if (id == ItemIds.Sponge)
             {
                 int n = MadMax.World.BloodStains.Clean(Player.transform.position, 3f);

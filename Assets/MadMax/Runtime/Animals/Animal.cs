@@ -548,6 +548,7 @@ namespace MadMax.Animals
                 return;
             }
             if (owned && order == 2) { if (state != State.Graze && state != State.Idle && state != State.Sleep) state = State.Idle; SetMove(Vector3.zero, 0f); return; }
+            if (ScrapsThink(g)) return;                                                         // food on the ground near home (Animal.Scraps)
             Routine(owned ? 5f : 10f);
         }
 

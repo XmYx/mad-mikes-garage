@@ -40,8 +40,10 @@ namespace MadMax.Animals
             if (secondary)
             {
                 if (manure <= 0) return;
-                g.Inventory.AddItem("farm_manure", manure);
-                g.Toast("+" + manure + " MANURE (COMPOSTER: FERTILIZER)");
+                var st = StableOf();
+                int extra = st && st.Bedded ? Mathf.CeilToInt(manure * 0.5f) : 0;                       // soiled bedding comes with it (2026-10-17)
+                g.Inventory.AddItem("farm_manure", manure + extra);
+                g.Toast("+" + (manure + extra) + " MANURE" + (extra > 0 ? " (WITH THE BEDDING)" : "") + " (COMPOSTER: FERTILIZER)");
                 MadMax.Audio.Sfx.Play("dig", transform.position, 0.5f);
                 manure = 0;
                 GetComponent<Placeable>()?.Dirty();
@@ -53,9 +55,12 @@ namespace MadMax.Animals
                 while (feed <= Cap - 2f && g.Inventory.TakeItem(f)) { feed += f == "food_pumpkin" ? 4f : 2f; items++; }
             while (feed <= Cap - 1.5f && g.Inventory.TrySpend(ResourceType.Hay, 1)) { feed += 1.5f; items++; }            // hay: plain roughage
             while (water < Cap && (g.Inventory.TrySpend(ResourceType.Water, 1) || g.Inventory.TrySpend(ResourceType.DirtyWater, 1))) { water += 1f; litres++; }
+            var stable = StableOf();
+            bool bedded = stable && stable.Bed(g.Inventory);                                           // a sack of sawdust in the pack: fresh bedding
+            if (bedded && items + litres == 0) { MadMax.Audio.Sfx.Play("scratch", transform.position, 0.4f, 0.9f); g.Toast("FRESH BEDDING IN THE STALLS"); GetComponent<Placeable>()?.Dirty(); return; }
             if (items + litres == 0) { g.Toast(feed >= Cap - 2f && water >= Cap ? "THE TROUGH IS FULL" : "BRING ANIMAL FEED, CROPS (WHEAT, CORN, CABBAGE...), HAY OR WATER"); return; }
             MadMax.Audio.Sfx.Play("pour", transform.position, 0.5f);
-            g.Toast("TROUGH: +" + items + " FEED, +" + litres + " L WATER");
+            g.Toast("TROUGH: +" + items + " FEED, +" + litres + " L WATER" + (bedded ? ", FRESH BEDDING" : ""));
             GetComponent<Placeable>()?.Dirty();
         }
 
@@ -64,6 +69,13 @@ namespace MadMax.Animals
             if ((rainT -= Time.deltaTime) > 0f) return;
             rainT = 10f;
             if (Weather.Raining && water < Cap && !Physics.Raycast(transform.position + Vector3.up * 0.6f, Vector3.up, 20f, ~0, QueryTriggerInteraction.Ignore)) water = Mathf.Min(Cap, water + 0.3f);
+        }
+
+        /// <summary>The stable this trough is the manger of (null: a trough in the open).</summary>
+        public MadMax.Building.Stable StableOf()
+        {
+            var s = GetComponentInParent<MadMax.Building.Stable>();
+            return s ? s : MadMax.Building.Stable.At(transform.position + Vector3.up * 0.5f);
         }
 
         /// <summary>Take a day's ration: feed plus a little water.</summary>

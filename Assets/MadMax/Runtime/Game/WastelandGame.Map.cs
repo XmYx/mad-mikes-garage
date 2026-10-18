@@ -150,6 +150,7 @@ namespace MadMax.Game
                 into.Add(new Pin { label = st.title + ": " + state, pos = st.transform.position, color = col });
                 if (into.Count >= 8) break;
             }
+            NeighbourPins(into);                                                                      // the watching neighbour's lamp (Nightly1017)
         }
 
         void SaveMap(SaveData d)

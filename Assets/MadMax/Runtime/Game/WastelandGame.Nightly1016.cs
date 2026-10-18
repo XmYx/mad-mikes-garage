@@ -215,6 +215,7 @@ namespace MadMax.Game
             UpdateFlies();
             UpdateGroundSpoil();
             UpdateNeighbourWatch();
+            UpdateNightly1017();
         }
 
         void Save1016(List<string> lines)

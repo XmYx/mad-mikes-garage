@@ -144,12 +144,40 @@ namespace MadMax.Building
         {
             if (amount < 0.05f || g.Current || !g.Player) return null;
             if ((g.Player.transform.position - PilePoint).sqrMagnitude > 2.2f * 2.2f) return null;
-            return amount >= 1f ? "[E] SWEEP UP THE SAWDUST (" + Mathf.FloorToInt(amount) + " WOOD)" : "[E] SWEEP UP THE SAWDUST (A HANDFUL)";
+            string sweep = amount >= 1f ? "[E] SWEEP UP THE SAWDUST (" + Mathf.FloorToInt(amount) + " WOOD)" : "[E] SWEEP UP THE SAWDUST (A HANDFUL)";
+            return amount >= PerSack ? sweep + "  [T] BAG IT (" + Mathf.FloorToInt(amount / PerSack) + " SACKS)" : sweep;
+        }
+
+        /// <summary>A sack of sawdust (2026-10-17): bedding for the stable, a scoop down the latrine after use (no flies,
+        /// faster compost), and it soaks up spilled fuel and oil (<c>WastelandGame.UseSawdust</c>).</summary>
+        public const string Sack = "use_sawdust";
+        /// <summary>Wood (units) of dust in one sack.</summary>
+        public const float PerSack = 0.5f;
+
+        /// <summary>Fill sacks from the pile into <paramref name="inv"/>; returns how many.</summary>
+        public int Bag(Inventory inv)
+        {
+            int n = Mathf.FloorToInt(amount / PerSack + 0.001f);
+            if (n <= 0) return 0;
+            ItemIds.Register(Sack, "SACK OF SAWDUST");
+            using (Inventory.Source("BAGGED")) inv.AddItem(Sack, n);
+            amount = Mathf.Max(0f, amount - n * PerSack);
+            if (amount < 0.05f) amount = 0f;
+            Shape();
+            return n;
         }
 
         public void Use(MadMax.Game.WastelandGame g, bool secondary)
         {
-            if (secondary || amount < 0.05f) return;
+            if (amount < 0.05f) return;
+            if (secondary)
+            {
+                int b = Bag(g.Inventory);
+                if (b <= 0) { g.Toast("NOT ENOUGH TO FILL A SACK"); return; }
+                g.Toast("BAGGED " + b + " SACK" + (b == 1 ? "" : "S") + " OF SAWDUST: BEDDING, THE LATRINE, SPILLS");
+                MadMax.Audio.Sfx.Play("scratch", PilePoint, 0.3f, 1.1f, 8f);
+                return;
+            }
             int n = Sweep(g.Inventory);
             if (n <= 0) { g.Toast("JUST A HANDFUL: NOT WORTH A LOG YET"); return; }
             MadMax.Audio.Sfx.Play("scratch", PilePoint, 0.3f, 1.3f, 8f);
