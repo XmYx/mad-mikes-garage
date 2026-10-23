@@ -79,6 +79,7 @@ namespace MadMax.Animals
             UpdateWild(focus);
             UpdateVillages(focus);
             UpdateTownLife(focus);                                                               // crows on the squares, rats and strays in the alleys
+            UpdatePuddleBirds(focus);                                                            // crows at a sprinkler's wet ground (AnimalDirector.Puddles)
             if ((vultureT -= 1f) <= 0f) { vultureT = 12f; UpdateVultures(focus); }
         }
 

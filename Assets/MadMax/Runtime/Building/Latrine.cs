@@ -30,6 +30,7 @@ namespace MadMax.Building
             if (inv == null || inv.GetItem(Sawdust.Sack) <= 0) return false;
             if (++scoops >= 6) { scoops = 0; inv.TakeItem(Sawdust.Sack); }
             coveredUntil = DayNight.TotalDays + 1f;
+            GetComponent<Placeable>()?.Dirty();
             return true;
         }
         int scoops;
@@ -76,11 +77,17 @@ namespace MadMax.Building
             fresh -= rot; ripe += rot;
         }
 
-        public string SaveState() => fresh.ToString("0.#", CultureInfo.InvariantCulture) + ";" + ripe.ToString("0.#", CultureInfo.InvariantCulture);
+        /// <summary>fresh;ripe (+ ;coveredUntil;scoops since 2026-10-18: a reload keeps the sawdust cover).</summary>
+        public string SaveState() => F(fresh) + ";" + F(ripe) + ";" + coveredUntil.ToString("0.###", CultureInfo.InvariantCulture) + ";" + scoops;
+        static string F(float v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
         public void LoadState(string s)
         {
             var p = (s ?? "").Split(';');
-            if (p.Length == 2) { float.TryParse(p[0], NumberStyles.Float, CultureInfo.InvariantCulture, out fresh); float.TryParse(p[1], NumberStyles.Float, CultureInfo.InvariantCulture, out ripe); }
+            if (p.Length < 2) return;
+            float.TryParse(p[0], NumberStyles.Float, CultureInfo.InvariantCulture, out fresh);
+            float.TryParse(p[1], NumberStyles.Float, CultureInfo.InvariantCulture, out ripe);
+            if (p.Length >= 4) { float.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out coveredUntil); int.TryParse(p[3], out scoops); }
         }
     }
 }

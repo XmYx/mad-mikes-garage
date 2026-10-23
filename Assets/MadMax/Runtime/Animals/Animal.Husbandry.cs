@@ -105,6 +105,7 @@ namespace MadMax.Animals
             if (WoolYield > 0 && wool < 1f) { wool = Mathf.Min(1f, wool + days / RegrowDays * (1f + woolBoost)); UpdateFleece(); }
             woolBoost = Mathf.Max(0f, woolBoost - days);
             if (limp > 0f) limp = Mathf.Max(0f, limp - days * (inStable ? 0.6f : 0.3f));
+            BeddingCare(days);                                                                  // a night on fresh straw (Animal.Bedding)
             if (sick > 0f) { health = Mathf.Max(Mathf.Min(health, Def.health * 0.35f), health - Def.health * 0.12f * days); sick = Mathf.Max(0f, sick - days * 0.08f); }
             else if (!owned && bleed <= 0f) health = Mathf.Min(Def.health, health + Def.health * 0.2f * days);
         }

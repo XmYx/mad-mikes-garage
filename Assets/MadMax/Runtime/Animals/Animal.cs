@@ -548,6 +548,7 @@ namespace MadMax.Animals
                 return;
             }
             if (owned && order == 2) { if (state != State.Graze && state != State.Idle && state != State.Sleep) state = State.Idle; SetMove(Vector3.zero, 0f); return; }
+            if (BeddingThink(g)) return;                                                        // after dark, to the straw (Animal.Bedding)
             if (ScrapsThink(g)) return;                                                         // food on the ground near home (Animal.Scraps)
             Routine(owned ? 5f : 10f);
         }
@@ -961,6 +962,9 @@ namespace MadMax.Animals
 
         AnimalKnock knock;
 
+        /// <summary>The last hit an animal took and from what (tests).</summary>
+        public static string LastHit;
+
         public void ApplyHit(Vector3 point, Vector3 direction, float power, float radius, GameObject source)
         {
             if (!Alive) return;
@@ -970,6 +974,7 @@ namespace MadMax.Animals
             health -= dmg;
             hurtUntil = Time.time + 8f;
             hurter = source ? source.transform : null;
+            LastHit = Def.id + " hit by " + (source ? source.name : "nothing") + " (" + power.ToString("0.00") + ")";
             Wounded(dmg, source);                                                                     // bleeding, a limp
             BloodStains.Splash(transform.position, Mathf.Clamp01(dmg / 40f));
             MadMax.Audio.Sfx.Play("punch", point, 0.6f, Random.Range(0.9f, 1.2f));

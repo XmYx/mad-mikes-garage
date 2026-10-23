@@ -1840,18 +1840,50 @@ Scenarios in `Acceptance/Blocks/ScheduledScenarios1017.cs` (living.sprinkler_wet
 npc.smell, living.watch_together, npc.neighbour_lamp).
 
 ### Suggestions (tie the experience together)
-- [ ] **Save the chores**: latrine cover and stable bedding in their `IPlaceState` (append fields, keep the old format
-  readable), so a reload doesn't undo a day's work.
-- [ ] **Animals at the bedding**: kept animals lie down on fresh bedding at night (`State.Sleep` inside a bedded stable)
-  and heal faster on it; a dirty stable (bedding gone, manure piled) draws flies.
-- [ ] **Puddles that call birds**: crows and sparrows drink at a sprinkler's puddles and worm the wet soil (a reason to
-  set a scarecrow).
-- [ ] **Washing as a moment**: washing at a lake / shower / rain clears the flies with a visible splash and the crew
-  comments ("BETTER"), so the smell loop closes on screen.
-- [ ] **Neighbour visits back**: after a few ALL WELL? calls the neighbour drops by the base in person (walks over in the
-  afternoon, sits by the fire, leaves a gift), feeding the existing `NeighbourVisit` chain.
-- [ ] **The pigs' own trough**: a slop bucket piece by the kitchen that collects food scraps automatically (spoiled
-  pantry food, butcher leftovers) for the pigs to empty.
+- [x] **Save the chores** (2026-10-18): the latrine state appends `;coveredUntil;scoops` (old `fresh;ripe` saves still
+  load), the stable's bedding rides in its manger's `Trough` state as a fifth field (`beddedAt`, restored with the straw
+  showing); both mark the piece dirty so they replicate.
+- [x] **Animals at the bedding** (2026-10-18, `Animals/Animal.Bedding`): after dark kept livestock within 30 m of a bedded
+  stable walk in, each to its own spot in the straw (`Stable.BedSpot`), and lie down till morning; a night on fresh bedding
+  heals a limp half again as fast and gives an owned animal health back (+25 % a day). A dirty stable (8+ dung in the pen,
+  no fresh bedding over it) draws flies (`Stable.Filth`).
+- [x] **Puddles that call birds** (2026-10-18, `AnimalDirector.Puddles`): for three hours after a spray, by day and out
+  of the rain, two or three crows (the real `crow` species: hop, peck, flee, fly back) come down to the sprinkler's wet
+  ground; every 30 s they pull seedlings (growth < 0.35, `GardenPlot.Peck`) on the open beds in its reach. A scarecrow in
+  reach keeps them off and sends them away; a hint says so.
+- [x] **Washing as a moment** (2026-10-18): washing back above the flies' line (shower, pool, tub, lake, rain) throws a
+  splash of droplets off the body, the flies scatter in dark streaks, and a companion within 15 m says so (once a day,
+  +1). Standing in the rain under open sky now really rinses (6 a minute, up to 70), as the WASH hint always claimed.
+- [x] **Neighbour visits back** (2026-10-18): ALL WELL? answered on three different days → the neighbour promises to come
+  the next afternoon; between 13 and 17.5 h with the player on foot at home they walk up from the road toward their town
+  (32 m off), sit on a seat by the fire (campfire / fireplace / stove, else a seat, else beside the flag) for 90 s, then
+  leave a dish on the ground and walk home (`Npc.Visit`, `StartCallIn`; disposition +5, journal). Calls saved as `q` lines.
+- [x] **The pigs' own trough** (2026-10-18, piece `slop_bucket`, `Building/SlopBucket`): takes the rotten food out of the
+  chests within 6 m every game hour, [E] tips the pack's in (up to 12); kept pigs, dogs and hens within 14 m of home come
+  and eat from it (a scrap a visit toward their day's feed); the slop rises in the bucket and draws flies when half full.
+
+## Scheduled update (2026-10-18)
+Done this pass (ticked above): all six open suggestions of 2026-10-17. Also finished the 2026-10-17 pass, which had been
+built but not tested or released: three of its checks were over-strict (the sprinkler water was measured after it had
+spread thin, the pig's eaten scraps before the end-of-frame destroy, the smell remark after the game's own 1 Hz look had
+already made it) and are fixed; both days ship in one nightly.
+
+Scenarios in `Acceptance/Blocks/ScheduledScenarios1018.cs` (living.chores_saved, animals.bedding, animals.puddle_birds,
+living.slop_bucket, npc.wash_moment, npc.neighbour_calls_in).
+
+### Suggestions (tie the experience together)
+- [ ] **Hens roost, dogs keep the door**: hens up on a perch in the stable at night, the yard dog lying across the stable
+  mouth and barking at a night visitor (raider, wild animal).
+- [ ] **The visit goes both ways**: after a call-in the neighbour's house opens to the player (sit at their table: a meal
+  and a rumour), a standing invitation on the map.
+- [ ] **Crows have a memory**: a scarecrow works for a few days, then the crows grow used to it unless it is moved or
+  dressed in new clothes.
+- [ ] **Slop bucket smell and spoil**: a full bucket left in the sun sours (more flies, the pigs still eat it), rain fills
+  it with dirty water.
+- [ ] **Wash days**: washing clothes at a tub/lake (cloth wear mends a little, `ClothWear` hygiene), drying on a line piece
+  that flaps in the wind.
+- [ ] **Morning chores list**: the HOME ledger lists what the animals need in the morning (bedding brown, bucket empty,
+  dung to shovel) as a short chores line.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)

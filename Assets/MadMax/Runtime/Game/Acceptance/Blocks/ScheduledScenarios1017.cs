@@ -38,17 +38,37 @@ namespace MadMax.Game.Acceptance
             if (g.Current) { g.Exit(); yield return new WaitForSeconds(0.4f); }
             DayNight.SetHours(11f);
             var fwd = ScheduledScenarios1016.Fwd(g);
-            var sp = PH.Piece(g, "sprinkler", g.Player.transform.position + fwd * 5f, -fwd);
+            // on soil (the claim is that the soil soaks it; paving only gets a film that runs off)
+            var t = DeformableTerrain.Instance;
+            Vector3 at = g.Player.transform.position + fwd * 5f; bool soil = false;
+            for (int ring = 0; ring < 6 && !soil; ring++)
+                for (int k = 0; k < 12 && !soil; k++)
+                {
+                    var q = g.Player.transform.position + Quaternion.Euler(0f, k * 30f, 0f) * fwd * (5f + ring * 5f);
+                    bool ok = true;
+                    for (int j = 0; j < 8 && ok; j++)
+                    {
+                        var e = q + Quaternion.Euler(0f, j * 45f, 0f) * Vector3.forward * 2.2f;
+                        t.SeepAt(e.x, e.z, out float cp, out _);
+                        ok = cp > 0f && t.WaterDepthNoLoad(e.x, e.z) <= 0f;
+                    }
+                    if (ok) { at = q; soil = true; }
+                }
+            if (!soil) { c.Block("no open soil near the start"); yield break; }
+            var sp = PH.Piece(g, "sprinkler", at, -fwd);
             if (!c.Check(sp, "a sprinkler")) yield break;
             var s = sp.GetComponent<Sprinkler>();
             float pool0 = Spills.TotalPool + Spills.TotalSoaked;
             s.WetGround();
             s.Spray(Sprinkler.SpraySeconds);
             float poured = Spills.TotalPool + Spills.TotalSoaked - pool0;                        // as it lands (films then spread thin and dry)
+            DeformableTerrain.Instance.SeepAt(sp.transform.position.x + 2f, sp.transform.position.z, out float cap, out float rate);
+            c.Note($"soil capacity {cap} L/m2 rate {rate}; pool {Spills.TotalPool:0.00} soaked {Spills.TotalSoaked:0.00}; wet now {WetHeadings(sp, s)}/24");
             c.Metric("sprinkler_wet_litres", poured, "L");
             c.Check(s.Wettings == 1 && poured > Sprinkler.WetLitres * 0.8f, $"one spray put its water on the ground ({poured:0.0} L)");
             yield return new WaitForSeconds(2f);
             c.Metric("sprinkler_wet_after_2s", Spills.TotalPool + Spills.TotalSoaked - pool0, "L");
+            c.Note($"after 2 s: pool {Spills.TotalPool:0.00} soaked {Spills.TotalSoaked:0.00}");
             int wet = 0;
             for (int i = 0; i < 24; i++)
             {
@@ -58,6 +78,17 @@ namespace MadMax.Game.Acceptance
             c.Check(wet >= 3, $"the ground is wet in patches across the arc ({wet}/24 headings)");
             yield return ScheduledScenarios1015.Shoot(c, g, sp.transform.position, sp.transform.right, 6f, "sprinkler_wet");
             Object.Destroy(sp.gameObject);
+        }
+
+        static int WetHeadings(Placeable sp, Sprinkler s)
+        {
+            int wet = 0;
+            for (int i = 0; i < 24; i++)
+            {
+                var p = sp.transform.TransformPoint(Quaternion.Euler(0f, -Sprinkler.Arc + i * Sprinkler.Arc * 2f / 23f, 0f) * Vector3.forward * (s.reach * 0.6f));
+                for (float r = -0.9f; r <= 0.9f; r += 0.3f) if (Spills.WetAt(p.x + r, p.z) > 0.05f || Spills.WetAt(p.x, p.z + r) > 0.05f) { wet++; break; }
+            }
+            return wet;
         }
     }
 

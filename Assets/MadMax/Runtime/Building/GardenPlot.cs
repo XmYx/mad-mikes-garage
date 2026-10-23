@@ -115,6 +115,17 @@ namespace MadMax.Building
 
         float grazeT;
 
+        /// <summary>Birds working the wet soil round a sprinkler (2026-10-18) pull young seedlings: growth below
+        /// <see cref="PeckBelow"/> on an open bed without a scarecrow loses <paramref name="amount"/>. True when it did.</summary>
+        public bool Peck(float amount)
+        {
+            if (crop == null || roof != 0 || growth <= 0f || growth >= PeckBelow || Scarecrow.Near(transform.position)) return false;
+            growth = Mathf.Max(0f, growth - amount);
+            GetComponent<Placeable>()?.Dirty();
+            return true;
+        }
+        public const float PeckBelow = 0.35f;
+
         /// <summary>A fence (any fence piece within 4 m) keeps grazing animals off the bed.</summary>
         public bool Fenced
         {

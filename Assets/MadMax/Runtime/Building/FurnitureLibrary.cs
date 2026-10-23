@@ -189,6 +189,7 @@ namespace MadMax.Building
             defs.AddRange(LightsPieces());
             defs.AddRange(FluidsPieces());
             defs.AddRange(WinterPieces());
+            defs.AddRange(YardPieces());
             defs.AddRange(RigPieces());
             defs.AddRange(CityPieces());
             defs.AddRange(RailPieces());

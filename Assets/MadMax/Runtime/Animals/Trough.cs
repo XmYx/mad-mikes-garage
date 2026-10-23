@@ -110,7 +110,8 @@ namespace MadMax.Animals
         }
 
         public string SaveState() => feed.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + water.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + manure
-            + "|" + mix.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            + "|" + mix.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
+            + "|" + (StableOf() is MadMax.Building.Stable st && st.Bedded ? st.beddedAt.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "");   // stable bedding (2026-10-18)
 
         public void LoadState(string s)
         {
@@ -120,6 +121,8 @@ namespace MadMax.Animals
             if (p.Length > 1) float.TryParse(p[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out water);
             if (p.Length > 2) int.TryParse(p[2], out manure);
             if (p.Length > 3) float.TryParse(p[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out mix);
+            if (p.Length > 4 && p[4].Length > 0 && float.TryParse(p[4], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float bedded)
+                && TryGetComponent<MadMax.Building.Stable>(out var stable)) stable.Restore(bedded);
         }
     }
 }

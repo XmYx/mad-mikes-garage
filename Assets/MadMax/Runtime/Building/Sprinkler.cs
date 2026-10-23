@@ -90,6 +90,8 @@ namespace MadMax.Building
         const int WetPoints = 10;
         /// <summary>Sprays that wet the ground (tests).</summary>
         public int Wettings { get; private set; }
+        /// <summary>When the ground was last wetted (world days; −1 never) — the puddle birds come to it.</summary>
+        public float WetAt { get; private set; } = -1f;
 
         /// <summary>Where the jet lands goes dark (2026-10-17): the spray's water is poured into <see cref="MadMax.World.Spills"/>
         /// at a handful of points across the ±<see cref="Arc"/>° fan between 1 m and the reach, so the soil soaks it
@@ -100,11 +102,12 @@ namespace MadMax.Building
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient) return;                                                   // the host pours, peers get the pours
             Wettings++;
+            WetAt = MadMax.World.DayNight.TotalDays;
             var rnd = new System.Random(GetEntityId().GetHashCode() ^ Wettings * 7919);
             for (int i = 0; i < WetPoints; i++)
             {
                 float a = Mathf.Lerp(-Arc, Arc, (i + (float)rnd.NextDouble()) / WetPoints);
-                float r = Mathf.Lerp(1f, reach, Mathf.Sqrt((float)rnd.NextDouble()));
+                float r = Mathf.Lerp(1f, reach, 0.35f + 0.5f * (float)rnd.NextDouble());                // where the jet lands, not at the nozzle
                 var at = transform.TransformPoint(Quaternion.Euler(0f, a, 0f) * Vector3.forward * r);
                 MadMax.World.Spills.Pour(at, MadMax.Items.ResourceType.Water, WetLitres / WetPoints);
             }

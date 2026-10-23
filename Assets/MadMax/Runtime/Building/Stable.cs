@@ -18,9 +18,50 @@ namespace MadMax.Building
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
+        /// <summary>Flies over a dirty stable (2026-10-18): no bedding down (or trodden brown) and dung piled up in the pen.</summary>
+        void Start() => MadMax.World.Swarm.Attach(gameObject, MadMax.World.Swarm.Kind.Flies, centre + new Vector3(0f, -0.6f, 0f), Mathf.Min(half.x, half.z) * 0.8f, 8,
+            () => MadMax.World.DayNight.Darkness > 0.6f || MadMax.World.Weather.TemperatureAt(transform.position.z) < 4f ? 0f : Filth);
+
+        /// <summary>How dirty the stalls are (0..1): manure waiting in the pen, worse without fresh bedding over it.</summary>
+        public float Filth
+        {
+            get
+            {
+                if (!manger) TryGetComponent(out manger);
+                int dung = manger ? manger.manure : 0;
+                if (dung < DirtyManure) return 0f;
+                return Mathf.Clamp01((dung - DirtyManure + 4) / 14f) * (Bedding > 0.35f ? 0.25f : 1f);
+            }
+        }
+        /// <summary>Manure in the pen from which the stalls start to draw flies.</summary>
+        public const int DirtyManure = 8;
+        MadMax.Animals.Trough manger;
+
+        /// <summary>Restore bedding spread at <paramref name="at"/> (world days) from a save.</summary>
+        public void Restore(float at)
+        {
+            beddedAt = at;
+            if (Bedded) ShowBedding();
+        }
+
+        /// <summary>A lying spot on the bedding for animal <paramref name="i"/> (world space; spread across the stalls).</summary>
+        public Vector3 BedSpot(int i)
+        {
+            float u = (i % 4 + 0.5f) / 4f, v = (i / 4 % 2 + 0.5f) / 2f;
+            return transform.TransformPoint(centre + new Vector3(Mathf.Lerp(-half.x, half.x, u) * 0.75f, -centre.y + 0.05f, Mathf.Lerp(-half.z, half.z, v) * 0.6f));
+        }
+
+        /// <summary>The nearest bedded stable within <paramref name="radius"/> of <paramref name="p"/> (null: none).</summary>
+        public static Stable BeddedNear(Vector3 p, float radius)
+        {
+            Stable best = null; float bd = radius * radius;
+            foreach (var s in All) { if (!s || !s.Bedded) continue; float d = (s.transform.position - p).sqrMagnitude; if (d < bd) { bd = d; best = s; } }
+            return best;
+        }
+
         /// <summary>Fresh bedding (2026-10-17): a sack of sawdust spread on the stall floor when the manger is filled.
         /// It lasts <see cref="BeddingDays"/> days, browning as it goes; while it is down the dung shovelled from the pen
-        /// comes out half again (soiled bedding is the better compost). Not saved: bedding is a chore, not a fixture.</summary>
+        /// comes out half again (soiled bedding is the better compost). Saved with the manger (2026-10-18).</summary>
         public float beddedAt = -99f;
         public const float BeddingDays = 3f;
         public float Bedding => Mathf.Clamp01(1f - (MadMax.World.DayNight.TotalDays - beddedAt) / BeddingDays);
@@ -35,12 +76,13 @@ namespace MadMax.Building
             if (inv == null || Bedding > 1f - 1f / BeddingDays || !inv.TakeItem(Sawdust.Sack)) return false;
             beddedAt = MadMax.World.DayNight.TotalDays;
             ShowBedding();
+            GetComponent<Placeable>()?.Dirty();
             return true;
         }
 
         void Update()
         {
-            if (bedding && Mathf.Abs(Bedding - shownBedding) > 0.02f) ShowBedding();
+            if ((bedding || Bedded) && Mathf.Abs(Bedding - shownBedding) > 0.02f) ShowBedding();
         }
 
         void ShowBedding()

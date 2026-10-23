@@ -18,7 +18,7 @@ namespace MadMax.Animals
         int scrapsToday, scrapDay = -1;
         /// <summary>Food items eaten off the ground this session (tests).</summary>
         public static int ScrapsEaten;
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetScraps() => ScrapsEaten = 0;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetScraps() { ScrapsEaten = 0; SlopEaten = 0; }
 
         /// <summary>Is this a kept scrap-eater?</summary>
         public bool ScrapEater => Def != null && (owned || town >= 0) && Adult && !Def.flies
@@ -40,15 +40,57 @@ namespace MadMax.Animals
 
         /// <summary>The food this animal is going for or eating (tests).</summary>
         public WorldItem ScrapTarget => scrap;
-        public bool EatingScraps => scrap && scrapEatUntil > 0f;
+        public bool EatingScraps => (scrap || slopFrom) && scrapEatUntil > 0f;
+
+        /// <summary>The slop bucket this animal is at (2026-10-18; tests).</summary>
+        public MadMax.Building.SlopBucket SlopTarget => slopFrom;
+        MadMax.Building.SlopBucket slopFrom;
+        float slopBest = float.MaxValue, slopProgressAt;
+        /// <summary>Distance to the slop bucket (tests).</summary>
+        public float SlopDistance => slopFrom ? Flat(slopFrom.transform.position - transform.position).magnitude : -1f;
+        /// <summary>Scraps eaten out of slop buckets this session (tests).</summary>
+        public static int SlopEaten;
+
+        /// <summary>At a slop bucket: walk up, nose in for <see cref="ScrapEatSeconds"/>, one scrap.</summary>
+        bool SlopThink(Vector3 me)
+        {
+            if (!slopFrom || slopFrom.scraps <= 0) { slopFrom = null; scrapEatUntil = -1f; return false; }
+            var at = slopFrom.transform.position;
+            if (scrapEatUntil > 0f)
+            {
+                state = State.Graze; SetMove(Vector3.zero, 0f);
+                if (Time.time >= scrapEatUntil)
+                {
+                    scrapEatUntil = -1f;
+                    if (slopFrom.Take()) { CountScrap(1); SlopEaten++; MadMax.Audio.Sfx.Play("dig", at, 0.15f, Def.id == "chicken" ? 1.8f : 1.1f, 6f); Say(0); }
+                    slopFrom = null;
+                }
+                return true;
+            }
+            float sd = Flat(at - me).magnitude;
+            if (sd < slopBest - 0.1f) { slopBest = sd; slopProgressAt = Time.time; }
+            bool blocked = sd < 2f && Time.time - slopProgressAt > 2f;                          // nose against something: eat from here
+            if (sd < Def.reach + 1.1f || blocked) { slopBest = float.MaxValue; scrapEatUntil = Time.time + ScrapEatSeconds; state = State.Graze; SetMove(Vector3.zero, 0f); return true; }
+            state = State.Wander; goal = at; stateUntil = Time.time + 6f;
+            SetMove(at - me, Def.walk * 1.6f);
+            return true;
+        }
+
+        void CountScrap(int n)
+        {
+            if (scrapDay != DayNight.Day) { scrapDay = DayNight.Day; scrapsToday = 0; }
+            scrapsToday += n;
+            if (scrapsToday >= ScrapsForDay && fedDay != DayNight.Day) { fedDay = DayNight.Day; hungryDays = 0; }
+        }
 
         /// <summary>From <c>ThinkKept</c> (every ~0.2 s): go for food on the ground near home; true while busy with it.</summary>
         bool ScrapsThink(WastelandGame g)
         {
-            if (!ScrapEater || state == State.Sleep) { scrap = null; return false; }
+            if (!ScrapEater || state == State.Sleep) { scrap = null; slopFrom = null; return false; }
             var net = MadMax.Net.NetSession.Instance;
             if (net && net.IsClient) return false;
             var me = transform.position;
+            if (slopFrom && SlopThink(me)) return true;                                         // the slop bucket (2026-10-18)
             if (scrap)
             {
                 if (scrap.transform.parent || !scrap.gameObject.activeInHierarchy) { scrap = null; return false; }   // picked up
@@ -78,7 +120,14 @@ namespace MadMax.Animals
                 float d2 = Flat(p - me).sqrMagnitude;
                 if (d2 < best) { best = d2; scrap = w; }
             }
-            if (!scrap) return false;
+            if (!scrap)
+            {
+                slopFrom = MadMax.Building.SlopBucket.Nearest(home, MadMax.Building.SlopBucket.Reach);
+                slopBest = float.MaxValue; slopProgressAt = Time.time;
+                if (slopFrom && Mathf.Abs(slopFrom.transform.position.y - me.y) > 1.5f) slopFrom = null;
+                scrapEatUntil = -1f;
+                return slopFrom && SlopThink(me);
+            }
             scrapEatUntil = -1f;
             return true;
         }
@@ -93,10 +142,8 @@ namespace MadMax.Animals
         {
             var w = scrap; scrap = null; scrapEatUntil = -1f;
             if (!w) return;
-            if (scrapDay != DayNight.Day) { scrapDay = DayNight.Day; scrapsToday = 0; }
-            scrapsToday += Mathf.Max(1, w.count);
+            CountScrap(Mathf.Max(1, w.count));
             ScrapsEaten++;
-            if (scrapsToday >= ScrapsForDay && fedDay != DayNight.Day) { fedDay = DayNight.Day; hungryDays = 0; }
             MadMax.Audio.Sfx.Play("dig", transform.position, 0.15f, Def.id == "chicken" ? 1.8f : 1.2f, 6f);
             var net = MadMax.Net.NetSession.Instance;
             if (net && w.netId != 0) net.SendItemGone(w.netId);

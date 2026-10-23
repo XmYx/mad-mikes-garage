@@ -99,7 +99,7 @@ namespace MadMax.Game
 
         void Poison(string why) { Stats.sick = Mathf.Max(Stats.sick, 120f); Toast(why + "!"); }
 
-        public void Wash(float amount, string msg) { Stats.hygiene = Mathf.Min(100f, Stats.hygiene + amount); if (Player && Player.Rig) Player.Rig.ClearBlood(); Toast(msg); }
+        public void Wash(float amount, string msg) { float was = Stats.hygiene; Stats.hygiene = Mathf.Min(100f, Stats.hygiene + amount); if (Player && Player.Rig) Player.Rig.ClearBlood(); Toast(msg); Washed(was); }
 
         public void SetSpawn(Vector3 p) { spawnPoint = p; Toast("SPAWN POINT SET"); }
 
@@ -138,7 +138,9 @@ namespace MadMax.Game
         /// <summary>A long soak in the tub: clean, warm, rested for a while.</summary>
         public void Bathe(bool clean)
         {
+            float was = Stats.hygiene;
             Stats.hygiene = clean ? 100f : Mathf.Max(Stats.hygiene, 70f);
+            Washed(was);
             Stats.stamina = Stats.MaxStamina;
             Stats.bodyTemp = Mathf.Max(Stats.bodyTemp, 36.9f);
             Stats.restedUntil = Mathf.Max(Stats.restedUntil, DayNight.TotalDays * 24f + 2f);

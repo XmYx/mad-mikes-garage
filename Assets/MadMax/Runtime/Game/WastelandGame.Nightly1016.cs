@@ -221,6 +221,7 @@ namespace MadMax.Game
         void Save1016(List<string> lines)
         {
             lines.Add("x|" + watchWarned.ToString("R", CultureInfo.InvariantCulture) + "|" + watchPassDay);
+            Save1018(lines);
         }
 
         void Load1016(string[] f)
@@ -230,12 +231,14 @@ namespace MadMax.Game
                 float.TryParse(f[1], NumberStyles.Float, CultureInfo.InvariantCulture, out watchWarned);
                 int.TryParse(f[2], out watchPassDay);
             }
+            else Load1018(f);
         }
 
         void Clear1016()
         {
             watchWarned = -1f; watchPassDay = -1; groundSpoil.Clear();
             BaseRaid.NeighbourHelp = NeighbourHelp;
+            Clear1018();
         }
     }
 }

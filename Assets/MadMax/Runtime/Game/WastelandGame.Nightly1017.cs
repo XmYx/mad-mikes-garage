@@ -236,6 +236,7 @@ namespace MadMax.Game
             }
             allWellAt = DayNight.TotalDays;
             NeighbourWord(w, line, claim, false);
+            NoteAllWell(w);                                                                      // enough calls and they come over (2026-10-18)
             LastAllWell = line;
             return line;
         }
@@ -278,6 +279,7 @@ namespace MadMax.Game
             if (!ContextActions.Has("home.neighbour")) ContextActions.Register("home.neighbour", (g, t, into) => { if (t.item == null) g.NeighbourRadioOptions(into); });
             UpdateSmell();
             UpdateWatchTogether();
+            UpdateNightly1018();
         }
     }
 }
