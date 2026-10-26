@@ -51,6 +51,48 @@ namespace MadMax.Building
             return transform.TransformPoint(centre + new Vector3(Mathf.Lerp(-half.x, half.x, u) * 0.75f, -centre.y + 0.05f, Mathf.Lerp(-half.z, half.z, v) * 0.6f));
         }
 
+        /// <summary>Roost bar height above the stall floor (m).</summary>
+        public const float RoostHeight = 0.85f;
+
+        /// <summary>A place on the roost bar along the back wall for hen <paramref name="i"/> (world space, on the bar).</summary>
+        public Vector3 RoostSpot(int i)
+        {
+            float u = (i % 6 + 0.5f) / 6f;
+            return transform.TransformPoint(new Vector3(centre.x + Mathf.Lerp(-half.x, half.x, u) * 0.8f, RoostHeight, centre.z - half.z * 0.72f));
+        }
+
+        /// <summary>Where a yard dog lies across the stable mouth (world space, on the floor just outside the open front, +Z).</summary>
+        public Vector3 DoorSpot => transform.TransformPoint(new Vector3(centre.x, 0.02f, centre.z + half.z + 0.55f));
+        /// <summary>The way out of the stable mouth (world).</summary>
+        public Vector3 Outward => transform.forward;
+
+        /// <summary>The nearest stable (bedded or not) within <paramref name="radius"/> of <paramref name="p"/>.</summary>
+        public static Stable Near(Vector3 p, float radius)
+        {
+            Stable best = null; float bd = radius * radius;
+            foreach (var s in All) { if (!s) continue; float d = (s.transform.position - p).sqrMagnitude; if (d < bd) { bd = d; best = s; } }
+            return best;
+        }
+
+        Transform roost;
+        /// <summary>The roost bar: a pole along the back wall, put up the first time a hen comes to roost.</summary>
+        public void ShowRoost()
+        {
+            if (roost) return;
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            go.name = "Roost";
+            Destroy(go.GetComponent<Collider>());
+            roost = go.transform; roost.SetParent(transform, false);
+            roost.localPosition = new Vector3(centre.x, RoostHeight - 0.04f, centre.z - half.z * 0.72f);
+            roost.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            roost.localScale = new Vector3(0.06f, half.x * 0.85f, 0.06f);
+            var mat = new Material(MadMax.World.Fx.RuntimeShader("Unlit", "Universal Render Pipeline/Unlit"));
+            mat.SetColor("_BaseColor", (Color)MadMax.Voxel.Pal.Wood[2]);
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
         /// <summary>The nearest bedded stable within <paramref name="radius"/> of <paramref name="p"/> (null: none).</summary>
         public static Stable BeddedNear(Vector3 p, float radius)
         {

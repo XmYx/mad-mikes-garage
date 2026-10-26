@@ -220,6 +220,8 @@ namespace MadMax.Game
             LastCallIn = name + " LEFT " + ItemIds.Name(gift) + " BY THE FIRE";
             Toast(LastCallIn);
             Journal.Add("HOME", LastCallIn + " AND WALKED HOME");
+            Remark(n, "AND COME TO SUPPER SOME EVENING - YOU KNOW WHERE I LIVE.", 4.5f);
+            InviteToSupper(n.Profile.id, name);                                                     // the visit goes both ways (Nightly1023)
             CallingIn = null;
         }
 
@@ -229,16 +231,19 @@ namespace MadMax.Game
         {
             UpdateWashing();
             UpdateCallIns();
+            UpdateNightly1023();
         }
 
         void Save1018(List<string> lines)
         {
             foreach (var kv in CallIns)
                 lines.Add("q|" + kv.Key + "|" + kv.Value.calls + "|" + kv.Value.lastDay + "|" + kv.Value.due + "|" + kv.Value.came);
+            Save1023(lines);
         }
 
         void Load1018(string[] f)
         {
+            if (f[0] == "v") { Load1023(f); return; }
             if (f[0] != "q" || f.Length < 6) return;
             var c = new CallIn();
             int.TryParse(f[2], out c.calls); int.TryParse(f[3], out c.lastDay); int.TryParse(f[4], out c.due); int.TryParse(f[5], out c.came);
@@ -251,6 +256,7 @@ namespace MadMax.Game
             if (CallingIn) Destroy(CallingIn.gameObject);
             CallingIn = null;
             washWas = -1f; crewWashDay = -1;
+            Clear1023();
         }
     }
 }

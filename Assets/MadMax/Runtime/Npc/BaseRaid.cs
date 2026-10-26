@@ -263,7 +263,7 @@ namespace MadMax.Npc
             NextDay = DayNight.TotalDays + Interval * Random.Range(0.7f, 1.3f);
             Begin(claim);
             foreach (var bell in AlarmBell.All) if (bell && claim.Inside(bell.transform.position)) { bell.Ring(false); break; }
-            g.Toast("WOKEN IN THE NIGHT: RAIDERS AT THE BASE!");
+            g.Toast(MadMax.Animals.Animal.DogKeepsDoor(claim) ? "THE DOG'S BARKING WOKE YOU: RAIDERS AT THE BASE!" : "WOKEN IN THE NIGHT: RAIDERS AT THE BASE!");
             return true;
         }
     }

@@ -17,7 +17,7 @@ namespace MadMax.Game
             { "tool_hoe", Shoulder }, { "tool_scythe", Shoulder }, { "tool_leaf_blade", Shoulder },
             { "tool_spear", Staff }, { "tool_fishing_rod", Staff },
             { "tool_cutter", Hang }, { "tool_detector", Side },
-            { "tool_torch", Torch }, { "tool_flashlight", Flash },
+            { "tool_torch", Torch }, { "tool_flashlight", Flash }, { "tool_geiger", Flash },
             { "tool_lantern", Hang }, { "tool_watering_can", Hang }, { "tool_extinguisher", Hang }, { "tool_jack", Hang },
             { "tool_fuel_can", Hang }, { "tool_gold_pan", Hang },
             { "tool_pipe_shotgun", Rifle }, { "tool_bolt_rifle", Rifle }, { "tool_crossbow", Rifle },

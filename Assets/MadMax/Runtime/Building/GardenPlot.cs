@@ -111,6 +111,7 @@ namespace MadMax.Building
             if (!crow) crow = Crow();
             MadMax.Audio.Sfx.Play("birds", transform.position, 0.6f, 0.8f, 30f);
             Tell("CROWS ARE AT YOUR " + def.name);
+            Scarecrow.Notice(transform.position, MadMax.Game.WastelandGame.Instance);       // a scarecrow they got used to stands there
         }
 
         float grazeT;
@@ -122,6 +123,7 @@ namespace MadMax.Building
             if (crop == null || roof != 0 || growth <= 0f || growth >= PeckBelow || Scarecrow.Near(transform.position)) return false;
             growth = Mathf.Max(0f, growth - amount);
             GetComponent<Placeable>()?.Dirty();
+            Scarecrow.Notice(transform.position, MadMax.Game.WastelandGame.Instance);
             return true;
         }
         public const float PeckBelow = 0.35f;

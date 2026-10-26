@@ -80,6 +80,7 @@ namespace MadMax.Game
             {
                 // a meal at the table: longer when sitting down to it
                 Stats.fedUntil = Mathf.Max(Stats.fedUntil, DayNight.TotalDays * 24f + table * (Player.Sitting ? 1.5f : 1f));
+                if (DiningTable.Nearest(Player.transform.position, out var laid)) laid.Serve(Player.transform.position, id);   // the meal on the table (2026-10-23)
                 Toast("ATE " + f.name + " AT THE TABLE: WELL FED");
             }
             else Toast("ATE " + f.name);

@@ -548,6 +548,7 @@ namespace MadMax.Animals
                 return;
             }
             if (owned && order == 2) { if (state != State.Graze && state != State.Idle && state != State.Sleep) state = State.Idle; SetMove(Vector3.zero, 0f); return; }
+            if (RoostThink(g)) return;                                                          // hens on the perch, the dog at the door (Animal.Roost)
             if (BeddingThink(g)) return;                                                        // after dark, to the straw (Animal.Bedding)
             if (ScrapsThink(g)) return;                                                         // food on the ground near home (Animal.Scraps)
             Routine(owned ? 5f : 10f);
@@ -641,7 +642,8 @@ namespace MadMax.Animals
             float acc = target > speed ? Def.run * 0.9f : Def.run * 1.6f;
             speed = Mathf.MoveTowards(speed, target, acc * dt);
             var p = me + transform.forward * speed * dt;
-            p.y = Ground(g, p) + air;
+            perchLift = Mathf.MoveTowards(perchLift, PerchWanted, 2.4f * dt);                    // a hop up onto the roost / down in the morning
+            p.y = Ground(g, p) + air + perchLift;
             transform.position = p;
         }
 

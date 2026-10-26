@@ -203,6 +203,7 @@ namespace MadMax.Game
                 bool lit = NeighbourLampLit;
                 into.Add(new Pin { label = (e.name ?? "NEIGHBOUR") + (lit ? ": LAMP LIT" : ": WATCHING YOUR PLACE"), pos = new Vector3(t.pos.x, 0f, t.pos.y), color = lit ? new Color32(255, 214, 120, 255) : new Color32(200, 190, 160, 255) });
             }
+            SupperPins(into);                                                                       // invited to supper (Nightly1023)
         }
 
         /// <summary>The HOME ledger line for <paramref name="claim"/>'s watching neighbour (null: none).</summary>

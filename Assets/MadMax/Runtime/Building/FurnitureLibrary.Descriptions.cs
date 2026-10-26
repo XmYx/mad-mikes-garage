@@ -179,6 +179,7 @@ namespace MadMax.Building
             { "spinning_wheel", "SPINS WOOL AND FIBRE INTO THREAD AND ROPE." },
             { "sprinkler", "WATERS THE BEDS AROUND IT FROM THE PIPES." },
             { "stable", "SHELTER FOR HORSES: THEY REST AND RECOVER STAMINA." },
+            { "clothes_line", "WASH YOUR CLOTHES WITH WATER NEARBY AND HANG THEM OUT TO DRY: FRESH, MENDED A LITTLE." },
             { "slop_bucket", "TAKES THE ROTTEN FOOD FROM NEARBY STORES; PIGS, DOGS AND HENS EAT FROM IT." },
             { "stairs", "STAIRS UP TO THE NEXT STOREY." },
             { "stamp_mill", "POUNDS ORE INTO CONCENTRATE." },

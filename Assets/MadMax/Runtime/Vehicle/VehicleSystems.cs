@@ -587,6 +587,8 @@ namespace MadMax.Vehicles
             if ((snorkelCheck -= dt) <= 0f) { snorkelCheck = 1f; snorkel = GetComponentInChildren<Snorkel>(); }
             float intake = snorkel && snorkel.Mounted ? Mathf.Max(ePos.y + 0.2f, snorkel.Intake.y) : ePos.y + 0.2f;      // a snorkel breathes high
             bool flooded = !sealedHull && !float.IsNaN(lvl) && intake < lvl;
+            if (snorkel) snorkel.Wade(lvl, ePos.y + 0.2f, Started, driver.Body ? driver.Body.linearVelocity : Vector3.zero,
+                driver.Occupied && !driver.aiDriven, MadMax.Game.WastelandGame.Instance, dt);               // bow wave, gurgle, drips (2026-10-23)
             if (noAir && Started) Stop();
             if (flooded) { f |= Fault.Flooded; if (driver.Occupied && driver.DriveCommand > 0.1f) ep.damage += 0.04f * dt; }
             UpdateFire(dt, ePos, ref f);

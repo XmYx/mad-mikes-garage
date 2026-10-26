@@ -74,6 +74,7 @@ namespace MadMax.Game.Acceptance
             foreach (var s in ScheduledScenarios1016.All()) yield return s;
             foreach (var s in ScheduledScenarios1017.All()) yield return s;
             foreach (var s in ScheduledScenarios1018.All()) yield return s;
+            foreach (var s in ScheduledScenarios1023.All()) yield return s;
             foreach (var s in FaceScenarios.All()) yield return s;
             foreach (var s in ClothScenarios.All()) yield return s;
             foreach (var s in CityScenarios.All()) yield return s;

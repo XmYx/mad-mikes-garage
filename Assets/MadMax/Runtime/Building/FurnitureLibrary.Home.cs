@@ -106,19 +106,8 @@ namespace MadMax.Building
             g.Box(-9, 0, -3, -9, 24, 3, frame); g.Box(9, 0, -3, 9, 24, 3, frame);
             g.Box(-8, 0, -3, 8, 24, -3, Pal.Ramp(Pal.Wood, 0, 1122));
             foreach (int y in new[] { 0, 8, 16, 24 }) g.Box(-8, y, -2, 8, y, 3, frame);
-            g.Mat(Cloth);
-            var spines = new[] { Pal.Rust, Pal.Olive, Pal.PaleBlue, Pal.Cream, Pal.RigGreen, Pal.Bronze, Pal.Crimson, Pal.Navy };
-            foreach (int shelf in new[] { 1, 9, 17 })
-            {
-                var r = new System.Random(1123 + shelf);
-                for (int x = -8; x <= 8;)
-                {
-                    int w = r.Next(1, 3), h = r.Next(4, 7);
-                    if (r.NextDouble() < 0.12) { x += 2; continue; }                          // a gap on the shelf
-                    g.Box(x, shelf, -2, Mathf.Min(8, x + w - 1), shelf + h - 1, 2, Pal.Ramp(spines[r.Next(spines.Length)], 1 + r.Next(2), 1124 + x));
-                    x += w;
-                }
-            }
+            g.Box(-8, 1, -2, -8, 2, 2, Pal.Ramp(Pal.Wood, 2, 1123));                            // a bookend; the books are what it holds (Bookshelf)
+            g.Bevel();
             return g;
         }
 

@@ -1872,18 +1872,60 @@ Scenarios in `Acceptance/Blocks/ScheduledScenarios1018.cs` (living.chores_saved,
 living.slop_bucket, npc.wash_moment, npc.neighbour_calls_in).
 
 ### Suggestions (tie the experience together)
-- [ ] **Hens roost, dogs keep the door**: hens up on a perch in the stable at night, the yard dog lying across the stable
-  mouth and barking at a night visitor (raider, wild animal).
-- [ ] **The visit goes both ways**: after a call-in the neighbour's house opens to the player (sit at their table: a meal
-  and a rumour), a standing invitation on the map.
-- [ ] **Crows have a memory**: a scarecrow works for a few days, then the crows grow used to it unless it is moved or
-  dressed in new clothes.
-- [ ] **Slop bucket smell and spoil**: a full bucket left in the sun sours (more flies, the pigs still eat it), rain fills
-  it with dirty water.
-- [ ] **Wash days**: washing clothes at a tub/lake (cloth wear mends a little, `ClothWear` hygiene), drying on a line piece
-  that flaps in the wind.
-- [ ] **Morning chores list**: the HOME ledger lists what the animals need in the morning (bedding brown, bucket empty,
-  dung to shovel) as a short chores line.
+- [x] **Hens roost, dogs keep the door** (2026-10-23, `Animals/Animal.Roost`): after dark kept hens walk into the nearest
+  stable and hop up onto a roost bar along its back wall (`Stable.RoostSpot`, the bar appears with the first hen), down at
+  first light; a kept guard dog lies across the stable mouth (`Stable.DoorSpot`) facing out and barks at anyone hostile
+  or a prowling predator within 30 m (toast, attention ping); a raid that wakes you names the dog.
+- [x] **The visit goes both ways** (2026-10-23): the call-in's goodbye is an invitation (`InviteToSupper`); from 17 to
+  21.5 h the neighbour waves the player over in town and the context menu on them offers SIT DOWN TO SUPPER (hunger +45,
+  WELL FED 5 h, a giver or cache rumour over the plates, disposition +4; every 3 days); a map pin SUPPER AT …'S. Saved as
+  `v` lines.
+- [x] **Crows have a memory** (2026-10-23, `Scarecrow`): it frightens crows for 4 days after it is put up, moved (>0.5 m)
+  or dressed ([E] with a garment from the pack: the garment hangs on it in its colour, flapping in the wind); then they
+  come back to the beds and the puddles, and a toast says so. State saved per piece.
+- [x] **Slop bucket smell and spoil** (2026-10-23): half full in the warmth it sours over ~10 h (faster in the sun; greyer
+  slop, twice the flies; the pigs still eat it), rain fills it with up to 8 L (watery slop, spills over when brimming),
+  [T] tips the water out as a dirty puddle (`Spills`). State `scraps;sour;water` (old counts load).
+- [x] **Wash days** (2026-10-23, piece `clothes_line`, `Building/ClothesLine`): [E] with water within 10 m (10 L from a pool /
+  drum / tank, or a lake) washes what you wear (each garment's wear −5 %, less in dirty water) and hangs it out — cloth
+  panels in the garments' colours flapping in the wind, dripping while sodden — drying in ~3 h by sun, wind and warmth
+  (slower at night, rain wets it again); taken in dry = FRESH CLOTHES (+25 hygiene, drier), damp = cold and clammy.
+- [x] **Morning chores list** (2026-10-23, `ChoresLine`): a CHORES line per claim on the HOME ledger (no / trodden bedding,
+  dung to shovel, trough feed or water low, slop bucket empty / souring / rained in, wash dry on the line, a stale
+  scarecrow; ALL DONE), ENTER sets a waypoint to the first.
+
+## Scheduled update (2026-10-23)
+Done this pass (ticked above): all six open suggestions of 2026-10-18. Also committed the 2026-10-18 pass (built and
+tested, never released) and ships it in this nightly.
+
+Remodel audit of roadmap sections 1–5 (tools, furniture, clothing, attachments, crafting) for pieces that worked only as
+a number or a toast:
+- [x] **Bookshelf** shows what it holds: a spine per stored book (colour, width, height by title, gilt band), tapes as black
+  cassettes with labels, filled from the top shelf down; the baked shelf is bare (voxel look; the HD model keeps its own).
+- [x] **Dining table** lays the meal: a plate at the place nearest the eater, the food heaped on it by kind, steaming when
+  cooked, eaten down to crumbs; the plate stays 3 h or until [E] clears the table.
+- [x] **Geiger counter** held out in front (`hold_flash`), a dial needle on a log scale that kicks with each click, a red
+  count lamp on the case.
+- [x] **Snorkel** wading: a bow wave round the pipe at the water line by speed, gurgle (`station_bubble`) and spray at the
+  mouth when the water is within 30 / 12 cm, a toast with the margin, drips from the pipe for 20 s after the crossing.
+- [ ] Still thin from the audit: mirror (no facing pose, no clipping sound/puff when hair changes), binoculars (no
+  raise-to-eyes pose, no lens mask or glint), crowbar on doors (no sparks, the door doesn't jolt open).
+
+Scenarios in `Acceptance/Blocks/ScheduledScenarios1023.cs` (animals.roost_door, garden.scarecrow_memory, living.slop_sour,
+living.wash_day, npc.supper, ui.chores_line, living.shelf_table_dial).
+
+### Suggestions (tie the experience together)
+- [ ] **Eggs in the straw**: roosting hens lay by morning in the stable (a nest box piece, eggs as food), more on fresh
+  bedding, fewer with the dog barking all night.
+- [ ] **Bring something to supper**: a dish or a bottle brought to the neighbour's table warms them more and loosens a
+  better rumour; going empty-handed every time cools them.
+- [ ] **The wash in the wind**: a storm tears a garment off the line (found later downwind), a dust storm dirties it.
+- [ ] **Dressed scarecrows in town**: village gardens get scarecrows wearing the town's cast-offs; a raider gang's colours on
+  one is a warning sign.
+- [ ] **The dog's name and its bed**: name the yard dog at the stable door (a word with the crew), a dog blanket piece it
+  prefers, it greets the player home.
+- [ ] **Mirror, binoculars, crowbar** (from the audit): a facing pose and a clipping puff at the mirror; binoculars raised to
+  the eyes with a lens mask and a glint raiders can see; the crowbar levering a door with sparks and a jolt.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
