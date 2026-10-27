@@ -116,7 +116,7 @@ namespace MadMax.Building
                 D("windmill", "WIND TURBINE (MEDIUM)", U, BuildPieces.WindmillTower(), 12, false, go => { Node(go, UtilityKind.Power, 0.4f); Rotor(go); var w = go.GetComponent<Windmill>(); w.rated = 900f; w.height = 6f; }, (Fe, 8), (Cu, 4), (Al, 4)),
                 D("battery", "BATTERY BANK", U, BuildPieces.Battery(), 5, false, go => { var n = Node(go, UtilityKind.Power, 0.7f); n.batteryWh = 3000f; go.AddComponent<BatteryRack>(); }, (Cu, 4), (S, 4), (ResourceType.Oil, 2)),
                 D("power_pole", "POWER POLE", U, BuildPieces.PowerPole(), 6, false, go => Node(go, UtilityKind.Power, 4.7f), (W, 4), (G, 1)),
-                D("rain_collector", "RAIN COLLECTOR", U, BuildPieces.RainCollector(), 5, false, go => { Node(go, UtilityKind.Water, 0.3f).waterCapacity = 200f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Rain; go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Barrel; }, (S, 6)),
+                D("rain_collector", "RAIN COLLECTOR", U, BuildPieces.RainCollector(), 5, false, go => { Node(go, UtilityKind.Water, 0.3f).waterCapacity = 200f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Rain; go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Barrel; RainGauge(go); }, (S, 6)),
                 D("water_tank", "WATER TANK", U, BuildPieces.WaterTank(), 10, false, go => Node(go, UtilityKind.Water, 1.3f).waterCapacity = 1000f, (S, 12), (Fe, 4)),
                 D("filter", "WATER FILTER", U, BuildPieces.Filter(), 4, false, go => { Node(go, UtilityKind.Water, 0.6f).waterCapacity = 20f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Filter; }, (S, 3), (ResourceType.Charcoal, 4), (C, 2), (ResourceType.Sand, 4)),
                 D("pump", "WATER PUMP", U, BuildPieces.Pump(), 6, false, go => { Node(go, UtilityKind.Power | UtilityKind.Water, 0.5f).waterCapacity = 20f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Pump; }, (Fe, 4), (Cu, 2)),
@@ -127,7 +127,7 @@ namespace MadMax.Building
                 D("sprinkler", "SPRINKLER", U, BuildPieces.Sprinkler(), 3, false, go => { Node(go, UtilityKind.Water, 0.2f).waterCapacity = 2f; go.AddComponent<Sprinkler>(); }, (S, 2), (Fe, 1)),
                 D("drip_line", "DRIP LINE", U, BuildPieces.DripLine(), 2, false, go => { Node(go, UtilityKind.Water, 0.1f).waterCapacity = 1f; var d = go.AddComponent<Sprinkler>(); d.reach = 1.6f; d.drip = true; }, (ResourceType.Rubber, 1), (S, 1)),
                 D("well", "WELL", U, BuildPieces.Well(), 20, false, go => { Node(go, UtilityKind.Water | UtilityKind.Power, 0.4f).waterCapacity = 60f; go.AddComponent<WaterSource>().mode = WaterSource.Mode.Well; go.AddComponent<HandPump>(); go.AddComponent<WaterOutlet>().kind = WaterOutlet.Kind.Well; }, (St, 16), (Fe, 3), (W, 2)),
-                D("water_tower", "WATER TOWER", U, BuildPieces.WaterTower(), 16, false, go => Node(go, UtilityKind.Water, 0.4f).waterCapacity = 3000f, (W, 24), (Fe, 4), (S, 4)),
+                D("water_tower", "WATER TOWER", U, BuildPieces.WaterTower(), 16, false, go => { Node(go, UtilityKind.Water, 0.4f).waterCapacity = 3000f; TowerGauge(go); }, (W, 24), (Fe, 4), (S, 4)),
 
                 // garden
                 D("garden_plot", "GARDEN PLOT", Ga, BuildPieces.GardenBed(11, 6), 4, false, go => go.AddComponent<GardenPlot>(), (W, 3), (ResourceType.Clay, 4)),
@@ -136,7 +136,7 @@ namespace MadMax.Building
                 D("greenhouse", "GREENHOUSE", Ga, BuildPieces.Greenhouse(), 10, true, null, (W, 12), (G, 16)),
                 D("scarecrow", "SCARECROW", Ga, BuildPieces.Scarecrow(), 2, false, go => go.AddComponent<Scarecrow>(), (W, 3), (C, 3)),
                 D("trough", "TROUGH", Ga, BuildPieces.Trough(), 4, false, go => go.AddComponent<MadMax.Animals.Trough>(), (W, 8), (S, 1)),
-                D("nest_box", "NEST BOX", Ga, BuildPieces.NestBox(), 3, false, go => Box(go, "NEST BOX", 12f, false), (W, 5), (S, 1)),
+                D("nest_box", "NEST BOX", Ga, BuildPieces.NestBox(), 3, false, go => { Box(go, "NEST BOX", 12f, false); go.AddComponent<NestBox>(); }, (W, 5), (S, 1)),
                 D("fish_trap", "FISH TRAP", Ga, BuildPieces.FishTrap(), 3, false, go => go.AddComponent<FishTrap>(), (Fe, 2), (S, 2), (C, 1)),
 
                 // industry
@@ -208,6 +208,25 @@ namespace MadMax.Building
         static FurnitureDef Needs(this FurnitureDef d, string item) { d.needsItem = item; return d; }
         static FurnitureDef Snap(this FurnitureDef d, string into) { d.snapTo = into; return d; }
         static FurnitureDef Deck(this FurnitureDef d, float halfX, float halfZ, float back, float front) { d.deck = new Vector4(halfX, halfZ, back, front); return d; }
+
+        /// <summary>The water tower's float gauge on the ladder side, overflow pipe on +X, drips off the deck.</summary>
+        static void TowerGauge(GameObject go)
+        {
+            var g = go.AddComponent<TankGauge>();
+            g.style = TankGauge.Style.Board; g.outward = Vector3.back;
+            g.bottom = new Vector3(0.44f, 3.26f, -0.93f); g.height = 1.44f;
+            g.overflowAt = new Vector3(1.06f, 4.62f, 0f); g.overflowDir = Vector3.right;
+            g.weeps = true; g.weepY = 3.08f; g.weepR = 1.0f;
+        }
+
+        /// <summary>A gauge glass on the rain barrel's side; it brims over the back rim.</summary>
+        static void RainGauge(GameObject go)
+        {
+            var g = go.AddComponent<TankGauge>();
+            g.style = TankGauge.Style.Glass; g.outward = Vector3.right;
+            g.bottom = new Vector3(0.5f, 0.1f, 0f); g.height = 0.8f;
+            g.overflowAt = new Vector3(0f, 0.99f, -0.44f); g.overflowDir = Vector3.back;
+        }
 
         static UtilityNode Node(GameObject go, UtilityKind k, float portY)
         {

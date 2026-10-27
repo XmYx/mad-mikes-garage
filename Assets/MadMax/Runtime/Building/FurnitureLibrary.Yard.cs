@@ -14,6 +14,32 @@ namespace MadMax.Building
                 (ResourceType.Wood, 3), (ResourceType.Scrap, 1));
             yield return D("clothes_line", "CLOTHES LINE", BuildCategory.Garden, ClothesLineGrid(), 2, false, go => go.AddComponent<ClothesLine>(),
                 (ResourceType.Wood, 4), (ResourceType.Cloth, 1));
+            yield return D("dog_blanket", "DOG BLANKET", BuildCategory.Garden, DogBlanketGrid(), 2, false, go => go.AddComponent<DogBed>(),
+                (ResourceType.Cloth, 3), (ResourceType.Wood, 1));
+        }
+
+        /// <summary>An old checked blanket bunched on a low pallet, a chewed bone and a dented water bowl beside it.</summary>
+        static VoxelGrid DogBlanketGrid()
+        {
+            var g = new VoxelGrid().Mat(Wood);
+            for (int x = -7; x <= 7; x += 2) g.Box(x, 0, -5, x, 0, 5, Pal.Weathered(Pal.Wood, 0.4f, 4740 + x, 1, 0));     // pallet slats
+            g.Box(-7, 1, -5, 7, 1, 5, Pal.Ramp(Pal.Wood, 1, 4741));
+            g.Mat(Cloth);
+            for (int x = -6; x <= 6; x++)
+                for (int z = -4; z <= 4; z++)
+                {
+                    bool check = ((x + 7) / 2 + (z + 5) / 2) % 2 == 0;
+                    int h = 2 + (x * x + z * z < 10 ? 0 : (x + z * 3) % 3 == 0 ? 1 : 0);                      // bunched up round a hollow
+                    g.Box(x, 2, z, x, h, z, Pal.Ramp(check ? Pal.Crimson : Pal.Cream, check ? 2 : 1, 4742 + x * 9 + z));
+                }
+            g.Box(-6, 3, 4, 6, 3, 4, Pal.Ramp(Pal.Crimson, 1, 4743));                                            // rolled edge
+            g.Mat(Stone);
+            g.Box(8, 0, 2, 9, 0, 2, Pal.Solid(Pal.Cream[3])); g.Set(8, 0, 1, Pal.Solid(Pal.Cream[4])); g.Set(9, 0, 3, Pal.Solid(Pal.Cream[4]));   // a bone
+            g.Mat(Scrap);
+            g.Box(8, 0, -4, 10, 1, -2, Pal.Weathered(Pal.Metal, 0.5f, 4744, 1));                                    // the bowl
+            g.Box(9, 1, -3, 9, 1, -3, Pal.Solid(Pal.PaleBlue[2]));
+            g.Bevel();
+            return g;
         }
 
         /// <summary>Two weathered T-posts 1.8 m apart with a sagging cord between the crossbars and a peg bag on one post.</summary>

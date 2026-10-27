@@ -6,7 +6,7 @@ namespace MadMax.Audio
     /// reports (pistol crack, rifle crack with a long tail, machine-gun rattle, bow twang), footsteps per surface (sand,
     /// road, gravel, mud, snow, wood, metal, water) and hooves, night insects, structure creaks and collapses, the gyro's rotor
     /// chop and the stall horn, and the working loops of crafting stations (`station_*`: sizzle, roar, churn, bubble,
-    /// clack, grind, saw, hum) plus the anvil ring. <see cref="Sfx.Clip"/> falls back to <see cref="Make"/>.</summary>
+    /// clack, grind, saw, hum) plus the anvil ring, scissor snips and a lock snapping under a crowbar. <see cref="Sfx.Clip"/> falls back to <see cref="Make"/>.</summary>
     public static class ProceduralSfx
     {
         const int Rate = 22050;
@@ -48,6 +48,8 @@ namespace MadMax.Audio
                 case "station_saw": d = Seamless(Saw(rnd)); break;
                 case "station_hum": d = Seamless(Hum(rnd)); break;
                 case "anvil": d = Ring(rnd, 0.6f, 1180f, 2930f, 0.16f); break;
+                case "snip": d = Snip(rnd); break;
+                case "pry_snap": d = Snap(rnd); break;
                 default: return null;
             }
             var clip = AudioClip.Create("Synth_" + key, d.Length, 1, Rate, false);
@@ -199,6 +201,45 @@ namespace MadMax.Audio
                     }
             }
             Normalize(x, 0.35f);
+            return x;
+        }
+
+        /// <summary>Two quick scissor cuts: blade scrape rising into a bright tick.</summary>
+        static float[] Snip(System.Random r)
+        {
+            int n = (int)(0.32f * Rate);
+            var x = new float[n];
+            for (int k = 0; k < 2; k++)
+            {
+                int s0 = (int)((0.02f + k * 0.15f) * Rate);
+                for (int i = s0; i < n; i++)
+                {
+                    float t = (i - s0) / (float)Rate;
+                    float scrape = t < 0.05f ? Noise(r) * (t / 0.05f) * 0.35f : 0f;
+                    float tick = t >= 0.05f ? (Noise(r) * 0.6f + Mathf.Sin(2f * Mathf.PI * 4200f * t) * 0.5f) * Mathf.Exp(-(t - 0.05f) / 0.008f) : 0f;
+                    x[i] += scrape + tick;
+                }
+            }
+            HighPass(x, 1800f);
+            Normalize(x, 0.5f);
+            return x;
+        }
+
+        /// <summary>A lock or hasp giving way under a bar: a hard crack, a short metallic ring and a rattle.</summary>
+        static float[] Snap(System.Random r)
+        {
+            int n = (int)(0.45f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float crack = Noise(r) * Mathf.Exp(-t / 0.012f);
+                float ring = (Mathf.Sin(2f * Mathf.PI * 1650f * t) + 0.5f * Mathf.Sin(2f * Mathf.PI * 2710f * t)) * Mathf.Exp(-t / 0.07f) * 0.5f;
+                float rattle = t > 0.06f && t < 0.3f && Mathf.Sin(t * 210f) > 0.85f ? Noise(r) * 0.3f * Mathf.Exp(-(t - 0.06f) / 0.1f) : 0f;
+                float thud = Mathf.Sin(2f * Mathf.PI * 120f * t) * Mathf.Exp(-t / 0.04f) * 0.7f;
+                x[i] = crack * 1.3f + ring + rattle + thud;
+            }
+            Normalize(x, 0.8f);
             return x;
         }
 

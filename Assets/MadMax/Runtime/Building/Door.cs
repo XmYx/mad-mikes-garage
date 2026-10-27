@@ -42,14 +42,35 @@ namespace MadMax.Building
         public void Toggle() { if (locked) { MadMax.Audio.Sfx.Play("lock", transform.position, 0.6f); return; } open = !open; MadMax.Audio.Sfx.Play(open ? "door_open" : "door_close", transform.position, 0.7f); GetComponent<Placeable>()?.Dirty(); }
         public void SetLocked(bool l) { locked = l; if (l) open = false; GetComponent<Placeable>()?.Dirty(); }
 
+        // a knock on the leaf (crowbar work, see DoorPry): degrees of extra swing on a damped spring, + = further open
+        float jolt, joltVel, burst;
+        /// <summary>The extra swing the spring holds now (degrees; tests).</summary>
+        public float JoltAngle => jolt;
+        /// <summary>Kick the leaf by <paramref name="degPerSecond"/> (+ = swinging open): it rattles against the frame and settles.</summary>
+        public void Jolt(float degPerSecond) => joltVel += degPerSecond;
+        /// <summary>The lock gave: unlocked, the leaf flies open past its stop and settles back.</summary>
+        public void BurstOpen()
+        {
+            locked = false; open = true; burst = 1f;
+            joltVel += 240f;
+            GetComponent<Placeable>()?.Dirty();
+        }
+
         void Update()
         {
             Capture();
             float target = open ? 1f : 0f;
-            if (Mathf.Approximately(t, target)) return;
-            t = Mathf.MoveTowards(t, target, Time.deltaTime * 2.5f);
+            bool springing = Mathf.Abs(jolt) > 0.05f || Mathf.Abs(joltVel) > 0.5f;
+            if (Mathf.Approximately(t, target) && !springing) return;
+            float dt = Time.deltaTime;
+            t = Mathf.MoveTowards(t, target, dt * (burst > 0f ? 7f : 2.5f));
+            if (Mathf.Approximately(t, target)) burst = 0f;
+            joltVel += (-90f * jolt - 7f * joltVel) * dt;                                          // a stiff, damped hinge
+            jolt += joltVel * dt;
+            if (t <= 0f && jolt < 0f) { jolt = 0f; joltVel = Mathf.Abs(joltVel) * 0.4f; }          // shut: the frame stops it
+            if (!springing && Mathf.Abs(jolt) < 0.05f) { jolt = 0f; joltVel = 0f; }
             float s = t * t * (3f - 2f * t);
-            var swing = Quaternion.AngleAxis(-95f * s, Vector3.up);
+            var swing = Quaternion.AngleAxis(-95f * s - jolt, Vector3.up);
             var hinge = closedRot * new Vector3(hingeX, 0f, 0f);
             transform.localRotation = closedRot * swing;
             transform.localPosition = closedPos + hinge - closedRot * swing * new Vector3(hingeX, 0f, 0f);

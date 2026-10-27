@@ -19,6 +19,7 @@ namespace MadMax.Building
                 Node(go, UtilityKind.Power, 1.2f);
                 Station(go, "refinery", "REFINE CRUDE (REFINERY)", 1500f).output = new Vector3(0f, 0.6f, 1.4f);
                 Glow(go, new Vector3(1.1f, 4.1f, -0.8f), new Color(1f, 0.55f, 0.2f), 6f, 2f, false, 0f);     // flare stack
+                go.AddComponent<RefineryFlare>();                                                                     // flame, soot, burner glow
             }, (Fe, 20), (Cu, 8), (Co, 6), (G, 2));
             yield return D("oil_press", "OIL PRESS", In, OilPress(), 6, false, go => Station(go, "press", "PRESS SEED OIL", 0f), (W, 6), (Fe, 3));
             yield return D("coal_generator", "STEAM GENERATOR", BuildCategory.Utility, SteamGenerator(), 12, false, go =>

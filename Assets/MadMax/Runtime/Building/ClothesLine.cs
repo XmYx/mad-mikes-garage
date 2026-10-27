@@ -21,6 +21,15 @@ namespace MadMax.Building
         public readonly List<string> wash = new List<string>();
         /// <summary>0 dripping .. 1 dry.</summary>
         public float dryness;
+        /// <summary>0 clean .. 1 caked: a dust storm settles on the wash (2026-10-26).</summary>
+        public float dust;
+        /// <summary>Garments a storm tore off the line and where they lie (not yet picked up).</summary>
+        public readonly List<(string id, Vector3 at)> lost = new List<(string, Vector3)>();
+        /// <summary>Wind (m/s) from which a gust can tear a garment off; times it has happened (tests).</summary>
+        public const float TearWind = 6.5f;
+        public static int Torn;
+        public static System.Func<bool> ForceStorm;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetWind() { Torn = 0; ForceStorm = null; }
         float lastHour = -1f;
         readonly List<Transform> cloths = new List<Transform>();
         readonly List<Material> mats = new List<Material>();
@@ -41,7 +50,7 @@ namespace MadMax.Building
         /// <summary>Hang <paramref name="ids"/> out wet.</summary>
         public void Hang(IEnumerable<string> ids)
         {
-            wash.Clear();
+            wash.Clear(); dust = 0f;
             foreach (var id in ids) if (wash.Count < 6) wash.Add(id);
             dryness = 0f;
             lastHour = DayNight.TotalDays * 24f;
@@ -52,7 +61,7 @@ namespace MadMax.Building
         public float TakeIn()
         {
             float d = dryness;
-            wash.Clear(); dryness = 0f;
+            wash.Clear(); dryness = 0f; dust = 0f;
             Changed();
             return d;
         }
@@ -64,6 +73,61 @@ namespace MadMax.Building
             float r = 1f / DryHours * (1f + Fx.Wind.magnitude * 0.12f) * (DayNight.Darkness > 0.5f ? 0.35f : 1f);
             float t = Weather.TemperatureAt(at.z);
             return t < 0f ? r * 0.3f : r * Mathf.Clamp(0.6f + t / 40f, 0.6f, 1.4f);
+        }
+
+        /// <summary>A storm gust may tear a garment off (lighter when dry) and throw it downwind 8-30 m.</summary>
+        void Gusts()
+        {
+            bool storm = ForceStorm != null ? ForceStorm() : Fx.Wind.magnitude > TearWind && WindDust.Gust > 0.55f;
+            if (!storm || wash.Count == 0) return;
+            if (Random.value > Time.deltaTime * 0.05f * wash.Count * Mathf.Lerp(0.4f, 1f, dryness) * (ForceStorm != null ? 20f : 1f)) return;
+            TearOff(Random.Range(0, wash.Count));
+        }
+
+        /// <summary>Garment <paramref name="i"/> blows off downwind.</summary>
+        public LostWash TearOff(int i)
+        {
+            if (i < 0 || i >= wash.Count) return null;
+            var id = wash[i];
+            var start = i < cloths.Count && cloths[i] ? cloths[i].position : transform.position + Vector3.up * 1.5f;
+            wash.RemoveAt(i);
+            var dir = Fx.Wind.sqrMagnitude > 0.01f ? Fx.Wind.normalized : transform.forward;
+            dir = Quaternion.Euler(0f, Random.Range(-25f, 25f), 0f) * dir;
+            var at = start + dir * Random.Range(8f, 30f);
+            var t = DeformableTerrain.Instance;
+            at.y = t ? t.HeightNoLoad(at.x, at.z) : transform.position.y;
+            lost.Add((id, at));
+            Torn++;
+            Fx.Streak(start, dir * 6f + Vector3.up * 2f, 0.05f, Colour(id), 0.8f);
+            MadMax.Audio.Sfx.Play("scratch", start, 0.4f, 1.4f, 14f);
+            var w = LostWash.Spawn(this, id, at, Colour(id));
+            var g = MadMax.Game.WastelandGame.Instance;
+            if (g && g.Player && (g.Player.transform.position - transform.position).sqrMagnitude < 60f * 60f)
+                g.Toast("THE WIND TORE YOUR " + MadMax.Items.ItemIds.Name(id) + " OFF THE LINE: IT BLEW DOWNWIND");
+            Changed();
+            return w;
+        }
+
+        /// <summary>A blown-off garment picked up while the wash is still out: back on the line, a little dusty.</summary>
+        public void Return(string id)
+        {
+            Found(id);
+            if (wash.Count < 6) wash.Add(id);
+            dust = Mathf.Min(1f, dust + 0.15f);
+            Changed();
+        }
+
+        /// <summary>No longer lying out there.</summary>
+        public void Found(string id)
+        {
+            for (int i = 0; i < lost.Count; i++) if (lost[i].id == id) { lost.RemoveAt(i); break; }
+            GetComponent<Placeable>()?.Dirty();
+        }
+
+        void ClearLost()
+        {
+            foreach (var w in Object.FindObjectsByType<LostWash>(FindObjectsSortMode.None)) if (w && w.line == this) Destroy(w.gameObject);
+            lost.Clear();
         }
 
         void Changed() { shownCount = -1; GetComponent<Placeable>()?.Dirty(); }
@@ -79,8 +143,10 @@ namespace MadMax.Building
                     float was = dryness;
                     dryness = Mathf.Clamp01(dryness + DryRate(transform.position) * (now - lastHour));
                     lastHour = now;
+                    if (Storms.Dust > 0.15f) { dust = Mathf.Min(1f, dust + Storms.Dust * 0.6f * (now - lastHour + 0.25f)); shownCount = -1; }
                     if ((was < 1f) != (dryness < 1f)) Changed();
                 }
+                Gusts();
             }
             if (shownCount != wash.Count) Show();
             Flap();
@@ -113,9 +179,12 @@ namespace MadMax.Building
                 if (!on) continue;
                 float x = Mathf.Lerp(-0.7f, 0.7f, wash.Count == 1 ? 0.5f : i / (float)(wash.Count - 1));
                 cloths[i].localPosition = new Vector3(x, 1.62f - 0.06f * (1f - Mathf.Abs(x) / 0.85f), 0f);   // the line sags in the middle
-                mats[i].SetColor("_BaseColor", Colour(wash[i]) * Mathf.Lerp(0.62f, 1f, dryness));
+                var c = Colour(wash[i]) * Mathf.Lerp(0.62f, 1f, dryness);
+                mats[i].SetColor("_BaseColor", Color.Lerp(c, DustTone, dust * 0.65f));
             }
         }
+
+        static readonly Color DustTone = new Color(0.72f, 0.6f, 0.44f);
 
         static Color Colour(string id)
         {
@@ -139,7 +208,13 @@ namespace MadMax.Building
             }
         }
 
-        public string SaveState() => dryness.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "|" + string.Join(",", wash);
+        public string SaveState()
+        {
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder();
+            foreach (var l in lost) sb.Append(sb.Length > 0 ? ";" : "").Append(l.id).Append('@').Append(l.at.x.ToString("0.#", ci)).Append(',').Append(l.at.z.ToString("0.#", ci));
+            return dryness.ToString("0.##", ci) + "|" + string.Join(",", wash) + "|" + dust.ToString("0.##", ci) + "|" + sb;
+        }
         public void LoadState(string s)
         {
             if (string.IsNullOrEmpty(s)) return;
@@ -147,6 +222,22 @@ namespace MadMax.Building
             float.TryParse(f[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out dryness);
             wash.Clear();
             if (f.Length > 1) foreach (var id in f[1].Split(',')) if (id.Length > 0) wash.Add(id);
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            if (f.Length > 2) float.TryParse(f[2], System.Globalization.NumberStyles.Float, ci, out dust);
+            ClearLost();
+            if (f.Length > 3)
+                foreach (var e in f[3].Split(';'))
+                {
+                    int at = e.IndexOf('@'), comma = e.LastIndexOf(',');
+                    if (at <= 0 || comma < at) continue;
+                    if (!float.TryParse(e.Substring(at + 1, comma - at - 1), System.Globalization.NumberStyles.Float, ci, out float x)
+                        || !float.TryParse(e.Substring(comma + 1), System.Globalization.NumberStyles.Float, ci, out float z)) continue;
+                    var id = e.Substring(0, at);
+                    var t = DeformableTerrain.Instance;
+                    var p = new Vector3(x, t ? t.HeightNoLoad(x, z) : transform.position.y, z);
+                    lost.Add((id, p));
+                    LostWash.Spawn(this, id, p, Colour(id));
+                }
             shownCount = -1;
         }
     }

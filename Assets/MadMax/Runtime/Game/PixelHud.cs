@@ -365,6 +365,7 @@ namespace MadMax.Game
             if (TitleSequence.Playing || (game.Menus && game.Menus.Current == MenuSystem.Page.Main)) { SinkHD(); if (game.Menus && game.Menus.IsOpen) game.Menus.Draw(canvas); Flush(); return; }
             var car = game.Current;
             bool fps = rig.mode == ViewMode.FirstPerson;
+            DrawLensMask();                                                                      // binoculars up: the two lenses (PixelHud.Binoculars)
 
             DrawMinimapCached(canvas.w - 70, 6, 64);                                             // PixelHud.Minimap, composed ≤ 15 Hz (PixelHud.HD)
             DrawWeather(canvas.w - 70, 74);

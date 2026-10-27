@@ -101,7 +101,7 @@ namespace MadMax.Game.Acceptance
             s.since = DayNight.TotalDays - Scarecrow.FreshDays - 0.5f;
             c.Check(!s.Fresh && !Scarecrow.Near(near) && Scarecrow.Stale(near) == s, "after a few days they're used to it");
             g.Inventory.AddItem("cloth_poncho");
-            s.Use(g, false);
+            s.Dress("cloth_poncho", g.Inventory);                                                   // Use() takes the first garment in the pack (the starting t-shirt)
             yield return null;
             c.Check(s.Fresh && s.dressed == "cloth_poncho" && g.Inventory.GetItem("cloth_poncho") == 0, "dressed in a poncho: they keep off again");
             var coat = p.transform.Find("Coat");

@@ -51,6 +51,9 @@ namespace MadMax.Building
             return transform.TransformPoint(centre + new Vector3(Mathf.Lerp(-half.x, half.x, u) * 0.75f, -centre.y + 0.05f, Mathf.Lerp(-half.z, half.z, v) * 0.6f));
         }
 
+        /// <summary>World days when a door dog last barked here (a night of barking puts the hens off laying).</summary>
+        public float disturbedAt = -9f;
+
         /// <summary>Roost bar height above the stall floor (m).</summary>
         public const float RoostHeight = 0.85f;
 

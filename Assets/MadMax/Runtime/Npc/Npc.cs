@@ -268,7 +268,7 @@ namespace MadMax.Npc
             if ((thinkT -= dt) <= 0f) { thinkT = 0.4f; UnityEngine.Profiling.Profiler.BeginSample("MadMax.Npc.PickFoe"); foe = PickFoe(g); UnityEngine.Profiling.Profiler.EndSample(); }
             if (Surrendered) mode = Mode.Surrender;
             else if (foe) mode = Mode.Fight;
-            else if (Hostile && dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Prone ? 16f : mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching / prone: harder to spot
+            else if (Hostile && (dPlayer < (mode != Mode.Fight && !g.Current && g.Player.Prone ? 16f : mode != Mode.Fight && !g.Current && g.Player.Crouching ? 28f : 60f) || GlintAlert && dPlayer < GlintSpotRange) && !g.Vitals.Dead) mode = Mode.Fight;   // crouching / prone: harder to spot; a lens flash gives you away (Npc.Glint)
             else if (mode != Mode.Flee || Time.time > fleeUntil) mode = Routine();
             if ((mode != Mode.Stand && mode != Mode.Wander) || foe) EndTv();                   // Npc.Tv
             if (mode != Mode.Gather && !tvSeat && !visitSeat) LeaveFire();

@@ -23,7 +23,7 @@ namespace MadMax.Animals
         Stable roostStable;
         float roostBest = float.MaxValue, roostProgressAt, toastAt, barkT;
 
-        float PerchWanted => roosting ? Stable.RoostHeight : 0f;
+        float PerchWanted => roosting ? Stable.RoostHeight : nesting ? NestBox.SitHeight : 0f;
         /// <summary>Up on the roost bar (tests).</summary>
         public bool Roosting => roosting && perchLift > Stable.RoostHeight * 0.9f;
         /// <summary>Lying across the stable mouth (tests).</summary>
@@ -63,7 +63,7 @@ namespace MadMax.Animals
                 return true;
             }
             // the dog: lie across the mouth, bark at what comes in the night
-            var door = roostStable.DoorSpot;
+            var door = DogBed.Near(roostStable.DoorSpot, DogBed.DoorReach) is DogBed bed ? bed.LieSpot : roostStable.DoorSpot;   // its blanket by the door (Animal.Home)
             var prowler = Prowler(roostStable.transform.position, out float pd);
             if (prowler)
             {
@@ -116,6 +116,7 @@ namespace MadMax.Animals
             callT = 0f;                                                                              // barking overrides the call cooldown
             Say(0);
             LastBarkAt = Time.time;
+            if (roostStable) roostStable.disturbedAt = DayNight.TotalDays;
             LastBarkAtWhat = at is Animal a ? a.Def.name : at is MadMax.Npc.Npc n ? n.KnownName : "SOMETHING";
             Attention.Ping(transform.position, Attention.Kind.Animal, 40f);
             if (g && g.Player && Time.time > toastAt && (g.Player.transform.position - transform.position).sqrMagnitude < 80f * 80f)

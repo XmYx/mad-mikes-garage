@@ -16,6 +16,7 @@ namespace MadMax.Animals
         public float yaw, trust, health, stamina;
         public int born, fedDay, hungry, stock, order;
         public bool saddled;
+        public string petName;               // the name the player gave it (Animal.Home)
     }
 
     /// <summary>Puts animals in the world (roadmap 23). Wild herds are deterministic per 200 m cell and biome (seeded
@@ -357,12 +358,7 @@ namespace MadMax.Animals
         void Produce(Animal a)
         {
             int n = a.Def.productPerDay;
-            if (a.Def.product == "food_egg")
-            {
-                // hens lay in a nest box when there is one
-                foreach (var c in Container.All)
-                    if (c && c.title == "NEST BOX" && (c.transform.position - a.home).sqrMagnitude < 12f * 12f) { c.inventory.AddItem("food_egg", n); return; }
-            }
+            if (a.Def.product == "food_egg" && a.QueueEggs(n)) return;                               // laid in the nest box / straw next morning (Animal.Home)
             a.stock = Mathf.Min(a.Def.productPerDay * 3, a.stock + n);
         }
 
@@ -394,7 +390,7 @@ namespace MadMax.Animals
                 {
                     species = a.Def.id, position = a.transform.position, home = a.home, yaw = a.transform.eulerAngles.y, trust = a.trust, health = a.health, stamina = a.stamina,
                     born = a.born, fedDay = a.fedDay, hungry = a.hungryDays, stock = a.stock, order = a.order, saddled = a.saddled, bags = a.bags ? a.bags.SaveState() : null,
-                    husbandry = a.HusbandryState()
+                    husbandry = a.HusbandryState(), petName = a.petName
                 });
             }
             var sb = new System.Text.StringBuilder();
@@ -427,6 +423,7 @@ namespace MadMax.Animals
                 a.fedDay = s.fedDay; a.hungryDays = s.hungry; a.stock = s.stock; a.order = s.order;
                 if (s.saddled) { a.SetSaddled(true); if (a.bags && !string.IsNullOrEmpty(s.bags)) a.bags.LoadState(s.bags); }
                 a.LoadHusbandry(s.husbandry);
+                a.petName = string.IsNullOrEmpty(s.petName) ? null : s.petName;
                 a.ApplySize();
             }
         }

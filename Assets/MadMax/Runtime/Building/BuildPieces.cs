@@ -255,7 +255,6 @@ namespace MadMax.Building
             g.Box(-8, 1, -3, 8, 8, -3, Pal.Ramp(Pal.Wood, 1, 2312));
             foreach (int x in new[] { -8, -3, 2, 8 }) g.Box(x, 1, -2, x, 8, 3, Pal.Ramp(Pal.Wood, 2, 2313));
             g.Box(-7, 1, -2, 7, 1, 2, Pal.Ramp(Pal.Ochre, 3, 2314));                                      // straw
-            foreach (int x in new[] { -5, 0, 5 }) g.Set(x, 2, 0, Pal.Solid(Pal.Cream[4]));                  // an egg in each
             g.Box(-8, 1, 3, 8, 2, 3, Pal.Ramp(Pal.Wood, 1, 2315));                                        // lip
             g.Mat(Scrap); g.Box(-9, 9, -4, 9, 9, 4, Pal.Weathered(Pal.Metal, 0.4f, 2316, 2));             // tin roof
             return g;
@@ -565,12 +564,15 @@ namespace MadMax.Building
             return g;
         }
 
-        /// <summary>Wire fish trap (a funnel-mouthed cylinder on the lake bed) with a rope up to a red float.</summary>
+        /// <summary>Wire fish trap (a funnel-mouthed cylinder on the lake bed) with a rope up to a red float; open diamond mesh
+        /// between the end hoops and the middle hoop so the catch and the bait show inside.</summary>
         public static VoxelGrid FishTrap()
         {
             var g = new VoxelGrid().Mat(Iron);
             g.CylZ(0, 4, 4f, -6, 6, p => ((p.x + p.y + p.z) & 1) == 0 ? Pal.Metal[2] : Pal.Rust[2], 3f);                    // mesh drum
             g.CylZ(0, 4, 4f, -6, -6, p => ((p.x + p.y) & 1) == 0 ? Pal.Metal[1] : Pal.Rust[1]);                                   // closed end
+            g.Remove(p => p.z > -6 && p.z < 6 && p.z != 0                                                    // wire mesh: see the catch inside
+                          && ((p.x + p.y + p.z) % 3 + 3) % 3 != 0 && ((p.x - p.y + p.z) % 3 + 3) % 3 != 0);
             g.CylZ(0, 4, 4f, 6, 6, Pal.Ramp(Pal.Metal, 1), 1.6f);                                                                  // funnel mouth
             g.Box(-4, 0, -5, 4, 0, 5, Pal.Ramp(Pal.Metal, 0, 1095));                                                               // skid
             g.Mat((byte)ResourceType.Cloth); g.Box(0, 9, 0, 0, 14, 0, Pal.Ramp(Pal.Sand, 3));                                       // rope

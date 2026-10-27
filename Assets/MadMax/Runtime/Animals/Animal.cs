@@ -52,7 +52,7 @@ namespace MadMax.Animals
         public bool Adult => !owned || Age >= Def.adultDays;
         public float Size => owned ? Mathf.Lerp(0.55f, 1f, Mathf.Clamp01(Age / Mathf.Max(0.1f, Def.adultDays))) : 1f;
         public bool Winded => winded;
-        public string Label => (owned && !Adult ? "YOUNG " : "") + (owned && Def.id == "horse" ? "HORSE" : owned && Def.id == "dog" ? "DOG" : Def.name);
+        public string Label => petName ?? ((owned && !Adult ? "YOUNG " : "") + (owned && Def.id == "horse" ? "HORSE" : owned && Def.id == "dog" ? "DOG" : Def.name));
 
         Transform rig, head, tail, snakeHead, rattle;
         Transform[] legs, wings, segs;
@@ -548,7 +548,9 @@ namespace MadMax.Animals
                 return;
             }
             if (owned && order == 2) { if (state != State.Graze && state != State.Idle && state != State.Sleep) state = State.Idle; SetMove(Vector3.zero, 0f); return; }
-            if (RoostThink(g)) return;                                                          // hens on the perch, the dog at the door (Animal.Roost)
+            if (IsDog && GreetThink()) return;                                                  // running out to meet the player (Animal.Home)
+            if (RoostThink(g)) return;
+            if (HomeThink(g)) return;                                                           // laying, the dog's nap and welcome (Animal.Home)                                                          // hens on the perch, the dog at the door (Animal.Roost)
             if (BeddingThink(g)) return;                                                        // after dark, to the straw (Animal.Bedding)
             if (ScrapsThink(g)) return;                                                         // food on the ground near home (Animal.Scraps)
             Routine(owned ? 5f : 10f);
@@ -672,9 +674,12 @@ namespace MadMax.Animals
             }
             float y = Mathf.Max(0.2f, Def.Height * 0.5f);
             int n = Physics.SphereCastNonAlloc(me + Vector3.up * y, Mathf.Min(0.25f, col.radius), dir, hits, look, ~0, QueryTriggerInteraction.Ignore);
+            var toGoal = goal - me; toGoal.y = 0f;
+            bool arriving = state == State.Wander && toGoal.sqrMagnitude < 9f;                       // walking onto a spot on a piece (nest box, blanket, roost)
             for (int i = 0; i < n; i++)
             {
                 var c = hits[i].collider;
+                if (arriving) { var b = c.bounds; if (b.Contains(new Vector3(goal.x, b.center.y, goal.z))) continue; }
                 if (c.transform.IsChildOf(transform) || c.GetComponentInParent<DeformableTerrain>()) continue;
                 if (target && c.transform.IsChildOf(target.transform)) continue;
                 if (g.Player && c.transform.IsChildOf(g.Player.transform)) continue;

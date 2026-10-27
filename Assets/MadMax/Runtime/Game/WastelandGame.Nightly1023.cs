@@ -85,17 +85,26 @@ namespace MadMax.Game
         public void TakeInWash(ClothesLine line)
         {
             if (!line || !line.Hung) return;
+            float dusty = line.dust;
+            int lost = line.lost.Count;
             float d = line.TakeIn();
             MadMax.Audio.Sfx.Play("scratch", line.transform.position, 0.3f, 1.2f, 8f);
-            if (d >= 1f)
+            string after = (lost > 0 ? " (" + lost + " BLEW AWAY IN THE WIND: LOOK DOWNWIND)" : "");
+            if (d >= 1f && dusty > 0.35f)                                                           // a dust storm got at it (Nightly1026)
             {
-                LastWash = "FRESH CLOTHES OFF THE LINE";
-                Wash(FreshClothes, LastWash);
+                LastWash = "TOOK THE WASH IN DUSTY: SHOOK IT OUT, NOT MUCH FRESHER" + after;
+                Wash(FreshClothes * (1f - dusty) * 0.6f, LastWash);
+                Stats.wetness = Mathf.Max(0f, Stats.wetness - 0.5f);
+            }
+            else if (d >= 1f)
+            {
+                LastWash = "FRESH CLOTHES OFF THE LINE" + after;
+                Wash(FreshClothes * (1f - dusty * 0.5f), LastWash);
                 Stats.wetness = Mathf.Max(0f, Stats.wetness - 0.5f);
             }
             else
             {
-                LastWash = "TOOK THE WASH IN " + (d < 0.35f ? "SOAKING" : "DAMP") + ": COLD AND CLAMMY";
+                LastWash = "TOOK THE WASH IN " + (d < 0.35f ? "SOAKING" : "DAMP") + ": COLD AND CLAMMY" + after;
                 Stats.wetness = Mathf.Max(Stats.wetness, 1f - d);
                 Toast(LastWash);
             }
@@ -133,9 +142,10 @@ namespace MadMax.Game
         }
 
         /// <summary>Supper at the neighbour's table: a meal, a seat by them, a rumour, warmer standing.</summary>
-        public string HaveSupper(MadMax.Npc.Npc n)
+        public string HaveSupper(MadMax.Npc.Npc n, string gift = null)
         {
             if (SupperBlocked(n) != null) return null;
+            if (gift != null && !Inventory.TakeItem(gift)) gift = null;
             var v = SupperInvites[n.Profile.id];
             SupperInvites[n.Profile.id] = new Vector2Int(v.x, DayNight.Day);
             Stats.hunger = Mathf.Min(100f, Stats.hunger + 45f);
@@ -145,13 +155,16 @@ namespace MadMax.Game
             n.Visit(n.transform.position, 40f, x => { }, x => { });                                   // they sit down to it too
             var s = NpcRegistry.Get(n.Profile);
             s.Set(NpcSave.Met);
-            s.disposition = Mathf.Min(100, s.disposition + 4);
+            int warmth = SupperWarmth(n.Profile.id, gift, out bool talk, out string line);        // what was brought to the table (Nightly1026)
+            s.disposition = Mathf.Clamp(s.disposition + warmth, -100, 100);
             var at = n.transform.position;
-            string rumour = GiverRumour(at, true, n.Profile.id);
-            if (string.IsNullOrEmpty(rumour)) rumour = CacheRumour(at);
+            string rumour = talk ? GiverRumour(at, true, n.Profile.id) : null;
+            string more = gift != null ? CacheRumour(at) : null;                                    // a gift loosens a second tale
+            if (string.IsNullOrEmpty(rumour)) { rumour = more ?? (talk ? CacheRumour(at) : null); more = null; }
+            if (!string.IsNullOrEmpty(more)) rumour += ". AND " + more;
             string name = n.Profile.Name;
-            Remark(n, "SIT, SIT. IT'S ONLY STEW, BUT IT'S HOT.", 4f);
-            LastSupper = "SUPPER AT " + name + "'S: WELL FED" + (string.IsNullOrEmpty(rumour) ? "" : ". OVER THE PLATES: " + rumour);
+            Remark(n, line ?? "SIT, SIT. IT'S ONLY STEW, BUT IT'S HOT.", 4f);
+            LastSupper = "SUPPER AT " + name + "'S" + (gift != null ? " (BROUGHT " + MadMax.Items.ItemIds.Name(gift) + ")" : "") + ": WELL FED" + (string.IsNullOrEmpty(rumour) ? "" : ". OVER THE PLATES: " + rumour);
             Toast(LastSupper);
             Journal.Add("PEOPLE", LastSupper);
             MadMax.Audio.Sfx.Play("chest", at, 0.25f, 1.4f, 8f);
@@ -162,6 +175,8 @@ namespace MadMax.Game
         {
             if (!(t.target is MadMax.Npc.Npc n) || !SupperInvites.ContainsKey(n.Profile.id)) return;
             into.Add(Opt("SIT DOWN TO SUPPER WITH " + n.Profile.Name, () => HaveSupper(n), true, SupperBlocked(n)));
+            var gift = SupperGift();
+            if (gift != null) into.Add(Opt("BRING " + MadMax.Items.ItemIds.Name(gift) + " TO SUPPER", () => HaveSupper(n, gift), true, SupperBlocked(n)));
         }
 
         /// <summary>The invited neighbour waves the player over when they come by in the evening (once a day).</summary>
@@ -232,7 +247,7 @@ namespace MadMax.Game
                 if (p && p.id == "scarecrow" && claim.Inside(p.transform.position) && p.TryGetComponent<Scarecrow>(out var sc) && !sc.Fresh) Add("SCARECROW GONE STALE", p.transform.position);
             at = first;
             if (list.Count == 0) return animals ? "  CHORES: ALL DONE" : null;
-            return "  CHORES: " + string.Join(", ", list.Count > 4 ? list.GetRange(0, 4) : list) + (list.Count > 4 ? " +" + (list.Count - 4) : "");
+            return "  CHORES: " + string.Join(", ", list.Count > 5 ? list.GetRange(0, 5) : list) + (list.Count > 5 ? " +" + (list.Count - 5) : "");
         }
 
         // ------------------------------------------------------------------ tick + save
@@ -241,15 +256,18 @@ namespace MadMax.Game
         {
             if (!ContextActions.Has("home.supper")) ContextActions.Register("home.supper", (g, t, into) => { if (t.item == null) g.SupperOptions(t, into); });
             UpdateSupper();
+            UpdateNightly1026();
         }
 
         void Save1023(List<string> lines)
         {
             foreach (var kv in SupperInvites) lines.Add("v|" + kv.Key + "|" + kv.Value.x + "|" + kv.Value.y);
+            foreach (var kv in SupperEmpty) lines.Add("y|" + kv.Key + "|" + kv.Value);
         }
 
         void Load1023(string[] f)
         {
+            if (f[0] == "y" && f.Length >= 3) { int.TryParse(f[2], out int e); SupperEmpty[f[1]] = e; return; }
             if (f[0] != "v" || f.Length < 4) return;
             int.TryParse(f[2], out int x); int.TryParse(f[3], out int y);
             SupperInvites[f[1]] = new Vector2Int(x, y);
@@ -259,6 +277,7 @@ namespace MadMax.Game
         {
             SupperInvites.Clear();
             supperHintDay = -1;
+            SupperEmpty.Clear();
         }
     }
 }

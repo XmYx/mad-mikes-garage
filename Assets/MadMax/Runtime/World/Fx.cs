@@ -306,6 +306,13 @@ namespace MadMax.World
             I.streaks.Emit(e, 1);
         }
 
+        /// <summary>A star of light that hangs for a blink (sun off a lens, a polished edge): one still spark.</summary>
+        public static void Glint(Vector3 p, float size, Color c)
+        {
+            var e = new ParticleSystem.EmitParams { position = p, velocity = Vector3.up * 0.01f, startSize = size, startLifetime = 0.14f, startColor = c };
+            I.sparks.Emit(e, 1);
+        }
+
         public static void Sparks(Vector3 p, Vector3 dir, int n, Color c)
         {
             for (int i = 0; i < n; i++)

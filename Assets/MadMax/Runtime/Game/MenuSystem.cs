@@ -27,7 +27,7 @@ namespace MadMax.Game
         /// <summary>The page's entry labels in order (automation).</summary>
         public List<string> Labels() { var l = new List<string>(items.Count); foreach (var i in items) l.Add(i.label); return l; }
         /// <summary>Menus that stop the world (time scale 0).</summary>
-        public bool Pauses => !TitleSequence.Playing && (MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online) && (Current == Page.Main || Current == Page.Pause || Current == Page.Character || Current == Page.Map || Current == Page.Journal || Current == Page.Slots
+        public bool Pauses => !TitleSequence.Playing && (MadMax.Net.NetSession.Instance == null || !MadMax.Net.NetSession.Instance.Online) && (Current == Page.Main || Current == Page.Pause || (Current == Page.Character && !mirror) || Current == Page.Map || Current == Page.Journal || Current == Page.Slots
             || ((Current == Page.Settings || Current == Page.Controls) && settingsFrom != Page.None));
 
         class Item
@@ -101,8 +101,10 @@ namespace MadMax.Game
         public void OpenCrafting(CraftingStation s) { station = s; category = 0; Open(Page.Crafting); }
 
         /// <summary>The character page at a mirror: hair and beard can be changed there (not from the pack).</summary>
-        public void OpenMirror() { Open(Page.Character); mirror = true; Rebuild(); }
+        public void OpenMirror() { mirror = true; Open(Page.Character); }   // the world runs on: you stand at the glass
         bool mirror;
+        /// <summary>The character page is open at a mirror.</summary>
+        public bool AtMirror => Current == Page.Character && mirror;
 
         // ---- conversations and trade with NPCs
         MadMax.Npc.Dialogue talk;
@@ -263,6 +265,7 @@ namespace MadMax.Game
             if (Current == Page.Settings) GameSettings.Current.Save();
             if (Current != Page.None) ClosedFrame = Time.frameCount;
             Current = Page.None;
+            mirror = false;
             Time.timeScale = 1f;
         }
 
@@ -511,9 +514,15 @@ namespace MadMax.Game
                     // skin, height and build are chosen at character creation; a mirror allows a haircut or a shave
                     if (mirror)
                     {
-                        Look("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + HairStyles) % HairStyles));
-                        Look("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length);
-                        Look("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3);
+                        // each change at the glass: a snip and a puff of trimmings (WastelandGame.MirrorTrim)
+                        void Cut(string label, System.Func<string> v, System.Action<int> change, string what)
+                        {
+                            void Do(int d) { var was = HumanDesign.HairColors[Mathf.Clamp(a.hairColor, 0, HumanDesign.HairColors.Length - 1)]; change(d); game.Player.RebuildBody(); game.MirrorTrim(what, was); }
+                            items.Add(new Item { label = label, value = v, adjust = Do, confirm = () => Do(1) });
+                        }
+                        Cut("HAIR", () => a.hair.ToString().ToUpperInvariant(), d => a.hair = (HairStyle)(((int)a.hair + d + HairStyles) % HairStyles), "hair");
+                        Cut("HAIR COLOUR", () => (a.hairColor + 1).ToString(), d => a.hairColor = (a.hairColor + d + HumanDesign.HairColors.Length) % HumanDesign.HairColors.Length, "colour");
+                        Cut("BEARD", () => new[] { "NONE", "STUBBLE", "FULL" }[a.beard], d => a.beard = (a.beard + d + 3) % 3, "beard");
                     }
                     foreach (ClothingSlot slot in System.Enum.GetValues(typeof(ClothingSlot)))
                     {

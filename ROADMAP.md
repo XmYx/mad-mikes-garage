@@ -1915,17 +1915,82 @@ Scenarios in `Acceptance/Blocks/ScheduledScenarios1023.cs` (animals.roost_door, 
 living.wash_day, npc.supper, ui.chores_line, living.shelf_table_dial).
 
 ### Suggestions (tie the experience together)
-- [ ] **Eggs in the straw**: roosting hens lay by morning in the stable (a nest box piece, eggs as food), more on fresh
-  bedding, fewer with the dog barking all night.
-- [ ] **Bring something to supper**: a dish or a bottle brought to the neighbour's table warms them more and loosens a
-  better rumour; going empty-handed every time cools them.
-- [ ] **The wash in the wind**: a storm tears a garment off the line (found later downwind), a dust storm dirties it.
-- [ ] **Dressed scarecrows in town**: village gardens get scarecrows wearing the town's cast-offs; a raider gang's colours on
-  one is a warning sign.
-- [ ] **The dog's name and its bed**: name the yard dog at the stable door (a word with the crew), a dog blanket piece it
-  prefers, it greets the player home.
-- [ ] **Mirror, binoculars, crowbar** (from the audit): a facing pose and a clipping puff at the mirror; binoculars raised to
-  the eyes with a lens mask and a glint raiders can see; the crowbar levering a door with sparks and a jolt.
+- [x] **Eggs in the straw** (2026-10-26, `Animals/Animal.Home`, `Building/NestBox`): a fed hen's egg is laid next morning
+  (5:30–11 h): she walks to a nest box near home, hops into a free compartment (three, `Claim`), sits ~9 s and leaves it
+  with a cackle; the box shows its eggs (white and brown, two to a compartment; the baked eggs are gone from the grid).
+  No box: she lays in the stable straw (a loose egg `WorldItem`). Fresh bedding +1 at 40 %, a night of the door dog
+  barking (`Stable.disturbedAt`) −1 at 60 %. Unlaid eggs are put in place at the next daily tick.
+- [x] **Bring something to supper** (2026-10-26): BRING <DISH/BOTTLE> TO SUPPER (`SupperGift`: the best cooked dish or
+  brew in the pack) — disposition +10 instead of +4 and a second tale (giver + cache rumour); empty-handed three suppers
+  running = "NEXT TIME BRING SOMETHING FOR THE POT" (−2, talk every other time). Saved as `y` lines.
+- [x] **The wash in the wind** (2026-10-26, `ClothesLine`, `Building/LostWash`): storm gusts (wind > 6.5 m/s) tear garments
+  off the line (dry ones sooner) and drop them 8–30 m downwind, a cloth stirring in the scrub with a toast; [E] pegs it
+  back (a bit dustier) or, wash taken in, finds it a little torn; a dust storm settles on the wash (panels tinted, taken
+  in dusty barely freshens). Lost garments and dust save in the line's state.
+- [x] **Dressed scarecrows in town** (2026-10-26, `World/TownScarecrows`): most village/town farm lots get a scarecrow in
+  the field (deterministic per lot) wearing cast-offs that flap in the wind; a settlement on a raider gang's road has one
+  on the approach toward the road in the gang's colours with its emblem — "THEIR GROUND STARTS HERE" (toast + journal,
+  once per town). Decoration only, within 150 m.
+- [x] **The dog's name and its bed** (2026-10-26): context menu on a kept dog → NAME THE DOG (three names by its key; a
+  companion nearby has a word; `AnimalSave.petName`), then CALL <NAME>; piece `dog_blanket` (pallet, checked blanket,
+  bone, bowl, `Building/DogBed`): afternoon naps on it, nights too without a stable; laid within 6 m of a stable mouth it
+  is where the door dog lies. Home after ≥ 2 game hours > 120 m away: the dog runs out and bounds round you
+  (`Animal.Welcome`).
+- [x] **Mirror, binoculars, crowbar** (2026-10-26, from the audit):
+  - **Mirror** (`Building/Mirror`, `WastelandGame.Nightly1026Tools`): [E] steps up 0.75 m from the glass and turns square
+    to it; the mirror page doesn't pause, every haircut / shave snips (`snip`) and drops a puff of trimmings in the old hair
+    colour (`MirrorTrim`), a dye drips the new colour.
+  - **Binoculars** (`Tools/BinocularsTool`, `PixelHud.Binoculars`, `Npc.Glint`): raised to the eyes with both hands (not in
+    first person), a two-lens mask on the HUD (pixel and HD) with a range scale; with a low sun ahead the lenses flash
+    (`Fx.Glint`, `GlintStrength`) — hostiles on foot see it from up to 400 m (`SeeGlint`), raider columns up to 600 m answer
+    it (`Convoy.Answer`). Host only, the sparkle isn't replicated.
+  - **Crowbar on doors** (`Building/DoorPry`, `Door.Jolt/BurstOpen`): the bar levers for 1.3 s (the player leans on it, the
+    leaf shudders, sparks off metal / splinters off wood); held = knocked back "THE DOOR HOLDS", given = `pry_snap`, a burst
+    and the door jolting open past its stop and settling; padlocked loot spots spark / splinter too.
+
+## Scheduled update (2026-10-26)
+Done this pass (ticked above): all six open suggestions of 2026-10-23. Also commits and ships the 2026-10-23 pass (its
+build was stopped and never released).
+
+Remodel audit of roadmap sections 6–10 (refining, mining, gardening, irrigation, fishing). Already alive: pumpjack beam,
+hand pump handle, fishing rod, trophy mount, sprinkler / drip line, crops and crows, explosives. Thin, now remodelled
+(shared helper `Building/PieceBits`: small meshes in either look, glow cubes):
+- [x] **Refinery** flares at work (`Building/RefineryFlare`): pilot flame on the stack while it has power, a run lights a
+  tall wind-bent flickering flame (surges, soot, roar), the stack light follows it, burner glow + smoke at the heater,
+  steam off the column.
+- [x] **Fish trap** shows its catch (`Building/FishTrap`): an open wire drum; each fish swims lengths, turns, thrashes (surface
+  foam, splash); a new catch noses in through the funnel mouth; mutants glow; the bait hangs inside; stranded fish flop.
+- [x] **Water tower / rain barrel** gauges (`Building/TankGauge`): a float target on a graduated board (eases and
+  overshoots like a float) / a gauge glass column; the overflow runs when full with water still coming in; tower staves
+  weep above a third full.
+- [x] **Hand pump** gushes (`Building/HandPump`): water pulses from the spout with the strokes (brown where the ground is
+  fouled), splashes down the shaft; a powered well trickles while filling.
+- [x] **Metal detector** reads at its sweeping coil (±35° a metre ahead), a signal lamp flashes with the beeps and stays lit
+  over a strong find, a glint in the ore's colour on the ground.
+- [x] Fix: animals walking to a spot on a piece (nest box, dog blanket, roost bar, stable door) stopped ~1 m short —
+  `Animal.Blocked` saw the piece itself as an obstacle; within 3 m of the goal a collider whose bounds hold it is ignored.
+  The CHORES line lists five chores before "+n".
+- [ ] Still thin: the pumpjack's polished rod doesn't stroke and its crude tank shows no level; the oil press is static
+  in the voxel look; the water filter is a static mesh; ore outcrops don't glint in sunlight.
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1026.cs` (animals.eggs_nest, animals.yard_dog, living.wash_wind,
+npc.supper_gift, towns.scarecrows), `ScheduledScenarios1026Audit.cs` (refining.refinery_flare, fishing.trap_catch,
+irrigation.tank_gauges, irrigation.pump_gush, mining.detector_lamp), `ScheduledScenarios1026Tools.cs` (tools.mirror_pose,
+tools.binocular_glint, tools.crowbar_door).
+
+### Suggestions (tie the experience together)
+- [ ] **Breakfast from the yard**: eggs from the box + milk → a breakfast recipe at the stove/campfire that gives a
+  morning buff (steady hands: less aim sway till noon); the crew eats with you at the table.
+- [ ] **The dog on the road**: a named dog rides in the pickup bed / passenger seat, barks at raiders before the HUD
+  shows them, and waits by the car when you go into a building.
+- [ ] **Scarecrow trade**: town farmers pay a little scrap or seed for an old garment for their scarecrow; a gang
+  scarecrow can be torn down (that gang −standing, the town +standing).
+- [ ] **Glint both ways**: raider lookouts on ridges carry binoculars too — a flash on the skyline warns the player
+  before an ambush.
+- [ ] **Pumpjack and press alive**: the pumpjack's rod strokes with the beam and its tank shows the crude level; the oil
+  press squeezes with a dripping spout.
+- [ ] **Washing water goes somewhere**: wash water poured out at the line greys the ground (`Spills`), and a wash tub
+  piece gives a scrubbing animation instead of the kneel gesture.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
