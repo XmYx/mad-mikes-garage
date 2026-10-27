@@ -188,7 +188,7 @@ namespace MadMax.Game
         /// <summary>Two-handed tools and weapons need two working arms.</summary>
         public bool ArmBroken => Mathf.Max(ArmHurtL, ArmHurtR) >= 0.85f;
         /// <summary>Aim spread multiplier: shaky arms, a dazed head.</summary>
-        public float AimPenalty => 1f + Mathf.Max(ArmHurtL, ArmHurtR) * 1.4f + HeadDaze * 0.8f;
+        public float AimPenalty => (1f + Mathf.Max(ArmHurtL, ArmHurtR) * 1.4f + HeadDaze * 0.8f) * (SteadyHands ? SteadyAim : 1f);   // breakfast (Nightly1027)
 
         /// <summary>Movement / tool penalties from leg and arm injuries and hypothermia.</summary>
         public float InjurySpeed

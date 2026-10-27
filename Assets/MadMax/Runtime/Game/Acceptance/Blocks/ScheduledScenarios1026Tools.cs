@@ -176,7 +176,7 @@ namespace MadMax.Game.Acceptance
             yield return new WaitForSeconds(0.4f);
             c.Check(g.Player.PoseOverride.HasValue, "the player leans on the bar");
             float shake = 0f;
-            while (pry && pry.Active) { shake = Mathf.Max(shake, Mathf.Abs(door.JoltAngle)); yield return null; }
+            while (pry && pry.Active) { shake = Mathf.Max(shake, Mathf.Abs(door.JoltPeak)); yield return null; }
             c.Check(shake > 0.3f, $"the leaf shudders against its frame (up to {shake:0.0}°)");
             c.Check(DoorPry.SparkBursts > sparks, $"sparks off the steel ({DoorPry.SparkBursts - sparks} bursts)");
             c.Check(DoorPry.LastResult == "HELD" && DoorPry.Holds == holds + 1 && door.locked && !door.open, "this time it holds");
@@ -190,7 +190,7 @@ namespace MadMax.Game.Acceptance
             float over = 0f; bool shot = false;
             for (float t = 0f; t < 0.6f; t += Time.deltaTime)
             {
-                over = Mathf.Max(over, door.JoltAngle);
+                over = Mathf.Max(over, door.JoltPeak);
                 if (!shot && t > 0.12f) { shot = true; c.Screenshot("crowbar_door_jolt"); }
                 yield return null;
             }

@@ -367,7 +367,7 @@ def stall(kind):
 
 def bounty_board():
     a = Asset("BountyBoard", "Prop", kind="prop")
-    w, s, p = a.p("Wood"), a.p("Scrap"), a.p("Paper", "Wood")
+    w, s = a.p("Wood"), a.p("Scrap")
     v = 0.08
     for x in (-9, 9):
         w.box2(K.wood("dark", "y"), (L(x, v), L(0, v), L(0, v)), (H(x, v), H(26, v), H(0, v)), bevel=0.01)
@@ -375,16 +375,7 @@ def bounty_board():
         y0 = L(12, v) + k * (H(25, v) - L(12, v)) / 5
         w.box2(K.WOODS["x"][k % 3], (L(-10, v), y0 + 0.004, L(0, v) + 0.01), (H(10, v), y0 + (H(25, v) - L(12, v)) / 5, H(0, v)), bevel=0.006)
     s.quad("tin_rust", (L(-11, v), H(27, v), L(-1, v) - 0.08), (H(11, v), H(27, v), L(-1, v) - 0.08), (H(11, v), L(26, v), H(1, v) + 0.08), (L(-11, v), L(26, v), H(1, v) + 0.08), 0.012)
-    rr = K.NetRandom(1504)
-    for i in range(7):                                      # notices (same spots as the voxel board), lines of text
-        x0, y0 = rr.next(-8, 5), rr.next(13, 21)
-        paper = "ochre" if i % 3 == 0 else "paper"
-        tilt = ((i * 37) % 9 - 4) * 1.5
-        p.box(paper, (4 * v - 0.02, 4 * v - 0.02, 0.004), (C(x0 + 1.5, v), C(y0 + 1.5, v), H(0, v) + 0.004 + i * 0.0005), r=(0, 0, tilt), bevel=0)
-        for k in range(3):
-            p.box("black", (2 * v, 0.008, 0.002), (C(x0 + 1.5, v), C(y0 + 0.8 + k * 0.7, v), H(0, v) + 0.008 + i * 0.0005), r=(0, 0, tilt), bevel=0)
-    for x in (-2, 2):
-        s.sphere("cloth_red", 0.015, (C(x, v), C(24, v), H(0, v) + 0.01), (1, 1, 0.6), 8, 4)
+    # the notices are runtime posters (BountyBoard.Posters: one per job on offer)
     return a
 
 

@@ -144,12 +144,42 @@ namespace MadMax.Building
                     dryness = Mathf.Clamp01(dryness + DryRate(transform.position) * (now - lastHour));
                     lastHour = now;
                     if (Storms.Dust > 0.15f) { dust = Mathf.Min(1f, dust + Storms.Dust * 0.6f * (now - lastHour + 0.25f)); shownCount = -1; }
+                    if (was < DripBelow) Spills.Pour(transform.position, MadMax.Items.ResourceType.Water, DripLitres * wash.Count * (1f - was), false);   // the wet wash darkens the ground under it
                     if ((was < 1f) != (dryness < 1f)) Changed();
                 }
                 Gusts();
             }
             if (shownCount != wash.Count) Show();
             Flap();
+            Drips();
+        }
+
+        /// <summary>Wet below this dryness the wash drips (litres per garment per quarter hour into <see cref="Spills"/>).</summary>
+        public const float DripBelow = 0.6f, DripLitres = 0.12f;
+        Droplets drips;
+        /// <summary>Drops falling off the wet wash now, and landed so far (tests).</summary>
+        public bool Dripping => drips && drips.emitting;
+        public int DripsLanded => drips ? drips.Landed : 0;
+
+        /// <summary>Drops off the hems of the wet garments (2026-10-27).</summary>
+        void Drips()
+        {
+            bool wet = Hung && dryness < DripBelow && PieceBits.Near(transform.position, 40f);
+            if (!drips)
+            {
+                if (!wet || cloths.Count == 0) return;
+                var o = new GameObject("WashDrips");
+                o.transform.SetParent(transform, false);
+                drips = Droplets.Attach(o, 6, (int i, out Vector3 at, out Vector3 v) =>
+                {
+                    int n = Mathf.Min(wash.Count, cloths.Count);
+                    var c = n > 0 ? cloths[Random.Range(0, n)] : transform;
+                    at = transform.InverseTransformPoint(c.TransformPoint(new Vector3(Random.Range(-0.16f, 0.16f), -0.56f, 0f)));
+                    v = Vector3.zero;
+                }, new Color(0.72f, 0.82f, 0.92f), 0.025f, 1.4f);
+                drips.floorY = 0.02f;
+            }
+            drips.emitting = wet;
         }
 
         /// <summary>One cloth panel per garment, pegged along the line, in the garment's colour (darker while wet).</summary>
@@ -186,7 +216,8 @@ namespace MadMax.Building
 
         static readonly Color DustTone = new Color(0.72f, 0.6f, 0.44f);
 
-        static Color Colour(string id)
+        /// <summary>A garment's main colour (its paint at the chest).</summary>
+        public static Color Colour(string id)
         {
             var d = MadMax.Game.ClothingLibrary.Get(id);
             Color c = new Color(0.6f, 0.55f, 0.48f);

@@ -17,7 +17,22 @@ namespace MadMax.World
         public static string LastWarning;
         static readonly HashSet<int> warned = new HashSet<int>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Shown.Clear(); LastWarning = null; warned.Clear(); }
+        static void ResetStatics() { Shown.Clear(); LastWarning = null; warned.Clear(); Dressed.Clear(); Torn.Clear(); gangOf.Clear(); }
+
+        /// <summary>Scarecrows the player gave a garment (key → item id; they wear it) and gang scarecrows torn down
+        /// (2026-10-27, saved by <c>WastelandGame.Save1027</c>).</summary>
+        public static readonly Dictionary<string, string> Dressed = new Dictionary<string, string>();
+        public static readonly HashSet<string> Torn = new HashSet<string>();
+        public static bool IsGang(string key) => key != null && key.EndsWith(":gang", System.StringComparison.Ordinal);
+        public static int TownOf(string key) { int i = key != null ? key.IndexOf(':') : -1; return i > 0 && int.TryParse(key.Substring(0, i), out int t) ? t : -1; }
+        /// <summary>The gang whose colours the scarecrow at <paramref name="key"/> wears (null when not shown or not a gang's).</summary>
+        public static string GangOf(string key) => gangOf.TryGetValue(key, out var g) ? g : null;
+        static readonly Dictionary<string, string> gangOf = new Dictionary<string, string>();
+
+        /// <summary>The scarecrow wears <paramref name="item"/> from now on (re-dressed when shown).</summary>
+        public static void Dress(string key, string item) { Dressed[key] = item; Refold(key); }
+        public static void TearDown(string key) { Torn.Add(key); Refold(key); }
+        static void Refold(string key) { if (Shown.TryGetValue(key, out var t)) { if (t) Destroy(t.gameObject); Shown.Remove(key); } }
 
         public struct Spot { public string key; public Vector3 at; public float yaw; public int town, gang; public Color coat; }
 
@@ -115,13 +130,14 @@ namespace MadMax.World
         {
             var d = s.at - me; d.y = 0f;
             float dist = d.magnitude;
-            if (s.gang >= 0 && dist < WarnReach && warned.Add(s.town))
+            if (s.gang >= 0 && dist < WarnReach && !Torn.Contains(s.key) && warned.Add(s.town))
             {
                 LastWarning = "A SCARECROW IN " + NpcLore.Gangs[s.gang] + " COLOURS: THEIR GROUND STARTS HERE";
                 g.Toast(LastWarning);
                 MadMax.Game.Journal.Add("PEOPLE", LastWarning);
             }
-            if (dist > Near || Shown.ContainsKey(s.key)) return;
+            if (s.gang >= 0) gangOf[s.key] = NpcLore.Gangs[s.gang];
+            if (dist > Near || Shown.ContainsKey(s.key) || Torn.Contains(s.key)) return;
             var def = MadMax.Building.FurnitureLibrary.Get("scarecrow");
             if (def == null || !def.mesh) return;
             var t = DeformableTerrain.Instance;
@@ -138,7 +154,7 @@ namespace MadMax.World
             coat.localPosition = new Vector3(0f, 1.25f, 0.06f);
             coat.localScale = new Vector3(0.62f, 0.55f, 0.05f);
             var m = new Material(Fx.RuntimeShader("Unlit", "Universal Render Pipeline/Unlit"));
-            m.SetColor("_BaseColor", s.coat);
+            m.SetColor("_BaseColor", Dressed.TryGetValue(s.key, out var given) ? MadMax.Building.ClothesLine.Colour(given) * 0.9f : s.coat);
             c.GetComponent<MeshRenderer>().sharedMaterial = m;
             coats.Add(coat);
             if (s.gang >= 0)

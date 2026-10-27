@@ -50,6 +50,7 @@ namespace MadMax.Game
             float s = g.World.OreAt(p.x, p.z, out var kind);
             Kind = kind;
             Reading = Mathf.Lerp(Reading < 0f ? s : Reading, s, 1f - Mathf.Exp(-6f * Time.deltaTime));
+            flash = Mathf.MoveTowards(flash, 0f, Time.deltaTime * 6f);                          // fade before a new beep lights it (a long frame would eat the flash)
             if (Time.time >= nextBeep && Reading > 0.05f)
             {
                 MadMax.Audio.Sfx.Play("ding", p, 0.25f + Reading * 0.4f, 0.8f + Reading * 1.2f, 8f, 0f);
@@ -63,7 +64,7 @@ namespace MadMax.Game
                 }
             }
             float hold = Reading > 0.7f ? 0.8f : 0f;                                             // a strong find: the lamp stays lit
-            flash = Mathf.Max(hold, Mathf.MoveTowards(flash, 0f, Time.deltaTime * 6f));
+            flash = Mathf.Max(hold, flash);
             if (lampR)
             {
                 var want = flash > 0.4f ? lampOn : lampOff;

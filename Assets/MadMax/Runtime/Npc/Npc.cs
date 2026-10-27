@@ -282,6 +282,7 @@ namespace MadMax.Npc
             else if (!foe && tendedBy && tendedBy.tending && tendedBy.tendWho == this) { faceTarget = tendedBy.transform.position; faceUntil = Time.time + 0.5f; }   // waits for the medic
             else if (companion && order == 2 && ManPost(me, dt, ref move, ref speed)) { }
             else if (!foe && VisitTick(me, dt, ref move, ref speed)) { }                         // calling on the player (Npc.Visit)
+            else if (!foe && BrowseTick(me, dt, ref move, ref speed)) { }                        // a customer at the player's stall (Npc.Browse)
             else if (!foe && WatchTv(me, dt, ref move, ref speed)) { }                           // a playing TV nearby (Npc.Tv)
             else switch (mode)
             {

@@ -166,14 +166,7 @@ namespace MadMax.Npc
                 foreach (int x in new[] { -9, 9 }) g.Box(x, 0, 0, x, 26, 0, Pal.Ramp(Pal.Wood, 1, 1501));
                 g.Box(-10, 12, 0, 10, 25, 0, Pal.Ramp(Pal.Wood, 2, 1502));                                         // board
                 g.Box(-11, 26, -1, 11, 27, 1, Pal.Ramp(Pal.Rust, 2, 1503));                                        // tin roof
-                var rr = new System.Random(1504);
-                for (int i = 0; i < 7; i++)
-                {
-                    int x0 = rr.Next(-8, 5), y0 = rr.Next(13, 21);
-                    var paper = i % 3 == 0 ? Pal.Ochre[4] : Pal.Cream[3];
-                    g.Box(x0, y0, 1, x0 + 3, y0 + 3, 1, p => (p.y - y0) % 2 == 1 && p.x > x0 && p.x < x0 + 3 ? Pal.Black[2] : paper);   // notices
-                }
-                g.Set(-2, 24, 1, Pal.Solid(Pal.Crimson[3])); g.Set(2, 24, 1, Pal.Solid(Pal.Crimson[3]));        // tacks
+                // the notices are BountyBoard posters (one per job on offer, BountyBoard.Posters)
                 g.Bevel();
                 boardMesh = VoxelMesher.Build(g, "BountyBoard");
             }

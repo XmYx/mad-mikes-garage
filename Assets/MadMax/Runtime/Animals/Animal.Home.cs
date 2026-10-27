@@ -28,7 +28,7 @@ namespace MadMax.Animals
         bool nesting, napping;
         NestBox nestBox;
         Stable layStable;
-        float sitUntil, layBest = float.MaxValue, layProgressAt, greetUntil, greetAng;
+        float sitUntil, layBest = float.MaxValue, layProgressAt, greetUntil, greetAng, napBest = float.MaxValue, napProgressAt;
         Transform greetWho;
 
         /// <summary>Eggs she still has to lay this morning (tests).</summary>
@@ -146,7 +146,7 @@ namespace MadMax.Animals
         {
             if (!who || !Alive) return;
             greetWho = who; greetUntil = Time.time + GreetSeconds; greetAng = Random.value * 360f;
-            napping = false;
+            napping = false; napBest = float.MaxValue;
             LastWelcome = (petName ?? "THE DOG") + " RUNS OUT TO MEET YOU, TAIL GOING";
         }
 
@@ -171,16 +171,24 @@ namespace MadMax.Animals
             float h = DayNight.Hours;
             bool nap = h >= 12.5f && h <= 16f || DayNight.Darkness > 0.6f;
             var bed = nap && order == 0 ? DogBed.Near(home, DogBed.NapReach) : null;
-            if (!bed) { napping = false; return false; }
+            if (!bed) { napping = false; napBest = float.MaxValue; return false; }
             var me = transform.position;
             var spot = bed.LieSpot;
-            if (!napping && Flat(spot - me).magnitude > 0.45f)
+            float d = Flat(spot - me).magnitude;
+            if (!napping)
             {
-                state = State.Wander; goal = spot; stateUntil = Time.time + 4f;
-                SetMove(spot - me, Def.walk);
-                return true;
+                if (napBest == float.MaxValue || d < napBest - 0.1f) { napBest = d; napProgressAt = Time.time; }
+                bool stuck = Time.time - napProgressAt > 3f && d < 1.6f;                             // nosing round it (a car, a post beside it)
+                if (d > 0.45f && !stuck)
+                {
+                    state = State.Wander; goal = spot; stateUntil = Time.time + 4f;
+                    SetMove(spot - me, Def.walk);
+                    return true;
+                }
+                if (stuck) { var p = spot; p.y = me.y; transform.position = p; }                     // a scramble onto it
+                napBest = float.MaxValue;
+                transform.rotation = Quaternion.LookRotation(bed.transform.right);                   // curled up across it
             }
-            if (!napping) transform.rotation = Quaternion.LookRotation(bed.transform.right);         // curled up across it
             napping = true;
             state = State.Sleep; stateUntil = Time.time + 30f;
             SetMove(Vector3.zero, 0f);

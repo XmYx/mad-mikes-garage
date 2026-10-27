@@ -243,7 +243,7 @@ namespace MadMax.Game
 
         void Load1018(string[] f)
         {
-            if (f[0] == "v" || f[0] == "y") { Load1023(f); return; }
+            if (f[0] == "v" || f[0] == "y" || f[0] == "w" || f[0] == "k") { Load1023(f); return; }
             if (f[0] != "q" || f.Length < 6) return;
             var c = new CallIn();
             int.TryParse(f[2], out c.calls); int.TryParse(f[3], out c.lastDay); int.TryParse(f[4], out c.due); int.TryParse(f[5], out c.came);

@@ -45,11 +45,18 @@ namespace MadMax.Game
         }
         static List<string> allIds;
 
-        public static Mesh MeshFor(string id)
+        public static Mesh MeshFor(string id) => BuildMesh(id, false);
+
+        /// <summary>The model a hand holds: bows, crossbows and slingshots without their string (<see cref="BowDraw"/>
+        /// moves it), everything else as <see cref="MeshFor"/>.</summary>
+        public static Mesh HeldMeshFor(string id) => BowDraw.Handles(id) ? BuildMesh(id, true) : MeshFor(id);
+
+        static Mesh BuildMesh(string id, bool held)
         {
-            if (meshes.TryGetValue(id, out var m) && m) return m;
+            string key = held ? "held:" + id : id;
+            if (meshes.TryGetValue(key, out var m) && m) return m;
             EnsureBlocks();
-            if (Extra.TryGetValue(id, out var ext)) { var eg = ext.model(); eg.Bevel(); return meshes[id] = VoxelMesher.Build(eg, "Tool_" + id); }
+            if (Extra.TryGetValue(id, out var ext)) { var eg = ext.model(); eg.Bevel(); return meshes[key] = VoxelMesher.Build(eg, "Tool_" + id); }
             var g = new VoxelGrid();
             switch (id)
             {
@@ -189,17 +196,17 @@ namespace MadMax.Game
                 case "tool_slingshot":
                     g.Box(0, -4, 0, 0, 0, 0, Pal.Ramp(Pal.Wood, 2, 1317));
                     g.Box(-2, -5, 0, 2, -5, 0, Pal.Ramp(Pal.Wood, 2, 1318)); g.Box(-2, -8, 0, -2, -6, 0, Pal.Ramp(Pal.Wood, 2)); g.Box(2, -8, 0, 2, -6, 0, Pal.Ramp(Pal.Wood, 2));
-                    g.Box(-1, -8, 1, 1, -8, 1, Pal.Solid(Pal.Crimson[3]));                                      // rubber band
+                    if (!held) g.Box(-1, -8, 1, 1, -8, 1, Pal.Solid(Pal.Crimson[3]));                           // rubber band
                     break;
                 case "tool_bow":
                     for (int z = -9; z <= 9; z++) g.Set(0, -Mathf.RoundToInt((1f - z * z / 81f) * 3f), z, Pal.Ramp(Pal.Wood, 2, 1319));
-                    g.Box(0, 1, -9, 0, 1, 9, Pal.Solid(Pal.Cream[3]));                                          // string
+                    if (!held) g.Box(0, 1, -9, 0, 1, 9, Pal.Solid(Pal.Cream[3]));                               // string
                     g.Box(0, -3, -1, 0, -2, 1, Pal.Ramp(Pal.Black, 2));                                         // grip
                     break;
                 case "tool_crossbow":
                     g.Box(0, -14, 0, 0, 1, 0, Pal.Ramp(Pal.Wood, 2, 1320));
                     g.Box(-6, -13, 0, 6, -13, 0, Pal.Ramp(Pal.Metal, 2, 1321));                                 // prod
-                    g.Tube(new Vector3(-6, -13, 0), new Vector3(0, -8, 1), 0.4f, Pal.Solid(Pal.Cream[3])); g.Tube(new Vector3(6, -13, 0), new Vector3(0, -8, 1), 0.4f, Pal.Solid(Pal.Cream[3]));
+                    if (!held) { g.Tube(new Vector3(-6, -13, 0), new Vector3(0, -8, 1), 0.4f, Pal.Solid(Pal.Cream[3])); g.Tube(new Vector3(6, -13, 0), new Vector3(0, -8, 1), 0.4f, Pal.Solid(Pal.Cream[3])); }
                     g.Box(0, -2, -1, 0, 0, -1, Pal.Ramp(Pal.Metal, 0));                                        // trigger
                     break;
                 case "tool_pipe_pistol":
@@ -243,18 +250,19 @@ namespace MadMax.Game
                     break;
             }
             g.Bevel();
-            return meshes[id] = VoxelMesher.Build(g, "Tool_" + id);
+            return meshes[key] = VoxelMesher.Build(g, (held ? "ToolHeld_" : "Tool_") + id);
         }
 
         /// <summary>Ranged weapons: muzzle, magazine, reload, jams, projectile or hitscan, noise (roadmap 13).</summary>
         static readonly Dictionary<string, System.Action<RangedTool, Transform>> Guns = new Dictionary<string, System.Action<RangedTool, Transform>>
         {
             { "tool_slingshot", (r, t) => { t.localPosition = new Vector3(0, -8f * S, 0); r.projectile = Projectile.Kind.Stone; r.ammoResource = ResourceType.Stone; r.projectileSpeed = 28f; r.power = 0.3f; r.spread = 3f;
-                r.reloadTime = 0f; r.noise = 4f; r.sound = "pop"; r.shake = 0.2f; r.swingDuration = 0.6f; } },
+                r.reloadTime = 0f; r.noise = 4f; r.sound = "pop"; r.shake = 0.2f; r.swingDuration = 0.6f; r.reloadSound = ""; r.nockDelay = 0.3f; } },
             { "tool_bow", (r, t) => { t.localPosition = new Vector3(0, -3f * S, 0); r.projectile = Projectile.Kind.Arrow; r.ammo = "ammo_arrow"; r.recover = "ammo_arrow"; r.projectileSpeed = 42f; r.power = 0.8f; r.spread = 1.5f;
-                r.reloadTime = 0f; r.noise = 5f; r.sound = "bow"; r.shake = 0.3f; r.swingDuration = 0.9f; r.aimZoom = 0.7f; } },
+                r.reloadTime = 0f; r.noise = 5f; r.sound = "bow"; r.shake = 0.3f; r.swingDuration = 0.9f; r.aimZoom = 0.7f; r.reloadSound = ""; r.nockDelay = 0.45f; } },
             { "tool_crossbow", (r, t) => { t.localPosition = new Vector3(0, -14f * S, 0); r.projectile = Projectile.Kind.Bolt; r.ammo = "ammo_bolt"; r.recover = "ammo_bolt"; r.projectileSpeed = 60f; r.power = 1.1f; r.spread = 0.8f;
-                r.reloadTime = 2.2f; r.noise = 8f; r.sound = "click"; r.shake = 0.5f; r.swingDuration = 0.6f; r.aimZoom = 0.6f; } },
+                r.reloadTime = 2.2f; r.noise = 8f; r.sound = "bow"; r.soundPitch = 0.7f; r.shake = 0.5f; r.swingDuration = 0.6f; r.aimZoom = 0.6f;
+                r.reloadSound = "creak"; r.reloadPitch = 0.85f; } },
             { "tool_pipe_pistol", (r, t) => { t.localPosition = new Vector3(0, -8f * S, 0); r.pellets = 1; r.spread = 2.5f; r.range = 45f; r.power = 0.55f; r.ammo = "ammo_cartridge";
                 r.reloadTime = 1.6f; r.jamChance = 0.08f; r.noise = 60f; r.sound = "shot_pistol"; r.shake = 0.8f; r.swingDuration = 0.5f; } },
             { "tool_revolver", (r, t) => { t.localPosition = new Vector3(0, -9f * S, 0); r.pellets = 1; r.spread = 1.2f; r.range = 60f; r.power = 0.65f; r.ammo = "ammo_cartridge"; r.magazine = 6;
@@ -268,7 +276,7 @@ namespace MadMax.Game
         public static HandTool Create(string id, Material mat)
         {
             var go = new GameObject(id, typeof(MeshFilter), typeof(MeshRenderer));
-            go.GetComponent<MeshFilter>().sharedMesh = MeshFor(id);
+            go.GetComponent<MeshFilter>().sharedMesh = HeldMeshFor(id);
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             var tip = new GameObject("Tip").transform;
             tip.SetParent(go.transform, false);
@@ -283,6 +291,7 @@ namespace MadMax.Game
                 r.strikeAt = 0.03f; r.style = ToolStyle.Gun;
                 if (id == ItemIds.Shotgun) { tip.localPosition = new Vector3(0, -15f * S, 0); r.swingDuration = 0.9f; r.jamChance = 0.05f; }
                 else Guns[id](r, tip);
+                if (BowDraw.Handles(id)) go.AddComponent<BowDraw>().Setup(r, id);       // live string, nocked arrow / bolt / stone
                 tool = r;
             }
             else if (id == "tool_welder")

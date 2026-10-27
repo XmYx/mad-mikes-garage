@@ -31,7 +31,7 @@ namespace MadMax.Game.Acceptance
     class EggsInTheStraw : Scenario
     {
         public override string Id => "animals.eggs_nest";
-        public override float Timeout => 70f;
+        public override float Timeout => 180f;                                                  // ~40 s of game-time walking and sitting: room for a slow player
 
         public override IEnumerator Run(ScenarioContext c)
         {
@@ -86,8 +86,26 @@ namespace MadMax.Game.Acceptance
     /// stable door from the blanket at night, and runs out to meet the player who comes home after a while.</summary>
     class YardDog : Scenario
     {
+        /// <summary>A spot near <paramref name="me"/> with nothing standing within 1.5 m and a clear line from <paramref name="from"/>.</summary>
+        static Vector3 ClearSpot(Vector3 me, Vector3 from, Vector3 prefer)
+        {
+            var hits = new Collider[8];
+            int mask = ~(1 << MadMax.World.Layers.Terrain);
+            for (int k = 0; k < 16; k++)
+            {
+                var off = Quaternion.Euler(0f, k * 22.5f, 0f) * prefer;
+                var p = PH.Ground(me + off);
+                int n = Physics.OverlapSphereNonAlloc(p + Vector3.up * 0.8f, 1.5f, hits, mask, QueryTriggerInteraction.Ignore);
+                bool blocked = false;
+                for (int i = 0; i < n; i++) if (hits[i] && !hits[i].GetComponentInParent<Animal>() && !hits[i].GetComponentInParent<MadMax.Game.PlayerCharacter>()) { blocked = true; break; }
+                if (blocked || Physics.Linecast(from + Vector3.up * 0.4f, p + Vector3.up * 0.4f, mask, QueryTriggerInteraction.Ignore)) continue;
+                return p;
+            }
+            return PH.Ground(me + prefer);
+        }
+
         public override string Id => "animals.yard_dog";
-        public override float Timeout => 60f;
+        public override float Timeout => 120f;                                                  // the waits are game time (greeting, walks): room for a slow player
 
         public override IEnumerator Run(ScenarioContext c)
         {
@@ -109,7 +127,7 @@ namespace MadMax.Game.Acceptance
             AnimalDirector.Instance.Save(d);
             c.Check(d.animals.Any(a => a.petName == dog.petName), "the name saves with the animal");
             // the blanket: afternoon nap
-            var bp = PH.Piece(g, "dog_blanket", me + fwd * 6f + right * 3f, -fwd);
+            var bp = PH.Piece(g, "dog_blanket", ClearSpot(me, dog.transform.position, fwd * 6f + right * 3f), -fwd);   // open ground the dog can walk straight to (animals don't path round parked cars)
             if (!c.Check(bp, "a dog blanket")) yield break;
             yield return null;
             dog.home = bp.transform.position;

@@ -87,6 +87,7 @@ namespace MadMax.Game
             Stats.Practice(Skill.Survival, 1f);
             Gesture(f.hunger <= 0f && f.thirst > 0f ? UseKind.Drink : UseKind.Eat, id);              // the hand to the mouth with it
             MedMineAte(id);                                                               // willow-bark tea
+            Ate1027(id, table > 0f);                                                      // breakfast from the yard
         }
 
         public void Drink(float thirst, bool dirty)

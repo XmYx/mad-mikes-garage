@@ -486,7 +486,7 @@ def fireplace():
 
 def player_stall():
     a = Asset("player_stall", "Furniture")
-    w, cl, s = a.p("Wood"), a.p("Cloth"), a.p("Scrap")
+    w, cl = a.p("Wood"), a.p("Cloth")
     for x in (-12, 12):
         for z in (-6, 6):
             leg_square(w, W("dark", "y"), c(x), c(z), lo(0), hi(26) - 0.02 - abs(z) * 0.0, 0.07)
@@ -508,9 +508,7 @@ def player_stall():
         w.box2(K.wood("" if m == "wood" else "dark", "x"), (lo(x0), lo(1), lo(-4)), (hi(x1), hi(y1), hi(1)), bevel=0.012)
         for y in range(1, y1, 2):
             w.box2(K.wood("dark", "x"), (lo(x0) - 0.004, c(y) + 0.04, hi(1) - 0.005), (hi(x1) + 0.004, c(y) + 0.06, hi(1) + 0.004), bevel=0.002)
-    s.cyl("ochre", 0.07, 0.16, (c(-2), hi(11) + 0.08, c(5.5)), "y", 14, 0.008)                           # wares
-    s.box2("crimson", (lo(2), hi(11), lo(5)), (hi(4), hi(12), hi(6)), bevel=0.01)
-    s.cyl("tread", 0.11, 0.07, (c(7), hi(11) + 0.035, c(5.5)), "y", 18, 0.01)
+    # the wares on the counter are drawn at runtime from the stall's stock (PlayerStall)
     return a
 
 

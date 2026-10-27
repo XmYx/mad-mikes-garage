@@ -5,14 +5,15 @@ namespace MadMax.Building
 {
     /// <summary>A town's bounty board (roadmap 15), spawned by the NpcDirector at every settlement: [E] reads it — today's
     /// bounties and hauls, jobs to claim, crates to hand in, and what the local market pays; [T] signs up for today's
-    /// race or arena (<see cref="MadMax.Game.Racing"/>).</summary>
-    public class BountyBoard : MonoBehaviour, IInteractable
+    /// race or arena (<see cref="MadMax.Game.Racing"/>). Its notices are posters of what is really on offer
+    /// (BountyBoard.Posters.cs).</summary>
+    public partial class BountyBoard : MonoBehaviour, IInteractable
     {
         public int town;
         public static readonly System.Collections.Generic.List<BountyBoard> All = new System.Collections.Generic.List<BountyBoard>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
-        void OnEnable() => All.Add(this);
-        void OnDisable() => All.Remove(this);
+        void OnEnable() { All.Add(this); Contracts.Taken += OnTaken; Contracts.Paid += OnPaid; }
+        void OnDisable() { All.Remove(this); Contracts.Taken -= OnTaken; Contracts.Paid -= OnPaid; }
 
         public MadMax.World.Settlement Settlement
         {

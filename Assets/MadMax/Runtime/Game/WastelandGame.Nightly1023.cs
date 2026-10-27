@@ -72,6 +72,7 @@ namespace MadMax.Game
                 mended++;
             }
             line.Hang(hang);
+            MadMax.World.Spills.Pour(line.transform.position + line.transform.forward * 1.2f, MadMax.Items.ResourceType.DirtyWater, ClothesLine.WashLitres * 0.7f);   // the tub tipped out beside the line (Nightly1027)
             MadMax.Audio.Sfx.Play("splash", line.transform.position, 0.5f, 0.9f, 12f);
             MadMax.Audio.Sfx.Play("scratch", line.transform.position, 0.35f, 0.7f, 10f);
             Gesture(UseKind.Kneel, null, 1.6f);
@@ -263,10 +264,12 @@ namespace MadMax.Game
         {
             foreach (var kv in SupperInvites) lines.Add("v|" + kv.Key + "|" + kv.Value.x + "|" + kv.Value.y);
             foreach (var kv in SupperEmpty) lines.Add("y|" + kv.Key + "|" + kv.Value);
+            Save1027(lines);
         }
 
         void Load1023(string[] f)
         {
+            if (f[0] == "w" || f[0] == "k") { Load1027(f); return; }
             if (f[0] == "y" && f.Length >= 3) { int.TryParse(f[2], out int e); SupperEmpty[f[1]] = e; return; }
             if (f[0] != "v" || f.Length < 4) return;
             int.TryParse(f[2], out int x); int.TryParse(f[3], out int y);
@@ -278,6 +281,7 @@ namespace MadMax.Game
             SupperInvites.Clear();
             supperHintDay = -1;
             SupperEmpty.Clear();
+            Clear1027();
         }
     }
 }

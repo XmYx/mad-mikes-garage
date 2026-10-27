@@ -20,6 +20,7 @@ namespace MadMax.Items
             yield return Fire("mushroom", "MUSHROOM SKEWER", "food_mush_skewer", 1, null, ("food_mushroom", 2));
             yield return Fire("flatbread", "FLATBREAD X2", "food_flatbread", 2, new[] { (Wa, 1) }, ("crop_flour", 1));
             yield return Fire("tea", "HERB TEA", "drink_tea", 1, new[] { (Wa, 1) }, ("food_herbs", 1));
+            yield return Fire("breakfast", "YARD BREAKFAST", "food_breakfast", 1, null, ("food_egg", 2), ("drink_milk", 1));
             var boil = Fire("boil", "BOIL WATER 2L", null, 2, new[] { (ResourceType.DirtyWater, 2) });
             boil.kind = OutputKind.Resource; boil.outputResource = Wa;
             yield return boil;
@@ -29,6 +30,7 @@ namespace MadMax.Items
             yield return Cook("stove", "meat_stew", "MEAT STEW X2", "food_meat_stew", 2, W, ("food_meat_raw", 1), ("food_potato", 1), ("food_carrot", 1));
             yield return Cook("stove", "fish_soup", "FISH SOUP X2", "food_fish_soup", 2, W, ("food_fish_raw", 1), ("food_potato", 1), ("food_herbs", 1));
             yield return Cook("stove", "pancakes", "PANCAKES X2", "food_pancakes", 2, W, ("crop_flour", 1), ("food_egg", 1), ("drink_milk", 1));
+            yield return Cook("stove", "breakfast", "YARD BREAKFAST X2", "food_breakfast", 2, W, ("food_egg", 3), ("drink_milk", 1));
             var tea = Cook("stove", "tea", "HERB TEA X2", "drink_tea", 2, W, ("food_herbs", 1));
             tea.resources = new[] { (Wa, 2) };
             yield return tea;

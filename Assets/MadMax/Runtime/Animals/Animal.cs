@@ -676,9 +676,12 @@ namespace MadMax.Animals
             int n = Physics.SphereCastNonAlloc(me + Vector3.up * y, Mathf.Min(0.25f, col.radius), dir, hits, look, ~0, QueryTriggerInteraction.Ignore);
             var toGoal = goal - me; toGoal.y = 0f;
             bool arriving = state == State.Wander && toGoal.sqrMagnitude < 9f;                       // walking onto a spot on a piece (nest box, blanket, roost)
+            float toSpot = toGoal.magnitude;
             for (int i = 0; i < n; i++)
             {
                 var c = hits[i].collider;
+                if (arriving && hits[i].distance > toSpot) continue;                                 // beyond the spot (a car parked past the blanket)
+                if (hits[i].distance <= 0f && c.attachedRigidbody && c.bounds.Contains(me + Vector3.up * y)) continue;   // already in a vehicle's box (a long frame's step, a car rolled over it): walk out
                 if (arriving) { var b = c.bounds; if (b.Contains(new Vector3(goal.x, b.center.y, goal.z))) continue; }
                 if (c.transform.IsChildOf(transform) || c.GetComponentInParent<DeformableTerrain>()) continue;
                 if (target && c.transform.IsChildOf(target.transform)) continue;

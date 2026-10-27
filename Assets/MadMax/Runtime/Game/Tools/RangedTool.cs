@@ -24,6 +24,10 @@ namespace MadMax.Game
         public string recover;                               // projectile item picked up again (arrows, bolts)
         public float noise = 80f;
         public string sound = "shotgun";
+        public float soundPitch = 1f;
+        public string reloadSound = "ratchet";               // empty = silent (an arrow nocked by hand)
+        public float reloadPitch = 1.6f;
+        public float nockDelay = -1f;                        // ≥ 0: one-round weapons without a reload time take the next round this long after a shot
         public float shake = 1.5f;
         public float aimZoom = 0.75f;                        // first-person field of view while aiming (scoped rifle: less)
         public Transform muzzle;
@@ -33,7 +37,13 @@ namespace MadMax.Game
         public void ForceJam() => Jammed = true;
         static readonly System.Collections.Generic.List<DebrisSystem.Chunk> casing = new System.Collections.Generic.List<DebrisSystem.Chunk>();
         public bool Reloading => Time.time < reloadUntil;
-        float reloadUntil;
+        /// <summary>A round is on its way in (reload timer running, not a jam being cleared).</summary>
+        public bool Chambering => reloadTo >= 0;
+        /// <summary>0..1 through the reload in progress (1 when none).</summary>
+        public float ReloadProgress => reloadTo < 0 || reloadUntil <= reloadFrom ? 1f : Mathf.Clamp01((Time.time - reloadFrom) / (reloadUntil - reloadFrom));
+        /// <summary>Raised after every shot that left the weapon (<see cref="BowDraw"/> snaps the string).</summary>
+        public event System.Action Fired;
+        float reloadUntil, reloadFrom, nockAt;
         int reloadTo = -1;
 
         /// <summary>Rounds left in the pack.</summary>
@@ -48,9 +58,15 @@ namespace MadMax.Game
 
         void Update()
         {
-            if (reloadTo < 0 || Reloading) return;
             var g = WastelandGame.Instance;
-            if (g) FinishReload(g);
+            if (!g) return;
+            if (nockAt > 0f && Time.time >= nockAt && reloadTo < 0)
+            {
+                nockAt = 0f;
+                if (g.Player && g.Player.Tool == this && g.Rounds(id) == 0) BeginReload(g);
+            }
+            if (reloadTo < 0 || Reloading) return;
+            FinishReload(g);
         }
 
         /// <summary>R: clear a jam, or top the magazine up from the pack.</summary>
@@ -72,8 +88,9 @@ namespace MadMax.Game
             int have = g.Rounds(id);
             if (have >= magazine || Reserve(g) <= 0) return false;
             reloadTo = magazine;
+            reloadFrom = Time.time;
             reloadUntil = Time.time + reloadTime * (g.Stats != null ? Mathf.Max(0.5f, 1f - g.Stats.Level(MadMax.RPG.Skill.Firearms) * 0.04f) : 1f);
-            MadMax.Audio.Sfx.Play("ratchet", transform.position, 0.5f, 1.6f);
+            if (!string.IsNullOrEmpty(reloadSound)) MadMax.Audio.Sfx.Play(reloadSound, transform.position, 0.5f, reloadPitch);
             if (reloadTime > 0.3f) g.Toast("RELOADING " + toolName);
             return true;
         }
@@ -112,13 +129,15 @@ namespace MadMax.Game
             }
             game.SetRounds(id, game.Rounds(id) - 1);
             game.ShotsFired++;
+            nockAt = 0f;
+            Fired?.Invoke();
 
             var aim = game.AimDirection(user, origin, range);
             var stats = game.Stats;
             float sp = spread * (stats != null ? stats.Spread : 1f) * game.AimPenalty * (2f - game.QualityPower(id)) * (game.Aiming ? 0.5f : 1f);
             var fx = DebrisSystem.Instance;
             bool anyHit = false;
-            MadMax.Audio.Sfx.Play(sound, origin, sound == "shotgun" || sound.StartsWith("shot_") ? 1f : 0.7f, Random.Range(0.95f, 1.05f), Mathf.Max(20f, noise * 1.5f));
+            MadMax.Audio.Sfx.Play(sound, origin, sound == "shotgun" || sound.StartsWith("shot_") ? 1f : 0.7f, Random.Range(0.95f, 1.05f) * soundPitch, Mathf.Max(20f, noise * 1.5f));
             if (projectile.HasValue)
             {
                 var d = Quaternion.Euler(Random.Range(-sp, sp), Random.Range(-sp, sp), 0f) * aim;
@@ -154,6 +173,7 @@ namespace MadMax.Game
             if (game.cameraRig) game.cameraRig.Shake(shake);
             // one-round weapons chamber the next one straight away when they can
             if (magazine == 1 && reloadTime > 0.05f && game.Rounds(id) == 0) BeginReload(game);
+            else if (magazine == 1 && nockDelay >= 0f && game.Rounds(id) == 0) nockAt = Time.time + Mathf.Max(0.01f, nockDelay);
         }
     }
 }

@@ -21,7 +21,7 @@ namespace MadMax.Building
                 Glow(go, new Vector3(1.1f, 4.1f, -0.8f), new Color(1f, 0.55f, 0.2f), 6f, 2f, false, 0f);     // flare stack
                 go.AddComponent<RefineryFlare>();                                                                     // flame, soot, burner glow
             }, (Fe, 20), (Cu, 8), (Co, 6), (G, 2));
-            yield return D("oil_press", "OIL PRESS", In, OilPress(), 6, false, go => Station(go, "press", "PRESS SEED OIL", 0f), (W, 6), (Fe, 3));
+            yield return D("oil_press", "OIL PRESS", In, OilPress(), 6, false, go => { Station(go, "press", "PRESS SEED OIL", 0f); go.AddComponent<OilPressWork>(); }, (W, 6), (Fe, 3));
             yield return D("coal_generator", "STEAM GENERATOR", BuildCategory.Utility, SteamGenerator(), 12, false, go =>
             {
                 Node(go, UtilityKind.Power, 0.9f);
@@ -60,7 +60,6 @@ namespace MadMax.Building
             g.Box(-2, 2, -6, 2, 5, -4, Pal.Ramp(Pal.Metal, 2, 1714));                                                         // motor
             foreach (int x in new[] { -4, 4 }) g.Tube(new Vector3(x, 6, -10), new Vector3(x, 12, -12), 0.5f, Pal.Ramp(Pal.Metal, 0, 1715));   // crank arms
             g.CylY(0, 13, 1.5f, 2, 6, Pal.Ramp(Pal.Metal, 1, 1716)); g.Box(-2, 6, 12, 2, 6, 14, Pal.Ramp(Pal.Chrome, 2));   // wellhead
-            g.Box(0, 7, 13, 0, 14, 13, Pal.Ramp(Pal.Chrome, 3));                                                              // polished rod
             return g;
         }
 
@@ -98,9 +97,8 @@ namespace MadMax.Building
             foreach (int x in new[] { -6, 6 }) g.Box(x, 0, 0, x, 18, 0, frame);
             g.Box(-7, 18, -1, 7, 19, 1, frame);
             g.CylY(0, 0, 3.6f, 1, 8, p => p.y % 3 == 0 ? Pal.Metal[1] : Pal.Wood[2]);                                         // barrel of seeds
-            g.Mat(Iron); g.Box(0, 9, 0, 0, 17, 0, Pal.Ramp(Pal.Chrome, 2)); g.Box(-5, 16, 0, 5, 16, 0, Pal.Ramp(Pal.Metal, 2));   // screw and bar
-            g.Box(-3, 9, -3, 3, 9, 3, Pal.Ramp(Pal.Metal, 1, 1732));                                                          // pressing plate
-            g.Box(0, 2, 4, 0, 2, 6, Pal.Ramp(Pal.Metal, 1)); g.Set(0, 1, 6, Pal.Solid(Pal.Ochre[4]));                           // spout, drip
+            g.Mat(Iron); g.Box(-1, 20, -1, 1, 20, 1, Pal.Ramp(Pal.Metal, 0, 1732));                                            // threaded nut (screw, bar and plate: OilPressWork)
+            g.Box(0, 2, 4, 0, 2, 6, Pal.Ramp(Pal.Metal, 1));                                                                  // spout
             return g;
         }
     }

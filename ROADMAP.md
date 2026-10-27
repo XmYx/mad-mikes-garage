@@ -1979,18 +1979,85 @@ irrigation.tank_gauges, irrigation.pump_gush, mining.detector_lamp), `ScheduledS
 tools.binocular_glint, tools.crowbar_door).
 
 ### Suggestions (tie the experience together)
-- [ ] **Breakfast from the yard**: eggs from the box + milk → a breakfast recipe at the stove/campfire that gives a
-  morning buff (steady hands: less aim sway till noon); the crew eats with you at the table.
+- [x] **Breakfast from the yard** (2026-10-27): YARD BREAKFAST (2 eggs + milk at the fire, 3 eggs + milk ×2 at the stove);
+  eaten 4:30–11:00 it steadies the hands till noon (`SteadyHands`: aim spread × 0.75), later it is just food; eaten at a
+  dining table the companions within 30 m come and sit down to it (`Npc.Visit`, a plate each, a line), then carry on.
 - [ ] **The dog on the road**: a named dog rides in the pickup bed / passenger seat, barks at raiders before the HUD
   shows them, and waits by the car when you go into a building.
-- [ ] **Scarecrow trade**: town farmers pay a little scrap or seed for an old garment for their scarecrow; a gang
-  scarecrow can be torn down (that gang −standing, the town +standing).
-- [ ] **Glint both ways**: raider lookouts on ridges carry binoculars too — a flash on the skyline warns the player
-  before an ambush.
-- [ ] **Pumpjack and press alive**: the pumpjack's rod strokes with the beam and its tank shows the crude level; the oil
-  press squeezes with a dripping spout.
-- [ ] **Washing water goes somewhere**: wash water poured out at the line greys the ground (`Spills`), and a wash tub
-  piece gives a scrubbing animation instead of the kneel gesture.
+- [x] **Scarecrow trade** (2026-10-27): beside a town field scarecrow, GIVE YOUR <GARMENT> FOR THE SCARECROW (the most worn
+  spare garment in the pack): 4–9 scrap, the town +1, and it wears that garment's colour from then on; at a gang's
+  scarecrow TEAR DOWN THE GANG SCARECROW (gang −6, town +3, no more warning). Both saved (`w` / `k` lines in `crewRoad`).
+- [x] **Glint both ways** (2026-10-27): a raider column closing on you between 140 and 480 m has a lookout on the highest
+  ground on its side (`LookoutSpot`); with a low sun ahead of their look the lens flashes there a few times (`Fx.Glint`,
+  big enough to read at range), "A FLASH ON THE SKYLINE" + a hint, the player's attention turns to it; once per column
+  per 4 minutes.
+- [x] **Pumpjack and press alive** (2026-10-27): the pumpjack's polished rod hangs from the horse head on its bridle and
+  strokes in and out of the stuffing box with the beam (crude film on it, a squeak at the top of each stroke), a sight
+  glass on the gearbox shows the tank's crude, the beam winds up and nods to rest level, a full tank stops it ("TANK FULL,
+  STOPPED"). The oil press (`Building/OilPressWork`) turns its bar and screws the plate down into the seed barrel over the
+  pressing (four turns, creaks each quarter), golden oil drips from the spout into a tin cup once the seeds give, the
+  screw winds back up after. In the HD look the model's own screw stays (no mover yet: drips and sounds only).
+- [x] **Washing water goes somewhere** (2026-10-27): the used wash water (7 L, dirty) is tipped out beside the line into
+  `Spills`; the wet wash drips off its hems (`Droplets`) and wets the ground under the line until it is ~60 % dry.
+  Open: a wash tub piece with a scrubbing animation.
+
+## Scheduled update (2026-10-27)
+Done this pass (ticked above): breakfast from the yard, glint both ways (raider lookouts), the scarecrow trade, pumpjack
+and press alive, washing water goes somewhere. Also commits the 2026-10-26 pass (`ca320dd`) and fixes its four failing
+scenarios (all four surfaced because the test player ran at ~1 fps):
+- `MetalDetectorTool`: the beep's flash was faded in the same frame (dead at dt ≥ 0.17 s): the fade runs first now.
+- `Door`: the hinge spring is sub-stepped at 1/120 s (it diverged at long frames — the "1.7e9°" door); `JoltPeak` for tests.
+- `Animal.Blocked` ignores colliders past the goal and vehicle colliders the animal is already inside; the dog's walk to
+  its blanket has the hens' stuck fallback (no progress for 3 s within 1.6 m → onto it).
+- `animals.eggs_nest` / `animals.yard_dog` timeouts are real seconds: raised for slow frames (180 / 120 s).
+- [ ] Still failing: in `animals.yard_dog` the dog never walks to its blanket for the afternoon nap (stays 12–15 m off it,
+  also with the blanket on open ground clear of the yard's cars); not yet diagnosed (`Animal.Home.NapThink` vs `ThinkKept`
+  order / the post-naming welcome). Animals don't path round parked cars either.
+
+Remodel audit of roadmap sections 11–15 (vehicle armour, player armour, weapons, tuning, economy). Already alive: armour
+welding (timed job, sizzle, sparks, arc flash, weld pose), flares in flight (light + smoke trail), lit pipe / smoke
+bombs, the cargo crate model. Thin, now remodelled:
+- [x] **Bow, crossbow, slingshot** (`Game/Tools/BowDraw`): the string / band is two cord halves from the limb tips to the
+  nock, drawn back ~0.3 m while aiming with a round loaded (a creak), slapping past rest on the shot; the arrow / bolt /
+  stone rides the nock only while loaded (`RangedTool.nockDelay`: the next arrow is nocked a moment after a shot); the
+  crossbow string sits forward after a shot and is spanned to the latch in 8 ratchet steps over the reload (`ReloadProgress`),
+  a click when it catches; its shot sound is a low twang (was "click"). HD: the held models' baked strings are swapped for
+  string-less smooth bodies in the hand (icons / racks keep the full models). NPC-held ones show a resting string.
+- [x] **Bounty board posters** (`Building/BountyBoard.Posters`, `Contracts.Version/Taken/Paid`): one 7×9 pixel poster per
+  job actually offered at that board (wanted boss: a crude face + gang emblem; cull: emblem crossed out; pests: dog / boar
+  / wolf / rat silhouette; haul: crate + arrow; supply: barrel; escort: Guild drop) on tinted paper, slot / tilt by the
+  contract id, lifting in the wind; taking a job tears its poster off (paper puff) leaving a scrap under the tack until
+  tomorrow; a payout pins a PAID stub for 25 s; the road news hangs as a headline sheet. The board mesh lost its baked notices.
+- [x] **Player stall display** (`Building/PlayerStall`, `Npc/Npc.Browse`): the counter shows up to 8 of the goods actually
+  stocked (item models scaled to fit), a cash box fills in three levels with the takings; a sale with a free resident /
+  wanderer within 25 m brings them to the counter to look, the sale lands then (coin clink, the good leaves the counter),
+  then they walk on; nobody about = an unseen sale as before. Host only.
+- [ ] Still thin: thrown things launch from the pack (no lit rag / fuse in the hand, no throw pose; the thrown model is a
+  plain cube); nitrous has no hiss loop or bottle and the turbo / blower kits don't reach `EngineSynth` (no whistle); the
+  tuning bench is a menu (no rev on the dyno, the monitor trace is fixed); armour plates pop on whole (no glowing seam);
+  player armour clanks only when running and deflections give no spark; `coin_chit` has no world model.
+- [ ] HD: the HD blends for the board / stall (sources edited in `tools/blender/hd`), the bow strings and the pumpjack rod /
+  press screw (no movers) still need rebuilding — until then the HD pack shows the old baked notices / wares under the
+  new ones.
+- [ ] Test infrastructure: the acceptance player ran at ~1 fps on 2026-10-27 (every step on a whole second, dt at its
+  0.333 s cap): check how `tools/acceptance/run.py` launches the window (hidden / unfocused Wayland surface?).
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1027.cs` (refining.pumpjack_rod, refining.oil_press, living.wash_drips,
+food.yard_breakfast, npc.lookout_glint, towns.scarecrow_trade), `ScheduledScenarios1027Weapons.cs` (weapons.bow_draw,
+weapons.crossbow_cock, weapons.slingshot_band), `ScheduledScenarios1027Economy.cs` (economy.board_posters,
+economy.stall_display).
+
+### Suggestions (tie the experience together)
+- [ ] **Wanted posters that age**: a boss's poster in town gets a red X when someone (the player or a rival) kills them;
+  posters left up for days curl and fade; a pest poster's reward climbs while the pack keeps killing chickens.
+- [ ] **Regulars at the stall**: a buyer who bought from you twice comes back on their own beat, asks for a good by name
+  (a want written on a slip on the counter), and pays a little over for it.
+- [ ] **Arrows you can find again**: missed arrows and bolts stuck in walls and trees glint in the HD look and show on
+  the minimap while within 30 m; a quiver piece / belt slot holds them.
+- [ ] **Smoke on the skyline**: raider camps light a cook fire at dusk whose smoke column you can see (and binoculars can
+  pin) from a kilometre off.
+- [ ] **A wash tub**: a tub piece with a scrubbing animation (and a washboard rattle) instead of the kneel gesture, fed
+  from a tap / drum.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)

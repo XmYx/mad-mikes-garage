@@ -31,7 +31,11 @@ namespace MadMax.Npc
         public const string Chit = "coin_chit";
         public static readonly List<Contract> Active = new List<Contract>();
         static readonly HashSet<string> taken = new HashSet<string>();
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Active.Clear(); taken.Clear(); }
+        /// <summary>Bumped whenever a job is taken, paid or the list is loaded (boards re-post their notices).</summary>
+        public static int Version { get; private set; }
+        /// <summary>A job was taken off its board (the poster is torn down) / paid out (the board stamps a stub).</summary>
+        public static event Action<Contract> Taken, Paid;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() { Active.Clear(); taken.Clear(); Version = 0; Taken = null; Paid = null; }
 
         static readonly (string id, string name)[] Pests = { ("dog", "WILD DOGS"), ("boar", "BOARS"), ("wolf", "WOLVES"), ("rat", "GIANT RATS") };
 
@@ -115,6 +119,8 @@ namespace MadMax.Npc
             }
             else g.Toast("JOB TAKEN: " + c.title);
             Active.Add(c);
+            Version++;
+            Taken?.Invoke(c);
             MadMax.Game.Journal.Add("JOB", c.title);
             if (c.Escort) GuildEscort.Start(g, c);
         }
@@ -170,6 +176,8 @@ namespace MadMax.Npc
             if (c.chits > 0) g.Inventory.AddItem(Chit, c.chits);
             Factions.Shift(c.faction >= 0 ? (Faction)c.faction : c.Delivery || c.Escort ? Faction.FuelGuild : Faction.Settlers, c.rep);
             Active.Remove(c);
+            Version++;
+            Paid?.Invoke(c);
             MadMax.Audio.Sfx.Play2D("cash", 0.8f);
             g.Stats.Practice(MadMax.RPG.Skill.Speech, 3f);
             g.Toast("PAID " + pay + " SCRAP" + (c.chits > 0 ? " + " + c.chits + " CHITS" : ""));
@@ -222,6 +230,7 @@ namespace MadMax.Npc
             if (d.contracts != null) Active.AddRange(d.contracts);
             foreach (var c in Active) if (c.Escort && !c.completed && !c.failed) c.failed = true;    // the escorted rig isn't saved: the run is over
             if (d.contractsTaken != null) foreach (var t in d.contractsTaken) taken.Add(t);
+            Version++;
         }
     }
 }

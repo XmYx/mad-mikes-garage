@@ -278,7 +278,8 @@ namespace MadMax.Building
             return VoxelMesher.Build(g, cable ? "Furniture_cable" : "Furniture_pipe");
         }
 
-        /// <summary>Market stall: a plank counter under a striped awning on four poles, goods crates underneath.</summary>
+        /// <summary>Market stall: a plank counter under a striped awning on four poles, goods crates underneath (the wares on
+        /// the counter are what is stocked, drawn by <see cref="PlayerStall"/>).</summary>
         static VoxelGrid MarketStall()
         {
             var g = new VoxelGrid().Mat(Wood);
@@ -289,7 +290,6 @@ namespace MadMax.Building
             for (int z = -8; z <= 8; z++) g.Box(-13, 27 - Mathf.Abs(z) / 4, z, 13, 27 - Mathf.Abs(z) / 4, z, p => (p.x / 3 & 1) == 0 ? Pal.Crimson[3] : Pal.Cream[3]);   // awning
             g.Mat(Wood);
             g.Box(-9, 1, -4, -4, 5, 1, Pal.Ramp(Pal.Wood, 3, 1613)); g.Box(3, 1, -4, 9, 6, 1, Pal.Ramp(Pal.Wood, 2, 1614)); // crates
-            g.Box(-3, 12, 5, -1, 13, 6, Pal.Solid(Pal.Ochre[3])); g.Box(2, 12, 5, 4, 12, 6, Pal.Ramp(Pal.Crimson, 2));   // wares on the counter
             return g;
         }
 

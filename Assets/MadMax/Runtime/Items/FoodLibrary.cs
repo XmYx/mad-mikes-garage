@@ -108,6 +108,7 @@ namespace MadMax.Items
                 F("food_meat_stew", "MEAT STEW", 70, 10, 40, H("7a3a1a"), 0f, 10f),
                 F("food_fish_soup", "FISH SOUP", 46, 18, 30, H("c0a070"), 0f, 6f),
                 F("food_pancakes", "PANCAKES", 40, -2, 30, H("e0b060"), 0f, 3f),
+                F("food_breakfast", "YARD BREAKFAST", 44, 10, 25, H("f0c860"), 0f, 4f),          // eggs + milk: steady hands till noon (Nightly1027)
                 F("food_meat_pie", "MEAT PIE", 62, -2, 50, H("b07030"), 0f, 6f),
                 F("food_roast_dinner", "ROAST DINNER", 80, 4, 35, H("8a4a24"), 0f, 12f),
                 F("food_cornbread", "CORNBREAD", 36, -4, 60, H("e0b040")),

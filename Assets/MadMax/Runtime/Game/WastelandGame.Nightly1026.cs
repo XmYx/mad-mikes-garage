@@ -124,6 +124,7 @@ namespace MadMax.Game
             if (!ContextActions.Has("home.dog")) ContextActions.Register("home.dog", (g, t, into) => { if (t.item == null) g.DogOptions(t, into); });
             if (!townScarecrows && World != null) townScarecrows = new GameObject("TownScarecrows").AddComponent<TownScarecrows>();
             UpdateDogs();
+            UpdateNightly1027();
         }
     }
 }
