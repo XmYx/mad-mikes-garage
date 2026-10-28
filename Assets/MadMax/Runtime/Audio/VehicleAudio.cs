@@ -102,13 +102,16 @@ namespace MadMax.Audio
             if (chassis)
                 foreach (var s in chassis.Sockets)
                     if (s.accepts == PartCategory.Exhaust) { exhaustSocket = true; if (s.Current) { exhaustId = s.Current.partId; exhaust = s.Current.transform; exhaustPart = s.Current; } }
-            string key = engineId + "|" + exhaustId + "|" + exhaustSocket;
+            // a fitted turbo / supercharger kit is heard: spool, whistle and blow-off, or the roots whine (2026-10-28)
+            var tune = GetComponent<VehicleTuning>();
+            var air = tune && tune.supercharger ? Aspiration.Blower : tune && tune.turbo ? Aspiration.Turbo : (Aspiration?)null;
+            string key = engineId + "|" + exhaustId + "|" + exhaustSocket + "|" + air;
             if (key == fitted && exhaustVoice && tyres != null) return;
             fitted = key;
 
             uint seed = (uint)GetHashCode();
             engine = engineId == null || engineId == "engine_pedals" ? null
-                   : new EngineSynth(EngineProfile.For(engineId, exhaustId, exhaustSocket, eng ? eng.Spec : null), seed);   // pedals: silent
+                   : new EngineSynth(EngineProfile.For(engineId, exhaustId, exhaustSocket, KitSpec(eng, engineId, air)), seed);   // pedals: silent
             // the exhaust voice at the tailpipe (the exhaust part, else the rear of the body), the bay voice at the engine
             Vector3 tail;
             if (exhaust) tail = transform.InverseTransformPoint(exhaust.position);
@@ -126,6 +129,16 @@ namespace MadMax.Audio
             if (driveline == null) driveline = new DrivelineSynth(seed * 17u);
             if (!drivelineVoice) drivelineVoice = SynthVoice.Create(transform, "DrivelineAudio", new Vector3(0f, 0.35f, 0f), driveline, 35f);
             else drivelineVoice.synth = driveline;
+        }
+
+        /// <summary>The engine's spec with a tuning kit's forced induction (a copy: the engine keeps its own).</summary>
+        static EngineSpec KitSpec(EngineStats eng, string engineId, Aspiration? air)
+        {
+            if (!air.HasValue || !eng) return eng ? eng.Spec : null;
+            if (eng.Spec != null && eng.Spec.air == air.Value) return eng.Spec;
+            var s = EngineSpec.For(engineId, eng.maxTorque, eng.maxRpm);
+            s.air = air.Value;
+            return s;
         }
 
         Bounds BodyBounds()

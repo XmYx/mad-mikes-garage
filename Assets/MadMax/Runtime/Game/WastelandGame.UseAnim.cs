@@ -9,7 +9,7 @@ namespace MadMax.Game
     public enum UseKind
     {
         None, Reach, FlipSwitch, Press, LiftLid, PullCord, Pump, Crank, TurnValve, Kneel, Search, PickUp, PickHigh, Pour, Stoke,
-        Push, Drag, Milk, Shear, Hitch, Talk, Eat, Drink, Wave, LieDown, Climb, Wrench
+        Push, Drag, Milk, Shear, Hitch, Talk, Eat, Drink, Wave, LieDown, Climb, Wrench, Throw
     }
 
     /// <summary>The use animation for one [E]/[T] (default from the game's table by component type; a piece overrides it
@@ -341,6 +341,7 @@ namespace MadMax.Game
                 case UseKind.Drink: reach = 0.3f; follow = 0.7f; clip = "drink"; break;
                 case UseKind.Wave: reach = 0.35f; follow = 1.05f; clip = "wave"; break;
                 case UseKind.Wrench: reach = 0.7f; follow = 0.4f; clip = "wrench"; break;
+                case UseKind.Throw: reach = 0.46f; follow = 0.4f; break;                                 // wind-up and whip, then the follow-through (WastelandGame.Throwing)
                 default: reach = 0.4f; follow = 0.35f; break;                                            // Reach and the rest
             }
         }
@@ -548,6 +549,7 @@ namespace MadMax.Game
         /// <summary>The use pose: from rest into the contact pose over the reach (u), out of it again over the follow (f).</summary>
         static ToolPose UsePose(UseKind k, float u, float f, float t, float h, float dist, float body)
         {
+            if (k == UseKind.Throw) return ThrowPose(u, f);
             ArmFor(h, dist, body, out float arm, out float chest, out float knees);
             float s = Mathf.Sin(t * Mathf.PI * 2f * 1.5f);
             ToolPose c, after;

@@ -326,6 +326,7 @@ namespace MadMax.Game
 
         partial void AnimUpdate()
         {
+            UpdateThrowing();                                                                         // a throw cut short (into a car) stops before its release (WastelandGame.Throwing)
             UseAnimUpdate();                                                                          // reaching, kneeling, pumping at pieces (WastelandGame.UseAnim)
             float dt = Time.deltaTime;
             CloseHoods(dt);

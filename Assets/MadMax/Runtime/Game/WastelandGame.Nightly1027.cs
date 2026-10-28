@@ -229,6 +229,7 @@ namespace MadMax.Game
             if (!ContextActions.Has("town.scarecrow")) ContextActions.Register("town.scarecrow", (g, t, into) => { if (t.item == null) g.ScarecrowOptions(t, into); });
             UpdateBreakfastCrew();
             UpdateLookouts();
+            UpdateNightly1028();
         }
 
         void Save1027(List<string> lines)

@@ -205,8 +205,10 @@ namespace MadMax.Game
             if (redecal) inv.TrySpend(ResourceType.Scrap, 1);
             paintWasColour = p.colour; paintWasDecal = p.decal;
             game.Stats.Practice(MadMax.RPG.Skill.Mechanics, 2f);
-            MadMax.Audio.Sfx.Play("pour", p.transform.position, 0.6f, 1.6f);
             game.Toast("FRESH PAINT: " + MadMax.Vehicles.VehiclePaint.ColourNames[p.colour] + (p.decal > 0 ? " WITH " + MadMax.Vehicles.Decals.Names[p.decal] : ""));
+            var booth = MadMax.Building.PaintBooth.For(p.GetComponent<MadMax.Vehicles.VehicleDriver>());
+            if (booth) { booth.Queue(p.GetComponent<MadMax.Vehicles.VehicleDriver>(), p.colour); Close(); return; }   // the booth sprays it once the page is shut
+            MadMax.Audio.Sfx.Play("pour", p.transform.position, 0.6f, 1.6f);
             Rebuild();
         }
 

@@ -50,6 +50,10 @@ namespace MadMax.Audio
                 case "anvil": d = Ring(rnd, 0.6f, 1180f, 2930f, 0.16f); break;
                 case "snip": d = Snip(rnd); break;
                 case "pry_snap": d = Snap(rnd); break;
+                case "strike": d = Strike(rnd); break;
+                case "whoosh": d = Whoosh(rnd); break;
+                case "nitrous": d = Seamless(Hiss(rnd, 1.2f, 2600f, 9000f)); break;
+                case "spray": d = Seamless(Hiss(rnd, 1.2f, 1800f, 7000f)); break;
                 default: return null;
             }
             var clip = AudioClip.Create("Synth_" + key, d.Length, 1, Rate, false);
@@ -498,6 +502,54 @@ namespace MadMax.Audio
             LowPass(x, 900f);
             for (int i = 0; i < n; i++) { float t = i / (float)Rate; x[i] += Mathf.Sin(2f * Mathf.PI * 100f * t) * 0.35f + Mathf.Sin(2f * Mathf.PI * 300f * t) * 0.1f; }
             Normalize(x, 0.4f);
+            return x;
+        }
+
+        /// <summary>A match struck or a lighter wheel: a rough scrape, the flare catching (a soft breathy burst).</summary>
+        static float[] Strike(System.Random r)
+        {
+            int n = (int)(0.5f * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                float scrape = t < 0.09f ? Noise(r) * (0.4f + 0.6f * Mathf.Abs(Mathf.Sin(t * 260f))) * 0.6f : 0f;
+                float flare = t >= 0.08f ? Noise(r) * Mathf.Exp(-(t - 0.08f) / 0.12f) * Mathf.Clamp01((t - 0.08f) / 0.02f) * 0.5f : 0f;
+                x[i] = scrape + flare;
+            }
+            HighPass(x, 900f);
+            Normalize(x, 0.6f);
+            return x;
+        }
+
+        /// <summary>Something thrown past the ear: band-limited air, swelling and falling with a pitch sweep.</summary>
+        static float[] Whoosh(System.Random r)
+        {
+            int n = (int)(0.38f * Rate);
+            var x = new float[n];
+            float y1 = 0f, y2 = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate, u = t / 0.38f;
+                float f = Mathf.Lerp(500f, 1500f, u) / Rate, q = 0.12f;                                      // resonant band sweeping up
+                float a = 2f * Mathf.Sin(Mathf.PI * f);
+                float hp = Noise(r) - y1 - q * y2;                                                             // state-variable filter
+                y2 += a * hp; y1 += a * y2;
+                x[i] = y2 * Mathf.Sin(Mathf.PI * u) * Mathf.Sin(Mathf.PI * u);
+            }
+            Normalize(x, 0.55f);
+            return x;
+        }
+
+        /// <summary>A gas hiss (nitrous purge, a spray gun): white noise between <paramref name="lo"/> and <paramref name="hi"/> Hz.</summary>
+        static float[] Hiss(System.Random r, float len, float lo, float hi)
+        {
+            int n = (int)(len * Rate);
+            var x = new float[n];
+            for (int i = 0; i < n; i++) x[i] = Noise(r) * (0.85f + 0.15f * Mathf.Sin(i * 0.0021f));
+            HighPass(x, lo);
+            LowPass(x, hi);
+            Normalize(x, 0.5f);
             return x;
         }
     }

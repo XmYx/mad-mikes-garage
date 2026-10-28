@@ -112,6 +112,8 @@ namespace MadMax.Game
         /// used instead of the move input while set; zero holds the player still. Tool swings wait.</summary>
         [System.NonSerialized] public Vector3? AutoWalk;
         GameObject prop;
+        /// <summary>The prop in the right hand (<see cref="HoldProp"/>), null when none.</summary>
+        public Transform HeldProp => prop ? prop.transform : null;
 
         /// <summary>Hold a prop (jerry can...) in the right hand instead of the tool.</summary>
         public void HoldProp(Mesh mesh, Material mat)

@@ -56,7 +56,24 @@ namespace MadMax.Items
                 case ItemCategory.Throwable:
                     if (id == "throw_dynamite") { for (int x = -2; x <= 2; x += 2) g.CylY(x, 0, 1f, 0, 6, Pal.Ramp(Pal.Crimson, 2)); g.Box(-2, 3, 1, 2, 3, 1, Pal.Solid(Pal.Cream[3])); g.Box(0, 7, 0, 0, 9, 0, Pal.Solid(Pal.Black[2])); }
                     else if (id == "throw_pipebomb") { g.CylY(0, 0, 1.6f, 0, 6, Pal.Ramp(Pal.Metal, 2)); g.CylY(0, 0, 2f, 0, 0, Pal.Ramp(Pal.Metal, 1)); g.CylY(0, 0, 2f, 6, 6, Pal.Ramp(Pal.Metal, 1)); g.Box(0, 7, 0, 0, 8, 0, Pal.Solid(Pal.Black[2])); }
-                    else { g.CylY(0, 0, 1.6f, 0, 5, Pal.Ramp(Pal.Glass, 2)); g.Box(0, 6, 0, 0, 8, 0, Pal.Solid(Pal.Cream[2])); g.Set(0, 9, 0, Pal.Solid(Pal.Amber)); }
+                    else if (id == "throw_smoke")
+                    {
+                        g.CylY(0, 0, 2f, 0, 5, p => p.y == 0 || p.y == 5 ? Pal.Metal[2] : p.y == 3 ? Pal.Ochre[3] : Pal.Moss[1 + ((p.x + p.z) & 1)]);   // olive can, a yellow band
+                        g.Box(0, 6, 0, 0, 6, 0, Pal.Solid(Pal.Metal[3])); g.Box(1, 6, 0, 2, 7, 0, Pal.Solid(Pal.Chrome[2]));                      // the fuze and its pull ring
+                        g.Box(-2, 1, 0, -2, 5, 0, Pal.Solid(Pal.Metal[1]));                                                                         // the spoon down the side
+                    }
+                    else if (id == "throw_rock")
+                    {
+                        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 3; y++) for (int z = -2; z <= 1; z++)
+                            if (x * x * 0.8f + (y - 1.6f) * (y - 1.6f) * 1.3f + (z + 0.4f) * (z + 0.4f) <= 4.4f) g.Set(x, y, z, p => Pal.Fur[1 + (((p.x * 7) ^ (p.y * 3) ^ (p.z * 5)) & 1) + (p.y >= 3 ? 1 : 0)]);
+                    }
+                    else
+                    {
+                        g.CylY(0, 0, 1.8f, 0, 4, p => p.y == 2 && (p.x + p.z) % 2 == 0 ? Pal.Cream[2] : Pal.Moss[1 + ((p.x + p.y) & 1)]);   // bottle-green glass, a scrap of label
+                        g.CylY(0, 0, 1.1f, 5, 6, Pal.Ramp(Pal.Moss, 2));                                          // the shoulder and neck
+                        g.Box(0, 7, 0, 0, 8, 0, Pal.Ramp(Pal.Cream, 1)); g.Set(1, 8, 0, Pal.Solid(Pal.Cream[1])); g.Set(0, 9, 0, Pal.Solid(Pal.Ochre[2]));   // the rag stuffed in, fuel-stained
+                        g.Box(0, 1, 0, 0, 2, 0, Pal.Solid(Pal.Ochre[1]));                                          // petrol inside
+                    }
                     break;
                 case ItemCategory.Ammo when id.StartsWith("bait_"):
                     g.CylY(0, 0, 2.4f, 0, 3, p => p.y == 3 ? Pal.Chrome[1] : Pal.Chrome[2]);                  // bait tin
@@ -75,6 +92,11 @@ namespace MadMax.Items
                     else if (id == ItemIds.Sponge) { g.Box(-3, 0, -2, 3, 3, 2, Pal.Solid(Pal.Hex("e8c848"))); g.Box(-3, 3, -2, 3, 3, 2, Pal.Solid(Pal.Hex("5aa050"))); g.Set(-1, 1, 2, Pal.Solid(Pal.Hex("b89830"))); g.Set(2, 2, 2, Pal.Solid(Pal.Hex("b89830"))); }
                     else if (id == ItemIds.Pills) { g.CylY(0, 0, 1.6f, 0, 4, Pal.Solid(Pal.Cream[3])); g.Box(-1, 5, -1, 1, 5, 1, Pal.Solid(Pal.TailR)); }
                     else if (id == ItemIds.Fertilizer) { g.Box(-3, 0, -2, 3, 5, 2, Pal.Ramp(Pal.Sand, 1)); g.Box(-1, 3, 3, 1, 4, 3, Pal.Solid(Pal.Hex("46862c"))); }
+                    else if (id == "coin_chit")
+                    {
+                        for (int k = 0; k < 3; k++) g.CylY(k == 2 ? 1 : 0, k == 1 ? 1 : 0, 2.3f, k, k, p => p.y == 2 && p.x * p.x + p.z * p.z < 2 ? Pal.Bronze[3] : Pal.Bronze[1 + (p.y & 1)]);   // a short stack of stamped brass chits
+                        g.Set(1, 3, 0, Pal.Solid(Pal.Black[2]));                                                   // the Guild's punch mark
+                    }
                     else if (ItemIds.IsCarKey(id))
                     {
                         g.Box(-1, 0, 0, 1, 2, 0, Pal.Ramp(Pal.Black, 1)); g.Set(0, 1, 0, Pal.Solid(Pal.Black[0]));                      // the bow

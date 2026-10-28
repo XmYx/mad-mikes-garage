@@ -2047,6 +2047,34 @@ food.yard_breakfast, npc.lookout_glint, towns.scarecrow_trade), `ScheduledScenar
 weapons.crossbow_cock, weapons.slingshot_band), `ScheduledScenarios1027Economy.cs` (economy.board_posters,
 economy.stall_display).
 
+Remodel pass 2026-10-28 (the 1027 "still thin" list, then sections 16–20). Sections 16–20 checked: heat haze, storms,
+caves, roller door, alarm bell and claim flag (both move via `PieceMotion`), turrets, campfires, the horn, maintenance and
+companions are alive; thin and now remodelled:
+- [x] **Throwing** (`Game/WastelandGame.Throwing`, `World/ThrownLit`, `UseKind.Throw`): a wind-up and a whip of the arm
+  (a gesture: you can throw on the run) with the thing in the hand — the molotov's rag catches with a match strike as the
+  arm goes back (flame, orange light, black smoke, a low roar), a fuse is lit and fizzes, the smoke can's pin clicks out;
+  it leaves the hand at the top of the whip with a swish, aimed by the camera's pitch in the over-the-shoulder views.
+  Thrown things fly as themselves (their item models, centred, end over end; the rag burning, the fuse glowing) instead
+  of grey cubes — also raiders' molotovs and online copies. Cut short before the release, the rag is smothered / the
+  fuse pinched and it goes back in the pack. New item models: smoke can (olive, yellow band, spoon and ring), throwing
+  rock, bottle-green molotov with its rag; `coin_chit` (a stack of stamped brass chits) has a model at last.
+- [x] **Paint station job** (`Building/PaintBooth`, `Vehicle/WetPaint`): paying closes the page and the gun works down
+  one flank, over the roof and down the other (a hiss loop, overspray in the new colour drifting on the wind); then the
+  paint is wet for 90 s and grit sticks to it on dusty ground, in a dust storm or rain (grime, one toast).
+- [x] **Nitrous and blowers heard** (`VehicleTuning`, `VehicleAudio`): firing a bottle purges a white jet out of the
+  bonnet line, a hiss thins out over the five seconds, frost puffs off the solenoid, a pop when it runs dry; a fitted
+  turbo / supercharger kit rebuilds the engine voice with forced induction (spool, whistle, blow-off / roots whine).
+- [x] **Armour you can hear** (`WastelandGame.Armour`): a blow the armour catches sparks and rings off plate and mail at
+  the struck body part, thuds and frays off soft armour; heavy kit jingles on every step (walking quietly, running loud).
+- [x] **Ambulance monitor** (`MedicalBay`): the bay's monitor beeps with your pulse while you are treated, quick while
+  badly hurt, slowing as you mend.
+- [ ] Still thin: the tuning bench is a menu (no dyno rev, fixed trace); welded armour plates pop on whole (no glowing
+  seam); NPCs throw without a wind-up; the HD look holds the voxel item model while winding up a throw; thrown things are
+  not in the HD prop pack (they use the world-item HD model when one exists).
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1028.cs` (weapons.throw_molotov, weapons.throw_interrupt,
+weapons.throw_rock, vehicle.paint_spray, vehicle.nitrous_purge, audio.turbo_kit, body.armour_deflect).
+
 ### Suggestions (tie the experience together)
 - [ ] **Wanted posters that age**: a boss's poster in town gets a red X when someone (the player or a rival) kills them;
   posters left up for days curl and fade; a pest poster's reward climbs while the pack keeps killing chickens.
@@ -2056,6 +2084,10 @@ economy.stall_display).
   the minimap while within 30 m; a quiver piece / belt slot holds them.
 - [ ] **Smoke on the skyline**: raider camps light a cook fire at dusk whose smoke column you can see (and binoculars can
   pin) from a kilometre off.
+- [ ] **Throwing practice**: bottles on a fence as a target piece; Firearms (throwing) skill tightens the arc preview,
+  and a long throw that lands is a journal brag.
+- [ ] **Rag and bottle economy**: empty bottles from drinks and broken windows' glass, rags from torn clothes and a fuel
+  can make molotovs by hand (HANDCRAFT), so throwing ties into the drink / cloth / fuel loops.
 - [ ] **A wash tub**: a tub piece with a scrubbing animation (and a washboard rattle) instead of the kneel gesture, fed
   from a tap / drum.
 

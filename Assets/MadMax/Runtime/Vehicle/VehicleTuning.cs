@@ -34,12 +34,24 @@ namespace MadMax.Vehicles
         void Awake() { driver = GetComponent<VehicleDriver>(); chassis = GetComponent<VehicleChassis>(); }
         void Start() { Capture(); Apply(); }
 
+        bool hissing;
         void Update()
         {
-            if (!NitrousOn) return;
+            if (!NitrousOn)
+            {
+                if (hissing) { hissing = false; MadMax.Audio.Sfx.Loop(this, "nitrous", 0f, 1f, 30f); MadMax.Audio.Sfx.Play("pop", transform.position, 0.4f, 1.6f, 25f); }
+                return;
+            }
+            hissing = true;
+            float left = Mathf.Clamp01((nitrousUntil - Time.time) / 5f);
             var back = transform.position - transform.forward * 2.2f + transform.up * 0.5f;                  // blue flame out of the back
             if (Random.value < Time.deltaTime * 30f) MadMax.World.Fx.Sparks(back, -transform.forward * 3f, 2, new Color(0.4f, 0.6f, 1f));
+            // the bottle empties with a hiss that thins out; frost puffs off the solenoid under the bonnet
+            MadMax.Audio.Sfx.Loop(this, "nitrous", 0.25f + 0.25f * left, 0.85f + 0.3f * left, 30f);
+            if (Random.value < Time.deltaTime * 6f) MadMax.World.Fx.Smoke(transform.position + transform.forward * 1.2f + transform.up * 0.9f, transform.up * 0.6f, 0.12f, new Color(0.92f, 0.95f, 1f, 0.5f), 0.6f);
         }
+
+        void OnDisable() { if (hissing) { hissing = false; MadMax.Audio.Sfx.Loop(this, "nitrous", 0f, 1f, 30f); } }
 
         void Capture()
         {
@@ -89,6 +101,9 @@ namespace MadMax.Vehicles
 
         // ------------------------------------------------------------------ what the driver and systems read
         public bool NitrousOn => Time.time < nitrousUntil;
+        /// <summary>Bottles fired (tests).</summary>
+        public static int NitrousFired;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetNitrous() => NitrousFired = 0;
 
         /// <summary>Engine torque multiplier at a fraction of max rpm.</summary>
         public float TorqueFactor(float rpmFrac)
@@ -126,6 +141,11 @@ namespace MadMax.Vehicles
         {
             if (nitrous <= 0 || NitrousOn) return false;
             nitrous--; nitrousUntil = Time.time + 5f;
+            // the purge: a white jet out of the bonnet line before the kick
+            var nose = transform.position + transform.forward * 1.6f + transform.up * 0.8f;
+            for (int i = 0; i < 6; i++) MadMax.World.Fx.Smoke(nose, transform.up * 2.5f + transform.right * Random.Range(-0.8f, 0.8f), 0.2f, new Color(0.95f, 0.97f, 1f, 0.7f), 0.8f);
+            MadMax.Audio.Sfx.Play("nitrous", nose, 0.7f, 1.3f, 30f);
+            NitrousFired++;
             return true;
         }
 

@@ -12,7 +12,10 @@ namespace MadMax.Vehicles
     {
         public float healRate = 5f;              // × the normal healing speed
         InteriorSpace space;
-        float inside, toastAt;
+        float inside, toastAt, beepT;
+        /// <summary>Monitor beeps heard (tests).</summary>
+        public static int Beeps;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => Beeps = 0;
 
         void Awake() => space = GetComponent<InteriorSpace>();
 
@@ -32,6 +35,14 @@ namespace MadMax.Vehicles
                 if (inside > 2f) inj.severity = Mathf.Max(0f, inj.severity - dt * (healRate - 1f) / (inj.HealMinutes * 60f));
             }
             if (inside > 2f) s.health = Mathf.Min(s.MaxHealth, s.health + dt * 0.25f * healRate);
+            // the bay's monitor picks up the pulse: quick while you are hurt, slowing as you mend (2026-10-28)
+            float hurt = 1f - Mathf.Clamp01(s.health / Mathf.Max(1f, s.MaxHealth));
+            if (inside > 1f && (beepT -= dt) <= 0f)
+            {
+                beepT = Mathf.Lerp(1.05f, 0.5f, hurt);
+                MadMax.Audio.Sfx.Play("ding", g.Player.transform.position + Vector3.up * 0.6f, 0.12f, 2.4f, 6f);
+                Beeps++;
+            }
             if (treated && Time.time > toastAt) { toastAt = Time.time + 8f; g.Toast("THE AMBULANCE BAY PATCHES YOU UP"); g.Stats.Practice(Skill.Survival, 1f); }
         }
     }

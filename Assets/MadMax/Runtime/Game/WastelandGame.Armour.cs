@@ -11,7 +11,9 @@ namespace MadMax.Game
     public partial class WastelandGame
     {
         static readonly Dictionary<(string, int), float> coverCache = new Dictionary<(string, int), float>();
-        float armourNoiseT, deflectToastT;
+        float armourNoiseT, deflectToastT, armourStepT;
+        /// <summary>Armour jingles played (tests).</summary>
+        public static int ArmourSteps;
 
         public static int KindOf(string cause) => cause switch
         {
@@ -59,12 +61,41 @@ namespace MadMax.Game
         }
 
         /// <summary>The armour on a zone caught a wound: it takes the wear instead.</summary>
-        void Deflected(BodyZone z, float amount)
+        internal void Deflected(BodyZone z, float amount)
         {
             TearClothes(z, amount / 90f);
             if (Time.time > deflectToastT) { deflectToastT = Time.time + 4f; Toast("YOUR ARMOUR TOOK THE BLOW (" + Injury.ZoneNames[(int)z] + ")"); }
-            MadMax.Audio.Sfx.Play("hit_metal", Player.transform.position + Vector3.up, 0.5f, 1.3f);
+            // where it struck: plate and mail ring and spark, soft armour (kevlar, leather, tyre rubber) thuds and frays (2026-10-28)
+            ClothingDef best = null; float cover = 0f;
+            foreach (var d in Worn()) { float c = Cover(d, z); if (d.armor != null && c > cover) { cover = c; best = d; } }
+            bool hard = best != null && best.noise >= 0.15f;
+            var at = Player.Rig ? Player.Rig.Bone(ZoneBone(z)).position : Player.transform.position + Vector3.up;
+            var away = at - Player.transform.position; away.y = 0f;
+            var dir = (away.sqrMagnitude > 0.001f ? away.normalized : Player.transform.forward) + Vector3.up * 0.4f;
+            if (hard)
+            {
+                MadMax.World.Fx.Sparks(at, dir, 8, new Color(1f, 0.8f, 0.45f));
+                MadMax.Audio.Sfx.Play("hit_metal", at, 0.55f, Random.Range(1.2f, 1.45f), 30f);
+            }
+            else
+            {
+                MadMax.World.Fx.Smoke(at, dir * 0.6f, 0.08f, new Color(0.5f, 0.46f, 0.4f, 0.6f), 0.6f);
+                MadMax.Audio.Sfx.Play("punch", at, 0.5f, 0.7f, 20f);
+            }
+            LastDeflectHard = hard; Deflections++;
         }
+
+        /// <summary>Blows the armour caught, and whether the last one rang off metal (tests).</summary>
+        public static int Deflections;
+        public static bool LastDeflectHard;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetDeflects() { Deflections = 0; LastDeflectHard = false; ArmourSteps = 0; }
+
+        static BodyPart ZoneBone(BodyZone z) => z switch
+        {
+            BodyZone.Head => BodyPart.Head, BodyZone.ArmL => BodyPart.UpperArmL, BodyZone.ArmR => BodyPart.UpperArmR,
+            BodyZone.HandL => BodyPart.HandL, BodyZone.HandR => BodyPart.HandR, BodyZone.LegL => BodyPart.ThighL, BodyZone.LegR => BodyPart.ThighR,
+            BodyZone.FootL => BodyPart.ShinL, BodyZone.FootR => BodyPart.ShinR, _ => BodyPart.Chest
+        };
 
         /// <summary>Clank of the worn armour (0..1+).</summary>
         public float ArmourNoise { get { float n = 0f; foreach (var d in Worn()) n += d.noise; return n; } }
@@ -73,11 +104,19 @@ namespace MadMax.Game
         {
             float noise = Mathf.Min(1f, ArmourNoise);
             if (noise < 0.05f || Current || !Player || Player.Velocity.sqrMagnitude < 1f) return;
+            // a jingle on every step for heavy kit (walking too, quieter), a plate's knock now and then
+            if ((armourStepT -= dt) <= 0f && noise > 0.25f)
+            {
+                armourStepT = Player.run ? 0.34f : 0.55f;
+                float vol = Mathf.Min(0.3f, noise * 0.22f) * (Player.run ? 1f : 0.5f);
+                MadMax.Audio.Sfx.Play("chain", Player.transform.position + Vector3.up * 1.1f, vol, Random.Range(1.6f, 1.9f), 12f);
+                if (Random.value < 0.2f) MadMax.Audio.Sfx.Play("hit_metal", Player.transform.position + Vector3.up * 1.1f, vol * 0.4f, Random.Range(1.9f, 2.2f), 10f);
+                ArmourSteps++;
+            }
             if ((armourNoiseT -= dt) > 0f) return;
             armourNoiseT = 0.7f;
             float radius = (4f + noise * 12f) * (Player.run ? 1.8f : 1f);
             MadMax.Npc.NpcDirector.Instance?.Noise(Player.transform.position, radius);
-            if (Player.run && noise > 0.3f) MadMax.Audio.Sfx.Play("chain", Player.transform.position + Vector3.up, Mathf.Min(0.35f, noise * 0.3f), 1.5f, 15f, 0.4f);
         }
 
         /// <summary>Armour on an NPC (raiders): share of a hit it stops, from what they wear.</summary>

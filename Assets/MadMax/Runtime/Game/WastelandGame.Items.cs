@@ -129,63 +129,6 @@ namespace MadMax.Game
             }
         }
 
-        void Throw(string id)
-        {
-            if (Current || !Vitals.Spend(6f)) return;
-            if (!Inventory.TakeItem(id)) return;
-            var t = Player.transform;
-            float power = 10f + Stats.Attribute(Attr.Strength) * 0.6f;
-            var p = t.position + Vector3.up * 1.6f + t.forward * 0.5f;
-            var v = t.forward * power + Vector3.up * (4f + power * 0.15f) + Player.Velocity;
-            var net = MadMax.Net.NetSession.Instance;
-            bool authority = !(net && net.IsClient);
-            SpawnThrown(id, p, v, authority, true);
-            net?.SendThrow(id, p, v);
-            Stats.Practice(Skill.Firearms, 1f);
-        }
-
-        /// <summary>A thrown bottle. Only the authority's bottle starts the fire (clients see a visual copy).</summary>
-        public void SpawnThrown(string id, Vector3 p, Vector3 v, bool authority, bool byPlayer = false)
-        {
-            bool dynamite = id == "throw_dynamite", pipe = id == "throw_pipebomb", smoke = id == "throw_smoke", rock = id == "throw_rock";
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = dynamite ? "Dynamite" : pipe ? "PipeBomb" : smoke ? "SmokeBomb" : rock ? "Rock" : "Molotov";
-            go.transform.localScale = dynamite ? new Vector3(0.07f, 0.24f, 0.07f) : pipe ? new Vector3(0.09f, 0.26f, 0.09f) : smoke ? new Vector3(0.1f, 0.16f, 0.1f) : rock ? Vector3.one * 0.1f : new Vector3(0.09f, 0.22f, 0.09f);
-            go.transform.position = p;
-            go.GetComponent<MeshRenderer>().sharedMaterial = propMaterial;
-            var col = go.GetComponent<Collider>();
-            if (Player && Player.TryGetComponent<Collider>(out var pc)) Physics.IgnoreCollision(col, pc);
-            var rb = go.AddComponent<Rigidbody>();
-            rb.mass = 0.8f;
-            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            rb.linearVelocity = v;
-            rb.angularVelocity = Random.insideUnitSphere * 8f;
-            if (rock) { var rk = go.AddComponent<MadMax.World.Molotov>(); rk.rock = true; rk.authority = authority; go.GetComponent<MeshRenderer>().material.color = new Color(0.45f, 0.42f, 0.4f); return; }
-            if (smoke)
-            {
-                var sb = go.AddComponent<MadMax.World.Explosive>();
-                sb.authority = authority; sb.smoke = true; sb.fuse = 1.8f;
-                go.GetComponent<MeshRenderer>().material.color = new Color(0.35f, 0.4f, 0.3f);
-                var wk = new GameObject("Wick"); wk.transform.SetParent(go.transform, false); wk.transform.localPosition = new Vector3(0f, 0.6f, 0f);
-                return;
-            }
-            if (dynamite || pipe)
-            {
-                // a lit fuse, then the bang: dynamite breaks rock and digs craters, a pipe bomb shreds what stands near
-                var ex = go.AddComponent<MadMax.World.Explosive>();
-                ex.authority = authority; ex.source = Player ? Player.gameObject : null;
-                ex.fuse = dynamite ? 4f : 3f; ex.radius = dynamite ? 3.2f : 2.2f; ex.power = dynamite ? 8f : 5f; ex.crater = dynamite ? 1.2f : 0.3f;
-                var r = go.GetComponent<MeshRenderer>();
-                r.material.color = dynamite ? new Color(0.75f, 0.12f, 0.08f) : new Color(0.4f, 0.4f, 0.42f);
-                var wick = new GameObject("Wick");
-                wick.transform.SetParent(go.transform, false); wick.transform.localPosition = new Vector3(0f, 0.6f, 0f);
-                return;
-            }
-            var mo = go.AddComponent<MadMax.World.Molotov>(); mo.authority = authority; mo.byPlayer = byPlayer;
-            var fire = new GameObject("Wick").AddComponent<Light>();
-            fire.transform.SetParent(go.transform, false); fire.type = LightType.Point; fire.range = 3f; fire.intensity = 1.5f; fire.color = new Color(1f, 0.6f, 0.2f);
-        }
-
         /// <summary>A vehicle for an NPC driver (traders, raiders). Registered like any other; not saved while AI-driven.</summary>
         public VehicleDriver SpawnAiVehicle(string design, Vector3 p, Quaternion r)
         {
