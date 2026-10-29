@@ -88,6 +88,7 @@ namespace MadMax.Game
             Gesture(f.hunger <= 0f && f.thirst > 0f ? UseKind.Drink : UseKind.Eat, id);              // the hand to the mouth with it
             MedMineAte(id);                                                               // willow-bark tea
             Ate1027(id, table > 0f);                                                      // breakfast from the yard
+            Ate1029(id);                                                                  // the empty bottle is kept
         }
 
         public void Drink(float thirst, bool dirty)

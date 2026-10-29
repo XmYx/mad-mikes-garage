@@ -486,7 +486,7 @@ namespace MadMax.Npc
             if (!shooter || !shooter.enabled) return;
             var from = shooter.transform.position + Vector3.up * 1.6f;
             float d = Vector3.Distance(from, target.position);
-            if (d < 26f && UnityEngine.Random.value < 0.18f && d > 7f) ThrowBottle(g, from, target);
+            if (d < 26f && UnityEngine.Random.value < 0.18f && d > 7f) RaiderBottle.Light(shooter, target);   // lit at the window, thrown a moment later (RaiderBottle; one at a time per car)
             else if (d < 22f) Npc.Blast(shooter.gameObject, from, target.position + Vector3.up * 0.8f, d, HasTurret(shooter) ? 1.8f : 1f);
         }
 
@@ -496,15 +496,6 @@ namespace MadMax.Npc
         {
             foreach (var p in c.GetComponentsInChildren<VehiclePart>()) if (p.category == PartCategory.Weapon && p.Socket) return true;
             return false;
-        }
-
-        void ThrowBottle(WastelandGame g, Vector3 from, Transform target)
-        {
-            var rb = target.GetComponentInParent<Rigidbody>();
-            var aimAt = target.position + (rb && !rb.isKinematic ? rb.linearVelocity * 0.8f : Vector3.zero);
-            float T = Mathf.Clamp(Vector3.Distance(from, aimAt) / 16f, 0.5f, 1.6f);
-            var v = (aimAt - from) / T - 0.5f * Physics.gravity * T;
-            g.SpawnThrown("throw_molotov", from + v.normalized * 1.2f, v, true);
         }
 
         void Leave()

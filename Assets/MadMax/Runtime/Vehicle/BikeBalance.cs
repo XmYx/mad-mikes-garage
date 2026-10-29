@@ -44,6 +44,7 @@ namespace MadMax.Vehicles
                 zmin = Mathf.Min(zmin, z); zmax = Mathf.Max(zmax, z);
             }
             wheelbase = Mathf.Max(0.8f, zmax - zmin);
+            if (!sidecar && !GetComponent<Kickstand>()) gameObject.AddComponent<Kickstand>();      // the side stand it rests on when parked
         }
 
         /// <summary>Back on the bike: pick it up.</summary>

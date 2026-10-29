@@ -212,6 +212,13 @@ namespace MadMax.World
                     if (net && net.IsClient) { }                                                      // the host spawns it; clients get it as a vehicle
                     else if (g && g.FoundAircraft.Add(p.site.Key)) g.SpawnFound(e.visual, at + Vector3.up * 0.4f, q * Quaternion.Euler(0f, e.yaw, 0f));
                 }
+                else if (e.kind == "windsock")
+                {
+                    var go = new GameObject("Windsock");
+                    go.transform.SetParent(parent, true);
+                    go.transform.SetPositionAndRotation(at, q);
+                    go.AddComponent<Windsock>();
+                }
                 else if (e.kind == "lamp")
                 {
                     var go = new GameObject("BunkerLamp");
@@ -384,13 +391,7 @@ namespace MadMax.World
             g.Box(hx1 - 4, 28, hz1 - 2, hx1, 28, hz1 - 2, Pal.Ramp(Pal.Metal, 2, 2603));
             // windsock by the strip
             int wx = -L - 12, wz = -R - 10;
-            g.Box(wx, 0, wz, wx, 26, wz, Pal.Ramp(Pal.Metal, 2, 2604));
-            for (int i = 0; i < 9; i++)
-            {
-                var band = (i / 2) % 2 == 0 ? Pal.Ramp(Pal.Ochre, 3, 2605) : Pal.Ramp(Pal.Cream, 3, 2606);
-                int r = i < 3 ? 1 : 0;
-                g.Box(wx - r, 25 - i / 3 - r, wz + 1 + i, wx + r, 25 - i / 3 + r, wz + 1 + i, band);
-            }
+            g.Box(wx, 0, wz, wx, 26, wz, Pal.Ramp(Pal.Metal, 2, 2604));                       // the mast; the sock swings on it (World/Windsock)
             // fuel drums by the door
             g.Mat((byte)ResourceType.Scrap);
             for (int i = 0; i < 4; i++)
@@ -401,7 +402,7 @@ namespace MadMax.World
             float V = BunkerVoxel;
             Kit(extras, "Site_Airfield_Hangar", Vector3.zero);                                    // HD kit on the same plan
             Kit(extras, "Site_Airfield_RadioHut", new Vector3(hx0, 0f, hz0) * V);
-            Kit(extras, "Site_Airfield_Windsock", new Vector3(wx, 0f, wz) * V);
+            extras.Add(new Extra { kind = "windsock", local = new Vector3(wx, 0f, wz) * V });        // a live sock (its own mast in HD)
             Kit(extras, "Site_Airfield_Drums", new Vector3(-L - 4, 0f, -R + 6) * V);
             string plane = rnd.NextDouble() < 0.5 ? "Ultralight" : "Gyrocopter";
             extras.Add(new Extra { kind = "aircraft", visual = plane, local = new Vector3(2f, 0f, 0f) * 1f, yaw = -90f });

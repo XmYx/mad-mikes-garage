@@ -818,6 +818,7 @@ namespace MadMax.Animals
             float wphase = phase * Mathf.PI * 2f;
             // hooves (the big ones) on each half stride, near the listener
             int half = Mathf.FloorToInt(phase * 2f);
+            StepAndBreathe(dt, s, half, half != lastHalf);                                   // prints in soft ground, breath in the cold (Animal.Prints)
             if (half != lastHalf)
             {
                 lastHalf = half;

@@ -71,7 +71,7 @@ namespace MadMax.Game
             var item = ClothingLibrary.ItemId(d);
             Inventory.TakeItem(item);
             if (Inventory.GetItem(item) <= 0) Player.Rig.outfit.Remove(d.id);
-            Toast("YOUR " + d.name + " FELL APART" + (Inventory.GetItem(item) > 0 ? " (PUT ON A SPARE)" : ""));
+            Toast("YOUR " + d.name + " FELL APART" + Rags1029(d) + (Inventory.GetItem(item) > 0 ? " (PUT ON A SPARE)" : ""));
         }
 
         /// <summary>Cloth it takes to mend a garment fully.</summary>

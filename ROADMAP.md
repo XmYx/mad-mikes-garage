@@ -2086,10 +2086,59 @@ weapons.throw_rock, vehicle.paint_spray, vehicle.nitrous_purge, audio.turbo_kit,
   pin) from a kilometre off.
 - [ ] **Throwing practice**: bottles on a fence as a target piece; Firearms (throwing) skill tightens the arc preview,
   and a long throw that lands is a journal brag.
-- [ ] **Rag and bottle economy**: empty bottles from drinks and broken windows' glass, rags from torn clothes and a fuel
-  can make molotovs by hand (HANDCRAFT), so throwing ties into the drink / cloth / fuel loops.
+- [x] **Rag and bottle economy** (2026-10-29): a bottled drink (soda, water, beer, cider, mead) leaves its empty bottle
+  (glass in the pack, "EMPTY BOTTLE" in the item feed); a garment that falls apart leaves rags (2 cloth off a coat, jacket
+  or trousers, 1 off the rest; armour mended with other stuff and packs/belts leave none) — with a litre of fuel that is
+  a hand-made MOLOTOV. Open: broken windows' glass as a pickup.
 - [ ] **A wash tub**: a tub piece with a scrubbing animation (and a washboard rattle) instead of the kneel gesture, fed
   from a tap / drum.
+
+## Scheduled update (2026-10-29)
+Done this pass: the rag and bottle economy (ticked above), a raider wind-up for thrown bottles (the 1028 "NPCs throw
+without a wind-up"). Remodel audit of roadmap sections 21–25 (factions, parkour, animals, two-wheelers, aviation).
+Already alive: faction standing / territory toasts, gang scarecrows and road ground, vault / mantle / slide / roll poses,
+animal gaits, calls, herds, riding, bike lean / counter-steer / wheelies, flight surfaces, the trike wing and gyro disc
+tilting, spinning props. Thin, now remodelled:
+- [x] **Airfield windsock** (`World/Windsock`; was painted into the hangar grid pointing one way): five banded segments on
+  a swivel ring at the mast top; the ring swings downwind on a damped spring (lags a veer, overshoots, wanders in gusts,
+  squeaks when it swings hard), each segment stands out in turn — one stripe per ~1.5 m/s, straight out at 7.7 m/s
+  (15 knots) — and it hangs limp in a calm; the tail flicks in the gusts. The flight panel reads it within 600 m
+  ("SOCK NW 3/5"). The HD kit module for the sock is no longer placed (the mast is the grid's).
+- [x] **Breath in the cold** (`World/ColdBreath`, `HumanAnimator.Breath`, `Animal.Prints`): below 4 °C every person and
+  warm-blooded animal within 35 m breathes clouds — every ~4 s at rest, quicker running / out of breath / fleeing,
+  thicker below −8 °C and in rain, drifting on the wind; a hen a wisp, horses and cattle a pair of jets from the
+  nostrils; never seated in a vehicle, never with the head under water.
+- [x] **Animal prints** (`Animal.Prints`, `Fx.Print`): every footfall in snow, mud or loose desert sand prints a hoof /
+  paw / bird's foot under the leg that came down (diagonal pairs, sized by weight), fading like footprints.
+- [x] **Parkour contact** (`PlayerCharacter.Contact`): the hands meet what they vault and climb at the moment they land —
+  a clang off a car, a knock off planks, a scuff off brick and stone, the ground's own step sound — with dust / rust /
+  splinters of it; a mantle catches the edge with both hands, then the knee scrapes over (the old "punch" at the start
+  is gone). A slide hisses over the ground with a dust trail in its colour (snow powder, mud, sand, grit); a landing
+  from more than a hop (> 4.5 m/s) thumps down with a ring of dust that grows with the fall.
+- [x] **Raiders light the bottle first** (`Npc/RaiderBottle`): the rag catches with a match strike at the window on the
+  side facing you, the bottle is held out burning (its light on the door, black smoke) and swung back, thrown 0.9 s
+  later at where you will be — time to swerve. A car knocked out in that moment drops it beside itself. Host side only
+  (clients see it in flight).
+- [x] **Kickstand** (`Vehicle/Kickstand`, added by `BikeBalance` on solo bikes): a strut on the left of the frame ahead
+  of the rear wheel, kicked down with a click when the bike is parked so the parked lean rests on it, folded up along
+  the frame as soon as it is ridden.
+- [ ] Still thin: faction territory has no marks on the ground beyond the town scarecrows (no painted road signs or
+  tyre cairns at a gang's edge); vehicles have no windsock-like cue for the wind on the road; NPC throws still come from
+  the car's centre line (no visible arm); animals still don't path round parked cars; the `animals.yard_dog` nap
+  failure of 2026-10-27 is still undiagnosed.
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1029.cs` (aviation.windsock, living.cold_breath, animals.prints_breath,
+parkour.contact, npc.raider_bottle, vehicle.kickstand, items.rag_and_bottle).
+
+### Suggestions (tie the experience together)
+- [ ] **Gang marks on the road**: a gang's ground starts at a painted sign or a tyre cairn in its colours (with the
+  emblem), shot-up and burnt once you have beaten that gang there.
+- [ ] **Frost on the glass**: below 0 °C parked cars' windows ice over (a white film); the heater (or a scrape) clears it,
+  first person sees through a clearing patch.
+- [ ] **Tracking**: animal prints carry their species and age (fresh / hours / a day); with the Survival skill the context
+  menu on a print names the animal and points the way it went — a way to find the herd for a hunt.
+- [ ] **Steam off a hot engine**: in the cold, a just-run engine smokes off the bonnet and a warm horse steams after a gallop.
+- [ ] **Fly-in arrivals**: landing on a town's straight road brings the kids running and a trader asking for a ride.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)

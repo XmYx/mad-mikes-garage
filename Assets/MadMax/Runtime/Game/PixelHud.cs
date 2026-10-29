@@ -671,6 +671,8 @@ namespace MadMax.Game
             canvas.Rect(hx + hw / 2 - 3, by, 1, 5, Dim); canvas.Rect(hx + hw / 2 + 3, by, 1, 5, Dim);
             int ball = Mathf.RoundToInt(Mathf.Clamp(-f.Sideslip * 0.6f, -(hw / 2 - 11), hw / 2 - 11));
             canvas.Rect(hx + hw / 2 - 1 + ball, by + 1, 3, 3, Mathf.Abs(f.Sideslip) > 8f ? Amber : Text);
+            var sock = MadMax.World.Windsock.Nearest(car.transform.position, 600f);               // the field's windsock read from the air
+            if (sock) canvas.Text(x + 4, y + 42, sock.Reading, Dim);
             if (f.StallWarning && !f.Stalled && (Time.time * 3f) % 1f > 0.5f) canvas.Text(x + 62, y + 40, "STALL WARN", Amber);
             if (f.Stalled && (Time.time * 3f) % 1f > 0.35f)
             {

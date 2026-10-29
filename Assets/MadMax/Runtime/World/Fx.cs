@@ -208,6 +208,21 @@ namespace MadMax.World
             I.AddQuad(p - f - s, p - f + s, p + f - s, p + f + s, col);
         }
 
+        /// <summary>An animal's print (hoof, paw, a bird's foot): <paramref name="len"/> × <paramref name="wid"/> m, in the
+        /// same soft ground that keeps footprints.</summary>
+        public static void Print(Vector3 p, Vector3 fwd, float len, float wid)
+        {
+            var col = TrackColor(p, out bool any);
+            if (!any) return;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-4f) return;
+            fwd.Normalize();
+            var side = Vector3.Cross(Vector3.up, fwd);
+            p += Vector3.up * 0.02f;
+            Vector3 f = fwd * (len * 0.5f), s = side * (wid * 0.5f);
+            I.AddQuad(p - f - s, p - f + s, p + f - s, p + f + s, col);
+        }
+
         void AddQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color32 col)
         {
             int v = trackHead * 4;

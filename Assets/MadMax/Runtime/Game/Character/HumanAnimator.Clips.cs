@@ -71,6 +71,7 @@ namespace MadMax.Game
             TalkNods(dt, s);
             ChewAndShiver(s);
             HitLean(s);
+            Breathe(dt, s);                                                               // a cloud in the cold (HumanAnimator.Breath)
             if (face)
             {
                 face.Target = look;

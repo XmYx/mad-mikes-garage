@@ -289,6 +289,7 @@ namespace MadMax.Items
         /// knowledge to learn, a handful (≤ 6) of hand-workable materials (no metal).</summary>
         static bool Handmade(Recipe r)
         {
+            if (r.id == "molotov") return true;                                                   // a bottle, a rag and a litre of fuel: no bench needed (2026-10-29)
             if (r.category == RecipeCategory.Clothing) return r.id == "bag_craftpack";            // garments are sewn (the stick-frame pack is the one made by hand)
             if (r.station == null) return true;
             if (r.station != "workbench" || r.kind != OutputKind.Item || r.fuel != ResourceType.None || r.items.Length > 0) return false;

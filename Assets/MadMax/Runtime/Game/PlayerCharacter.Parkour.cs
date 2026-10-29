@@ -117,12 +117,14 @@ namespace MadMax.Game
                 game.Stats?.Practice(Skill.Athletics, kind == 1 ? 3f : 2f);
                 game.Vitals?.Spend(stamina);
             }
-            MadMax.Audio.Sfx.Play(kind == 2 ? "chain" : "punch", from + Vector3.up, 0.25f, kind == 2 ? 1.2f : 1.5f);
+            if (kind == 2) MadMax.Audio.Sfx.Play("chain", from + Vector3.up, 0.25f, 1.2f);       // vaults and mantles sound where the hands land (PlayerCharacter.Contact)
         }
 
         void TraverseTick(float dt)
         {
+            float before = moveT;
             moveT += dt / Mathf.Max(0.05f, moveDur);
+            ContactTick(before, moveT);
             float t = Mathf.Clamp01(moveT);
             Vector3 p;
             ToolPose pose;
@@ -241,7 +243,9 @@ namespace MadMax.Game
         {
             slideSpeed = Mathf.MoveTowards(slideSpeed, 1.5f, dt * 5.5f);
             if (DebrisSystem.Instance && Random.value < dt * 18f)
-                DebrisSystem.Instance.EmitPuff(transform.position + Vector3.up * 0.05f, new Color32(190, 130, 80, 255), 0.05f, Vector3.up * 0.8f - slideDir, 0.4f);
+                DebrisSystem.Instance.EmitPuff(transform.position + Vector3.up * 0.05f, GroundDust(transform.position), 0.05f, Vector3.up * 0.8f - slideDir, 0.4f);
+            if (Random.value < dt * 10f) { var c = GroundDust(transform.position); c.a = 0.45f; Fx.Smoke(transform.position + Vector3.up * 0.05f - slideDir * 0.3f, Vector3.up * 0.2f - slideDir * 0.4f, 0.07f, c, 0.7f); }
+            MadMax.Audio.Sfx.Loop(this, "scratch", Mathf.Clamp01(slideSpeed / 6f) * 0.3f, 0.6f, 12f);   // the slide hissing over the ground
             return slideDir * slideSpeed;
         }
 
@@ -275,6 +279,7 @@ namespace MadMax.Game
         void Land(PlayerVitals vitals)
         {
             float limit = 9f + Athletics * 0.4f;
+            if (!(crouch && fallSpeed < -limit)) LandingDust(-fallSpeed);                         // a thump and dust (a roll throws its own)
             if (fallSpeed >= -limit) return;
             float dmg = (-fallSpeed - limit) * 8f;
             if (crouch)
