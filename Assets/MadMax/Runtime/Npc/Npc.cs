@@ -1222,7 +1222,7 @@ namespace MadMax.Npc
         /// <summary>The name once you have met (talked to them, or they ride with you); until then what you see of them.</summary>
         public string KnownName => State.Has(NpcSave.Met) || companion ? Profile.Name : Stranger;
 
-        string Stranger => Profile.role switch
+        string Stranger => Profile.title == "STATIONMASTER" ? "THE STATIONMASTER" : Profile.role switch
         {
             NpcRole.Shopkeeper => "THE SHOPKEEPER", NpcRole.Stallkeeper => "THE STALLHOLDER", NpcRole.Trader => "A TRADER",
             NpcRole.Raider => "A RAIDER", NpcRole.RaiderBoss => "THE GANG'S BOSS", NpcRole.Leader => "THE TOWN'S HEAD",

@@ -126,6 +126,8 @@ namespace MadMax.World
                 l.GetComponent<MeshRenderer>().sharedMaterial = mat;
                 car.Lever = l.transform;
             }
+            RailWheels.Add(car, mat);
+            if (def.cab && !def.hand) CabCrew.Add(car, mat);
             if (def.loot != null)
             {
                 var lg = new GameObject("Load");

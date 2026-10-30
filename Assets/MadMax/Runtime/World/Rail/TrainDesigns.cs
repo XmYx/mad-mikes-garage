@@ -127,10 +127,12 @@ namespace MadMax.World
                 for (int s = -1; s <= 1; s += 2) B(k, s * 1.0f, 0.55f, bz, 0.08f, 0.2f, 1.35f, Pal.Rust, 9);
                 for (int ax = -1; ax <= 1; ax += 2)
                 {
-                    float wz = bz + ax * 0.9f;
-                    k.Cylinder(new Vector3(-0.82f, 0.45f, wz), new Vector3(-0.62f, 0.45f, wz), 0.45f, 12, Pal.Black, 10);
-                    k.Cylinder(new Vector3(0.62f, 0.45f, wz), new Vector3(0.82f, 0.45f, wz), 0.45f, 12, Pal.Black, 10);
-                    k.Cylinder(new Vector3(-0.95f, 0.45f, wz), new Vector3(0.95f, 0.45f, wz), 0.08f, 6, Pal.Metal, 11);
+                    float wz = bz + ax * 0.9f;                                                       // the wheelsets turn (RailWheels)
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        B(k, s * 1.0f, 0.45f, wz, 0.1f, 0.1f, 0.1f, Pal.Black, 12);                        // axle box
+                        B(k, s * 0.72f, 0.5f, wz - ax * 0.52f, 0.1f, 0.16f, 0.05f, Pal.Rust, 13);           // brake block
+                    }
                 }
             }
         }
@@ -159,8 +161,6 @@ namespace MadMax.World
                 case CarKind.Draisine:
                 {
                     Chassis(k, d, 0.42f);
-                    for (int ax = -1; ax <= 1; ax += 2)
-                        for (int s = -1; s <= 1; s += 2) k.Cylinder(new Vector3(s * 0.82f, 0.3f, ax * 0.9f), new Vector3(s * 0.62f, 0.3f, ax * 0.9f), 0.3f, 10, Pal.Black, 10);
                     Deck(k, d, 0.62f, RailKit.Timber);
                     k.rust = 0.3f;
                     B(k, 0f, 0.95f, 0.2f, 0.12f, 0.3f, 0.12f, Pal.Metal, 40);                    // pump pivot post
@@ -348,6 +348,96 @@ namespace MadMax.World
             var k = new RailKit(78) { rust = 0.2f };
             k.Beam(new Vector3(0f, 0f, -0.9f), new Vector3(0f, 0f, 0.9f), 0.06f, 0.06f, Pal.Metal, 1);
             for (int e = -1; e <= 1; e += 2) k.Beam(new Vector3(-0.45f, 0f, e * 0.9f), new Vector3(0.45f, 0f, e * 0.9f), 0.05f, 0.05f, RailKit.Timber, 2);
+            return k;
+        }
+
+        /// <summary>Wheelsets of a car (axle centre, wheel radius), as <see cref="RailWheels"/> spins them.</summary>
+        public static IEnumerable<(Vector3 at, float r)> Axles(CarDef d)
+        {
+            if (d.kind == CarKind.Draisine) { for (int ax = -1; ax <= 1; ax += 2) yield return (new Vector3(0f, 0.3f, ax * 0.9f), 0.3f); yield break; }
+            for (int bo = -1; bo <= 1; bo += 2)
+                for (int ax = -1; ax <= 1; ax += 2) yield return (new Vector3(0f, 0.45f, bo * d.bogie + ax * 0.9f), 0.45f);
+        }
+
+        /// <summary>One wheelset about its axle (spins on local X): two wheels with flanges on the inside, three spokes
+        /// and a pale balance weight on each outer face so the turning reads, the axle between them.</summary>
+        public static RailKit Wheelset(float r)
+        {
+            var k = new RailKit(91 + Mathf.RoundToInt(r * 100f)) { rust = 0.35f };
+            for (int s = -1; s <= 1; s += 2)
+            {
+                k.Cylinder(new Vector3(s * 0.62f, 0f, 0f), new Vector3(s * 0.82f, 0f, 0f), r, 12, Pal.Black, 1);
+                k.Cylinder(new Vector3(s * 0.6f, 0f, 0f), new Vector3(s * 0.635f, 0f, 0f), r + 0.045f, 12, Pal.Metal, 2);   // flange
+                k.Cylinder(new Vector3(s * 0.82f, 0f, 0f), new Vector3(s * 0.86f, 0f, 0f), r * 0.28f, 8, Pal.Chrome, 3);  // hub
+                for (int i = 0; i < 3; i++)
+                {
+                    float a = i * Mathf.PI * 2f / 3f;
+                    var dir = new Vector3(0f, Mathf.Sin(a), Mathf.Cos(a));
+                    k.Beam(new Vector3(s * 0.835f, 0f, 0f) + dir * r * 0.25f, new Vector3(s * 0.835f, 0f, 0f) + dir * r * 0.85f, 0.035f, 0.05f, Pal.Rust, 4);
+                }
+                var w = new Vector3(0f, -Mathf.Sin(1.05f), Mathf.Cos(1.05f)) * r * 0.62f;
+                k.Box(new Vector3(s * 0.84f, 0f, 0f) + w, Vector3.right, Vector3.up, Vector3.forward, 0.025f, r * 0.2f, r * 0.2f, Ochre, 5);   // balance weight
+            }
+            k.Cylinder(new Vector3(-0.95f, 0f, 0f), new Vector3(0.95f, 0f, 0f), 0.08f, 6, Pal.Metal, 6);
+            return k;
+        }
+
+        /// <summary>The cab crew (<see cref="CabCrew"/>), seat-frame (origin = hips, facing +Z): the seated body,
+        /// the head (pivot at the neck) and the right arm (pivot at the shoulder, hanging along −Y). Guild drivers wear
+        /// ochre overalls and a cap, raider crews black and rust with a scarf.</summary>
+        public static RailKit CrewBody(bool raider)
+        {
+            var k = new RailKit(raider ? 61 : 62) { rust = 0.05f };
+            var cloth = raider ? Pal.Black : Ochre; var trim = raider ? Pal.Rust : Pal.Navy;
+            for (int s = -1; s <= 1; s += 2)
+            {
+                k.Box(new Vector3(s * 0.1f, 0f, 0.2f), Vector3.right, Vector3.up, Vector3.forward, 0.075f, 0.075f, 0.22f, trim, 1);      // thigh
+                k.Box(new Vector3(s * 0.1f, -0.24f, 0.42f), Vector3.right, Vector3.up, Vector3.forward, 0.065f, 0.22f, 0.065f, trim, 2); // shin
+                k.Box(new Vector3(s * 0.1f, -0.46f, 0.47f), Vector3.right, Vector3.up, Vector3.forward, 0.07f, 0.05f, 0.11f, Pal.Black, 3); // boot
+            }
+            k.Box(new Vector3(0f, 0.27f, -0.02f), Vector3.right, Vector3.up, Vector3.forward, 0.18f, 0.25f, 0.11f, cloth, 4);          // torso
+            k.Box(new Vector3(0f, 0.06f, -0.02f), Vector3.right, Vector3.up, Vector3.forward, 0.185f, 0.04f, 0.115f, Pal.Black, 5);    // belt
+            k.Box(new Vector3(-0.23f, 0.33f, 0.1f), Vector3.right, Vector3.up, Vector3.forward, 0.05f, 0.16f, 0.06f, cloth, 6);        // left arm on the brake
+            k.Box(new Vector3(-0.23f, 0.18f, 0.28f), Vector3.right, Vector3.up, Vector3.forward, 0.045f, 0.045f, 0.16f, cloth, 7);
+            k.Box(new Vector3(-0.23f, 0.18f, 0.46f), Vector3.right, Vector3.up, Vector3.forward, 0.045f, 0.045f, 0.045f, Pal.Skin, 8);
+            return k;
+        }
+
+        public static RailKit CrewHead(bool raider)
+        {
+            var k = new RailKit(raider ? 63 : 64) { rust = 0f };
+            k.Box(new Vector3(0f, 0.04f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.045f, 0.05f, 0.045f, Pal.Skin, 1);      // neck
+            k.Box(new Vector3(0f, 0.17f, 0.01f), Vector3.right, Vector3.up, Vector3.forward, 0.1f, 0.11f, 0.11f, Pal.Skin, 2);
+            k.Box(new Vector3(0f, 0.18f, 0.12f), Vector3.right, Vector3.up, Vector3.forward, 0.07f, 0.015f, 0.008f, Pal.Black, 3);   // eyes
+            if (raider)
+            {
+                k.Box(new Vector3(0f, 0.1f, 0.03f), Vector3.right, Vector3.up, Vector3.forward, 0.105f, 0.04f, 0.1f, Pal.Crimson, 4);  // scarf
+                k.Box(new Vector3(0f, 0.27f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.09f, 0.03f, 0.1f, Pal.Black, 5);       // shaved top
+            }
+            else
+            {
+                k.Box(new Vector3(0f, 0.28f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.11f, 0.035f, 0.115f, Pal.Navy, 4);     // cap
+                k.Box(new Vector3(0f, 0.255f, 0.15f), Vector3.right, Vector3.up, Vector3.forward, 0.1f, 0.012f, 0.05f, Pal.Navy, 5);   // peak
+            }
+            return k;
+        }
+
+        public static RailKit CrewArm(bool raider)
+        {
+            var k = new RailKit(raider ? 65 : 66) { rust = 0.05f };
+            var cloth = raider ? Pal.Black : Ochre;
+            k.Box(new Vector3(0f, -0.15f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.05f, 0.15f, 0.055f, cloth, 1);
+            k.Box(new Vector3(0f, -0.4f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.045f, 0.12f, 0.045f, cloth, 2);
+            k.Box(new Vector3(0f, -0.56f, 0f), Vector3.right, Vector3.up, Vector3.forward, 0.045f, 0.045f, 0.045f, Pal.Skin, 3);
+            return k;
+        }
+
+        /// <summary>The stationmaster's flag on its stick (held in the hand: the stick along the hand's −Y).</summary>
+        public static RailKit Flag()
+        {
+            var k = new RailKit(67) { rust = 0f };
+            k.Beam(new Vector3(0f, 0.05f, 0f), new Vector3(0f, -0.55f, 0f), 0.012f, 0.012f, RailKit.Timber, 1);
+            k.Box(new Vector3(0f, -0.43f, 0.14f), Vector3.right, Vector3.up, Vector3.forward, 0.006f, 0.1f, 0.14f, RailKit.Green, 2);
             return k;
         }
 

@@ -740,6 +740,7 @@ namespace MadMax.Vehicles
 
         void Effects(EngineStats engine, bool running, float engineDamage)
         {
+            BonnetSteam(engine.transform.position + transform.up * 0.5f);
             var fx = DebrisSystem.Instance;
             if (!fx || (fxTimer -= Time.fixedDeltaTime) > 0f) return;
             fxTimer = 0.08f;
@@ -763,6 +764,25 @@ namespace MadMax.Vehicles
                 var col = (Faults & Fault.CoolantLeak) != 0 ? new Color32(80, 200, 150, 255) : (Faults & Fault.FuelLeak) != 0 ? new Color32(200, 170, 60, 255) : new Color32(40, 28, 16, 255);
                 fx.EmitPuff(at - transform.up * 0.4f, col, 0.05f, Vector3.down * 2f, 0.4f);
             }
+        }
+
+        /// <summary>Wisps rising off the bonnet (tests).</summary>
+        public static int BonnetSteams;
+        float steamAt;
+
+        /// <summary>A warm engine in cold air (2026-10-30): below 5 °C the bonnet smokes lazily while the engine is over
+        /// 45 °C — a just-run car parked in the frost, thicker in rain or snow landing on it; blown away above 4 m/s.</summary>
+        void BonnetSteam(Vector3 at)
+        {
+            if (Temperature < 45f || Time.time < steamAt || !driver || !driver.Body || driver.Body.linearVelocity.sqrMagnitude > 16f) return;
+            float air = MadMax.World.Weather.TemperatureAt(at.z);
+            if (air > 5f || !MadMax.Building.PieceBits.Near(at, 45f)) return;
+            float k = Mathf.Clamp01((Temperature - 45f) / 40f) * Mathf.Clamp01((5f - air) / 10f + 0.3f) * (MadMax.World.Weather.Raining ? 1.6f : 1f);
+            steamAt = Time.time + UnityEngine.Random.Range(0.15f, 0.45f) / Mathf.Max(0.15f, k);
+            BonnetSteams++;
+            var p = at + transform.up * 0.45f + transform.forward * UnityEngine.Random.Range(-0.3f, 0.5f) + transform.right * UnityEngine.Random.Range(-0.45f, 0.45f);
+            MadMax.World.Fx.Smoke(p, Vector3.up * (0.4f + 0.4f * k) + MadMax.World.Fx.Wind * 0.2f + UnityEngine.Random.insideUnitSphere * 0.08f,
+                0.18f + 0.2f * k, new Color(0.93f, 0.94f, 0.96f, 0.16f + 0.2f * k), 1.6f);
         }
 
         /// <summary>Top up fuel/oil/coolant from the inventory. Returns litres moved.</summary>
@@ -889,7 +909,7 @@ namespace MadMax.Vehicles
 
         /// <summary>Every vehicle with systems (a burning one heats its neighbours).</summary>
         public static readonly System.Collections.Generic.List<VehicleSystems> All = new System.Collections.Generic.List<VehicleSystems>();
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetAll() => All.Clear();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetAll() { All.Clear(); BonnetSteams = 0; }
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
         void OnDisable() => All.Remove(this);
 

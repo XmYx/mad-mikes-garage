@@ -2140,6 +2140,56 @@ parkour.contact, npc.raider_bottle, vehicle.kickstand, items.rag_and_bottle).
 - [ ] **Steam off a hot engine**: in the cold, a just-run engine smokes off the bonnet and a warm horse steams after a gallop.
 - [ ] **Fly-in arrivals**: landing on a town's straight road brings the kids running and a trader asking for a ride.
 
+## Scheduled update (2026-10-30)
+Remodel audit of roadmap sections 26–30 (acceptance, world coherence, rolling cities, free frame, railway). Already
+alive: the rolling cities (treads, stacks, lifts, gangways, residents), beams / spans / ladders, the rail network
+(points with moving blades, crossing barriers and bells, colour-light signals, timetabled services, platform folk,
+turrets). Thin on the railway, now remodelled:
+- [x] **Wheels that turn** (`World/Rail/RailWheels`, `TrainDesigns.Wheelset/Axles`): every car's wheelsets are their own
+  meshes (two wheels with flanges, three spokes and a pale balance weight on each face, the axle) turning by the distance
+  the car rolls; the bogies keep axle boxes and brake blocks. Hard braking at speed throws sparks off the blocks; in a
+  tight curve the flanges squeal (`rail_flange`, from 1 m/s² sideways) and spark off the outer rail past 1.6 m/s².
+- [x] **Off the rails** (`World/Rail/Train.Derail`): on player-laid track, a free train held past 3.2 m/s² sideways (2.4 on scrap track — so
+  a player's 25 m scrap curve takes ~28 km/h, not 58) for 0.35 s comes off: the cars slew outward of the curve and lean
+  over, plough to a stop in dust and sparks with a grinding scrape (`rail_scrape`), and take damage by the speed. It
+  won't drive off the rails (the cab says so); context RE-RAIL beside it with a jack: ratchet clanks, a car back on
+  every 5 s while you stay beside it (Railways practice). Saved with the free train (`t|…|name|1`). Services keep to
+  their timetable and never come off. The pull is the track's curvature measured over each car's length plus 2 m (×v²), so joints
+  and small kinks between generated lines don't spike it (the first try used the cars' yaw rate and threw a train off
+  a gentle main-line bend at 10 km/h in the test player). The generated network keeps trains on (its bends near
+  stations are as tight as ~26 m: at full speed they would always come off) — there the flanges only squeal and spark.
+- [x] **A driver in the cab** (`World/Rail/CabCrew`, `TrainDesigns.CrewBody/Head/Arm`): timetabled services carry a
+  seated driver — Guild overalls and cap, a raider crew in black with a red scarf — riding the cab's sway, watching the
+  line, turning to follow someone near the track, the right hand on the throttle reaching up for the horn cord whenever
+  the horn sounds; a Guild driver waves to you when the train is slow and you are within 25 m. Free trains' cabs stay
+  empty (your seat).
+- [x] **The stationmaster** (`World/Rail/Stationmaster`, `TrainDirector.SpawnStationmaster`): every passenger stop of a
+  Guild service brings out the station's stationmaster (STATIONMASTER, one per station, stays between trains) to the
+  platform beside the loco, turned to it; 9 s before departure the pea whistle (`rail_whistle`) and the green flag held
+  up — by night a lamp swung side to side — until the horn answers and the train pulls out.
+- [x] **Steam off a hot engine** (the 1029 suggestion; `VehicleSystems.BonnetSteam`): below 5 °C a parked or slow car
+  whose engine is over 45 °C smokes lazily off the bonnet, thicker the hotter it is, the colder the air and in rain or
+  snow; blown away above 4 m/s.
+- [ ] Still thin: AI services still pass through each other head-on; station buildings are meshes, not voxel props; the
+  stationmaster has no dialogue of their own (timetable talk, tickets); horses don't steam after a gallop; the rolling
+  city has no track ruts and one smoke size for every stack; free-frame struts / cables and the hybrid plan library
+  (beam lengths, span corners in `StructurePlans`) are still open.
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1030.cs` (rail.wheels_turn, rail.derail, rail.crew_stationmaster,
+vehicle.bonnet_steam).
+
+### Suggestions (tie the experience together)
+- [ ] **Timetable boards**: a chalk board on every passenger platform lists the next two trains with their time (the
+  service clock as a game time) and where they go; the stationmaster names it when asked.
+- [ ] **Hopping a freight**: climbing onto a moving hopper / flatcar from the lineside (running alongside below
+  12 km/h, [Space] at the steps) — a free ride with a chance of the guard throwing you off at the next stop.
+- [ ] **Signal discipline**: a service stops at a red signal; a player train running a red gets a toll / Guild standing
+  hit, and the signal box on the station rings the bell.
+- [ ] **Train wrecks as sites**: a derailed and abandoned train left on the line becomes a wreck for scavengers and
+  news, like road wrecks, and the Guild sends a crane wagon to clear it after a few days.
+- [ ] **Coal and water**: the makeshift loco's tender shows its diesel drum level; at water/fuel stops the crew climbs
+  down and refuels with a hose while it dwells.
+
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
 - [x] **Light and electric poles break realistically** (2026-10-13: `World/BreakablePole` on town street lamps (`TownLights`, by piece: pole / gas / cobra / solar / floodlight mast), voxel traffic lights, stop signs and old city streetlights, and rail telegraph poles (now split out of the track tiles: each its own body with its wire span, `RailKit.Pole`). Below its snap energy a hit bends it (leans away, the next hit needs less) and the car stops as on a post; above it the foot snaps, the post falls as a rigid body (120-650 kg, capsule, pivoting over the foot, away along the hit and off to the struck side), the car keeps the momentum the post's effective mass at the hit height and the snap energy don't take (≈ 85 % at 50 km/h into a highway lamp) with a moderate crunch (`VehicleDamage.Crash`, no wall stop). Lamps go dark with glass shards, live poles arc (sparks, blue flash, sizzle), wires come down (both spans), a thud and dust when it lands; at rest it is remembered (`BreakablePole.Fallen`, saved as `f:` lines in the lights block) and lies kinematic until a vehicle shoves it. Network: protocol 7 `Msg.Knock` (the peer simulating the car sends, every peer breaks its copy; unloaded pieces fall when they stream in). Open: fallen poles never despawn (cleared with a new game); no wire physics (spans just vanish).)
@@ -2259,7 +2309,8 @@ the right skill, points, and building / extending the network.
 - [x] **Map**: lines and stations on the minimap and the map page; stations found on arrival (journal).
 - [ ] Station buildings as destructible voxel props (now procedural meshes) and as buildable pieces.
 - [ ] AI services meeting each other head-on (they pass through; only player trains hold them up).
-- [ ] Derailment on over-speed in curves; wheels turning; NPC drivers visible in cabs; stationmasters.
+- [x] Derailment on over-speed in curves; wheels turning; NPC drivers visible in cabs; stationmasters (2026-10-30:
+      `RailWheels`, `Train.Derail`, `CabCrew`, `Stationmaster` — see "Scheduled update (2026-10-30)").
 - [ ] Network play: trains are not replicated yet (each peer runs its own timetable from the shared clock).
 
 ## Living bodies — animation revamp (2026-10-13)

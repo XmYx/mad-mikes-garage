@@ -9,6 +9,7 @@ namespace MadMax.Game
     {
         void UpdateNightly1028()
         {
+            UpdateNightly1030();
         }
     }
 }

@@ -103,7 +103,7 @@ namespace MadMax.Game.Acceptance
             c.Screenshot("rail_cab");
             yield return null;
             t0 = Time.time;
-            while (Time.time - t0 < 10f && Mathf.Abs(loco.speed) > 0.2f) { g.Player.moveInput = new Vector2(0f, -1f); yield return null; }
+            while (Time.time - t0 < 16f && Mathf.Abs(loco.speed) > 0.2f) { g.Player.moveInput = new Vector2(0f, -1f); yield return null; }   // ~10.5 s from 45 km/h at 1.4 m/s²
             g.Player.moveInput = Vector2.zero;
             WastelandGame.ExternalInput = false;
             c.Check(Mathf.Abs(loco.speed) <= 0.2f, "and brought it to a stand");

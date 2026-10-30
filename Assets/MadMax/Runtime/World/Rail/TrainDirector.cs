@@ -28,6 +28,7 @@ namespace MadMax.World
         readonly HashSet<int> routeLines = new HashSet<int>();
         readonly Dictionary<TrainService, List<MadMax.Npc.Npc>> folk = new Dictionary<TrainService, List<MadMax.Npc.Npc>>();
         readonly List<MadMax.Npc.Npc> loose = new List<MadMax.Npc.Npc>();
+        readonly Dictionary<int, MadMax.Npc.Npc> masters = new Dictionary<int, MadMax.Npc.Npc>();
         readonly HashSet<string> notedTheft = new HashSet<string>();
         float scanAt;
         public Material Mat => mat;
@@ -246,7 +247,42 @@ namespace MadMax.World
                 n.mode = trader ? MadMax.Npc.Npc.Mode.Stand : MadMax.Npc.Npc.Mode.Wander;
                 list.Add(n);
             }
+            SpawnStationmaster(s, t, st, pf);
             folk[s] = list;
+        }
+
+        /// <summary>The stationmaster for this stop: on the platform beside the loco, turned to the train; lamp by night.</summary>
+        /// <summary>Stays on the platform between trains (folds away with distance like the loose folk).</summary>
+        void SpawnStationmaster(TrainService s, Train t, RailStation st, Vector4 pf)
+        {
+            var loco = t ? t.Loco : null;
+            if (!loco) return;
+            float v = (pf.z + pf.w) * 0.5f, bestU = pf.x + 3f, bd = float.MaxValue;
+            for (float u = pf.x + 2f; u <= pf.y - 2f; u += 1.5f)
+            {
+                float d = (st.World(u, v) - loco.transform.position).sqrMagnitude;
+                if (d < bd) { bd = d; bestU = u; }
+            }
+            var p = st.World(bestU, v, RailNetwork.PlatformTop + 0.05f);
+            var to = loco.transform.position - p; to.y = 0f;
+            float yaw = to.sqrMagnitude > 0.01f ? Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg : st.Yaw;
+            bool night = DayNight.Hours < 6.5f || DayNight.Hours > 19.5f;
+            if (masters.TryGetValue(st.id, out var old) && old && old.Alive)
+            {
+                var sm = old.GetComponent<MadMax.World.Stationmaster>();
+                if (sm) sm.service = s;
+                old.home = p; old.homeYaw = yaw;
+                return;
+            }
+            var prof = NpcProfile.Make("railsm:" + st.id, NpcRole.Shopkeeper, game.World.seed * 3 + st.id * 7919);
+            prof.title = "STATIONMASTER";
+            prof.tool = night ? "tool_lantern" : null;
+            var n = MadMax.Npc.Npc.Spawn(prof, p, yaw, null, game.propMaterial);
+            n.homeRadius = 0.6f;
+            n.mode = MadMax.Npc.Npc.Mode.Stand;
+            MadMax.World.Stationmaster.Attach(n, s, mat, night);
+            masters[st.id] = n;
+            loose.Add(n);
         }
 
         /// <summary>The people a service put on the platform get back on (or walk off into town if the player is
@@ -402,7 +438,7 @@ namespace MadMax.World
                 var kinds = new System.Text.StringBuilder(); var flips = new System.Text.StringBuilder(); var hp = new System.Text.StringBuilder();
                 foreach (var c in t.cars) { if (!c) continue; if (kinds.Length > 0) { kinds.Append(','); flips.Append(','); hp.Append(','); } kinds.Append((int)c.def.kind); flips.Append(c.flipped ? 1 : 0); hp.Append(Mathf.RoundToInt(c.hp)); }
                 var hpnt = t.path.At(t.head - 0.5f, out var tan);
-                o.Add("t|" + kinds + "|" + flips + "|" + V(hpnt) + "|" + V(tan) + "|" + t.fuel.ToString("0.#", ci) + "|" + (t.owned ? 1 : 0) + "|" + hp + "|" + t.trainName);
+                o.Add("t|" + kinds + "|" + flips + "|" + V(hpnt) + "|" + V(tan) + "|" + t.fuel.ToString("0.#", ci) + "|" + (t.owned ? 1 : 0) + "|" + hp + "|" + t.trainName + (t.Derailed ? "|1" : ""));
             }
         }
 
@@ -455,6 +491,7 @@ namespace MadMax.World
                             var hps = f[7].Split(',');
                             for (int i = 0; i < t.cars.Count && i < hps.Length; i++) t.cars[i].hp = float.Parse(hps[i], ci);
                             t.Advance(0f);
+                            if (f.Length > 9 && f[9] == "1") t.LoadDerailed(Mathf.RoundToInt(hpnt.x * 7f + hpnt.z));
                             t.Snap();
                             t.KeyLoot("rail:free:" + Mathf.RoundToInt(hpnt.x) + "," + Mathf.RoundToInt(hpnt.z));
                             break;

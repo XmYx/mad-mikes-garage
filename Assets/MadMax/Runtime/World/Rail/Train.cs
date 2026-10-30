@@ -10,7 +10,7 @@ namespace MadMax.World
     /// gradient, rolling drag — extending its path through the points ahead and stopping at buffer stops. Free trains
     /// couple when they meet gently and crash when they don't; anyone standing in front of a moving train is struck.
     /// Sounds: the engine, wheel clacks on rail joints, brake squeal, the horn at level crossings.</summary>
-    public class Train : MonoBehaviour
+    public partial class Train : MonoBehaviour
     {
         public static readonly List<Train> All = new List<Train>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetStatics() => All.Clear();
@@ -90,6 +90,7 @@ namespace MadMax.World
             else { Simulate(dt); CheckContact(); }
             PlaceCars(dt, !placed);
             placed = true;
+            DerailCheck(dt);
             if (Mathf.Abs(speed) > 1.5f) StrikeAhead();
         }
 
@@ -105,7 +106,9 @@ namespace MadMax.World
                 var fwd = f - r;
                 if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
                 var rot = Quaternion.LookRotation(c.flipped ? -fwd : fwd, Vector3.up);
-                c.Pose((f + r) * 0.5f + Vector3.up * RailNetwork.RailTop, rot, dt, snap);
+                var pos = (f + r) * 0.5f + Vector3.up * RailNetwork.RailTop;
+                DerailPose(i, ref pos, ref rot);
+                c.Pose(pos, rot, dt, snap);
             }
         }
 
@@ -119,6 +122,7 @@ namespace MadMax.World
             float m = Mathf.Max(200f, Mass);
             var loco = Loco;
             float force = 0f;
+            if (Derailed) throttle = 0f;
             if (driven && loco && !loco.Broken && throttle > 0f && (loco.def.hand || fuel > 0f))
             {
                 float dir = reverser * (loco.flipped ? -1f : 1f);
@@ -134,6 +138,7 @@ namespace MadMax.World
             speed += force / m * dt;
             float decel = (driven || !owned ? brake : 1f) * 1.4f + 0.02f;                            // parked trains stand on their brakes
             if (!driven) decel = Mathf.Max(decel, 1.4f);
+            if (Derailed) decel = Mathf.Max(decel, 5.5f);                                            // ploughing through the ballast
             if (Mathf.Abs(speed) <= decel * dt) speed = 0f; else speed -= Mathf.Sign(speed) * decel * dt;
             Advance(speed * dt);
             if (driven && Mathf.Abs(speed) > 0.5f)
@@ -360,6 +365,7 @@ namespace MadMax.World
             if (near && sp > 0.5f) MadMax.Audio.Sfx.Loop(near, "rail_roll", Mathf.Clamp01(sp / 14f) * 0.7f, 0.6f + sp * 0.03f, 90f);
             bool braking = (service != null ? service.Braking : brake > 0.4f && driven) && sp > 2f;
             if (braking && cars.Count > 1 && cars[cars.Count - 1]) MadMax.Audio.Sfx.Loop(cars[cars.Count - 1], "rail_squeal", 0.5f, 0.9f + sp * 0.02f, 120f);
+            DerailUpdate();
             if (loco && loco.def.hand && loco.Lever) loco.Lever.localRotation = Quaternion.Euler(Mathf.Sin(pumpPhase) * 22f, 0f, 0f);
             // horn ahead of level crossings
             if (sp > 3f && Time.time >= crossingCheckAt)
@@ -397,6 +403,12 @@ namespace MadMax.World
                 throttle = pump ? (run ? 1f : 0.7f) : 0f;
                 if (pump) { reverser = move.y > 0f ? 1 : -1; pumpPhase += dt * (run ? 9f : 6f); }
                 brake = jump ? 1f : pump ? 0f : 0.15f;
+                return;
+            }
+            if (Derailed)
+            {
+                throttle = 0f; brake = 1f;
+                if (Mathf.Abs(move.y) > 0.2f && g && Time.time > refusedAt) { refusedAt = Time.time + 4f; g.Toast("OFF THE RAILS - SHE WON'T MOVE TILL SHE'S JACKED BACK ON (RE-RAIL)"); }
                 return;
             }
             float comp = Competence;
@@ -447,6 +459,7 @@ namespace MadMax.World
         {
             var loco = Loco;
             if (!loco) return;
+            LastHornTime = Time.time;
             MadMax.Audio.Sfx.Play(loco.def.hand ? "beep" : "rail_horn", loco.transform.position + Vector3.up * 3f, 1f, loco.def.kind == CarKind.ArmoredLoco ? 0.8f : 1f, 500f, 0.3f);
             MadMax.Npc.NpcDirector.Instance?.Noise(loco.transform.position, 80f);
         }
