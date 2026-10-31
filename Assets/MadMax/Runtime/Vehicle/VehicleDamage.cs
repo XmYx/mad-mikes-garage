@@ -52,6 +52,7 @@ namespace MadMax.Vehicles
             if (!TryGetComponent(out armour) && transform.Find("Body")) armour = gameObject.AddComponent<VehicleArmor>();
             if (!GetComponent<VehicleTuning>() && driver && driver.driveable) gameObject.AddComponent<VehicleTuning>();
             if (!GetComponent<VehicleGrime>() && transform.Find("Body")) gameObject.AddComponent<VehicleGrime>();
+            if (!GetComponent<GlassFrost>() && driver && driver.driveable && transform.Find("Body")) gameObject.AddComponent<GlassFrost>();   // frost on parked cars' glass (2026-10-31)
             if (!TryGetComponent(out breakables) && transform.Find("Body")) breakables = gameObject.AddComponent<VehicleBreakables>();
             if (!GetComponent<VehicleBurn>()) gameObject.AddComponent<VehicleBurn>();
             if (!GetComponent<VehicleIgnition>() && driver && driver.driveable) gameObject.AddComponent<VehicleIgnition>();

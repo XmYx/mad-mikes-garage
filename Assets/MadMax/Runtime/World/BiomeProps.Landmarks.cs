@@ -123,6 +123,7 @@ namespace MadMax.World
                     pieces.Add(new Piece { id = "CarStack0", pos = L(12f, -9f), yaw = yaw + 90f });
                     pieces.Add(new Piece { id = "CarStack1", pos = L(12f, 8f), yaw = yaw + 84f });
                     pieces.Add(new Piece { id = "Loot", pos = L(0f, -11f), yaw = yaw, table = "garage" });
+                    pieces.Add(new Piece { id = "YardCrane", pos = L(0f, -1f), yaw = yaw, table = "crane" });   // last: keeps the older pieces' keys
                     AddMark(MarkKind.Scrapyard, p, yaw, pieces);
                     break;
                 }
@@ -182,6 +183,7 @@ namespace MadMax.World
                     string key = "m" + m + "," + j;
                     float y = terrain.Height(pc.pos.x, pc.pos.y) - 0.1f;
                     if (pc.id == "Loot") { SpawnLandmarkLoot(pc, key, new Vector3(pc.pos.x, y + 0.1f, pc.pos.y), parent, mat); continue; }
+                    if (pc.id == "YardCrane") { SpawnYardCrane(list[m], new Vector3(pc.pos.x, y + 0.1f, pc.pos.y), parent, mat); continue; }
                     var d = SpawnById(terrain, pc.id, pc.id.TrimEnd('0', '1'), parent, mat, new Vector3(pc.pos.x, y, pc.pos.y), pc.yaw, false, terrain.DestructionState, key, legacy);
                     if (!d) continue;
                     if (pc.table == "pump")
@@ -195,6 +197,14 @@ namespace MadMax.World
                     if (pc.id == "Mast0") d.gameObject.AddComponent<MastLight>();
                 }
             }
+        }
+
+        /// <summary>The scrapyard's working crane (<see cref="ScrapyardCrane"/>), moving a slab between two heaps in the yard.</summary>
+        static void SpawnYardCrane(Mark mark, Vector3 at, Transform parent, Material mat)
+        {
+            var q0 = Quaternion.Euler(0f, mark.yaw, 0f);
+            Vector3 L(float x, float z) { var v = q0 * new Vector3(x, 0f, z); return new Vector3(mark.pos.x + v.x, 0f, mark.pos.y + v.z); }
+            ScrapyardCrane.Build(parent, at, mark.yaw, L(-12f, 5f), L(12f, -1f), mat);
         }
 
         static void SpawnLandmarkLoot(Piece pc, string key, Vector3 pos, Transform parent, Material mat)

@@ -17,6 +17,8 @@ Shader "MadMax/PixelVoxel"
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
         _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
         _DirtTop ("Mud Line (world Y)", Float) = -100000
+        _Frost ("Frost on glass (vehicles)", Range(0,1)) = 0
+        _FrostLine ("Frost cleared below (world Y)", Float) = -100000
         _CitySurface ("Rolling City Surface Detail", 2D) = "white" {}
         _CitySurfaceScale ("City Surface Scale", Float) = 0.24
         _CitySurfaceStrength ("City Surface Strength", Range(0,1)) = 0
@@ -43,6 +45,8 @@ Shader "MadMax/PixelVoxel"
             half _WorldCut;
             half _Dirt;
             float _DirtTop;
+            half _Frost;
+            float _FrostLine;
             float _CitySurfaceScale;
             half _CitySurfaceStrength;
         CBUFFER_END
@@ -188,6 +192,14 @@ Shader "MadMax/PixelVoxel"
                     half hd = frac(sin(dot(cd, float3(41.13, 17.71, 93.37))) * 24634.63);
                     half low = saturate((_DirtTop - i.positionWS.y) / 0.9);
                     if (hd < _Dirt * low * 0.75h) albedo = lerp(albedo, half3(0.075h, 0.045h, 0.025h), 0.8h);
+                }
+                // frost on parked cars' glass (GlassFrost): crystal voxels, cleared from the bottom up by the heater
+                if (_Frost > 0.001h && i.positionWS.y > _FrostLine)
+                {
+                    float3 fc = floor(i.positionOS * 25.0 + 0.21);
+                    half fh = frac(sin(dot(fc, float3(12.99, 78.23, 37.71))) * 43758.55);
+                    half edge = saturate((i.positionWS.y - _FrostLine) / 0.08);
+                    if (fh < _Frost * edge * 1.15h) albedo = lerp(albedo, half3(0.78h, 0.84h, 0.88h), 0.55h + 0.35h * fh);
                 }
                 // autumn: leaves and grass turn gold and rust, voxel by voxel
                 if (_MadMaxAutumn > 0.001h && (_Sway + _SwayTip) > 0.0h && albedo.g > albedo.r * 1.1h && albedo.g > albedo.b)

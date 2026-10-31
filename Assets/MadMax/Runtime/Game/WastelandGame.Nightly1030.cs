@@ -41,6 +41,7 @@ namespace MadMax.Game
         void UpdateNightly1030()
         {
             if (!ContextActions.Has("rail.rerail")) ContextActions.Register("rail.rerail", (g, t, into) => g.RerailOptions(t, into));
+            UpdateNightly1031();
         }
     }
 }

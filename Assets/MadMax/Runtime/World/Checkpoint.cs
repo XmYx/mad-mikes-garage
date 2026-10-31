@@ -18,8 +18,14 @@ namespace MadMax.World
         Transform boom;
         BoxCollider boomCol;
         Quaternion down;
-        float openUntil, angle, nagAt, length;
+        float openUntil, angle, nagAt, length, tendAt;
         bool broken;
+        // the Remnant on duty (2026-10-31): spawned while someone is near, folded away beyond CheckpointGuard.FoldReach
+        Vector3 guardSpot; float guardYaw; Material guardMat;
+        MadMax.Npc.Npc guard;
+        /// <summary>The guard on duty (null when nobody is near).</summary>
+        public MadMax.Npc.Npc Guard => guard && guard.Alive ? guard : null;
+        CheckpointGuard GuardPose => guard ? guard.GetComponent<CheckpointGuard>() : null;
 
         /// <summary>The boom is up (paid, a friend, or lifted by a story scene).</summary>
         public bool IsOpen => Time.time < openUntil;
@@ -53,7 +59,27 @@ namespace MadMax.World
             boom = go.transform;
             boomCol = go.AddComponent<BoxCollider>();
             boomCol.center = new Vector3(0f, 0f, 4f); boomCol.size = new Vector3(0.2f, 0.2f, 8f);
+            var along = new Vector2(-across.y, across.x);
+            var gs = hut + across * 3.4f + along * 1.6f;
+            guardSpot = new Vector3(gs.x, t ? t.HeightNoLoad(gs.x, gs.y) : transform.position.y, gs.y);
+            guardYaw = Mathf.Atan2(across.x, across.y) * Mathf.Rad2Deg;
+            guardMat = mat;
         }
+
+        void TendGuard()
+        {
+            if (Time.time < tendAt) return;
+            tendAt = Time.time + 1f;
+            var g = MadMax.Game.WastelandGame.Instance;
+            if (!g || !g.Player || guardMat == null || (MadMax.Net.NetSession.Instance && MadMax.Net.NetSession.Instance.IsClient)) return;
+            var me = g.Current ? g.Current.transform.position : g.Player.transform.position;
+            float d = Vector3.Distance(me, guardSpot);
+            if (guard && d > CheckpointGuard.FoldReach && guard.Alive) { Destroy(guard.gameObject); guard = null; return; }
+            if (!guard && d < CheckpointGuard.Reach)
+                guard = CheckpointGuard.Spawn(this, guardSpot, guardYaw, guardMat, Mathf.RoundToInt(guardSpot.x * 7f + guardSpot.z * 13f));
+        }
+
+        void OnDestroy() { if (guard && guard.Alive) Destroy(guard.gameObject); }
 
         static Mesh BoomMesh()
         {
@@ -86,12 +112,14 @@ namespace MadMax.World
             if (broken || Time.time < openUntil) return;
             if (!Friend && !g.Inventory.TrySpend(MadMax.Items.ResourceType.Scrap, Toll)) { g.Toast("NO SCRAP FOR THE TOLL: THE BOOM STAYS DOWN"); return; }
             openUntil = Time.time + 30f;
+            GuardPose?.WaveThrough();
             MadMax.Audio.Sfx.Play("creak", boom ? boom.position : transform.position, 0.6f, 1.3f, 40f);
             g.Toast(Friend ? "THE REMNANTS WAVE YOU THROUGH" : "TOLL PAID (" + Toll + " SCRAP): THE BOOM LIFTS");
         }
 
         void Update()
         {
+            TendGuard();
             if (!boom || broken) return;
             float want = Time.time < openUntil ? 80f : 0f;
             angle = Mathf.MoveTowards(angle, want, 60f * Time.deltaTime);
@@ -117,6 +145,7 @@ namespace MadMax.World
             if (DebrisSystem.Instance) DebrisSystem.Instance.EmitPuff(boom.position + boom.forward * length * 0.5f, new Color32(200, 60, 50, 255), 0.08f, Vector3.up, 1f);
             MadMax.Audio.Sfx.Play("hit_wood", boom.position, 1f, 0.8f, 60f);
             Destroy(boom.gameObject);
+            GuardPose?.ShakeFist();
             Factions.Shift(Faction.Remnants, -6);
             g.Toast("YOU SMASHED THE REMNANT BOOM - THEY WON'T FORGET");
             NpcDirector.Instance?.Noise(transform.position, 40f);

@@ -31,6 +31,8 @@ Shader "MadMax/HDLit"
         _WorldCut ("Underground Cutaway", Range(0,1)) = 0
         _Dirt ("Mud Splatter (vehicles)", Range(0,1)) = 0
         _DirtTop ("Mud Line (world Y)", Float) = -100000
+        _Frost ("Frost on glass (vehicles)", Range(0,1)) = 0
+        _FrostLine ("Frost cleared below (world Y)", Float) = -100000
         [NoScaleOffset] _CarveMask ("Carve Mask (3D, R: 1 kept, 0 carved)", 3D) = "" {}
         _CarveOn ("Carved (destructible props)", Range(0,1)) = 0
         _CarveInset ("Carve Sample Inset (m)", Float) = 0.04
@@ -78,6 +80,8 @@ Shader "MadMax/HDLit"
             half _WorldCut;
             half _Dirt;
             float _DirtTop;
+            half _Frost;
+            float _FrostLine;
             half _Cull;
             float4 _CarveRow0, _CarveRow1, _CarveRow2;   // world -> voxel grid coordinates (voxel centres on integers)
             float4 _CarveMin, _CarveSize;
@@ -690,6 +694,15 @@ Shader "MadMax/HDLit"
                     half m = saturate((_Dirt * low * 1.25h - (half)nz) * 5.0h);
                     albedo = lerp(albedo, half3(0.075h, 0.045h, 0.025h), m * 0.85h);
                     smooth *= 1.0h - m; metal *= 1.0h - m;
+                }
+                // frost on parked cars' glass (GlassFrost): feathery crystals, cleared from the bottom up by the heater
+                if (_Frost > 0.001h && i.positionWS.y > _FrostLine)
+                {
+                    float fz = Value3(i.positionOS * 11.0) * 0.55 + Value3(i.positionOS * 41.0) * 0.45;
+                    half edge = saturate((i.positionWS.y - _FrostLine) / 0.08h);
+                    half f = saturate((_Frost * edge * 1.3h - (half)fz) * 6.0h);
+                    albedo = lerp(albedo, half3(0.72h, 0.78h, 0.83h), f * 0.8h);
+                    smooth = lerp(smooth, 0.15h, f); metal *= 1.0h - f;
                 }
                 // autumn: swaying foliage turns gold and rust in soft patches
                 if (_MadMaxAutumn > 0.001h && (_Sway + _SwayTip) > 0.0h && albedo.g > albedo.r * 1.1h && albedo.g > albedo.b)

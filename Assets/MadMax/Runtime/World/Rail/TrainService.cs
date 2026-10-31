@@ -86,6 +86,27 @@ namespace MadMax.World
             return stops[0];
         }
 
+        /// <summary>Seconds of the clock until the train next stands at <paramref name="stop"/> (0 while it dwells there;
+        /// -1 when the route never calls there), and the stop it heads for after it (2026-10-31: timetable boards).</summary>
+        public float SecondsUntil(int stop, out int next)
+        {
+            next = -1;
+            if (seq == null || cycle <= 0f) return -1f;
+            float t = (float)(clock % cycle); if (t < 0f) t += cycle;
+            float at = 0f;
+            for (int pass = 0; pass < 2; pass++)
+                for (int i = 0; i < seq.Length; i++)
+                {
+                    if (seq[i] == stop)
+                    {
+                        if (t >= at && t < at + dwell) { next = seq[(i + 1) % seq.Length]; return 0f; }
+                        if (at >= t) { next = seq[(i + 1) % seq.Length]; return at - t; }
+                    }
+                    at += dwell + legT[i];
+                }
+            return -1f;
+        }
+
         public Vector3 WorldPoint() { float h = Evaluate(clock, out _, out _, out _, out _); return route.At(h - trainLength * 0.5f); }
 
         /// <summary>One physics step of the live train: advance the clock (held back by a train on the line ahead), pose

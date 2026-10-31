@@ -2131,10 +2131,10 @@ Scenarios: `Acceptance/Blocks/ScheduledScenarios1029.cs` (aviation.windsock, liv
 parkour.contact, npc.raider_bottle, vehicle.kickstand, items.rag_and_bottle).
 
 ### Suggestions (tie the experience together)
-- [ ] **Gang marks on the road**: a gang's ground starts at a painted sign or a tyre cairn in its colours (with the
-  emblem), shot-up and burnt once you have beaten that gang there.
-- [ ] **Frost on the glass**: below 0 °C parked cars' windows ice over (a white film); the heater (or a scrape) clears it,
-  first person sees through a clearing patch.
+- [x] **Gang marks on the road**: a gang's ground starts at a painted sign or a tyre cairn in its colours (with the
+  emblem), shot-up and burnt once you have beaten that gang there. (2026-10-31: `World/GangMarks`)
+- [x] **Frost on the glass**: below 0 °C parked cars' windows ice over (a white film); the heater (or a scrape) clears it,
+  first person sees through a clearing patch. (2026-10-31: `Vehicle/GlassFrost`; the first-person patch is still open — the glass is hidden in first person)
 - [ ] **Tracking**: animal prints carry their species and age (fresh / hours / a day); with the Survival skill the context
   menu on a print names the animal and points the way it went — a way to find the herd for a hunt.
 - [ ] **Steam off a hot engine**: in the cold, a just-run engine smokes off the bonnet and a warm horse steams after a gallop.
@@ -2179,8 +2179,8 @@ Scenarios: `Acceptance/Blocks/ScheduledScenarios1030.cs` (rail.wheels_turn, rail
 vehicle.bonnet_steam).
 
 ### Suggestions (tie the experience together)
-- [ ] **Timetable boards**: a chalk board on every passenger platform lists the next two trains with their time (the
-  service clock as a game time) and where they go; the stationmaster names it when asked.
+- [x] **Timetable boards**: a chalk board on every passenger platform lists the next two trains with their time (the
+  service clock as a game time) and where they go; the stationmaster names it when asked. (2026-10-31: `World/Rail/TimetableBoard`; the stationmaster's own line is still open)
 - [ ] **Hopping a freight**: climbing onto a moving hopper / flatcar from the lineside (running alongside below
   12 km/h, [Space] at the steps) — a free ride with a chance of the guard throwing you off at the next stop.
 - [ ] **Signal discipline**: a service stops at a red signal; a player train running a red gets a toll / Guild standing
@@ -2189,6 +2189,52 @@ vehicle.bonnet_steam).
   news, like road wrecks, and the Guild sends a crane wagon to clear it after a few days.
 - [ ] **Coal and water**: the makeshift loco's tender shows its diesel drum level; at water/fuel stops the crew climbs
   down and refuels with a hose while it dwells.
+
+## Scheduled update (2026-10-31)
+Done this pass (ticked above): gang marks on the road, frost on the glass, timetable boards. The section audit wrapped
+round (1–30 done on 10-23 … 10-30); this pass audits the "Gaps & suggestions" world landmarks (radio masts, checkpoints,
+scrapyards, the refinery). Already alive: the mast's blinking warning lamp, the checkpoint boom (toll, honk, smash), the
+refinery flare. Thin, now remodelled:
+- [x] **The scrapyard works** (`World/ScrapyardCrane`; the yards were fences, car stacks and a locker): a rusted tower
+  crane in the middle of every yard — lattice mast with a ladder, a slewing jib with counterweights and the operator's
+  cab, a trolley, the hoist cable and an electro-magnet. Through the day it slews over a crushed car slab, runs the
+  trolley out, lowers the magnet, grabs it with a clang and sparks, hoists, swings it across (the hook sways after the
+  slew) and sets it down on the other heap in a puff of dust, then idles 8–20 s; it holds while anyone stands under the
+  hook (and says so once). A floodlight on the jib lights the yard at night; the crane is still then. Hydraulic hum while
+  it moves. Its piece is appended last to the yard's list, so older keys are unchanged.
+- [x] **A guard at the checkpoint** (`World/CheckpointGuard`, kept by `Checkpoint.TendGuard`): a REMNANT GUARD with a bolt
+  rifle (a lantern by night) stands on the shoulder beside the boom post while you are within 120 m (folded away past
+  170 m, host only). A car coming at the lowered boom within 45 m: they turn to it and hold a palm up; toll paid or a
+  friend: they wave it through, the arm sweeping along the road; the boom smashed: a fist shaken overhead and a shout.
+  A real person underneath (talk, trade, fights back).
+- [x] **Frost on the glass** (`Vehicle/GlassFrost`, `_Frost` / `_FrostLine` in PixelVoxel and HDLit): below 0 °C a parked
+  car's glass ices over in ~4 min (whole at −5.5 °C, thicker on clear nights and in snow) — crystal voxels in the pixel
+  look, feathery crystals in HD; a parked car not driven since it was loaded stays frosted to the weather's level. In the seat with the engine warm (> 35 °C, heater on)
+  it clears from the bottom of the glass up in ~50 s; SCRAPE THE ICE (context menu beside the car) clears it by hand in
+  ~7 s with a scrape and ice flakes; above +1 °C it melts. Not saved.
+- [x] **Timetable boards** (`World/Rail/TimetableBoard`, `TrainService.SecondsUntil`): a framed chalk board with a tin hood
+  at the end of every passenger platform: the station, NEXT TRAINS — the game time each Guild service is due (from its
+  timetable clock, to 5 minutes) and where it goes next, NOW BOARDING while one stands there, NO SERVICE otherwise.
+- [x] **Gang marks on the road** (`World/GangMarks`): at both ends of each raider gang's road, just outside the towns, a
+  tyre cairn on the verge with a plank sign in the gang's colours, its emblem and a skull, facing the traffic coming in
+  (a toast and a journal line the first time). Once the gang's column has been wiped out the sign is shot through,
+  scorched and crossed out in white, the top tyre knocked off — smouldering for the first day.
+- [ ] Still thin: radio masts have no guy wires and no hum; the refinery has no workers; checkpoint guards don't check
+  the cargo or demand more for a loaded truck; the crane never loads a car onto a lorry or feeds a crusher; frost has no
+  wipers and no first-person view (the glass is hidden there); scrapyards have no yard keeper or dog.
+
+Scenarios: `Acceptance/Blocks/ScheduledScenarios1031.cs` (vehicle.glass_frost, landmarks.scrapyard_crane,
+landmarks.checkpoint_guard, rail.timetable_board, world.gang_marks).
+
+### Suggestions (tie the experience together)
+- [ ] **Yard keeper**: a scrap dealer in a hut at each scrapyard who buys whole wrecks you tow in (by weight, the crane
+  lifts them off the hook) and sells salvaged parts off the stacks.
+- [ ] **Cargo checks**: the checkpoint guard looks into a loaded truck bed / trailer and charges by the load; contraband
+  (stolen parts, raider gear) means a fine or a fight.
+- [ ] **Breath on the glass**: sitting in a cold car fogs the windscreen from the inside unless the heater runs.
+- [ ] **Mast hum**: radio masts hum and crackle close by, and the radio picks up a stronger signal of the station they carry.
+- [ ] **Gang tolls**: a gang's cairn is where their toll road starts — honk to pay a small toll and they let you pass
+  their ground in peace for a day.
 
 ## User requests (2026-10-13: GTA-style town driving)
 - [x] **Drive straight through walkable areas and roundabouts** (2026-10-13: kerbs are mountable — `TownPlan.Kerb` 0.10 m eased up over `KerbRamp` 0.45 m from the carriageway edge (street and ring sidewalks, driveways, pedestrian-street ends at their junction boxes), roundabout islands ramped up to the sidewalk level instead of a 0.18 m step, the off-plan highway edge eased; `TownPlanVersion` 2. `VehicleDriver` tyre envelope: each wheel also samples ±0.55 r along its heading less the arc drop, so it climbs a step on its tread instead of the damper being slammed. Street furniture gives way (`World/Breakaway` look-ahead one physics step ahead of every moving vehicle's body box, called from `VehicleDamage.FixedUpdate`; contacts it missed are handed over from `VehicleDamage.Handle`): `StreetFurniture` Loose — benches, bins, bollards, hydrants, phone booths, drums torn off and flung (rigid bodies, remembered through `DestructibleVoxels.Moved`); Plough — planters, hedges, bushes, park trees, island statues/fountains, bus shelters carved through car-wide (carve broadcast), the car keeps ≥ 55-80 % of its speed. Pedestrians jump clear of cars on their line (`Npc.Dodge`). Scenario `towns.drive_through`. Open: kerb faces in the HD terrain shader still read as vertical (the band is drawn, the ramp is not shaded); hydrants could gush; player-built street lamps / power poles (Placeables) don't snap yet.)
